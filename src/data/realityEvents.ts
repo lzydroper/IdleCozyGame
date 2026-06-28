@@ -112,5 +112,141 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       }
     }
+  },
+  toxic_swamp: {
+    id: "toxic_swamp",
+    title: "酸雨腐蚀沼泽",
+    description: "前方是一片被酸雨长年累月腐蚀的毒素沼泽，泥浆中泛着刺鼻的黄绿色气泡。强行蹚过可能会受伤，但能节省时间并可能发现遗留在底部的奇异植物种子；绕行则需要消耗大量体力。",
+    choices: {
+      A: {
+        text: "强行蹚过沼泽 (生命-15)",
+        results: {
+          stats: { hp: -15 },
+          items: { seed_plasma_pumpkin: 1, alloy_plate: 1 },
+          logText: "你咬紧牙关从小腿深的腐蚀泥浆中穿过，防护服被酸液灼烧得咝咝作响，生命值受到损害。但你在沼泽中心的废墟里捞到了一个密封盒，里面有一颗等离子南瓜种子和一块合金金属板。"
+        }
+      },
+      B: {
+        text: "安全绕行毒沼 (饱食-15)",
+        results: {
+          stats: { food: -15 },
+          logText: "你选择花费更多时间从沼泽边缘的坚硬岩石区绕过去。这极大地增加了体能消耗，你的饱食度明显下降，但好在没有受伤。"
+        }
+      }
+    }
+  },
+  wandering_trader: {
+    id: "wandering_trader",
+    title: "黑市流浪商人",
+    description: "一名身穿破旧防化斗篷、背着巨大金属箱的流浪商人在废墟阴影中向你招手。他声称自己手里有一些珍稀的温室变异植物种子，只接受废旧金属作为交换。",
+    choices: {
+      A: {
+        text: "用废铁交换珍稀种子 (消耗废旧金属x5)",
+        requirements: { scrap_metal: 5 },
+        results: {
+          items: { scrap_metal: -5, seed_magma_pepper: 2, seed_frost_bell: 1 },
+          logText: "你拿出5个废旧金属零件递给商人。商人露出了满意的笑容，从怀里摸出两颗熔岩椒种子和一颗霜冻风铃草种子作为回报。"
+        }
+      },
+      B: {
+        text: "拒绝交易离开 (饱食-2)",
+        results: {
+          stats: { food: -2 },
+          logText: "你警惕地拒绝了他的交易，并迅速离开。由于绕路防范商人的跟踪，你消耗了少许饱食度。"
+        }
+      }
+    }
+  },
+  military_caches: {
+    id: "military_caches",
+    title: "报废的自动机炮",
+    description: "在废弃的哨所旁，一尊古老的自动防卫机炮歪倒在地上。它的识别模块已彻底损毁，但其弹药箱和电池仓似乎还保存完好，你可以尝试用魔能熔毁锁扣，或者直接暴力拆卸。",
+    choices: {
+      A: {
+        text: "暴力拆卸电池仓 (生命-10, 饱食-10)",
+        results: {
+          stats: { hp: -10, food: -10 },
+          items: { plasma_cell: 1, scrap_metal: 3 },
+          logText: "你用工坊撬棍对准电池仓的缝隙狠狠砸了下去。随着一阵耀眼的电火花，你被轻微电击并消耗了大量体力，但也成功拿到了一个等离子电芯和几块废金属。"
+        }
+      },
+      B: {
+        text: "魔能溶解安全锁 (魔能-15)",
+        results: {
+          stats: { energy: -15 },
+          items: { plasma_cell: 2 },
+          logText: "你小心翼翼地引导魔能渗透进机炮的电子安全锁，将内部芯片烧毁。外壳自动弹开，你安全地拿到了两个等离子电芯。"
+        }
+      }
+    }
+  },
+  gravitational_anomaly: {
+    id: "gravitational_anomaly",
+    title: "重力异常废墟",
+    description: "前方的重工业区废墟中存在一处小型的重力异常扭曲场，碎石和金属废料在空中无规律地漂浮着。在残骸深处，隐约闪烁着罕见的结晶光芒。",
+    choices: {
+      A: {
+        text: "激活魔能护盾探索 (魔能-18)",
+        results: {
+          stats: { energy: -18 },
+          items: { frost_crystal: 2, dream_shard: 1 },
+          logText: "你利用魔能护盾包裹全身，隔绝了重力扭曲对身体的挤压。你穿梭于悬浮的废墟间，顺利采掘到两枚冰晶结晶以及一块散落的梦境碎片。"
+        }
+      },
+      B: {
+        text: "徒手爬过异常区 (生命-12, 饱食-12)",
+        results: {
+          stats: { hp: -12, food: -12 },
+          items: { frost_crystal: 1, scrap_metal: 2 },
+          logText: "你在失重与超重交替的碎石之间攀爬前进，几块悬空的钢板突然砸来，让你受了伤，且非常疲惫。最终，你勉强捡到了一枚冰晶结晶和一些废旧金属。"
+        }
+      }
+    }
+  },
+  broken_greenhouse: {
+    id: "broken_greenhouse",
+    title: "废弃魔导水培室",
+    description: "一间在大灾变中半毁的水培温室静静矗立在路旁。这里的自动培育架早已停转，但某些防爆培育槽可能还有未孵化的种子，供电板上也有些残留零件。",
+    choices: {
+      A: {
+        text: "搜寻水培控制台 (饱食-10)",
+        results: {
+          stats: { food: -10 },
+          items: { seed_void_lotus: 1, seed_glow_grass: 2 },
+          logText: "你仔细搜寻培育台下方的种子冷藏箱。在消耗了不少体力后，你成功取出了一个保存状态良好的虚空魔莲种子和两颗普通的荧光草种子。"
+        }
+      },
+      B: {
+        text: "拆卸紧急供电板 (生命-5, 魔能-10)",
+        results: {
+          stats: { hp: -5, energy: -10 },
+          items: { alloy_plate: 2 },
+          logText: "你引导微量魔力逆向给供电板放电，但在强行拆卸时被高压电火花烫伤。不过，你还是成功拆下了两块厚实的合金金属板。"
+        }
+      }
+    }
+  },
+  acid_rain_storm: {
+    id: "acid_rain_storm",
+    title: "突发魔能酸雨",
+    description: "天空突然变成了诡异的暗紫色，带电的雨滴开始淅淅沥沥地砸落，并在地表腐蚀出刺鼻的白烟。这是致命的魔能酸雨风暴，你需要立刻决定对策。",
+    choices: {
+      A: {
+        text: "就近找废墟躲避 (饱食-15)",
+        results: {
+          stats: { food: -15 },
+          items: { scrap_metal: 2 },
+          logText: "你躲进一栋破损的水泥大楼中。在等待酸雨停息的漫长时间里，你的饱食度不断流逝。闲着无聊，你在楼内杂物堆里顺手翻出了两件废铁。"
+        }
+      },
+      B: {
+        text: "超频护盾硬顶雨前进 (魔能-20)",
+        results: {
+          stats: { energy: -20 },
+          items: { dream_shard: 1 },
+          logText: "你将魔能注入防护衣，让魔能护盾在头顶形成一道防御光幕。你虽然在雨中全速前进，极大地消耗了魔能，但在被雨水冲刷的地表凹槽中发现了一枚晶莹的梦境碎片。"
+        }
+      }
+    }
   }
 };

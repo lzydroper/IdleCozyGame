@@ -35,7 +35,7 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
   },
   {
     id: 'zero',
-    name: 'Zero',
+    name: '赛罗',
     role: 'scout',
     emoji: '🏃',
     backstory: '废土信使，熟悉所有地形和危险区域。',
@@ -43,5 +43,38 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     realityLocationId: 'signal_tower', // 对应信号塔
     bonus: 0.15,
     bonusDescription: '地表探索消耗 -15%'
+  },
+  {
+    id: 'catherine',
+    name: '凯瑟琳',
+    role: 'farmer',
+    emoji: '🩺',
+    backstory: '前辐射防治所的主任，专注于利用变异植物研发广谱抗辐射净化血清。',
+    dreamTrigger: '在梦境深处，你隐约闻到了一股散发着消毒水味的气息，以及微弱的手术刀碰撞声...',
+    realityLocationId: 'bio_lab',
+    bonus: 0.15,
+    bonusDescription: '所有行动饱食度与生命消耗降低 15%'
+  },
+  {
+    id: 'buster',
+    name: '巴斯特',
+    role: 'scout',
+    emoji: '🦾',
+    backstory: '在废土中行走了二十年的清道夫硬汉，拥有一双能从垃圾堆里淘出核心部件的巧手。',
+    dreamTrigger: '在一阵极其嘈杂的心灵电波中，你听到了伴随金属电吉他嘶吼的粗犷歌声...',
+    realityLocationId: 'collapsed_subway',
+    bonus: 0.3,
+    bonusDescription: '地表探索获得的废旧金属数量增加 30%'
+  },
+  {
+    id: 'nova',
+    name: '诺娃',
+    role: 'engineer',
+    emoji: '☄️',
+    backstory: '前联合防卫军魔导机甲的备用驾驶员，性格豪爽，擅长让各种魔导设施过载运转。',
+    dreamTrigger: '在梦境的钢铁废墟上空，一道刺眼的橙色强光伴随着机甲过载警报声不断闪烁...',
+    realityLocationId: 'military_depot',
+    bonus: 0.3,
+    bonusDescription: '最大魔能上限提升 30点 & 核心超频防守消耗降低'
   }
 ];

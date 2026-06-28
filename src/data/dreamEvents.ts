@@ -154,5 +154,115 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         }
       }
     }
+  },
+  catherine_signal: {
+    id: "catherine_signal",
+    title: "消毒水味的波束 (凯瑟琳的信号)",
+    description: "在梦境深处，你隐约闻到了一股散发着消毒水味的气息，以及微弱的手术刀碰撞声。这是前辐射防治所主任『凯瑟琳』发出的心灵波束，试图求救。",
+    choices: {
+      A: {
+        text: "建立心灵连结 (理智-10, 共鸣+50)",
+        results: {
+          stats: { sanity: -10, resonance: 50 },
+          targetSurvivorId: "catherine",
+          logText: "你将理智丝线探入充满药水味的心灵雾气中，紧紧抓住了凯瑟琳的信号。在满布手术刀划痕的梦境幻象中，你们成功建立了共鸣连接！"
+        }
+      },
+      B: {
+        text: "忽略信号波束 (理智-2)",
+        results: {
+          stats: { sanity: -2 },
+          logText: "你觉得在危险的深层梦境中，带消毒水味的心灵波束可能是一种未知的精神陷阱，你选择忽略它，让波束在黑暗中渐渐归于死寂。"
+        }
+      }
+    }
+  },
+  buster_signal: {
+    id: "buster_signal",
+    title: "嘈杂的心灵重低音 (巴斯特的信号)",
+    description: "在一阵极其嘈杂的心灵电波中，你听到了伴随金属电吉他嘶吼的粗犷歌声。电波中掺杂着粗野而刚毅的求救信号，似乎自称为『巴斯特』。",
+    choices: {
+      A: {
+        text: "建立心灵连结 (理智-10, 共鸣+50)",
+        results: {
+          stats: { sanity: -10, resonance: 50 },
+          targetSurvivorId: "buster",
+          logText: "你忍受着巨大的噪音，用精神力网拦截下那段沙哑刺耳的重金属脑波。一阵眩晕后，你与巴斯特达成了意识深处的共鸣！"
+        }
+      },
+      B: {
+        text: "忽略脑波噪声 (理智-2)",
+        results: {
+          stats: { sanity: -2 },
+          logText: "这阵心灵波动过于狂暴刺耳，你担心它会彻底破坏你脆弱的思维防线，于是果断屏蔽了这段电波。"
+        }
+      }
+    }
+  },
+  nova_signal: {
+    id: "nova_signal",
+    title: "警报与闪光信标 (诺娃的信号)",
+    description: "在梦境的钢铁废墟上空，一道刺眼的橙色强光伴随着机甲过载警报声不断闪烁。这是前联合防卫军魔导机甲驾驶员『诺娃』紧急离舱前的战术信标。",
+    choices: {
+      A: {
+        text: "追踪强光信标 (理智-12, 共鸣+50)",
+        results: {
+          stats: { sanity: -12, resonance: 50 },
+          targetSurvivorId: "nova",
+          logText: "你引导意识穿过闪烁的橙色警报光幕，强行在机甲动力过载核心彻底熔毁前截获了诺娃的精神信号，并确立了共鸣！"
+        }
+      },
+      B: {
+        text: "忽略警报信号 (理智-2)",
+        results: {
+          stats: { sanity: -2 },
+          logText: "在梦境中被警报强光照射极易暴露位置，为了防范梦魇怪物的袭击，你谨慎地退出了这片钢铁废墟区域。"
+        }
+      }
+    }
+  },
+  neon_ruins: {
+    id: "neon_ruins",
+    title: "梦境霓虹废墟",
+    description: "眼前的荒原上突然耸立起一片被五彩霓虹灯扭曲包围的巨型摩天大楼废墟。空气中流动着电子废品般的色彩，充满着诡异而迷人的辐射波。",
+    choices: {
+      A: {
+        text: "驻足沉思感悟 (污染+10)",
+        results: {
+          stats: { pollution: 10 },
+          items: { dream_shard: 2 },
+          logText: "你站在霓虹灯光下闭上眼，静静感受着旧时代电子脉冲的余音。这让你的心灵防线沾染了许多彩色精神斑点，但也在手中凝结出两块温润的梦境碎片。"
+        }
+      },
+      B: {
+        text: "摸黑穿过街区 (理智-10)",
+        results: {
+          stats: { sanity: -10 },
+          items: { dream_shard: 1 },
+          logText: "你不去理会那些迷幻的彩色灯光，低头闷声在这座钢铁丛林废墟中快步穿过。虽然理智被冰冷的摩天大楼压抑得有些难受，但你安全地在角落拾取了一块梦境碎片。"
+        }
+      }
+    }
+  },
+  childhood_carousel: {
+    id: "childhood_carousel",
+    title: "童年游乐园",
+    description: "在一团乳白色的梦境柔光中，一架巨大的双层木马旋转秋千正播放着沙哑而断续的八音盒音乐。坐上去或许能寻回昔日遗落的纯真理智，但也可能被深层记忆永远吸附。",
+    choices: {
+      A: {
+        text: "坐上木马回忆 (理智+30, 污染+15)",
+        results: {
+          stats: { sanity: 30, pollution: 15 },
+          logText: "你跨上了冰凉的木马，闭上眼，仿佛回到了阳光明媚、没有废土的童年时代。你的心灵得到了极大的宽慰和滋润，理智暴涨；然而，那些不切实际的幻觉也深深侵蚀了你的大脑，污染度上升。"
+        }
+      },
+      B: {
+        text: "绕行警惕危险 (理智-5)",
+        results: {
+          stats: { sanity: -5 },
+          logText: "你明白在这片诡异的梦境废土中，一切美好皆是虚影，坐上去可能会让你彻底迷失。你痛苦地强迫自己转过头去，加快脚步离开了游乐园。"
+        }
+      }
+    }
   }
 };
