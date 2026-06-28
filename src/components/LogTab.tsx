@@ -183,22 +183,28 @@ const LogTab: React.FC = () => {
               );
             }
 
+            const isUnknown = surv.status === 'unknown';
+            const displayEmoji = isUnknown ? '❓' : surv.emoji;
+            const displayName = isUnknown ? '未知幸存者信号' : surv.name;
+            const displayRole = isUnknown ? '职位不明' : (surv.role === 'farmer' ? '农学者' : surv.role === 'engineer' ? '工程师' : '侦察兵');
+            const displayBackstory = isUnknown ? '（正接收到废土中微弱的共鸣频率...当共鸣达到 100% 时即可精确定位此人的方位）' : surv.backstory;
+
             return (
               <div key={surv.id} className={`p-4 rounded-3xl border flex gap-4 transition-all duration-300 ${borderStyle}`}>
-                <div className="text-3xl shrink-0 flex items-center bg-zinc-900/50 p-2.5 rounded-2xl border border-zinc-800/40">
-                  {surv.emoji}
+                <div className="text-3xl shrink-0 flex items-center bg-zinc-900/50 p-2.5 rounded-2xl border border-zinc-800/40 opacity-70">
+                  {displayEmoji}
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex justify-between items-center">
                     <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                      {surv.name}
+                      {displayName}
                       <span className="text-[9px] uppercase tracking-wider bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800 text-zinc-500 font-bold">
-                        {surv.role === 'farmer' ? '农学者' : surv.role === 'engineer' ? '工程师' : '侦察兵'}
+                        {displayRole}
                       </span>
                     </h4>
                     {statusBadge}
                   </div>
-                  <p className="text-[10px] text-zinc-500 leading-relaxed">{surv.backstory}</p>
+                  <p className={`text-[10px] leading-relaxed ${isUnknown ? 'text-zinc-600 italic font-medium' : 'text-zinc-500'}`}>{displayBackstory}</p>
                   
                   {surv.status === 'rescued' && (
                     <div className="text-[10px] text-purple-400 font-extrabold bg-purple-950/20 border border-purple-900/30 px-2.5 py-1 rounded-xl">

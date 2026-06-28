@@ -18,19 +18,17 @@ const GreenhouseTab: React.FC = () => {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [showSeedSelector, setShowSeedSelector] = useState(false);
   const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
-  const [rewardCounter, setRewardCounter] = useState(0);
 
   // 触发飘字特效
   const triggerFlyingRewards = (yields: Record<string, number>, slotId: number) => {
     const rewards: FlyingReward[] = [];
-    let idAccumulator = rewardCounter;
     let index = 0;
 
     Object.entries(yields).forEach(([item, qty]) => {
       const itemConfig = ITEMS_CONFIG[item]?.name || item;
 
       rewards.push({
-        id: idAccumulator++,
+        id: Date.now() + Math.random(),
         text: `+${qty} ${itemConfig}`,
         slotId,
         offsetY: index * -22 // 垂直方向微调偏移，避免重叠
@@ -38,7 +36,6 @@ const GreenhouseTab: React.FC = () => {
       index++;
     });
 
-    setRewardCounter(idAccumulator);
     setFlyingRewards(prev => [...prev, ...rewards]);
 
     // 1.5秒后自动移除飘字
@@ -121,29 +118,32 @@ const GreenhouseTab: React.FC = () => {
   return (
     <div className="relative w-full pb-20">
       {/* 控制中心 */}
-      <div className="mb-6 p-4 rounded-2xl bg-zinc-900/60 border border-purple-500/20 backdrop-blur-md">
-        <h2 className="text-lg font-bold text-purple-400 mb-3 flex items-center gap-2">
-          <Sparkles className="w-5 h-5" /> 魔导温室控制台
+      <div className="relative mb-8 p-5 rounded-3xl bg-zinc-950/40 border border-zinc-800/60 backdrop-blur-xl shadow-2xl overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-emerald-500/5 pointer-events-none" />
+        <div className="absolute -inset-[100%] animate-[spin_10s_linear_infinite] bg-gradient-to-r from-transparent via-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-700" />
+        
+        <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-emerald-400 mb-4 flex items-center gap-2 relative z-10">
+          <Sparkles className="w-5 h-5 text-purple-400" /> 魔导温室控制台
         </h2>
-        <div className="flex flex-wrap gap-2 justify-center">
+        <div className="flex flex-wrap gap-3 justify-start relative z-10">
           <button
             onClick={handleBatchHarvest}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2 cursor-pointer"
+            className="flex-1 min-w-[120px] px-4 py-3 bg-gradient-to-r from-emerald-600/90 to-emerald-500/90 hover:from-emerald-500 hover:to-emerald-400 active:scale-95 text-white font-black rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-400/30"
           >
             <Sparkles className="w-4 h-4" /> 一键收割
           </button>
           
           <button
             onClick={handleWaterAll}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+            className="flex-1 min-w-[120px] px-4 py-3 bg-gradient-to-r from-blue-600/90 to-cyan-500/90 hover:from-blue-500 hover:to-cyan-400 active:scale-95 text-white font-black rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer border border-blue-400/30"
           >
-            <Droplet className="w-4 h-4" /> 一键浇水 (耗能)
+            <Droplet className="w-4 h-4" /> 灌溉系统
           </button>
 
           <button
             onClick={() => handleBatchPlant('glow_grass')}
             disabled={(state.inventory.seed_glow_grass || 0) <= 0}
-            className="px-4 py-2 bg-purple-900/50 hover:bg-purple-900 border border-purple-500/30 disabled:opacity-40 disabled:pointer-events-none active:scale-95 text-purple-300 font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+            className="flex-1 min-w-[140px] px-4 py-3 bg-zinc-900/80 hover:bg-zinc-800 border border-purple-500/40 disabled:opacity-30 disabled:border-zinc-800 disabled:pointer-events-none active:scale-95 text-purple-300 font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Sprout className="w-4 h-4" /> 连播荧光草
           </button>

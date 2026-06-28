@@ -235,6 +235,10 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
       </GameProvider>
     );
 
+    // 先展开面板
+    const header = screen.getByText('避难所生存补给发放');
+    fireEvent.click(header);
+
     // 找到 "食用 (饱食+60, 生命+20)" 按钮并点击
     const button = screen.getByText('食用 (饱食+60, 生命+20)');
     await act(async () => {
@@ -269,6 +273,10 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
         </ToastProvider>
       </GameProvider>
     );
+
+    // 先展开面板
+    const header = screen.getByText('避难所生存补给发放');
+    fireEvent.click(header);
 
     // 找到 "注射 (生命+60, 饱食+10)" 按钮并点击
     const button = screen.getByText('注射 (生命+60, 饱食+10)');
@@ -307,6 +315,10 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
         </ToastProvider>
       </GameProvider>
     );
+
+    // 先展开面板
+    const header = screen.getByText('避难所生存补给发放');
+    fireEvent.click(header);
 
     // 找到 "净化 (污染-30, 理智+30)" 按钮并点击
     const button = screen.getByText('净化 (污染-30, 理智+30)');
