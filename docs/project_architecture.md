@@ -72,6 +72,41 @@ interface GameState {
 * **梦境污染**：每走一步都会积累污染度，如果污染度达到 100% 将触发“梦境泄露（梦魇入侵）”警报，在现实中扣除玩家 60 点生命值。
 * **同伴共鸣**：梦境中的事件可以解锁同伴在现实地表的救援坐标（例如锁定雷达站、温室废墟或信号塔）。
 
+### 3.5 数据驱动设计系统 (Data-Driven System)
+游戏的各项数据、遭遇、配方和物品全数采用**数据驱动（Data-Driven）**的解耦设计，所有配置文件集中在 `src/data/` 目录下。这意味着无需修改 React 组件逻辑，仅需编辑配置文件即可扩展游戏内容。
+
+* **物品系统 (`items.ts`)**：
+  * 通过 `ITEMS_CONFIG` 统一定义物品元数据，包括 ID、中文名称、代表 Emoji、详情描述及分类（种子/材料/食物/装备/特殊）。
+  * 游戏引擎与临时背囊等 UI 直接读取此数据字典进行显示与汉化，杜绝了硬编码文案。
+* **配方系统 (`recipes.ts`)**：
+  * 制造工坊的列表渲染完全由 `RECIPES_CONFIG` 驱动。
+  * 每个配方包含：`cost`（配方消耗）、`yields`（产出）、`energyCost`（消耗魔能）、`category`（所属页签）以及是否默认解锁等。
+  * 诺娃（Nova）的“过载减耗”被动直接读取配方的魔能消耗并动态计算，同时可过滤掉标记有 `special: true`（如温室扩建）的特殊配方。
+* **卡牌事件系统 (`realityEvents.ts` / `dreamEvents.ts`)**：
+  * 现实和梦境的探索事件均定义为 `RealityEvent` 和 `DreamEvent` 结构体数组。
+  * **结构体定义**：
+    ```typescript
+    interface RealityEvent {
+      id: string;
+      title: string;
+      description: string;
+      choices: {
+        A: EventChoice;
+        B: EventChoice;
+      };
+    }
+    interface EventChoice {
+      text: string;                  // 选项文字说明
+      requirements?: Record<string, number>; // 玩家主背包前提物资门槛（如：需防御炮塔x1）
+      results: {
+        stats?: { hp?: number; food?: number; energy?: number; sanity?: number; pollution?: number }; // 属性增减
+        items?: Record<string, number>; // 获得或扣除物品（如：废铁 -5，熔岩核心 +1）
+        logText: string;              // 做出选择后打印到日志面板的文本
+      };
+    }
+    ```
+  * 滑动卡片组件 `SwipeCard.tsx` 会读取当前卡牌的 `requirements` 进行置灰或校验，并根据 `results` 执行数值与物品的清算。
+
 ---
 
 ## 4. 幸存同伴与生存被动技能 (Survivor Passives)
