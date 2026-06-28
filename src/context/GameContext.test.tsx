@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateOfflineProgress } from './GameContext';
-import { GreenhouseSlot } from '../types/game';
+import type { GreenhouseSlot } from '../types/game';
 
 // 模拟作物配置表
 const MOCK_CROPS_CONFIG: Record<string, { growthTime: number }> = {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { GameState, GreenhouseSlot, PlayerStats, Survivor } from '../types/game';
+import type { GameState, GreenhouseSlot, PlayerStats } from '../types/game';
 
 // 静态作物配置表
 export const CROPS_CONFIG = {
@@ -195,7 +195,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 检查种子
     const seedId = Object.keys(cropConfig.seedCost)[0];
-    const seedQtyNeeded = cropConfig.seedCost[seedId] || 0;
+    const seedQtyNeeded = (cropConfig.seedCost as Record<string, number>)[seedId] || 0;
 
     let success = false;
     setState(prev => {
@@ -361,7 +361,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!cropConfig) return false;
 
     const seedId = Object.keys(cropConfig.seedCost)[0];
-    const seedQtyNeeded = cropConfig.seedCost[seedId] || 0;
+    const seedQtyNeeded = (cropConfig.seedCost as Record<string, number>)[seedId] || 0;
 
     let plantedCount = 0;
 
