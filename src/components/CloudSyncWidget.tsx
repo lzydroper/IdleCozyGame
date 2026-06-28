@@ -5,7 +5,7 @@ import { useToast } from './ToastSystem';
 import { Cloud, UploadCloud, DownloadCloud, Key } from 'lucide-react';
 
 const CloudSyncWidget: React.FC = () => {
-  const { state, setState, currentUser, switchAccount, accounts } = useGame();
+  const { setState, currentUser, accounts } = useGame();
   const { showToast, showConfirm } = useToast();
   const [syncKey, setSyncKey] = useState(() => {
     return localStorage.getItem(`aether_garden_sync_key_${currentUser}`) || '';
@@ -16,7 +16,8 @@ const CloudSyncWidget: React.FC = () => {
     setSyncKey(localStorage.getItem(`aether_garden_sync_key_${currentUser}`) || '');
   }, [currentUser]);
 
-  if (!supabase) {
+  const client = supabase;
+  if (!client) {
     return (
       <div className="mt-2 p-2 bg-zinc-900/40 border border-zinc-850 rounded-xl text-center">
         <p className="text-[9px] text-zinc-600 font-bold">云端节点未响应。请在部署环境的 .env 中配置 Supabase 密钥以启用跨端同步。</p>
@@ -39,7 +40,7 @@ const CloudSyncWidget: React.FC = () => {
       const serializedData = localStorage.getItem(`aether_garden_save_${currentUser}`);
       if (!serializedData) throw new Error("无本地存档数据");
 
-      const { error } = await supabase.from('saves').upsert({
+      const { error } = await client.from('saves').upsert({
         username: currentUser,
         sync_key: syncKey.trim(),
         data: serializedData,
@@ -76,7 +77,7 @@ const CloudSyncWidget: React.FC = () => {
       onConfirm: async () => {
         setIsSyncing(true);
         try {
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from('saves')
             .select('data, sync_key')
             .eq('username', currentUser)

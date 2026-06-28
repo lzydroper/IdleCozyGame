@@ -18,8 +18,45 @@ const DreamscapeTab: React.FC = () => {
 
   const drawDreamEvent = () => {
     const keys = Object.keys(DREAM_EVENTS);
-    const randomKey = keys[Math.floor(Math.random() * keys.length)];
-    setCurrentEvent(DREAM_EVENTS[randomKey]);
+    const events = keys.map(key => DREAM_EVENTS[key]);
+    
+    // 1. 根据分类大权重筛选事件类型
+    const CATEGORY_WEIGHTS: Record<string, number> = {
+      common: 100,
+      danger: 80,
+      signal: 60,
+      welfare: 40
+    };
+    
+    const availableCategories = Array.from(new Set(events.map(e => e.type)));
+    const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
+    
+    let randomCatNum = Math.random() * totalCatWeight;
+    let selectedCat = availableCategories[0];
+    for (const cat of availableCategories) {
+      const catWeight = CATEGORY_WEIGHTS[cat] ?? 100;
+      if (randomCatNum < catWeight) {
+        selectedCat = cat;
+        break;
+      }
+      randomCatNum -= catWeight;
+    }
+    
+    // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
+    const catEvents = events.filter(e => e.type === selectedCat);
+    const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
+    
+    let randomEvtNum = Math.random() * totalEventWeight;
+    let selectedEvent = catEvents[0];
+    for (const evt of catEvents) {
+      const weight = evt.weight ?? 100;
+      if (randomEvtNum < weight) {
+        selectedEvent = evt;
+        break;
+      }
+      randomEvtNum -= weight;
+    }
+    setCurrentEvent(selectedEvent);
   };
 
   const handleStartDream = () => {

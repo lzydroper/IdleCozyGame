@@ -163,7 +163,7 @@ const App: React.FC = () => {
               AetherGarden
             </span>
             <span className="text-[10px] uppercase tracking-widest text-zinc-500 bg-zinc-950/80 px-2 py-0.5 rounded-full border border-zinc-900">
-              Alpha v1.0
+              Beta v1.1.0
             </span>
           </div>
           <div className="flex items-center gap-3">
