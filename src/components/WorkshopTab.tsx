@@ -2,6 +2,7 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { RECIPES_CONFIG } from '../data/recipes';
+import { ITEMS_CONFIG } from '../data/items';
 import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
 const WorkshopTab: React.FC = () => {
@@ -12,32 +13,80 @@ const WorkshopTab: React.FC = () => {
   const player = state.player;
   const activeAlert = state.activeAlert;
 
+  const supplyConfigs = [
+    {
+      id: 'ration' as const,
+      colorClass: 'text-amber-500 border-amber-600/40 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400',
+      effectText: '进食 (饱食+30)',
+    },
+    {
+      id: 'energy_refill' as const,
+      colorClass: 'text-cyan-400 border-cyan-400/40 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300',
+      effectText: '更换罐 (魔能+30)',
+    },
+    {
+      id: 'hot_stew' as const,
+      colorClass: 'text-rose-500 border-rose-500/40 bg-rose-600/20 hover:bg-rose-600/40 text-rose-400',
+      effectText: '食用 (饱食+60, 生命+20)',
+    },
+    {
+      id: 'nanite_injector' as const,
+      colorClass: 'text-emerald-500 border-emerald-500/40 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400',
+      effectText: '注射 (生命+60, 饱食+10)',
+    },
+    {
+      id: 'purifying_serum' as const,
+      colorClass: 'text-purple-500 border-purple-500/40 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400',
+      effectText: '净化 (污染-30, 理智+30)',
+    }
+  ];
+
   // 使用背包物品补给
-  const handleUseItem = (itemId: 'ration' | 'energy_refill') => {
+  const handleUseItem = (itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'nanite_injector' | 'purifying_serum') => {
     const qty = inventory[itemId] || 0;
     if (qty <= 0) {
       showToast("储备不足！请先在工坊合成制造该物品。", "error");
       return;
     }
 
+    const toastMsgMap: Record<typeof itemId, string> = {
+      ration: "进食成功 (饱食度 +30)",
+      energy_refill: "更换净化罐成功 (魔能 +30)",
+      hot_stew: "食用热烩成功 (饱食度 +60, 生命值 +20)",
+      nanite_injector: "注射纳米针成功 (生命值 +60, 饱食度 +10)",
+      purifying_serum: "使用净化血清成功 (污染度 -30, 理智值 +30)"
+    };
+
     setState(prev => {
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = qty - 1;
 
       const newPlayer = { ...prev.player };
+      const newExploration = { ...prev.exploration };
+
       if (itemId === 'ration') {
-        newPlayer.food = Math.min(100, newPlayer.food + 30); // 口粮回复30饱食度
+        newPlayer.food = Math.min(100, newPlayer.food + 30);
       } else if (itemId === 'energy_refill') {
-        newPlayer.energy = Math.min(100, newPlayer.energy + 30); // 电池回复30魔能
+        newPlayer.energy = Math.min(newPlayer.maxEnergy, newPlayer.energy + 30);
+      } else if (itemId === 'hot_stew') {
+        newPlayer.food = Math.min(100, newPlayer.food + 60);
+        newPlayer.hp = Math.min(100, newPlayer.hp + 20);
+      } else if (itemId === 'nanite_injector') {
+        newPlayer.hp = Math.min(100, newPlayer.hp + 60);
+        newPlayer.food = Math.min(100, newPlayer.food + 10);
+      } else if (itemId === 'purifying_serum') {
+        newPlayer.sanity = Math.min(100, newPlayer.sanity + 30);
+        newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution - 30);
       }
 
       return {
         ...prev,
         inventory: newInventory,
-        player: newPlayer
+        player: newPlayer,
+        exploration: newExploration
       };
     });
-    showToast(itemId === 'ration' ? "进食成功 (饱食度 +30)" : "更换净化罐成功 (魔能 +30)", "success");
+    showToast(toastMsgMap[itemId], "success");
   };
 
   const handleCraft = (recipeId: string) => {
@@ -87,16 +136,20 @@ const WorkshopTab: React.FC = () => {
       });
       showToast("电磁塔已启动，重创梦魇 (HP -35)", "success");
     } else if (method === 'overload') {
-      if (player.energy < 20) {
-        showToast("避难所魔能低于 20，核心无法超频过载！", "error");
+      const hasNova = !!state.hasNova || !!state.survivors.nova;
+      const energyCost = hasNova ? 10 : 20;
+      const damage = hasNova ? 20 : 15;
+
+      if (player.energy < energyCost) {
+        showToast(`避难所魔能低于 ${energyCost}，核心无法超频过载！`, "error");
         return;
       }
 
       setState(prev => {
         const newPlayer = { ...prev.player };
-        newPlayer.energy = Math.max(0, newPlayer.energy - 20);
+        newPlayer.energy = Math.max(0, newPlayer.energy - energyCost);
 
-        const newHp = Math.max(0, prev.activeAlert.hp - 15);
+        const newHp = Math.max(0, prev.activeAlert.hp - damage);
         const isDead = newHp <= 0;
 
         const newInventory = { ...prev.inventory };
@@ -118,19 +171,14 @@ const WorkshopTab: React.FC = () => {
           }
         };
       });
-      showToast("核心超频过载，强光逼退梦魇 (HP -15)", "warning");
+      showToast(`核心超频过载，强光逼退梦魇 (HP -${damage})`, "warning");
     }
   };
 
   // 配方原料渲染辅助
   const renderCostText = (cost: Record<string, number>) => {
     return Object.entries(cost).map(([item, qty]) => {
-      const label = {
-        glow_fiber: "荧光纤维",
-        aether_pulp: "以太果肉",
-        scrap_metal: "废金属",
-        dream_shard: "梦境碎片"
-      }[item] || item;
+      const label = ITEMS_CONFIG[item]?.name || item;
       const current = inventory[item] || 0;
       const isEnough = current >= qty;
 
@@ -185,7 +233,7 @@ const WorkshopTab: React.FC = () => {
               onClick={() => handleDefendNightmare('overload')}
               className="py-2.5 bg-zinc-900 border border-red-500/30 text-red-400 font-extrabold text-xs rounded-xl transition-all active:scale-95 text-center cursor-pointer"
             >
-              核心超频 (耗20魔能)
+              核心超频 (耗{state.hasNova ? 10 : 20}魔能)
             </button>
           </div>
         </div>
@@ -197,34 +245,36 @@ const WorkshopTab: React.FC = () => {
           <Zap className="w-4 h-4 text-cyan-400" />
           避难所生存补给发放
         </h3>
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="p-3 bg-zinc-950/60 border border-zinc-900 rounded-2xl flex flex-col justify-between h-24">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-amber-500">防化口粮</span>
-              <span className="text-zinc-500 font-bold">拥有: {inventory.ration || 0}</span>
-            </div>
-            <button
-              onClick={() => handleUseItem('ration')}
-              disabled={(inventory.ration || 0) <= 0}
-              className="w-full py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-600/40 disabled:opacity-30 disabled:pointer-events-none text-amber-400 font-bold rounded-lg transition-colors cursor-pointer"
-            >
-              进食 (饱食+30)
-            </button>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 text-xs">
+          {supplyConfigs.map(cfg => {
+            const meta = ITEMS_CONFIG[cfg.id];
+            const qty = inventory[cfg.id] || 0;
+            if (!meta) return null;
 
-          <div className="p-3 bg-zinc-950/60 border border-zinc-900 rounded-2xl flex flex-col justify-between h-24">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-cyan-400">魔能过滤罐</span>
-              <span className="text-zinc-500 font-bold">拥有: {inventory.energy_refill || 0}</span>
-            </div>
-            <button
-              onClick={() => handleUseItem('energy_refill')}
-              disabled={(inventory.energy_refill || 0) <= 0}
-              className="w-full py-1.5 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-400/40 disabled:opacity-30 disabled:pointer-events-none text-cyan-300 font-bold rounded-lg transition-colors cursor-pointer"
-            >
-              更换罐 (魔能+30)
-            </button>
-          </div>
+            return (
+              <div key={cfg.id} className="p-3 bg-zinc-950/60 border border-zinc-900 rounded-2xl flex flex-col justify-between h-36">
+                <div>
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-bold flex items-center gap-1">
+                      <span>{meta.emoji}</span>
+                      <span className={cfg.colorClass.split(' ')[0]}>{meta.name}</span>
+                    </span>
+                    <span className="text-zinc-500 font-bold whitespace-nowrap">拥有: {qty}</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 line-clamp-2 leading-tight" title={meta.description}>
+                    {meta.description}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleUseItem(cfg.id)}
+                  disabled={qty <= 0}
+                  className={`w-full mt-2 py-1.5 border disabled:opacity-30 disabled:pointer-events-none font-bold rounded-lg transition-colors cursor-pointer text-center text-[10px] sm:text-xs ${cfg.colorClass.split(' ').slice(1).join(' ')}`}
+                >
+                  {cfg.effectText}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 

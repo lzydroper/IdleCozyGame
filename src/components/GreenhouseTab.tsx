@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGame, CROPS_CONFIG } from '../context/GameContext';
+import { ITEMS_CONFIG } from '../data/items';
 import { useToast } from './ToastSystem';
 import { Sprout, Droplet, Sparkles, Timer } from 'lucide-react';
 
@@ -25,14 +26,7 @@ const GreenhouseTab: React.FC = () => {
     let index = 0;
 
     Object.entries(yields).forEach(([item, qty]) => {
-      const itemConfig = {
-        glow_fiber: "荧光草纤维",
-        mana_dust: "魔能之尘",
-        aether_pulp: "以太果肉",
-        dream_shard: "梦境碎片",
-        steel_petal: "钢纹花瓣",
-        alloy_plate: "合金金属板"
-      }[item] || item;
+      const itemConfig = ITEMS_CONFIG[item]?.name || item;
 
       rewards.push({
         id: idAccumulator++,
