@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGame } from './context/GameContext';
 import GreenhouseTab from './components/GreenhouseTab';
 import WildernessTab from './components/WildernessTab';
+import DreamscapeTab from './components/DreamscapeTab';
 import { Sprout, Compass, Moon, Hammer, BookOpen, Heart, Battery, Flame, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -107,15 +108,7 @@ const App: React.FC = () => {
         
         {activeTab === 'wilderness' && <WildernessTab />}
 
-        {activeTab === 'dreamscape' && (
-          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
-            <Moon className="w-12 h-12 text-purple-500 mb-4 opacity-40 animate-pulse" />
-            <h2 className="text-lg font-bold text-zinc-300">深层梦境共鸣</h2>
-            <p className="text-xs text-zinc-500 mt-2 max-w-[240px]">
-              即将解锁。消耗理智链接幸存者意识，使用梦胶囊规避扭曲虚空，探寻远古的魔导芯片。
-            </p>
-          </div>
-        )}
+        {activeTab === 'dreamscape' && <DreamscapeTab />}
 
         {activeTab === 'workshop' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
