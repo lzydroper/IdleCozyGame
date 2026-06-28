@@ -6,8 +6,8 @@ import { Sprout, Droplet, Sparkles, Timer } from 'lucide-react';
 interface FlyingReward {
   id: number;
   text: string;
-  x: number;
-  y: number;
+  slotId: number;
+  offsetY: number;
 }
 
 const GreenhouseTab: React.FC = () => {
@@ -19,9 +19,10 @@ const GreenhouseTab: React.FC = () => {
   const [rewardCounter, setRewardCounter] = useState(0);
 
   // 触发飘字特效
-  const triggerFlyingRewards = (yields: Record<string, number>, count: number) => {
+  const triggerFlyingRewards = (yields: Record<string, number>, slotId: number) => {
     const rewards: FlyingReward[] = [];
     let idAccumulator = rewardCounter;
+    let index = 0;
 
     Object.entries(yields).forEach(([item, qty]) => {
       const itemConfig = {
@@ -33,21 +34,19 @@ const GreenhouseTab: React.FC = () => {
         alloy_plate: "合金金属板"
       }[item] || item;
 
-      // 生成几个随机偏移的飘字
-      for (let i = 0; i < count; i++) {
-        rewards.push({
-          id: idAccumulator++,
-          text: `+${qty} ${itemConfig}`,
-          x: 40 + Math.random() * 20, // 屏幕中心附近百分比
-          y: 35 + Math.random() * 20
-        });
-      }
+      rewards.push({
+        id: idAccumulator++,
+        text: `+${qty} ${itemConfig}`,
+        slotId,
+        offsetY: index * -22 // 垂直方向微调偏移，避免重叠
+      });
+      index++;
     });
 
     setRewardCounter(idAccumulator);
     setFlyingRewards(prev => [...prev, ...rewards]);
 
-    // 1.5秒后移除飘字
+    // 1.5秒后自动移除飘字
     setTimeout(() => {
       setFlyingRewards(prev => prev.filter(r => !rewards.some(nr => nr.id === r.id)));
     }, 1500);
@@ -76,14 +75,27 @@ const GreenhouseTab: React.FC = () => {
   const handleHarvest = (slotId: number) => {
     const rewards = harvestSlot(slotId);
     if (rewards) {
-      triggerFlyingRewards(rewards, 1);
+      triggerFlyingRewards(rewards, slotId);
     }
   };
 
   const handleBatchHarvest = () => {
+    // 找出所有准备好的已成熟槽位，用于在各自的卡牌上触发飘字特效
+    const readySlots = state.greenhouse.slots.filter(s => s.cropId !== null && s.growthProgress >= 100);
+    if (readySlots.length === 0) {
+      showToast("没有成熟的作物可以收割！", "warning");
+      return;
+    }
+
     const rewards = batchHarvest();
     if (rewards) {
-      triggerFlyingRewards(rewards, 1);
+      readySlots.forEach(slot => {
+        const crop = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
+        if (crop) {
+          triggerFlyingRewards(crop.yields, slot.id);
+        }
+      });
+      showToast("一键收割成功！收获的物资已收入避难所储藏箱。", "success");
     }
   };
 
@@ -113,23 +125,6 @@ const GreenhouseTab: React.FC = () => {
 
   return (
     <div className="relative w-full pb-20">
-      {/* 飘字特效容器 */}
-      {flyingRewards.map(reward => (
-        <div
-          key={reward.id}
-          className="fixed pointer-events-none z-50 text-xl font-bold text-emerald-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-float-up"
-          style={{
-            left: `${reward.x}%`,
-            top: `${reward.y}%`,
-          }}
-        >
-          <span className="flex items-center gap-1">
-            <Sparkles className="w-5 h-5 text-emerald-400 inline" />
-            {reward.text}
-          </span>
-        </div>
-      ))}
-
       {/* 控制中心 */}
       <div className="mb-6 p-4 rounded-2xl bg-zinc-900/60 border border-purple-500/20 backdrop-blur-md">
         <h2 className="text-lg font-bold text-purple-400 mb-3 flex items-center gap-2">
@@ -138,14 +133,14 @@ const GreenhouseTab: React.FC = () => {
         <div className="flex flex-wrap gap-2 justify-center">
           <button
             onClick={handleBatchHarvest}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Sparkles className="w-4 h-4" /> 一键收割
           </button>
           
           <button
             onClick={handleWaterAll}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
           >
             <Droplet className="w-4 h-4" /> 一键浇水 (耗能)
           </button>
@@ -153,7 +148,7 @@ const GreenhouseTab: React.FC = () => {
           <button
             onClick={() => handleBatchPlant('glow_grass')}
             disabled={(state.inventory.seed_glow_grass || 0) <= 0}
-            className="px-4 py-2 bg-purple-900/50 hover:bg-purple-900 border border-purple-500/30 disabled:opacity-40 disabled:pointer-events-none active:scale-95 text-purple-300 font-bold rounded-xl transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-purple-900/50 hover:bg-purple-900 border border-purple-500/30 disabled:opacity-40 disabled:pointer-events-none active:scale-95 text-purple-300 font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
           >
             <Sprout className="w-4 h-4" /> 连播荧光草
           </button>
@@ -170,46 +165,64 @@ const GreenhouseTab: React.FC = () => {
             <div
               key={slot.id}
               onClick={() => handleSlotClick(slot.id, !!crop)}
-              className={`p-4 rounded-3xl border transition-all duration-300 backdrop-blur-md flex flex-col justify-between h-48 cursor-pointer ${
+              className={`p-4 rounded-3xl border transition-all duration-300 backdrop-blur-md flex flex-col justify-between h-56 relative cursor-pointer ${
                 isReady
                   ? 'bg-emerald-950/30 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                   : crop
                   ? 'bg-zinc-900/40 border-zinc-800'
-                  : 'bg-zinc-950/40 border-dashed border-zinc-800 hover:border-purple-500/40'
+                  : 'bg-zinc-950/40 border-dashed border-zinc-850 hover:border-purple-500/40'
               }`}
             >
+              {/* 本地飘字特效层 */}
+              <div className="absolute inset-x-0 top-1/4 flex flex-col items-center justify-center gap-1.5 pointer-events-none z-30">
+                {flyingRewards
+                  .filter(r => r.slotId === slot.id)
+                  .map(reward => (
+                    <div
+                      key={reward.id}
+                      className="text-[10px] font-black text-emerald-400 drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)] animate-float-up bg-zinc-950/90 px-2 py-1 rounded-xl border border-emerald-500/20 flex items-center gap-1 whitespace-nowrap"
+                      style={{
+                        transform: `translateY(${reward.offsetY}px)`
+                      }}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      {reward.text}
+                    </div>
+                  ))}
+              </div>
+
               <div>
-                <div className="flex justify-between items-center text-xs text-zinc-500 mb-2">
+                <div className="flex justify-between items-center text-xs text-zinc-500 mb-2 select-none">
                   <span>培养槽 #{slot.id}</span>
                   {slot.isWatered && (
-                    <span className="flex items-center text-blue-400 font-semibold gap-0.5">
-                      <Droplet className="w-3.5 h-3.5" /> 湿润
+                    <span className="flex items-center text-blue-400 font-semibold gap-0.5 animate-pulse">
+                      <Droplet className="w-3.5 h-3.5 animate-bounce" /> 湿润
                     </span>
                   )}
                 </div>
 
                 {crop ? (
                   <div>
-                    {/* AI 生成的作物图像 */}
+                    {/* 作物图像 */}
                     <div className="w-full h-16 rounded-xl overflow-hidden mb-2 relative">
                       <img
                         src={(crop as typeof crop & { image?: string }).image}
                         alt={crop.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover select-none pointer-events-none"
                         style={{ filter: isReady ? 'saturate(1.4) brightness(1.1)' : 'saturate(0.8) brightness(0.7)' }}
                       />
                       {isReady && (
                         <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-xl" />
                       )}
                     </div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5 select-none">
                       <Sprout className="w-3.5 h-3.5 text-emerald-400" />
                       {crop.name}
                     </h3>
-                    <p className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">{crop.description}</p>
+                    <p className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5 select-none">{crop.description}</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center mt-6 text-zinc-600">
+                  <div className="flex flex-col items-center justify-center mt-6 text-zinc-600 select-none">
                     <Sprout className="w-8 h-8 mb-1 opacity-20" />
                     <span className="text-sm font-semibold">闲置中</span>
                     <span className="text-[10px] opacity-60">点击开始播种</span>
@@ -220,7 +233,7 @@ const GreenhouseTab: React.FC = () => {
               {crop && (
                 <div className="mt-4">
                   {/* 进度条 */}
-                  <div className="w-full bg-zinc-950 rounded-full h-2 overflow-hidden mb-2">
+                  <div className="w-full bg-zinc-950 rounded-full h-2 overflow-hidden mb-2 border border-zinc-900/50">
                     <div
                       className={`h-full transition-all duration-1000 ${
                         isReady ? 'bg-emerald-500' : 'bg-purple-500'
@@ -237,13 +250,13 @@ const GreenhouseTab: React.FC = () => {
                           e.stopPropagation();
                           handleHarvest(slot.id);
                         }}
-                        className="w-full py-1.5 bg-emerald-500 text-zinc-950 font-extrabold rounded-lg hover:bg-emerald-400 active:scale-95 transition-all text-center animate-pulse"
+                        className="w-full py-1.5 bg-emerald-500 text-zinc-950 font-extrabold rounded-lg hover:bg-emerald-400 active:scale-95 transition-all text-center animate-pulse cursor-pointer"
                       >
                         收割
                       </button>
                     ) : (
                       <>
-                        <span className="text-zinc-400 flex items-center gap-1">
+                        <span className="text-zinc-400 flex items-center gap-1 select-none">
                           <Timer className="w-3.5 h-3.5 text-purple-400" />
                           {slot.growthTimeLeft}秒
                         </span>
@@ -253,7 +266,7 @@ const GreenhouseTab: React.FC = () => {
                               e.stopPropagation();
                               waterSlot(slot.id);
                             }}
-                            className="px-2.5 py-1 bg-blue-950/80 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-900 active:scale-95 transition-all"
+                            className="px-2.5 py-1 bg-blue-950/80 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-900 active:scale-95 transition-all cursor-pointer"
                           >
                             浇水
                           </button>
@@ -281,7 +294,7 @@ const GreenhouseTab: React.FC = () => {
                   setShowSeedSelector(false);
                   setSelectedSlotId(null);
                 }}
-                className="text-zinc-500 hover:text-white"
+                className="text-zinc-500 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -306,7 +319,7 @@ const GreenhouseTab: React.FC = () => {
                       <h4 className="font-bold text-sm text-white">{crop.name}</h4>
                       <p className="text-[10px] text-zinc-500 mt-0.5">{crop.description}</p>
                       <span className="inline-block mt-2 text-[10px] text-purple-400 bg-purple-950/40 px-2 py-0.5 rounded-md">
-                        生长时长: {crop.growthTime}秒
+                        生长时间: {crop.growthTime}秒
                       </span>
                     </div>
                     <div className="text-right">
