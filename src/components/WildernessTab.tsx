@@ -90,7 +90,6 @@ const CATHERINE_RESCUE_EVENT: RealityEvent = {
       requirements: { nanite_injector: 1 },
       results: {
         stats: { hp: -10 },
-        items: { nanite_injector: -1 },
         logText: "你快速使用纳米修复针打破封锁并保护凯瑟琳，虽然防化服被毒气微量腐蚀，但成功救出！"
       }
     },
@@ -113,7 +112,6 @@ const BUSTER_RESCUE_EVENT: RealityEvent = {
       text: "部署防御炮塔压制怪物 (需防御炮塔x1)",
       requirements: { defensive_turret: 1 },
       results: {
-        items: { defensive_turret: -1 },
         logText: "你迅速部署炮塔建立防线。强烈的电磁火花在隧道中爆发，你趁机用铁锹撬开碎石，救出巴斯特！"
       }
     },
@@ -136,7 +134,6 @@ const NOVA_RESCUE_EVENT: RealityEvent = {
       text: "使用重载护盾电池稳定磁场 (需护盾电池x1)",
       requirements: { shield_battery: 1 },
       results: {
-        items: { shield_battery: -1 },
         logText: "你抛出重载护盾电池。柔和的能量磁场稳定了机甲核心，驾驶舱盖自动弹开，你成功扶出诺娃！"
       }
     },
