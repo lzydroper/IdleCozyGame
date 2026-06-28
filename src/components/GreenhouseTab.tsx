@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useGame, CROPS_CONFIG } from '../context/GameContext';
 import { ITEMS_CONFIG } from '../data/items';
 import { useToast } from './ToastSystem';
@@ -276,7 +277,7 @@ const GreenhouseTab: React.FC = () => {
       </div>
 
       {/* 播种选择模态框 */}
-      {showSeedSelector && (
+      {showSeedSelector && typeof document !== 'undefined' && createPortal(
         <div
           onClick={() => {
             setShowSeedSelector(false);
@@ -335,7 +336,8 @@ const GreenhouseTab: React.FC = () => {
               })}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
