@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
+import { ToastProvider } from './ToastSystem';
 import GreenhouseTab from './GreenhouseTab';
 
 describe('GreenhouseTab Component UI', () => {
   it('should render the greenhouse grid slots', () => {
     render(
       <GameProvider>
-        <GreenhouseTab />
+        <ToastProvider>
+          <GreenhouseTab />
+        </ToastProvider>
       </GameProvider>
     );
 
@@ -19,7 +22,9 @@ describe('GreenhouseTab Component UI', () => {
   it('should display seeds counts in the plant modal/selector', () => {
     render(
       <GameProvider>
-        <GreenhouseTab />
+        <ToastProvider>
+          <GreenhouseTab />
+        </ToastProvider>
       </GameProvider>
     );
 

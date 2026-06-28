@@ -13,10 +13,17 @@ export interface PlayerStats {
 export interface Crop {
   id: string;
   name: string;
-  growthTime: number; // 生长所需总时间（秒）
-  yields: Record<string, number>; // 收获所得材料及其数量
-  seedCost: Record<string, number>; // 种植消耗
+  growthTime: number;
+  yields: Record<string, number>;
+  seedCost: Record<string, number>;
   description: string;
+}
+
+export interface LogEntry {
+  id: string;
+  text: string;
+  timestamp: number;
+  type: 'event' | 'harvest' | 'combat' | 'dream' | 'system';
 }
 
 export interface GreenhouseSlot {
@@ -57,11 +64,14 @@ export interface GameState {
     dreamPollution: number;            // 梦境污染度 0-100
     dreamBag: Record<string, number>;  // 梦境中获得的碎片/线索
     capsulesCharge: Record<string, number>; // 梦胶囊ID -> 剩余可用次数
+    survivorResonance: Record<string, number>; // 幸存者ID -> 共鸣度
   };
-  discoveredBlueprints: string[];     // 已解锁的配方ID
+  discoveredBlueprints: string[];
   activeAlert: {
-    type: "dream_leak" | null;        // 梦魇侵入等危机状态
-    hp: number;                       // 侵入怪物血量
+    type: "dream_leak" | null;
+    hp: number;
   };
-  lastTick: number;                   // 上一次心跳的时间戳
+  lastTick: number;
+  dayStartTime: number;  // 当前游戏天开始时间戳
+  logs: LogEntry[];      // 避难所日志
 }

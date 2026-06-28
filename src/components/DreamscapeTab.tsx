@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import type { DreamEvent, DreamChoice } from '../data/dreamEvents';
-import { Moon, Sparkles, Brain, AlertOctagon, ArrowRight } from 'lucide-react';
+import { SURVIVORS_CONFIG } from '../data/survivors';
+import { useToast } from './ToastSystem';
+import SwipeCard from './SwipeCard';
+import { Moon, Sparkles, Brain, AlertOctagon } from 'lucide-react';
 
 const DreamscapeTab: React.FC = () => {
-  const { state, setState } = useGame();
+  const { state, setState, addLog } = useGame();
+  const { showToast } = useToast();
   const [currentEvent, setCurrentEvent] = useState<DreamEvent | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
-  const [royResonance, setRoyResonance] = useState(0);
 
   const exploration = state.exploration;
   const player = state.player;
@@ -21,7 +24,7 @@ const DreamscapeTab: React.FC = () => {
 
   const handleStartDream = () => {
     if (player.sanity < 15) {
-      alert("精神状态极度衰弱（理智值需 >= 15），无法进入心灵链接！");
+      showToast("精神状态衰弱（理智需 >= 15），无法潜入梦境！", "error");
       return;
     }
 
@@ -38,8 +41,9 @@ const DreamscapeTab: React.FC = () => {
         dreamBag: {}
       }
     }));
-    setLogMessages(["魔导脑波同步完毕...你的意识脱离肉体，缓缓坠入幽深的心灵海洋。"]);
-    setRoyResonance(0);
+    const text = "意识脱离肉体，缓缓坠入幽深的心灵海洋...";
+    setLogMessages([text]);
+    addLog(text, 'dream');
   };
 
   useEffect(() => {
@@ -49,9 +53,8 @@ const DreamscapeTab: React.FC = () => {
   }, [exploration.inDreamExploration]);
 
   const handleMakeChoice = (choice: DreamChoice) => {
-    let showRoyUnlockedAlert = false;
+    let showSurvivorUnlockedAlert: { id: string; name: string; location: string } | null = null;
 
-    // 应用改变
     setState(prev => {
       const newPlayer = { ...prev.player };
       const newExploration = { ...prev.exploration };
@@ -67,22 +70,25 @@ const DreamscapeTab: React.FC = () => {
       }
 
       // 3. 处理幸存者共鸣
-      let newSurvivors = { ...prev.survivors };
+      const newSurvivors = { ...prev.survivors };
+      const newResonance = { ...newExploration.survivorResonance };
+      
       if (choice.results.stats?.resonance && choice.results.targetSurvivorId) {
         const survivorId = choice.results.targetSurvivorId;
-        const currentRes = royResonance + choice.results.stats.resonance;
-        setRoyResonance(currentRes);
+        const currentRes = (newResonance[survivorId] || 0) + choice.results.stats.resonance;
+        newResonance[survivorId] = Math.min(100, currentRes);
 
-        if (currentRes >= 100 && !prev.survivors[survivorId]) {
-          showRoyUnlockedAlert = true;
-          // 锁定罗伊的现实坐标
+        const config = SURVIVORS_CONFIG.find(s => s.id === survivorId);
+        if (currentRes >= 100 && !prev.survivors[survivorId] && config) {
+          showSurvivorUnlockedAlert = { id: survivorId, name: config.name, location: config.realityLocationId };
+          // 锁定现实坐标
           newSurvivors[survivorId] = {
             id: survivorId,
-            name: "罗伊",
-            role: "farmer",
-            bonus: 0.20, // 提升温室种植20%效率
+            name: config.name,
+            role: config.role,
+            bonus: config.bonus,
             isAssigned: false,
-            realityLocationId: "radar_station" // 现实救援地点：雷达站
+            realityLocationId: config.realityLocationId
           };
         }
       }
@@ -95,7 +101,7 @@ const DreamscapeTab: React.FC = () => {
         });
       }
 
-      // 5. 检查污染度是否溢出触发【梦魇降临】
+      // 5. 检查强制唤醒
       const isPollutionFull = newExploration.dreamPollution >= 100;
       const isSanityZero = newPlayer.sanity <= 0;
       const forceWakeUp = isPollutionFull || isSanityZero;
@@ -105,10 +111,11 @@ const DreamscapeTab: React.FC = () => {
         player: newPlayer,
         survivors: newSurvivors,
         activeAlert: isPollutionFull
-          ? { type: "dream_leak", hp: 60 } // 触发入侵
+          ? { type: "dream_leak", hp: 60 }
           : prev.activeAlert,
         exploration: {
           ...newExploration,
+          survivorResonance: newResonance,
           dreamSteps: forceWakeUp ? 0 : newExploration.dreamSteps + 1,
           dreamBag: forceWakeUp ? {} : newDreamBag,
           inDreamExploration: !forceWakeUp
@@ -116,66 +123,36 @@ const DreamscapeTab: React.FC = () => {
       };
     });
 
-    // 飘字或日志
-    if (state.player.sanity + (choice.results.stats?.sanity || 0) <= 0) {
-      alert("理智耗尽！你因精神休克被强制切断心灵连结，梦中收获的碎片全部破碎散落。");
+    const nextSanity = state.player.sanity + (choice.results.stats?.sanity || 0);
+    const nextPollution = state.exploration.dreamPollution + (choice.results.stats?.pollution || 0);
+
+    if (nextSanity <= 0) {
+      showToast("理智耗尽！你精神休克被迫断开心灵连结，碎片全部消散！", "error");
+      addLog("理智崩溃，强制切断梦境连结。", "combat");
       setCurrentEvent(null);
-    } else if (state.exploration.dreamPollution + (choice.results.stats?.pollution || 0) >= 100) {
-      alert("⚠️ 严重警告：精神污染度已达100%！深渊虚空被引动，你从冷汗中惊醒，有梦魇怪兽追循精神印记侵入了你的现实温室！");
+    } else if (nextPollution >= 100) {
+      showToast("⚠️ 警告：污染度达100%！深渊扭曲，梦魇怪兽顺着精神印记入侵现实！", "error");
+      addLog("梦境污染溢出，引动梦魇兽入侵避难所！", "combat");
       setCurrentEvent(null);
     } else {
       setLogMessages(prev => [...prev, choice.results.logText]);
-      if (showRoyUnlockedAlert) {
-        setLogMessages(prev => [
-          ...prev,
-          "✨ 心灵连结大成功！已完美解析罗伊的心灵脑波。解锁现实救援坐标：『废弃雷达站』！你现在可以返回现实探索去营救他了。"
-        ]);
+      addLog(choice.results.logText, 'dream');
+      
+      if (showSurvivorUnlockedAlert) {
+        const { name, location } = showSurvivorUnlockedAlert;
+        const locationName = 
+          location === 'radar_station' ? '废弃雷达站' :
+          location === 'green_ruins' ? '温室废墟' : '信号塔';
+        const msg = `✨ 脑波连结成功！已完美锁定幸存同伴【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
+        setLogMessages(prev => [...prev, msg]);
+        addLog(msg, 'dream');
       }
-      drawDreamEvent();
-    }
-  };
-
-  // 使用梦胶囊
-  const handleUseCapsule = (capsuleType: 'sanity' | 'warp') => {
-    const shardCount = state.inventory.dream_shard || 0;
-
-    if (capsuleType === 'sanity') {
-      if (shardCount < 2) {
-        alert("梦境碎片不足，无法为理智胶囊充能使用（需要 2 碎片）！");
-        return;
-      }
-      setState(prev => ({
-        ...prev,
-        inventory: {
-          ...prev.inventory,
-          dream_shard: shardCount - 2
-        },
-        player: {
-          ...prev.player,
-          sanity: Math.min(100, prev.player.sanity + 20)
-        }
-      }));
-      setLogMessages(prev => [...prev, "💊 你服用了『梦境理智稳定胶囊』，消耗2个梦境碎片，精神状态好转了点 (理智+20)"]);
-    } else if (capsuleType === 'warp') {
-      if (shardCount < 3) {
-        alert("梦境碎片不足，无法激活折跃胶囊（需要 3 碎片）！");
-        return;
-      }
-      setState(prev => ({
-        ...prev,
-        inventory: {
-          ...prev.inventory,
-          dream_shard: shardCount - 3
-        }
-      }));
-      setLogMessages(prev => [...prev, "🌀 你激发了『梦境折跃胶囊』，消耗3个梦境碎片，强行折叠时空避开了当前险境！"]);
-      // 跳过当前卡牌并重抽
       drawDreamEvent();
     }
   };
 
   const handleWakeUp = () => {
-    // 将梦境包里的碎片合入主背包，并主动苏醒
+    // 将梦境包碎片存入主背包
     setState(prev => {
       const newInventory = { ...prev.inventory };
       Object.entries(prev.exploration.dreamBag).forEach(([item, qty]) => {
@@ -193,8 +170,58 @@ const DreamscapeTab: React.FC = () => {
         }
       };
     });
-    alert("你的意识回炉本体，顺利从梦中醒来。");
+    showToast("你成功收回意识从梦境醒来，已带回梦境碎片！", "success");
+    addLog("从集体无意识梦境深处主动苏醒，返回现实。", "system");
     setCurrentEvent(null);
+  };
+
+  // 使用梦胶囊
+  const handleUseCapsule = (capsuleType: 'sanity' | 'warp') => {
+    const charge = state.exploration.capsulesCharge[capsuleType + '_capsule'] || 0;
+
+    if (charge <= 0) {
+      showToast("该梦胶囊无剩余充能！请先前往工坊制造进行充能。", "error");
+      return;
+    }
+
+    setState(prev => {
+      const newExploration = { ...prev.exploration };
+      newExploration.capsulesCharge = {
+        ...prev.exploration.capsulesCharge,
+        [capsuleType + '_capsule']: charge - 1
+      };
+
+      const newPlayer = { ...prev.player };
+      if (capsuleType === 'sanity') {
+        newPlayer.sanity = Math.min(100, prev.player.sanity + 25);
+      }
+
+      return {
+        ...prev,
+        player: newPlayer,
+        exploration: newExploration
+      };
+    });
+
+    if (capsuleType === 'sanity') {
+      const msg = "💊 服用了『稳定胶囊』，精神状态好转了点 (理智+25)";
+      setLogMessages(prev => [...prev, msg]);
+      showToast("使用稳定胶囊成功 (理智 +25)", "success");
+      addLog(msg, 'dream');
+    } else if (capsuleType === 'warp') {
+      // 跃迁胶囊：梦境污染度降低 40 点
+      setState(prev => ({
+        ...prev,
+        exploration: {
+          ...prev.exploration,
+          dreamPollution: Math.max(0, prev.exploration.dreamPollution - 40)
+        }
+      }));
+      const msg = "🌀 使用了『折跃胶囊』，驱散了脑海中的部分梦魇阴霾 (精神污染-40)";
+      setLogMessages(prev => [...prev, msg]);
+      showToast("使用折跃胶囊成功 (精神污染 -40)", "success");
+      addLog(msg, 'dream');
+    }
   };
 
   return (
@@ -204,14 +231,14 @@ const DreamscapeTab: React.FC = () => {
           <Brain className="w-16 h-16 text-purple-400 mb-4 animate-pulse" />
           <h2 className="text-xl font-bold text-white mb-2">同步潜入心灵梦境</h2>
           <p className="text-xs text-zinc-400 max-w-[280px] mb-6 leading-relaxed">
-            潜入梦境需要消耗 <span className="text-purple-400 font-bold">10 点精神理智</span>。在集体无意识海洋中，你可以通过意识连结锁定在现实废土迷失的幸存者，或者开采珍贵的梦境科技碎片！
+            潜入梦境将扣除 <span className="text-purple-400 font-bold">10 点精神理智</span>。在集体梦境中，您可以与流失在外的幸存者锁定方位共鸣，或开采精神碎屑！
           </p>
 
           {state.exploration.dreamPollution > 0 && (
             <div className="mb-6 w-full p-3 bg-purple-950/20 border border-purple-500/20 rounded-2xl flex justify-between items-center text-xs">
               <span className="text-purple-300 font-semibold flex items-center gap-1">
                 <AlertOctagon className="w-4 h-4 text-purple-400" />
-                当前避难所受梦境污染度:
+                当前心灵污染度:
               </span>
               <span className="text-white font-black">{state.exploration.dreamPollution}%</span>
             </div>
@@ -219,7 +246,7 @@ const DreamscapeTab: React.FC = () => {
 
           <button
             onClick={handleStartDream}
-            className="w-full py-3 bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-extrabold rounded-2xl shadow-lg transition-all active:scale-95 text-center"
+            className="w-full py-3 bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-extrabold rounded-2xl shadow-lg transition-all active:scale-95 text-center cursor-pointer"
           >
             开始共鸣入梦
           </button>
@@ -234,7 +261,7 @@ const DreamscapeTab: React.FC = () => {
             </span>
             <button
               onClick={handleWakeUp}
-              className="px-3.5 py-1.5 bg-purple-950 border border-purple-500/40 text-purple-300 text-xs font-black rounded-xl hover:bg-purple-900 transition-colors"
+              className="px-3.5 py-1.5 bg-purple-950 border border-purple-500/40 text-purple-300 text-xs font-black rounded-xl hover:bg-purple-900 transition-colors cursor-pointer"
             >
               唤醒自我
             </button>
@@ -253,90 +280,75 @@ const DreamscapeTab: React.FC = () => {
               <span className="text-[10px] text-zinc-500 mt-1 block">达到100%将引动梦魇入侵</span>
             </div>
 
-            {royResonance > 0 && royResonance < 100 && (
-              <div>
-                <span className="text-emerald-400 font-bold flex items-center gap-0.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  幸存者罗伊共鸣:
-                </span>
-                <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden mt-1.5 border border-zinc-900">
-                  <div
-                    className="bg-emerald-400 h-full transition-all duration-300"
-                    style={{ width: `${royResonance}%` }}
-                  />
-                </div>
-                <span className="text-[10px] text-zinc-500 mt-1 block">达到100%在现实中锁定营救</span>
-              </div>
-            )}
+            {/* Dynamic resonance displays */}
+            <div className="space-y-1">
+              {SURVIVORS_CONFIG.map(config => {
+                const res = exploration.survivorResonance?.[config.id] || 0;
+                if (res <= 0 || res >= 100) return null;
+                return (
+                  <div key={config.id} className="animate-fade-in">
+                    <span className="text-emerald-400 font-bold flex items-center gap-0.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      同伴【{config.name}】共鸣: {res}%
+                    </span>
+                    <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden mt-1 border border-zinc-900">
+                      <div
+                        className="bg-emerald-400 h-full transition-all duration-300"
+                        style={{ width: `${res}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* 梦胶囊控制面板 */}
           <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-2xl text-xs">
             <h4 className="font-bold text-zinc-400 mb-2 flex items-center gap-1.5">
               <Brain className="w-3.5 h-3.5 text-purple-400" />
-              梦境专属道具 (梦胶囊):
+              梦境专属道具 (充能数)：
             </h4>
             <div className="flex gap-2">
               <button
                 onClick={() => handleUseCapsule('sanity')}
-                className="flex-1 py-2 bg-purple-950 hover:bg-purple-900 border border-purple-500/20 rounded-xl text-[10px] font-bold text-purple-300 flex flex-col items-center gap-0.5"
+                className="flex-1 py-2 bg-purple-950 hover:bg-purple-900 border border-purple-500/20 rounded-xl text-[10px] font-bold text-purple-300 flex flex-col items-center gap-0.5 cursor-pointer"
               >
-                <span>稳定胶囊</span>
-                <span className="text-[9px] opacity-60">理智+20 (耗2碎)</span>
+                <span>稳定胶囊 [拥有: {state.exploration.capsulesCharge.sanity_capsule || 0}次]</span>
+                <span className="text-[9px] opacity-60">理智+25</span>
               </button>
               <button
                 onClick={() => handleUseCapsule('warp')}
-                className="flex-1 py-2 bg-purple-950 hover:bg-purple-900 border border-purple-500/20 rounded-xl text-[10px] font-bold text-purple-300 flex flex-col items-center gap-0.5"
+                className="flex-1 py-2 bg-purple-950 hover:bg-purple-900 border border-purple-500/20 rounded-xl text-[10px] font-bold text-purple-300 flex flex-col items-center gap-0.5 cursor-pointer"
               >
-                <span>折跃胶囊</span>
-                <span className="text-[9px] opacity-60">跳过危机 (耗3碎)</span>
+                <span>折跃胶囊 [拥有: {state.exploration.capsulesCharge.warp_capsule || 0}次]</span>
+                <span className="text-[9px] opacity-60">污染-40</span>
               </button>
             </div>
           </div>
 
-          {/* 梦境遭遇卡牌 */}
+          {/* 梦境遭遇卡牌 - 滑动卡交互 */}
           {currentEvent && (
-            <div className="p-5 rounded-3xl bg-zinc-900 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.1)] animate-fade-in flex flex-col gap-4">
-              <div>
-                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">⚡ Collective Unconscious</span>
-                <h3 className="text-lg font-black text-white mt-1">{currentEvent.title}</h3>
-                <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed">{currentEvent.description}</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5 mt-2">
-                <button
-                  onClick={() => handleMakeChoice(currentEvent.choices.A)}
-                  className="p-3 text-left bg-zinc-950 border border-zinc-800 hover:border-purple-500 rounded-2xl text-xs transition-all hover:bg-zinc-900 group"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-zinc-200 group-hover:text-purple-400 transition-colors">
-                      {currentEvent.choices.A.text}
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-purple-400" />
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleMakeChoice(currentEvent.choices.B)}
-                  className="p-3 text-left bg-zinc-950 border border-zinc-800 hover:border-purple-500 rounded-2xl text-xs transition-all hover:bg-zinc-900 group"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-zinc-200 group-hover:text-purple-400 transition-colors">
-                      {currentEvent.choices.B.text}
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-purple-400" />
-                  </div>
-                </button>
-              </div>
+            <div className="w-full">
+              <SwipeCard
+                title={currentEvent.title}
+                description={currentEvent.description}
+                leftLabel={currentEvent.choices.A.text}
+                rightLabel={currentEvent.choices.B.text}
+                leftColor="bg-red-500/20"
+                rightColor="bg-purple-500/20"
+                onSwipeLeft={() => handleMakeChoice(currentEvent.choices.A)}
+                onSwipeRight={() => handleMakeChoice(currentEvent.choices.B)}
+              />
             </div>
           )}
 
           {/* 探索日志 */}
           <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 flex flex-col gap-2 max-h-40 overflow-y-auto">
-            <h4 className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">梦境日志</h4>
+            <h4 className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-left">梦境连结波束日志</h4>
             <div className="space-y-1.5 text-[10px] leading-relaxed">
               {logMessages.map((msg, i) => (
-                <p key={i} className="text-zinc-500 border-l border-zinc-800 pl-2">
+                <p key={i} className="text-zinc-500 border-l border-zinc-800 pl-2 text-left">
                   {msg}
                 </p>
               ))}

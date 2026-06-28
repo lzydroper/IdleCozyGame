@@ -3,6 +3,7 @@ import type { GameState, GreenhouseSlot, PlayerStats } from '../types/game';
 import cropGlowGrass from '../assets/crop_glow_grass.jpg';
 import cropAetherBerry from '../assets/crop_aether_berry.jpg';
 import cropSteelSunflower from '../assets/crop_steel_sunflower.jpg';
+import { RECIPES_CONFIG } from '../data/recipes';
 
 // 静态作物配置表
 export const CROPS_CONFIG = {
@@ -79,14 +80,19 @@ const INITIAL_STATE: GameState = {
     capsulesCharge: {
       sanity_capsule: 3, // 默认解锁并充能3次
       warp_capsule: 0    // 未解锁/无充能
-    }
+    },
+    survivorResonance: {}
   },
-  discoveredBlueprints: ['filter_refill', 'ration_pack', 'sanity_capsule'], // 初始可用配方
+  discoveredBlueprints: ['filter_refill', 'ration_pack', 'sanity_capsule'],
   activeAlert: {
     type: null,
     hp: 0
   },
-  lastTick: Date.now()
+  lastTick: Date.now(),
+  dayStartTime: Date.now(),
+  logs: [
+    { id: 'init', text: '▶ 避难所系统启动。欢迎来到废土魔导温室，生存者。', timestamp: Date.now(), type: 'system' }
+  ]
 };
 
 // 纯函数：计算离线或Tick生长时间扣减
@@ -123,6 +129,7 @@ interface GameContextType {
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
   craftItem: (recipeId: string) => boolean;
+  addLog: (text: string, type: 'event' | 'harvest' | 'combat' | 'dream' | 'system') => void;
   resetGame: () => void;
   currentUser: string;
   accounts: string[];
@@ -138,12 +145,8 @@ const getAccountsList = (): string[] => {
   if (listJson) {
     try {
       const parsed = JSON.parse(listJson);
-      if (Array.isArray(parsed) && parsed.includes('Guest')) {
-        return parsed;
-      }
-      if (Array.isArray(parsed)) {
-        return ['Guest', ...parsed.filter(u => u !== 'Guest')];
-      }
+      if (Array.isArray(parsed) && parsed.includes('Guest')) return parsed;
+      if (Array.isArray(parsed)) return ['Guest', ...parsed.filter((u: string) => u !== 'Guest')];
     } catch (e) {
       console.error("Failed to parse accounts list", e);
     }
@@ -156,14 +159,57 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('aether_garden_save_current_user') || 'Guest';
   });
   const [accounts, setAccounts] = useState<string[]>(getAccountsList);
-  const [state, setState] = useState<GameState>(INITIAL_STATE);
-  const isInitialized = useRef(false);
 
-  // 1. 初始化时载入当前账号的存档并计算离线挂机收益
+  const [state, setState] = useState<GameState>(() => {
+    const curUser = localStorage.getItem('aether_garden_save_current_user') || 'Guest';
+    const saved = localStorage.getItem(`aether_garden_save_${curUser}`);
+    const now = Date.now();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as GameState;
+        const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
+        const updatedSlots = calculateOfflineProgress(parsed.greenhouse.slots, elapsedSeconds);
+        return {
+          ...INITIAL_STATE,
+          ...parsed,
+          greenhouse: { ...parsed.greenhouse, slots: updatedSlots },
+          exploration: {
+            ...INITIAL_STATE.exploration,
+            ...(parsed.exploration || {}),
+            capsulesCharge: {
+              ...INITIAL_STATE.exploration.capsulesCharge,
+              ...((parsed.exploration && parsed.exploration.capsulesCharge) || {})
+            },
+            survivorResonance: {
+              ...INITIAL_STATE.exploration.survivorResonance,
+              ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
+            }
+          },
+          lastTick: now,
+          dayStartTime: parsed.dayStartTime || now,
+          logs: parsed.logs || INITIAL_STATE.logs
+        };
+      } catch (e) {
+        console.error("Failed to load save in state initializer", e);
+        return { ...INITIAL_STATE, lastTick: now, dayStartTime: now };
+      }
+    }
+    return { ...INITIAL_STATE, lastTick: now, dayStartTime: now };
+  });
+
+  // stateRef: 同步镜像 state，使事件处理器可直接读取最新状态（绕开 setState 异步问题）
+  const stateRef = useRef<GameState>(state);
+  stateRef.current = state; // 每次渲染时同步更新
+
+  // 1. ✅ 自动存盘 Effect
+  useEffect(() => {
+    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(state));
+  }, [state, currentUser]);
+
+  // 2. ✅ 初始化 Effect
   useEffect(() => {
     const curUser = localStorage.getItem('aether_garden_save_current_user') || 'Guest';
     localStorage.setItem('aether_garden_save_current_user', curUser);
-    setCurrentUser(curUser);
 
     const list = getAccountsList();
     if (!list.includes('Guest')) {
@@ -171,68 +217,36 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       localStorage.setItem('aether_garden_accounts_list', JSON.stringify(list));
     }
-
-    const saved = localStorage.getItem(`aether_garden_save_${curUser}`);
-    const now = Date.now();
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as GameState;
-        const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
-        
-        // 计算离线生长收益
-        const updatedSlots = calculateOfflineProgress(parsed.greenhouse.slots, elapsedSeconds);
-        
-        setState({
-          ...parsed,
-          greenhouse: {
-            ...parsed.greenhouse,
-            slots: updatedSlots
-          },
-          lastTick: now
-        });
-      } catch (e) {
-        console.error("Failed to load save", e);
-        const freshState = { ...INITIAL_STATE, lastTick: now };
-        setState(freshState);
-        localStorage.setItem(`aether_garden_save_${curUser}`, JSON.stringify(freshState));
-      }
-    } else {
-      // 妥善处理 Guest (或当前用户) 初始数据的自动保存
-      const freshState = { ...INITIAL_STATE, lastTick: now };
-      setState(freshState);
-      localStorage.setItem(`aether_garden_save_${curUser}`, JSON.stringify(freshState));
-    }
-    isInitialized.current = true;
   }, []);
 
-  // 2. 自动存盘 (当状态更新时，写入当前激活角色的存档键)
-  useEffect(() => {
-    if (!isInitialized.current) return;
-    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(state));
-  }, [state, currentUser]);
-
-  // 3. 游戏全局 Tick 循环 (每秒一次)
+  // 3. ✅ 游戏全局 Tick 循环 - 修复天数递增
+  const GAME_DAY_SECONDS = 300; // 5分钟真实时间 = 1游戏天（可配置）
   useEffect(() => {
     const timer = setInterval(() => {
       setState(prev => {
-        // 如果处于“梦魇入侵”警戒，则种植暂时冻结，不推进生长
+        const now = Date.now();
+
+        // 梦魇入侵时冻结温室
         if (prev.activeAlert.type === 'dream_leak') {
-          return {
-            ...prev,
-            lastTick: Date.now()
-          };
+          return { ...prev, lastTick: now };
         }
 
-        const now = Date.now();
         const updatedSlots = calculateOfflineProgress(prev.greenhouse.slots, 1);
+
+        // 天数递增
+        let newDays = prev.player.days;
+        let newDayStartTime = prev.dayStartTime;
+        if (now - prev.dayStartTime >= GAME_DAY_SECONDS * 1000) {
+          newDays += 1;
+          newDayStartTime = now;
+        }
 
         return {
           ...prev,
-          greenhouse: {
-            ...prev.greenhouse,
-            slots: updatedSlots
-          },
-          lastTick: now
+          player: { ...prev.player, days: newDays },
+          greenhouse: { ...prev.greenhouse, slots: updatedSlots },
+          lastTick: now,
+          dayStartTime: newDayStartTime
         };
       });
     }, 1000);
@@ -240,10 +254,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(timer);
   }, []);
 
-  // 切换账号
   const switchAccount = (username: string) => {
-    // 立即同步保存当前激活角色的状态，防丢失
-    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(state));
+    // 立即保存当前账号状态
+    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(stateRef.current));
 
     const saved = localStorage.getItem(`aether_garden_save_${username}`);
     let newState: GameState;
@@ -254,19 +267,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
         const updatedSlots = calculateOfflineProgress(parsed.greenhouse.slots, elapsedSeconds);
         newState = {
+          ...INITIAL_STATE,
           ...parsed,
-          greenhouse: {
-            ...parsed.greenhouse,
-            slots: updatedSlots
+          greenhouse: { ...parsed.greenhouse, slots: updatedSlots },
+          exploration: {
+            ...INITIAL_STATE.exploration,
+            ...(parsed.exploration || {}),
+            capsulesCharge: {
+              ...INITIAL_STATE.exploration.capsulesCharge,
+              ...((parsed.exploration && parsed.exploration.capsulesCharge) || {})
+            },
+            survivorResonance: {
+              ...INITIAL_STATE.exploration.survivorResonance,
+              ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
+            }
           },
-          lastTick: now // 妥善更新 lastTick 为当前时间，防止累加多余离线秒数
+          lastTick: now,
+          dayStartTime: parsed.dayStartTime || now,
+          logs: parsed.logs || INITIAL_STATE.logs
         };
       } catch (e) {
         console.error("Failed to load save in switchAccount", e);
-        newState = { ...INITIAL_STATE, lastTick: now };
+        newState = { ...INITIAL_STATE, lastTick: now, dayStartTime: now };
       }
     } else {
-      newState = { ...INITIAL_STATE, lastTick: now };
+      newState = { ...INITIAL_STATE, lastTick: now, dayStartTime: now };
     }
 
     setCurrentUser(username);
@@ -274,7 +299,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(newState);
   };
 
-  // 创建账号
   const createAccount = (username: string): boolean => {
     if (!username || !username.trim()) return false;
     const name = username.trim();
@@ -282,9 +306,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const key = `aether_garden_save_${name}`;
     if (localStorage.getItem(key)) return false;
 
+    const now = Date.now();
     const newAccountState: GameState = {
       ...INITIAL_STATE,
-      lastTick: Date.now()
+      lastTick: now,
+      dayStartTime: now,
+      logs: [{ id: `init_${name}`, text: `▶ 生存者 ${name} 的避难所系统已初始化。`, timestamp: now, type: 'system' }]
     };
     localStorage.setItem(key, JSON.stringify(newAccountState));
 
@@ -320,50 +347,36 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 种植作物逻辑
+  // 种植作物逻辑 - 修复版：先用 stateRef.current 同步校验，再调用 setState 更新
   const plantCrop = (slotId: number, cropId: string): boolean => {
     const cropConfig = CROPS_CONFIG[cropId as keyof typeof CROPS_CONFIG];
     if (!cropConfig) return false;
 
-    // 检查种子
     const seedId = Object.keys(cropConfig.seedCost)[0];
     const seedQtyNeeded = (cropConfig.seedCost as Record<string, number>)[seedId] || 0;
 
-    let success = false;
-    setState(prev => {
-      const currentSeedCount = prev.inventory[seedId] || 0;
-      if (currentSeedCount < seedQtyNeeded) return prev; // 种子不足
+    // 同步校验（经由 stateRef 读取最新状态）
+    const current = stateRef.current;
+    const currentSeedCount = current.inventory[seedId] || 0;
+    if (currentSeedCount < seedQtyNeeded) return false;
 
-      const updatedSlots = prev.greenhouse.slots.map(slot => {
-        if (slot.id === slotId && slot.cropId === null) {
-          success = true;
-          return {
-            ...slot,
-            cropId,
-            growthProgress: 0,
-            growthTimeLeft: cropConfig.growthTime,
-            isWatered: false
-          };
-        }
-        return slot;
-      });
+    const targetSlot = current.greenhouse.slots.find(s => s.id === slotId && s.cropId === null);
+    if (!targetSlot) return false;
 
-      if (!success) return prev;
-
-      return {
-        ...prev,
-        inventory: {
-          ...prev.inventory,
-          [seedId]: currentSeedCount - seedQtyNeeded
-        },
-        greenhouse: {
-          ...prev.greenhouse,
-          slots: updatedSlots
-        }
-      };
-    });
-
-    return success;
+    // 校验通过，执行更新
+    setState(prev => ({
+      ...prev,
+      inventory: { ...prev.inventory, [seedId]: (prev.inventory[seedId] || 0) - seedQtyNeeded },
+      greenhouse: {
+        ...prev.greenhouse,
+        slots: prev.greenhouse.slots.map(s =>
+          s.id === slotId
+            ? { ...s, cropId, growthProgress: 0, growthTimeLeft: cropConfig.growthTime, isWatered: false }
+            : s
+        )
+      }
+    }));
+    return true;
   };
 
   // 给单个槽位浇水
@@ -487,7 +500,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return accumulatedYields;
   };
 
-  // 一键播种
+  // 一键播种 - 修复版：同步校验
   const batchPlant = (cropId: string): boolean => {
     const cropConfig = CROPS_CONFIG[cropId as keyof typeof CROPS_CONFIG];
     if (!cropConfig) return false;
@@ -495,26 +508,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const seedId = Object.keys(cropConfig.seedCost)[0];
     const seedQtyNeeded = (cropConfig.seedCost as Record<string, number>)[seedId] || 0;
 
-    let plantedCount = 0;
+    const current = stateRef.current;
+    const freeSlots = current.greenhouse.slots.filter(s => s.cropId === null);
+    if (freeSlots.length === 0) return false;
+    const availableSeedsInit = current.inventory[seedId] || 0;
+    if (availableSeedsInit < seedQtyNeeded) return false;
 
     setState(prev => {
-      const freeSlots = prev.greenhouse.slots.filter(s => s.cropId === null);
-      if (freeSlots.length === 0) return prev;
-
       let availableSeeds = prev.inventory[seedId] || 0;
-      if (availableSeeds < seedQtyNeeded) return prev; // 连播一颗的种子都没有
+      let plantedCount = 0;
 
       const updatedSlots = prev.greenhouse.slots.map(slot => {
         if (slot.cropId === null && availableSeeds >= seedQtyNeeded) {
           availableSeeds -= seedQtyNeeded;
           plantedCount++;
-          return {
-            ...slot,
-            cropId,
-            growthProgress: 0,
-            growthTimeLeft: cropConfig.growthTime,
-            isWatered: false
-          };
+          return { ...slot, cropId, growthProgress: 0, growthTimeLeft: cropConfig.growthTime, isWatered: false };
         }
         return slot;
       });
@@ -523,88 +531,56 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return {
         ...prev,
-        inventory: {
-          ...prev.inventory,
-          [seedId]: availableSeeds
-        },
-        greenhouse: {
-          ...prev.greenhouse,
-          slots: updatedSlots
-        }
+        inventory: { ...prev.inventory, [seedId]: availableSeeds },
+        greenhouse: { ...prev.greenhouse, slots: updatedSlots }
       };
     });
-
-    return plantedCount > 0;
+    return true;
   };
 
-  // 重置游戏
   const resetGame = () => {
-    const freshState = { ...INITIAL_STATE, lastTick: Date.now() };
+    const now = Date.now();
+    const freshState = { ...INITIAL_STATE, lastTick: now, dayStartTime: now };
     setState(freshState);
     localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(freshState));
   };
 
-  // 合成物品逻辑
-  const craftItem = (recipeId: string): boolean => {
-    const recipes: Record<string, { cost: Record<string, number>; reward: Record<string, number> }> = {
-      ration_pack: {
-        cost: { glow_fiber: 3, aether_pulp: 1 },
-        reward: { ration: 1 }
-      },
-      filter_refill: {
-        cost: { glow_fiber: 2, scrap_metal: 1 },
-        reward: { energy_refill: 1 }
-      },
-      sanity_capsule: {
-        cost: { dream_shard: 3, scrap_metal: 1 },
-        reward: {}
-      },
-      defensive_turret: {
-        cost: { scrap_metal: 3, glow_fiber: 4 },
-        reward: { defensive_turret: 1 }
-      }
-    };
+  // 日志系统
+  const addLog = (text: string, type: 'event' | 'harvest' | 'combat' | 'dream' | 'system') => {
+    setState(prev => {
+      const newEntry = { id: `${Date.now()}_${Math.random()}`, text, timestamp: Date.now(), type };
+      const updatedLogs = [newEntry, ...prev.logs].slice(0, 100); // 最多保留 100 条
+      return { ...prev, logs: updatedLogs };
+    });
+  };
 
-    const recipe = recipes[recipeId];
+  const craftItem = (recipeId: string): boolean => {
+    const recipe = RECIPES_CONFIG[recipeId];
     if (!recipe) return false;
 
-    let success = false;
+    // 同步校验材料（经由 stateRef 读取最新状态）
+    const current = stateRef.current;
+    const hasEnough = Object.entries(recipe.cost).every(([item, qty]) => (current.inventory[item] || 0) >= qty);
+    if (!hasEnough) return false;
+
+    // 校验通过，执行更新
     setState(prev => {
-      let hasEnough = true;
-      Object.entries(recipe.cost).forEach(([item, qty]) => {
-        if ((prev.inventory[item] || 0) < qty) {
-          hasEnough = false;
-        }
-      });
-
-      if (!hasEnough) return prev;
-      success = true;
-
       const newInventory = { ...prev.inventory };
-      Object.entries(recipe.cost).forEach(([item, qty]) => {
-        newInventory[item] = newInventory[item] - qty;
-      });
+      Object.entries(recipe.cost).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) - qty; });
 
       const newExploration = { ...prev.exploration };
-      if (recipeId === 'sanity_capsule') {
+      if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) {
         newExploration.capsulesCharge = {
           ...prev.exploration.capsulesCharge,
-          sanity_capsule: (prev.exploration.capsulesCharge.sanity_capsule || 0) + 3
+          [recipe.capsuleTarget]: (prev.exploration.capsulesCharge[recipe.capsuleTarget] || 0) + (recipe.capsuleAmount || 3)
         };
       } else {
-        Object.entries(recipe.reward).forEach(([item, qty]) => {
-          newInventory[item] = (newInventory[item] || 0) + qty;
-        });
+        Object.entries(recipe.reward).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) + qty; });
       }
 
-      return {
-        ...prev,
-        inventory: newInventory,
-        exploration: newExploration
-      };
+      return { ...prev, inventory: newInventory, exploration: newExploration };
     });
-
-    return success;
+    return true;
   };
 
   return (
@@ -617,6 +593,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       batchHarvest,
       batchPlant,
       craftItem,
+      addLog,
       resetGame,
       currentUser,
       accounts,

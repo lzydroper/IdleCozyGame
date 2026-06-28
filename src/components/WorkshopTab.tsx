@@ -1,9 +1,12 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { useToast } from './ToastSystem';
+import { RECIPES_CONFIG } from '../data/recipes';
 import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
 const WorkshopTab: React.FC = () => {
   const { state, setState, craftItem } = useGame();
+  const { showToast } = useToast();
 
   const inventory = state.inventory;
   const player = state.player;
@@ -13,7 +16,7 @@ const WorkshopTab: React.FC = () => {
   const handleUseItem = (itemId: 'ration' | 'energy_refill') => {
     const qty = inventory[itemId] || 0;
     if (qty <= 0) {
-      alert("储备不足！请先在工坊合成制造该物品。");
+      showToast("储备不足！请先在工坊合成制造该物品。", "error");
       return;
     }
 
@@ -34,14 +37,15 @@ const WorkshopTab: React.FC = () => {
         player: newPlayer
       };
     });
+    showToast(itemId === 'ration' ? "进食成功 (饱食度 +30)" : "更换净化罐成功 (魔能 +30)", "success");
   };
 
   const handleCraft = (recipeId: string) => {
     const success = craftItem(recipeId);
     if (success) {
-      alert("合成成功！");
+      showToast("合成成功！", "success");
     } else {
-      alert("合成失败：原料不足。");
+      showToast("合成失败：原料不足。", "error");
     }
   };
 
@@ -52,7 +56,7 @@ const WorkshopTab: React.FC = () => {
     if (method === 'turret') {
       const turretQty = inventory.defensive_turret || 0;
       if (turretQty <= 0) {
-        alert("没有制造好的防御电磁塔！");
+        showToast("没有制造好的防御电磁塔！", "error");
         return;
       }
 
@@ -81,10 +85,10 @@ const WorkshopTab: React.FC = () => {
           }
         };
       });
-      alert("防御电磁塔发出一声巨响，蓝白电弧瞬间重创了梦魇！ (梦魇生命值 -35)");
+      showToast("电磁塔已启动，重创梦魇 (HP -35)", "success");
     } else if (method === 'overload') {
       if (player.energy < 20) {
-        alert("避难所魔能低于 20，核心无法超频过载！");
+        showToast("避难所魔能低于 20，核心无法超频过载！", "error");
         return;
       }
 
@@ -114,7 +118,7 @@ const WorkshopTab: React.FC = () => {
           }
         };
       });
-      alert("你强行将避难所供能核心超频，炽热的电荷强光将梦魇逼退！ (魔能 -20, 梦魇生命值 -15)");
+      showToast("核心超频过载，强光逼退梦魇 (HP -15)", "warning");
     }
   };
 
@@ -142,33 +146,6 @@ const WorkshopTab: React.FC = () => {
       );
     });
   };
-
-  const RECIPES_INFO: Array<{ id: string; name: string; description: string; cost: Record<string, number> }> = [
-    {
-      id: "ration_pack",
-      name: "防化口粮包",
-      description: "加工废土收获与魔导作物，合成能抵抗地表高强度运动消耗的高能口粮 (荒野探索必备)。",
-      cost: { glow_fiber: 3, aether_pulp: 1 }
-    },
-    {
-      id: "filter_refill",
-      name: "魔能过滤罐",
-      description: "利用发光植物的纤维与铁皮，制造过滤罐电池。补充地表防护服耗费的魔能值 (魔能+30)。",
-      cost: { glow_fiber: 2, scrap_metal: 1 }
-    },
-    {
-      id: "sanity_capsule",
-      name: "理智稳定胶囊 (充能)",
-      description: "消耗魔能结晶与梦境碎屑重新激发梦境胶囊。增加【理智稳定胶囊】3次可用次数。",
-      cost: { dream_shard: 3, scrap_metal: 1 }
-    },
-    {
-      id: "defensive_turret",
-      name: "防御电磁塔",
-      description: "精密焊接废金属，并在中央封装储能荧光草，用以对付突入现实避难所的梦魇兽。",
-      cost: { scrap_metal: 3, glow_fiber: 4 }
-    }
-  ];
 
   return (
     <div className="w-full pb-20 space-y-5">
@@ -200,13 +177,13 @@ const WorkshopTab: React.FC = () => {
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => handleDefendNightmare('turret')}
-              className="py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold text-xs rounded-xl shadow-lg transition-all active:scale-95 text-center"
+              className="py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold text-xs rounded-xl shadow-lg transition-all active:scale-95 text-center cursor-pointer"
             >
               启动电磁塔 (扣1塔)
             </button>
             <button
               onClick={() => handleDefendNightmare('overload')}
-              className="py-2.5 bg-zinc-900 border border-red-500/30 text-red-400 font-extrabold text-xs rounded-xl transition-all active:scale-95 text-center"
+              className="py-2.5 bg-zinc-900 border border-red-500/30 text-red-400 font-extrabold text-xs rounded-xl transition-all active:scale-95 text-center cursor-pointer"
             >
               核心超频 (耗20魔能)
             </button>
@@ -229,7 +206,7 @@ const WorkshopTab: React.FC = () => {
             <button
               onClick={() => handleUseItem('ration')}
               disabled={(inventory.ration || 0) <= 0}
-              className="w-full py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-600/40 disabled:opacity-30 disabled:pointer-events-none text-amber-400 font-bold rounded-lg transition-colors"
+              className="w-full py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-600/40 disabled:opacity-30 disabled:pointer-events-none text-amber-400 font-bold rounded-lg transition-colors cursor-pointer"
             >
               进食 (饱食+30)
             </button>
@@ -243,7 +220,7 @@ const WorkshopTab: React.FC = () => {
             <button
               onClick={() => handleUseItem('energy_refill')}
               disabled={(inventory.energy_refill || 0) <= 0}
-              className="w-full py-1.5 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-400/40 disabled:opacity-30 disabled:pointer-events-none text-cyan-300 font-bold rounded-lg transition-colors"
+              className="w-full py-1.5 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-400/40 disabled:opacity-30 disabled:pointer-events-none text-cyan-300 font-bold rounded-lg transition-colors cursor-pointer"
             >
               更换罐 (魔能+30)
             </button>
@@ -258,24 +235,26 @@ const WorkshopTab: React.FC = () => {
           魔导合成配方蓝图
         </h3>
         <div className="space-y-4">
-          {RECIPES_INFO.map(recipe => {
+          {Object.values(RECIPES_CONFIG).map(recipe => {
             // 判断是否材料充足
-            let canCraft = true;
-            Object.entries(recipe.cost).forEach(([item, qty]) => {
-              if ((inventory[item] || 0) < qty) {
-                canCraft = false;
-              }
-            });
+            const canCraft = Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty);
 
             return (
-              <div key={recipe.id} className="p-3.5 bg-zinc-950/70 border border-zinc-900 rounded-2xl flex flex-col gap-2.5">
+              <div key={recipe.id} className="p-3.5 bg-zinc-950/70 border border-zinc-900 rounded-2xl flex flex-col gap-2.5 animate-fade-in">
                 <div>
                   <div className="flex justify-between items-center">
-                    <h4 className="font-black text-sm text-white">{recipe.name}</h4>
+                    <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                      {recipe.name}
+                      {recipe.id === 'sanity_capsule' && (
+                        <span className="text-[9px] text-purple-400 font-extrabold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/30">
+                          [当前充能: {state.exploration.capsulesCharge.sanity_capsule || 0}次]
+                        </span>
+                      )}
+                    </h4>
                     <button
                       onClick={() => handleCraft(recipe.id)}
                       disabled={!canCraft}
-                      className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-black rounded-lg transition-colors"
+                      className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-black rounded-lg transition-colors cursor-pointer"
                     >
                       制造合成
                     </button>

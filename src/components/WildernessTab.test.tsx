@@ -1,24 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
+import { ToastProvider } from './ToastSystem';
 import WildernessTab from './WildernessTab';
 
 describe('WildernessTab Component', () => {
   it('should render the start exploration view initially', () => {
     render(
       <GameProvider>
-        <WildernessTab />
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
       </GameProvider>
     );
 
     expect(screen.getByText(/踏入废土荒野/i)).toBeDefined();
-    expect(screen.getByText(/探险需要消耗/i)).toBeDefined();
+    expect(screen.getByText(/地表辐射/i)).toBeDefined();
   });
 
   it('should transition into exploration mode when clicking start', () => {
     render(
       <GameProvider>
-        <WildernessTab />
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
       </GameProvider>
     );
 

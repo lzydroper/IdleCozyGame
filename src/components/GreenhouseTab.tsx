@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGame, CROPS_CONFIG } from '../context/GameContext';
+import { useToast } from './ToastSystem';
 import { Sprout, Droplet, Sparkles, Timer } from 'lucide-react';
 
 interface FlyingReward {
@@ -11,6 +12,7 @@ interface FlyingReward {
 
 const GreenhouseTab: React.FC = () => {
   const { state, plantCrop, waterSlot, harvestSlot, batchHarvest, batchPlant } = useGame();
+  const { showToast } = useToast();
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [showSeedSelector, setShowSeedSelector] = useState(false);
   const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
@@ -62,10 +64,11 @@ const GreenhouseTab: React.FC = () => {
     if (selectedSlotId !== null) {
       const success = plantCrop(selectedSlotId, cropId);
       if (success) {
+        showToast("作物已播种入培养槽！", "success");
         setShowSeedSelector(false);
         setSelectedSlotId(null);
       } else {
-        alert("种子不足或槽位非空！");
+        showToast("种子不足或槽位非空！", "error");
       }
     }
   };
@@ -86,17 +89,26 @@ const GreenhouseTab: React.FC = () => {
 
   const handleBatchPlant = (cropId: string) => {
     const success = batchPlant(cropId);
-    if (!success) {
-      alert("无可用的种子或空闲槽位！");
+    if (success) {
+      showToast("温室已连播作物！", "success");
+    } else {
+      showToast("无可用的种子或空闲槽位！", "error");
     }
   };
 
   const handleWaterAll = () => {
+    let wateredCount = 0;
     state.greenhouse.slots.forEach(slot => {
       if (slot.cropId !== null && !slot.isWatered) {
-        waterSlot(slot.id);
+        const ok = waterSlot(slot.id);
+        if (ok) wateredCount++;
       }
     });
+    if (wateredCount > 0) {
+      showToast(`已成功为 ${wateredCount} 个培养槽补充水分。`, "info");
+    } else {
+      showToast("没有需要浇水或能量不足的作物！", "warning");
+    }
   };
 
   return (

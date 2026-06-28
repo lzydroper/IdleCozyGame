@@ -69,7 +69,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
   },
   roy_signal: {
     id: "roy_signal",
-    title: "微弱的心灵震颤 (幸存者信号)",
+    title: "微弱的心灵震颤 (罗伊的信号)",
     description: "虚空中传来断断续续的求救波动。这是一个温热的心灵光点，名字似乎叫『罗伊』。如果全力与其对接，或许能反向追踪到他在现实废土中的肉体坐标！",
     choices: {
       A: {
@@ -84,7 +84,51 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "忽略电波，保持警惕 (理智-2)",
         results: {
           stats: { sanity: -2 },
-          logText: "梦境中陷阱重重，你不敢冒险把意识伸向未知信号。波动在片刻后渐渐熄灭了。"
+          logText: "梦境中重重迷雾，你不敢冒险把意识伸向未知信号。波动在片刻后渐渐熄灭了。"
+        }
+      }
+    }
+  },
+  mei_signal: {
+    id: "mei_signal",
+    title: "奇异的植物共振 (阿梅的信号)",
+    description: "在梦境荧光森林的上空，飘浮着绿色的孢子光点，编织成女声微弱的叹息声。这代表着一个强大的植物共鸣天赋者『阿梅』。对接可能会耗费精力，但能获得她的坐标！",
+    choices: {
+      A: {
+        text: "追踪植物声呐 (理智-10, 共鸣+50)",
+        results: {
+          stats: { sanity: -10, resonance: 50 },
+          targetSurvivorId: "mei",
+          logText: "你向绿光伸出了精神触角。脑海中瞬间浮现出巨大的藤蔓幻象和阿梅的呼唤，定位连接成功建立！"
+        }
+      },
+      B: {
+        text: "忽略绿光避开 (理智-2)",
+        results: {
+          stats: { sanity: -2 },
+          logText: "你紧了紧兜帽，避开了那些漂浮的孢子，它们很快便在梦境深处消散了。"
+        }
+      }
+    }
+  },
+  zero_signal: {
+    id: "zero_signal",
+    title: "急速移动的心灵光标 (Zero的信号)",
+    description: "一个刺眼的亮蓝色心灵光标在你的梦境感知边缘高速掠过，闪烁着代表求救的莫尔斯电码。代号为『Zero』。如果不及时抓住，他可能会从链接网络中彻底掉线！",
+    choices: {
+      A: {
+        text: "极速拦截建立连结 (理智-12, 共鸣+50)",
+        results: {
+          stats: { sanity: -12, resonance: 50 },
+          targetSurvivorId: "zero",
+          logText: "你瞬间燃烧理智向前飞跃，将精神捕获网稳稳套住了那个狂飙的光标。你捕获了 Zero 的方位信号！"
+        }
+      },
+      B: {
+        text: "放弃拦截，原地待命 (理智-2)",
+        results: {
+          stats: { sanity: -2 },
+          logText: "那个高速光标太不稳定了，拦截可能会导致精神力受损。你冷静地目送它划过夜空坠入黑暗。"
         }
       }
     }
