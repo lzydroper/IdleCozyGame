@@ -185,6 +185,7 @@ interface GameContextType {
   switchAccount: (username: string) => void;
   createAccount: (username: string) => boolean;
   deleteAccount: (username: string) => void;
+  useSupplyItem: (itemId: string) => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -632,6 +633,52 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const useSupplyItem = (itemId: string): boolean => {
+    const current = stateRef.current;
+    const qty = current.inventory[itemId] || 0;
+    if (qty <= 0) return false;
+
+    setState(prev => {
+      const currentQty = prev.inventory[itemId] || 0;
+      if (currentQty <= 0) return prev;
+
+      const newInventory = { ...prev.inventory };
+      newInventory[itemId] = currentQty - 1;
+
+      const newPlayer = { ...prev.player };
+      const newExploration = { ...prev.exploration };
+
+      const isNovaPresent = !!prev.survivors.nova;
+      const currentMaxEnergy = isNovaPresent ? 130 : 100;
+
+      if (itemId === 'ration') {
+        newPlayer.food = Math.min(100, newPlayer.food + 30);
+      } else if (itemId === 'energy_refill') {
+        newPlayer.energy = Math.min(currentMaxEnergy, newPlayer.energy + 30);
+      } else if (itemId === 'hot_stew') {
+        newPlayer.food = Math.min(100, newPlayer.food + 60);
+        newPlayer.hp = Math.min(100, newPlayer.hp + 20);
+      } else if (itemId === 'nanite_injector') {
+        newPlayer.hp = Math.min(100, newPlayer.hp + 60);
+        newPlayer.food = Math.min(100, newPlayer.food + 10);
+      } else if (itemId === 'purifying_serum') {
+        newPlayer.sanity = Math.min(100, newPlayer.sanity + 30);
+        newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution - 30);
+      } else {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        inventory: newInventory,
+        player: newPlayer,
+        exploration: newExploration
+      };
+    });
+
+    return true;
+  };
+
   const hasNova = !!state.survivors.nova;
   const hasCatherine = !!state.survivors.catherine;
   const hasBuster = !!state.survivors.buster;
@@ -667,7 +714,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       accounts,
       switchAccount,
       createAccount,
-      deleteAccount
+      deleteAccount,
+      useSupplyItem
     }}>
       {children}
     </GameContext.Provider>

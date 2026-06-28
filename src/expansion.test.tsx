@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GameProvider, useGame } from './context/GameContext';
 import { ToastProvider } from './components/ToastSystem';
@@ -51,42 +51,15 @@ const BASE_SAVE = {
   logs: []
 };
 
-// 辅助组件，直接通过 useGame 触发使用逻辑 (单元测试)
+// 辅助组件，调用真实 useSupplyItem (单元测试)
 const TestUsageComponent: React.FC<{
   itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'nanite_injector' | 'purifying_serum';
   onState: (state: GameState) => void;
 }> = ({ itemId, onState }) => {
-  const { state, setState } = useGame();
+  const { state, useSupplyItem } = useGame();
 
   const handleUseItem = () => {
-    const qty = state.inventory[itemId] || 0;
-    if (qty <= 0) return;
-
-    setState(prev => {
-      const newInventory = { ...prev.inventory };
-      newInventory[itemId] = qty - 1;
-
-      const newPlayer = { ...prev.player };
-      const newExploration = { ...prev.exploration };
-
-      if (itemId === 'hot_stew') {
-        newPlayer.food = Math.min(100, newPlayer.food + 60);
-        newPlayer.hp = Math.min(100, newPlayer.hp + 20);
-      } else if (itemId === 'nanite_injector') {
-        newPlayer.hp = Math.min(100, newPlayer.hp + 60);
-        newPlayer.food = Math.min(100, newPlayer.food + 10);
-      } else if (itemId === 'purifying_serum') {
-        newPlayer.sanity = Math.min(100, newPlayer.sanity + 30);
-        newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution - 30);
-      }
-
-      return {
-        ...prev,
-        inventory: newInventory,
-        player: newPlayer,
-        exploration: newExploration
-      };
-    });
+    useSupplyItem(itemId);
   };
 
   React.useEffect(() => {
@@ -102,8 +75,13 @@ const TestUsageComponent: React.FC<{
 
 describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     localStorage.clear();
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should correctly update stats when using hot_stew (Unit)', async () => {
@@ -226,8 +204,13 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
 
 describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     localStorage.clear();
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should process hot_stew usage correctly from WorkshopTab UI', async () => {

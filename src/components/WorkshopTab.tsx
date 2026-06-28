@@ -6,7 +6,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
 const WorkshopTab: React.FC = () => {
-  const { state, setState, craftItem } = useGame();
+  const { state, setState, craftItem, useSupplyItem } = useGame();
   const { showToast } = useToast();
 
   const inventory = state.inventory;
@@ -43,8 +43,8 @@ const WorkshopTab: React.FC = () => {
 
   // 使用背包物品补给
   const handleUseItem = (itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'nanite_injector' | 'purifying_serum') => {
-    const qty = inventory[itemId] || 0;
-    if (qty <= 0) {
+    const success = useSupplyItem(itemId);
+    if (!success) {
       showToast("储备不足！请先在工坊合成制造该物品。", "error");
       return;
     }
@@ -57,35 +57,6 @@ const WorkshopTab: React.FC = () => {
       purifying_serum: "使用净化血清成功 (污染度 -30, 理智值 +30)"
     };
 
-    setState(prev => {
-      const newInventory = { ...prev.inventory };
-      newInventory[itemId] = qty - 1;
-
-      const newPlayer = { ...prev.player };
-      const newExploration = { ...prev.exploration };
-
-      if (itemId === 'ration') {
-        newPlayer.food = Math.min(100, newPlayer.food + 30);
-      } else if (itemId === 'energy_refill') {
-        newPlayer.energy = Math.min(newPlayer.maxEnergy, newPlayer.energy + 30);
-      } else if (itemId === 'hot_stew') {
-        newPlayer.food = Math.min(100, newPlayer.food + 60);
-        newPlayer.hp = Math.min(100, newPlayer.hp + 20);
-      } else if (itemId === 'nanite_injector') {
-        newPlayer.hp = Math.min(100, newPlayer.hp + 60);
-        newPlayer.food = Math.min(100, newPlayer.food + 10);
-      } else if (itemId === 'purifying_serum') {
-        newPlayer.sanity = Math.min(100, newPlayer.sanity + 30);
-        newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution - 30);
-      }
-
-      return {
-        ...prev,
-        inventory: newInventory,
-        player: newPlayer,
-        exploration: newExploration
-      };
-    });
     showToast(toastMsgMap[itemId], "success");
   };
 
