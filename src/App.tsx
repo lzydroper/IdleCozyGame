@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGame } from './context/GameContext';
 import GreenhouseTab from './components/GreenhouseTab';
+import WildernessTab from './components/WildernessTab';
 import { Sprout, Compass, Moon, Hammer, BookOpen, Heart, Battery, Flame, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -104,15 +105,7 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 overflow-y-auto">
         {activeTab === 'greenhouse' && <GreenhouseTab />}
         
-        {activeTab === 'wilderness' && (
-          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
-            <Compass className="w-12 h-12 text-cyan-500 mb-4 opacity-40 animate-pulse" />
-            <h2 className="text-lg font-bold text-zinc-300">废土荒野探索</h2>
-            <p className="text-xs text-zinc-500 mt-2 max-w-[240px]">
-              即将解锁。去地表搜寻稀有金属、过滤罐碎片，并营救梦境中定位的心灵幸存者。
-            </p>
-          </div>
-        )}
+        {activeTab === 'wilderness' && <WildernessTab />}
 
         {activeTab === 'dreamscape' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
