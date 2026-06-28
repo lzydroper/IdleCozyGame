@@ -4,13 +4,66 @@ import GreenhouseTab from './components/GreenhouseTab';
 import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/WorkshopTab';
-import { Sprout, Compass, Moon, Hammer, BookOpen, Heart, Battery, Flame, RefreshCw, ShieldAlert } from 'lucide-react';
+import {
+  Sprout,
+  Compass,
+  Moon,
+  Hammer,
+  BookOpen,
+  Heart,
+  Battery,
+  Flame,
+  RefreshCw,
+  ShieldAlert,
+  Terminal,
+  UserPlus,
+  ChevronDown,
+  ChevronUp,
+  Trash2
+} from 'lucide-react';
 
 const App: React.FC = () => {
-  const { state, resetGame } = useGame();
+  const {
+    state,
+    resetGame,
+    currentUser,
+    accounts,
+    switchAccount,
+    createAccount,
+    deleteAccount
+  } = useGame();
+  
   const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log'>('greenhouse');
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
 
   const player = state.player;
+
+  const handleCreateAccount = () => {
+    const trimmed = newUsername.trim();
+    if (!trimmed) return;
+    const success = createAccount(trimmed);
+    if (success) {
+      switchAccount(trimmed);
+      setNewUsername('');
+    } else {
+      alert('创建失败：该生存者名称已存在或不合法');
+    }
+  };
+
+  const getSurvivorPreview = (name: string) => {
+    const saved = localStorage.getItem(`aether_garden_save_${name}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          days: parsed.player?.days || 1,
+          hp: parsed.player?.hp || 100
+        };
+      } catch (e) {}
+    }
+    return { days: 1, hp: 100 };
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl">
@@ -31,17 +84,111 @@ const App: React.FC = () => {
             </span>
             <button
               onClick={() => {
-                if (window.confirm("确定重置避难所重新开始吗？这会抹去所有存档。")) {
+                if (window.confirm("确定重置避难所重新开始吗？这会抹去当前账号的存档。")) {
                   resetGame();
                 }
               }}
-              title="重置游戏"
+              title="重置当前游戏"
               className="p-1 hover:text-rose-400 text-zinc-600 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        {/* 生存者终端胶囊按钮 */}
+        <div className="mb-3">
+          <button
+            onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-zinc-950 border border-zinc-800/60 rounded-xl hover:border-purple-500/50 hover:bg-zinc-900/40 active:scale-[0.99] transition-all text-xs text-zinc-400 font-bold"
+          >
+            <span className="flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+              当前生存者：<span className="text-zinc-100 font-black">{currentUser}</span>
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800/80">终端</span>
+              {isTerminalOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </div>
+          </button>
+        </div>
+
+        {/* 生存者终端展开面板 */}
+        {isTerminalOpen && (
+          <div className="mb-3 p-3 bg-zinc-950 border border-zinc-800/80 rounded-2xl transition-all">
+            {/* 新建生存者输入区 */}
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="text"
+                placeholder="输入新生存者代号..."
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateAccount();
+                }}
+                className="flex-1 bg-zinc-900 border border-zinc-800 text-xs px-3 py-1.5 rounded-xl text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-purple-500 transition-colors"
+              />
+              <button
+                onClick={handleCreateAccount}
+                className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-all"
+              >
+                <UserPlus className="w-3 h-3" />
+                唤醒
+              </button>
+            </div>
+
+            {/* 生存者存档列表 */}
+            <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+              <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-black mb-1 px-1">
+                生存者冷冻舱列表 ({accounts.length})
+              </div>
+              {accounts.map((name) => {
+                const preview = getSurvivorPreview(name);
+                const isCurrent = name === currentUser;
+                return (
+                  <div
+                    key={name}
+                    className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                      isCurrent
+                        ? 'bg-purple-950/20 border-purple-500/30 text-purple-300'
+                        : 'bg-zinc-900/40 border-zinc-850 hover:bg-zinc-900/80 hover:border-zinc-800 text-zinc-400'
+                    }`}
+                  >
+                    <div
+                      onClick={() => {
+                        if (!isCurrent) {
+                          switchAccount(name);
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-between cursor-pointer mr-2"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />}
+                        <span className="text-xs font-black truncate max-w-[100px]">{name}</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-500">
+                        第 <span className="text-purple-400 font-bold">{preview.days}</span> 天 · HP {preview.hp}
+                      </span>
+                    </div>
+                    {name !== 'Guest' && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`确定要彻底删除生存者 [${name}] 的所有存档数据吗？此操作无法撤销。`)) {
+                            deleteAccount(name);
+                          }
+                        }}
+                        className="p-1 hover:text-red-400 text-zinc-600 transition-colors"
+                        title="删除存档"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 属性状态进度条 */}
         <div className="grid grid-cols-4 gap-2">

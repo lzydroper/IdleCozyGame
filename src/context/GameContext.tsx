@@ -29,7 +29,6 @@ export const CROPS_CONFIG = {
   }
 };
 
-const STORAGE_KEY = 'aether_garden_save';
 
 const INITIAL_PLAYER_STATS: PlayerStats = {
   hp: 100,
@@ -119,21 +118,59 @@ interface GameContextType {
   batchPlant: (cropId: string) => boolean;
   craftItem: (recipeId: string) => boolean;
   resetGame: () => void;
+  currentUser: string;
+  accounts: string[];
+  switchAccount: (username: string) => void;
+  createAccount: (username: string) => boolean;
+  deleteAccount: (username: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+const getAccountsList = (): string[] => {
+  const listJson = localStorage.getItem('aether_garden_accounts_list');
+  if (listJson) {
+    try {
+      const parsed = JSON.parse(listJson);
+      if (Array.isArray(parsed) && parsed.includes('Guest')) {
+        return parsed;
+      }
+      if (Array.isArray(parsed)) {
+        return ['Guest', ...parsed.filter(u => u !== 'Guest')];
+      }
+    } catch (e) {
+      console.error("Failed to parse accounts list", e);
+    }
+  }
+  return ['Guest'];
+};
+
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<string>(() => {
+    return localStorage.getItem('aether_garden_save_current_user') || 'Guest';
+  });
+  const [accounts, setAccounts] = useState<string[]>(getAccountsList);
   const [state, setState] = useState<GameState>(INITIAL_STATE);
   const isInitialized = useRef(false);
 
-  // 1. 初始化时载入存档并计算离线挂机收益
+  // 1. 初始化时载入当前账号的存档并计算离线挂机收益
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const curUser = localStorage.getItem('aether_garden_save_current_user') || 'Guest';
+    localStorage.setItem('aether_garden_save_current_user', curUser);
+    setCurrentUser(curUser);
+
+    const list = getAccountsList();
+    if (!list.includes('Guest')) {
+      localStorage.setItem('aether_garden_accounts_list', JSON.stringify(['Guest', ...list]));
+    } else {
+      localStorage.setItem('aether_garden_accounts_list', JSON.stringify(list));
+    }
+
+    const saved = localStorage.getItem(`aether_garden_save_${curUser}`);
+    const now = Date.now();
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as GameState;
-        const now = Date.now();
         const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
         
         // 计算离线生长收益
@@ -149,16 +186,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       } catch (e) {
         console.error("Failed to load save", e);
+        const freshState = { ...INITIAL_STATE, lastTick: now };
+        setState(freshState);
+        localStorage.setItem(`aether_garden_save_${curUser}`, JSON.stringify(freshState));
       }
+    } else {
+      // 妥善处理 Guest (或当前用户) 初始数据的自动保存
+      const freshState = { ...INITIAL_STATE, lastTick: now };
+      setState(freshState);
+      localStorage.setItem(`aether_garden_save_${curUser}`, JSON.stringify(freshState));
     }
     isInitialized.current = true;
   }, []);
 
-  // 2. 自动存盘 (当状态更新时，延迟或直接写入localStorage)
+  // 2. 自动存盘 (当状态更新时，写入当前激活角色的存档键)
   useEffect(() => {
     if (!isInitialized.current) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(state));
+  }, [state, currentUser]);
 
   // 3. 游戏全局 Tick 循环 (每秒一次)
   useEffect(() => {
@@ -188,6 +233,86 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => clearInterval(timer);
   }, []);
+
+  // 切换账号
+  const switchAccount = (username: string) => {
+    // 立即同步保存当前激活角色的状态，防丢失
+    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(state));
+
+    const saved = localStorage.getItem(`aether_garden_save_${username}`);
+    let newState: GameState;
+    const now = Date.now();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as GameState;
+        const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
+        const updatedSlots = calculateOfflineProgress(parsed.greenhouse.slots, elapsedSeconds);
+        newState = {
+          ...parsed,
+          greenhouse: {
+            ...parsed.greenhouse,
+            slots: updatedSlots
+          },
+          lastTick: now // 妥善更新 lastTick 为当前时间，防止累加多余离线秒数
+        };
+      } catch (e) {
+        console.error("Failed to load save in switchAccount", e);
+        newState = { ...INITIAL_STATE, lastTick: now };
+      }
+    } else {
+      newState = { ...INITIAL_STATE, lastTick: now };
+    }
+
+    setCurrentUser(username);
+    localStorage.setItem('aether_garden_save_current_user', username);
+    setState(newState);
+  };
+
+  // 创建账号
+  const createAccount = (username: string): boolean => {
+    if (!username || !username.trim()) return false;
+    const name = username.trim();
+
+    const key = `aether_garden_save_${name}`;
+    if (localStorage.getItem(key)) return false;
+
+    const newAccountState: GameState = {
+      ...INITIAL_STATE,
+      lastTick: Date.now()
+    };
+    localStorage.setItem(key, JSON.stringify(newAccountState));
+
+    const list = getAccountsList();
+    if (!list.includes(name)) {
+      const updatedList = [...list, name];
+      localStorage.setItem('aether_garden_accounts_list', JSON.stringify(updatedList));
+      setAccounts(updatedList);
+    }
+    return true;
+  };
+
+  // 删除账号
+  const deleteAccount = (username: string) => {
+    if (username === 'Guest') {
+      const freshState = { ...INITIAL_STATE, lastTick: Date.now() };
+      localStorage.setItem('aether_garden_save_Guest', JSON.stringify(freshState));
+      if (currentUser === 'Guest') {
+        setState(freshState);
+      }
+      return;
+    }
+
+    localStorage.removeItem(`aether_garden_save_${username}`);
+
+    const list = getAccountsList();
+    const updatedList = list.filter(u => u !== username);
+    localStorage.setItem('aether_garden_accounts_list', JSON.stringify(updatedList));
+    setAccounts(updatedList);
+
+    if (currentUser === username) {
+      switchAccount('Guest');
+    }
+  };
 
   // 种植作物逻辑
   const plantCrop = (slotId: number, cropId: string): boolean => {
@@ -408,8 +533,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 重置游戏
   const resetGame = () => {
-    setState(INITIAL_STATE);
-    localStorage.removeItem(STORAGE_KEY);
+    const freshState = { ...INITIAL_STATE, lastTick: Date.now() };
+    setState(freshState);
+    localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(freshState));
   };
 
   // 合成物品逻辑
@@ -485,7 +611,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       batchHarvest,
       batchPlant,
       craftItem,
-      resetGame
+      resetGame,
+      currentUser,
+      accounts,
+      switchAccount,
+      createAccount,
+      deleteAccount
     }}>
       {children}
     </GameContext.Provider>
