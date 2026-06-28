@@ -303,7 +303,7 @@ const GreenhouseTab: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1 pt-2 pb-2">
               {Object.values(CROPS_CONFIG).map(crop => {
                 const seedId = Object.keys(crop.seedCost)[0];
                 const seedCount = state.inventory[seedId] || 0;
