@@ -175,6 +175,7 @@ interface GameContextType {
   setState: React.Dispatch<React.SetStateAction<GameState>>;
   plantCrop: (slotId: number, cropId: string) => boolean;
   waterSlot: (slotId: number) => boolean;
+  batchWater: () => number;
   harvestSlot: (slotId: number) => Record<string, number> | null;
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
@@ -462,6 +463,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return success;
   };
 
+  // 一键浇水：同步校验并批量执行
+  const batchWater = (): number => {
+    const current = stateRef.current;
+    const energyAvailable = current.player.energy;
+    const needWaterSlots = current.greenhouse.slots.filter(s => s.cropId !== null && !s.isWatered);
+    
+    if (needWaterSlots.length === 0 || energyAvailable < 2) return 0;
+    
+    const maxWaterable = Math.floor(energyAvailable / 2);
+    const actualWaterCount = Math.min(needWaterSlots.length, maxWaterable);
+    
+    if (actualWaterCount <= 0) return 0;
+
+    setState(prev => {
+      let energy = prev.player.energy;
+      const updatedSlots = prev.greenhouse.slots.map(slot => {
+        if (slot.cropId !== null && !slot.isWatered && energy >= 2) {
+          energy -= 2;
+          return { ...slot, isWatered: true };
+        }
+        return slot;
+      });
+
+      return {
+        ...prev,
+        player: { ...prev.player, energy },
+        greenhouse: { ...prev.greenhouse, slots: updatedSlots }
+      };
+    });
+
+    return actualWaterCount;
+  };
+
   // 收割单个成熟槽位
   const harvestSlot = (slotId: number): Record<string, number> | null => {
     let gatheredItems: Record<string, number> | null = null;
@@ -732,7 +766,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       switchAccount,
       createAccount,
       deleteAccount,
-      useSupplyItem
+      useSupplyItem,
+      batchWater
     }}>
       {children}
     </GameContext.Provider>

@@ -13,7 +13,7 @@ interface FlyingReward {
 }
 
 const GreenhouseTab: React.FC = () => {
-  const { state, plantCrop, waterSlot, harvestSlot, batchHarvest, batchPlant } = useGame();
+  const { state, plantCrop, waterSlot, batchWater, harvestSlot, batchHarvest, batchPlant } = useGame();
   const { showToast } = useToast();
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [showSeedSelector, setShowSeedSelector] = useState(false);
@@ -101,13 +101,7 @@ const GreenhouseTab: React.FC = () => {
   };
 
   const handleWaterAll = () => {
-    let wateredCount = 0;
-    state.greenhouse.slots.forEach(slot => {
-      if (slot.cropId !== null && !slot.isWatered) {
-        const ok = waterSlot(slot.id);
-        if (ok) wateredCount++;
-      }
-    });
+    const wateredCount = batchWater();
     if (wateredCount > 0) {
       showToast(`已成功为 ${wateredCount} 个培养槽补充水分。`, "info");
     } else {
