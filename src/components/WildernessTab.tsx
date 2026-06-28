@@ -6,6 +6,7 @@ import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
 import { Compass, ShieldAlert, Package, ChevronRight } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
+import { ITEMS_CONFIG } from '../data/items';
 
 // 特殊救援事件定义
 const ROY_RESCUE_EVENT: RealityEvent = {
@@ -295,7 +296,11 @@ const WildernessTab: React.FC = () => {
               adjustedQty = Math.round(qty * 1.3);
             }
           }
-          newRealityBag[item] = (newRealityBag[item] || 0) + adjustedQty;
+          // 限制扣除数量，不能超过玩家在避难所库存和当前临时背包拥有的总和
+          const currentTotal = (prev.inventory[item] || 0) + (prev.exploration.realityBag[item] || 0);
+          const maxDeductible = -currentTotal;
+          const finalQty = adjustedQty < 0 ? Math.max(maxDeductible, adjustedQty) : adjustedQty;
+          newRealityBag[item] = (newRealityBag[item] || 0) + finalQty;
         });
       }
 
@@ -318,7 +323,7 @@ const WildernessTab: React.FC = () => {
       // 如果救援成功，结束探险将临时背包合并
       if (isRescueComplete && !isDead) {
         Object.entries(newRealityBag).forEach(([item, qty]) => {
-          newInventory[item] = (newInventory[item] || 0) + qty;
+          newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
         });
         
         return {
@@ -380,7 +385,7 @@ const WildernessTab: React.FC = () => {
         setState(prev => {
           const newInventory = { ...prev.inventory };
           Object.entries(prev.exploration.realityBag).forEach(([item, qty]) => {
-            newInventory[item] = (newInventory[item] || 0) + qty;
+            newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
           });
 
           return {
@@ -505,15 +510,14 @@ const WildernessTab: React.FC = () => {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {Object.entries(exploration.realityBag).map(([item, qty]) => {
-                  const label = {
-                    scrap_metal: "废金属",
-                    seed_glow_grass: "荧光草种",
-                    seed_steel_sunflower: "向日葵种",
-                    ration: "口粮",
-                    dream_shard: "梦境碎片"
-                  }[item] || item;
+                  const label = ITEMS_CONFIG[item]?.name || item;
+                  const isNegative = qty < 0;
                   return (
-                    <span key={item} className="px-2 py-1 bg-zinc-950 rounded-lg border border-zinc-800 text-zinc-300 font-bold select-none">
+                    <span key={item} className={`px-2 py-1 rounded-lg border font-bold select-none ${
+                      isNegative 
+                        ? 'bg-red-950/20 border-red-500/30 text-red-400' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                    }`}>
                       {label} x{qty}
                     </span>
                   );

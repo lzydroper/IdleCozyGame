@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
@@ -7,8 +7,14 @@ import { Cloud, UploadCloud, DownloadCloud, Key } from 'lucide-react';
 const CloudSyncWidget: React.FC = () => {
   const { state, setState, currentUser, switchAccount, accounts } = useGame();
   const { showToast, showConfirm } = useToast();
-  const [syncKey, setSyncKey] = useState('');
+  const [syncKey, setSyncKey] = useState(() => {
+    return localStorage.getItem(`aether_garden_sync_key_${currentUser}`) || '';
+  });
   const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    setSyncKey(localStorage.getItem(`aether_garden_sync_key_${currentUser}`) || '');
+  }, [currentUser]);
 
   if (!supabase) {
     return (
@@ -47,6 +53,7 @@ const CloudSyncWidget: React.FC = () => {
           showToast(`上传失败: ${error.message}`, "error");
         }
       } else {
+        localStorage.setItem(`aether_garden_sync_key_${currentUser}`, syncKey.trim());
         showToast("数据已加密上传至云端冷冻舱！", "success");
       }
     } catch (err: any) {
@@ -97,6 +104,7 @@ const CloudSyncWidget: React.FC = () => {
               setState(parsedState);
             } catch(e) {}
 
+            localStorage.setItem(`aether_garden_sync_key_${currentUser}`, syncKey.trim());
             showToast("云端数据下载成功！同步已完成。", "success");
           }
         } catch (err: any) {
