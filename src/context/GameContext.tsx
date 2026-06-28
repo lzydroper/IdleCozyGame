@@ -117,6 +117,7 @@ interface GameContextType {
   harvestSlot: (slotId: number) => Record<string, number> | null;
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
+  craftItem: (recipeId: string) => boolean;
   resetGame: () => void;
 }
 
@@ -411,6 +412,69 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  // 合成物品逻辑
+  const craftItem = (recipeId: string): boolean => {
+    const recipes: Record<string, { cost: Record<string, number>; reward: Record<string, number> }> = {
+      ration_pack: {
+        cost: { glow_fiber: 3, aether_pulp: 1 },
+        reward: { ration: 1 }
+      },
+      filter_refill: {
+        cost: { glow_fiber: 2, scrap_metal: 1 },
+        reward: { energy_refill: 1 }
+      },
+      sanity_capsule: {
+        cost: { dream_shard: 3, scrap_metal: 1 },
+        reward: {}
+      },
+      defensive_turret: {
+        cost: { scrap_metal: 3, glow_fiber: 4 },
+        reward: { defensive_turret: 1 }
+      }
+    };
+
+    const recipe = recipes[recipeId];
+    if (!recipe) return false;
+
+    let success = false;
+    setState(prev => {
+      let hasEnough = true;
+      Object.entries(recipe.cost).forEach(([item, qty]) => {
+        if ((prev.inventory[item] || 0) < qty) {
+          hasEnough = false;
+        }
+      });
+
+      if (!hasEnough) return prev;
+      success = true;
+
+      const newInventory = { ...prev.inventory };
+      Object.entries(recipe.cost).forEach(([item, qty]) => {
+        newInventory[item] = newInventory[item] - qty;
+      });
+
+      const newExploration = { ...prev.exploration };
+      if (recipeId === 'sanity_capsule') {
+        newExploration.capsulesCharge = {
+          ...prev.exploration.capsulesCharge,
+          sanity_capsule: (prev.exploration.capsulesCharge.sanity_capsule || 0) + 3
+        };
+      } else {
+        Object.entries(recipe.reward).forEach(([item, qty]) => {
+          newInventory[item] = (newInventory[item] || 0) + qty;
+        });
+      }
+
+      return {
+        ...prev,
+        inventory: newInventory,
+        exploration: newExploration
+      };
+    });
+
+    return success;
+  };
+
   return (
     <GameContext.Provider value={{
       state,
@@ -420,6 +484,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       harvestSlot,
       batchHarvest,
       batchPlant,
+      craftItem,
       resetGame
     }}>
       {children}

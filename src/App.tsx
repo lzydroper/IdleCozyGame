@@ -3,7 +3,8 @@ import { useGame } from './context/GameContext';
 import GreenhouseTab from './components/GreenhouseTab';
 import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
-import { Sprout, Compass, Moon, Hammer, BookOpen, Heart, Battery, Flame, RefreshCw } from 'lucide-react';
+import WorkshopTab from './components/WorkshopTab';
+import { Sprout, Compass, Moon, Hammer, BookOpen, Heart, Battery, Flame, RefreshCw, ShieldAlert } from 'lucide-react';
 
 const App: React.FC = () => {
   const { state, resetGame } = useGame();
@@ -102,6 +103,21 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {state.activeAlert.type === 'dream_leak' && activeTab !== 'workshop' && (
+        <div
+          onClick={() => setActiveTab('workshop')}
+          className="mx-4 mt-3 p-3 bg-red-950/80 border border-red-500/30 rounded-2xl flex items-center justify-between text-xs text-red-300 font-bold cursor-pointer animate-pulse"
+        >
+          <span className="flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-red-500 animate-bounce" />
+            避难所遭梦魇污染！温室生长已冻结。
+          </span>
+          <span className="text-[10px] text-red-400 bg-red-950 px-2 py-0.5 rounded-lg border border-red-500/20">
+            前往抵御
+          </span>
+        </div>
+      )}
+
       {/* 主工作区 */}
       <main className="flex-1 p-4 overflow-y-auto">
         {activeTab === 'greenhouse' && <GreenhouseTab />}
@@ -110,15 +126,7 @@ const App: React.FC = () => {
 
         {activeTab === 'dreamscape' && <DreamscapeTab />}
 
-        {activeTab === 'workshop' && (
-          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
-            <Hammer className="w-12 h-12 text-amber-600 mb-4 opacity-40 animate-pulse" />
-            <h2 className="text-lg font-bold text-zinc-300">魔导合成工坊</h2>
-            <p className="text-xs text-zinc-500 mt-2 max-w-[240px]">
-              即将解锁。利用收获的荧光草与金属块，合成生命药水，配置梦胶囊或升级自动种植技术。
-            </p>
-          </div>
-        )}
+        {activeTab === 'workshop' && <WorkshopTab />}
 
         {activeTab === 'log' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
