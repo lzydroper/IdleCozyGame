@@ -13,6 +13,7 @@ const ROY_RESCUE_EVENT: RealityEvent = {
   id: "rescue_roy",
   title: "雷达站：营救罗伊",
   description: "在破碎的雷达阵列控制舱中，你发现了饥寒交迫的工程师罗伊。然而，废墟的阴暗处有一只高能辐射蝎挡在门口嘶吼！你可以部署防御电磁塔击杀它，或者超频护盾顶着攻击冲过去。",
+  type: "combat",
   choices: {
     A: {
       text: "部署防御炮塔消灭怪兽 (需炮塔x1, 生命-10)",
@@ -39,6 +40,7 @@ const MEI_RESCUE_EVENT: RealityEvent = {
   id: "rescue_mei",
   title: "温室废墟：营救阿梅",
   description: "在坍塌的古代魔导温室深处，阿梅被带毒的发光寄生藤蔓死死卷在空中，已经处于半昏迷状态。你必须熔断藤蔓救她，或者喂食压缩口粮给她提供能量挣脱藤蔓。",
+  type: "danger",
   choices: {
     A: {
       text: "魔能超频熔毁藤蔓 (魔能-30)",
@@ -62,6 +64,7 @@ const ZERO_RESCUE_EVENT: RealityEvent = {
   id: "rescue_zero",
   title: "信号塔：营救 Zero",
   description: "Zero 在信号塔顶部被一群高速移动的废土电磁黄蜂包围，腿部严重骨折。黄蜂发出的静电风暴极其剧烈，你必须部署防御炮塔，或者超频护盾顶着电弧突击。",
+  type: "combat",
   choices: {
     A: {
       text: "部署电磁防御塔掩护 (需炮塔x1)",
@@ -85,6 +88,7 @@ const CATHERINE_RESCUE_EVENT: RealityEvent = {
   id: "rescue_catherine",
   title: "生化实验室：营救凯瑟琳",
   description: "实验室里弥漫着毒气，凯瑟琳医生被一群魔化辐射老鼠包围在配药舱内。你可以使用纳米修复针强攻，或者用魔能超频强熔溶解锁。",
+  type: "danger",
   choices: {
     A: {
       text: "使用纳米修复针破除大门 (需纳米针x1, 生命-10)",
@@ -108,6 +112,7 @@ const BUSTER_RESCUE_EVENT: RealityEvent = {
   id: "rescue_buster",
   title: "坍塌地铁站：营救巴斯特",
   description: "地铁站月台半塌陷，巴斯特的腿被碎石死死压住，而黑暗的隧道深处传来变异掘墓兽的沉重咆哮声。你需要部署防御炮塔，或者强行肉搏拉人。",
+  type: "combat",
   choices: {
     A: {
       text: "部署防御炮塔压制怪物 (需防御炮塔x1)",
@@ -130,6 +135,7 @@ const NOVA_RESCUE_EVENT: RealityEvent = {
   id: "rescue_nova",
   title: "军火库：营救诺娃",
   description: "诺娃被困在受辐射的报废魔导机甲驾驶舱内，机甲核心已经处于临界过载的边缘，极度危险！你需要使用重载护盾电池稳定磁场，或者超频暴力破拆机甲。",
+  type: "danger",
   choices: {
     A: {
       text: "使用重载护盾电池稳定磁场 (需护盾电池x1)",
@@ -180,8 +186,45 @@ const WildernessTab: React.FC = () => {
 
     // 正常抽随机事件
     const keys = Object.keys(REALITY_EVENTS);
-    const randomKey = keys[Math.floor(Math.random() * keys.length)];
-    setCurrentEvent(REALITY_EVENTS[randomKey]);
+    const events = keys.map(key => REALITY_EVENTS[key]);
+    
+    // 1. 根据分类大权重筛选事件类型
+    const CATEGORY_WEIGHTS: Record<string, number> = {
+      common: 100,
+      danger: 80,
+      combat: 60,
+      welfare: 40
+    };
+    
+    const availableCategories = Array.from(new Set(events.map(e => e.type)));
+    const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
+    
+    let randomCatNum = Math.random() * totalCatWeight;
+    let selectedCat = availableCategories[0];
+    for (const cat of availableCategories) {
+      const catWeight = CATEGORY_WEIGHTS[cat] ?? 100;
+      if (randomCatNum < catWeight) {
+        selectedCat = cat;
+        break;
+      }
+      randomCatNum -= catWeight;
+    }
+    
+    // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
+    const catEvents = events.filter(e => e.type === selectedCat);
+    const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
+    
+    let randomEvtNum = Math.random() * totalEventWeight;
+    let selectedEvent = catEvents[0];
+    for (const evt of catEvents) {
+      const weight = evt.weight ?? 100;
+      if (randomEvtNum < weight) {
+        selectedEvent = evt;
+        break;
+      }
+      randomEvtNum -= weight;
+    }
+    setCurrentEvent(selectedEvent);
   };
 
   const handleStartExploration = (locationId: string | null) => {
