@@ -277,9 +277,18 @@ const GreenhouseTab: React.FC = () => {
 
       {/* 播种选择模态框 */}
       {showSeedSelector && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl animate-fade-in">
-            <div className="flex justify-between items-center mb-4">
+        <div
+          onClick={() => {
+            setShowSeedSelector(false);
+            setSelectedSlotId(null);
+          }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl animate-fade-in flex flex-col max-h-[80vh]"
+          >
+            <div className="flex justify-between items-center mb-4 shrink-0">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Sprout className="w-5 h-5 text-purple-400" /> 选择种植作物
               </h3>
@@ -288,13 +297,13 @@ const GreenhouseTab: React.FC = () => {
                   setShowSeedSelector(false);
                   setSelectedSlotId(null);
                 }}
-                className="text-zinc-500 hover:text-white cursor-pointer"
+                className="text-zinc-500 hover:text-white cursor-pointer w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-800/50 transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
               {Object.values(CROPS_CONFIG).map(crop => {
                 const seedId = Object.keys(crop.seedCost)[0];
                 const seedCount = state.inventory[seedId] || 0;
