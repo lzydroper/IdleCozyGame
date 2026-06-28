@@ -131,7 +131,8 @@ const INITIAL_STATE: GameState = {
     'nanite_injector',
     'purifying_serum',
     'energy_refill_advanced',
-    'shield_battery_recipe'
+    'shield_battery_recipe',
+    'greenhouse_expansion'
   ],
   activeAlert: {
     type: null,
@@ -608,8 +609,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const recipe = RECIPES_CONFIG[recipeId];
     if (!recipe) return false;
 
-    // 同步校验材料（经由 stateRef 读取最新状态）
     const current = stateRef.current;
+    if (recipe.special === 'greenhouse_expansion' && current.greenhouse.unlockedSlotsCount >= 8) {
+      return false;
+    }
+
+    // 同步校验材料（经由 stateRef 读取最新状态）
     const hasEnough = Object.entries(recipe.cost).every(([item, qty]) => (current.inventory[item] || 0) >= qty);
     if (!hasEnough) return false;
 
@@ -623,6 +628,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newExploration.capsulesCharge = {
           ...prev.exploration.capsulesCharge,
           [recipe.capsuleTarget]: (prev.exploration.capsulesCharge[recipe.capsuleTarget] || 0) + (recipe.capsuleAmount || 3)
+        };
+      } else if (recipe.special === 'greenhouse_expansion') {
+        const currentCount = prev.greenhouse.unlockedSlotsCount;
+        const nextCount = currentCount + 2;
+        const newSlots = [...prev.greenhouse.slots];
+        for (let i = currentCount + 1; i <= nextCount; i++) {
+          newSlots.push({ id: i, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false });
+        }
+        return {
+          ...prev,
+          inventory: newInventory,
+          greenhouse: { ...prev.greenhouse, unlockedSlotsCount: nextCount, slots: newSlots }
         };
       } else {
         Object.entries(recipe.reward).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) + qty; });

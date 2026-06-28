@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
-import { Hammer, ShieldAlert, Zap } from 'lucide-react';
+import { Hammer, ShieldAlert, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
 const WorkshopTab: React.FC = () => {
   const { state, setState, craftItem, useSupplyItem } = useGame();
   const { showToast } = useToast();
+  const [isSupplyExpanded, setIsSupplyExpanded] = useState(false);
 
   const inventory = state.inventory;
   const player = state.player;
@@ -211,42 +212,53 @@ const WorkshopTab: React.FC = () => {
       )}
 
       {/* 补给品快捷面板 */}
-      <div className="p-4 rounded-3xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-md">
-        <h3 className="text-sm font-black text-white mb-3 flex items-center gap-1.5">
-          <Zap className="w-4 h-4 text-cyan-400" />
-          避难所生存补给发放
-        </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 text-xs">
-          {supplyConfigs.map(cfg => {
-            const meta = ITEMS_CONFIG[cfg.id];
-            const qty = inventory[cfg.id] || 0;
-            if (!meta) return null;
-
-            return (
-              <div key={cfg.id} className="p-3 bg-zinc-950/60 border border-zinc-900 rounded-2xl flex flex-col justify-between h-36">
-                <div>
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-bold flex items-center gap-1">
-                      <span>{meta.emoji}</span>
-                      <span className={cfg.colorClass.split(' ')[0]}>{meta.name}</span>
-                    </span>
-                    <span className="text-zinc-500 font-bold whitespace-nowrap">拥有: {qty}</span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 line-clamp-2 leading-tight" title={meta.description}>
-                    {meta.description}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleUseItem(cfg.id)}
-                  disabled={qty <= 0}
-                  className={`w-full mt-2 py-1.5 border disabled:opacity-30 disabled:pointer-events-none font-bold rounded-lg transition-colors cursor-pointer text-center text-[10px] sm:text-xs ${cfg.colorClass.split(' ').slice(1).join(' ')}`}
-                >
-                  {cfg.effectText}
-                </button>
-              </div>
-            );
-          })}
+      <div className="p-4 rounded-3xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-md transition-all">
+        <div 
+          onClick={() => setIsSupplyExpanded(!isSupplyExpanded)}
+          className="flex justify-between items-center cursor-pointer select-none"
+        >
+          <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+            <Zap className="w-4 h-4 text-cyan-400" />
+            避难所生存补给发放
+          </h3>
+          <div className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 bg-zinc-800/50 rounded-full">
+            {isSupplyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
         </div>
+
+        {isSupplyExpanded && (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 text-xs mt-4 animate-fade-in">
+            {supplyConfigs.map(cfg => {
+              const meta = ITEMS_CONFIG[cfg.id];
+              const qty = inventory[cfg.id] || 0;
+              if (!meta) return null;
+
+              return (
+                <div key={cfg.id} className="p-3 bg-zinc-950/60 border border-zinc-900 rounded-2xl flex flex-col justify-between h-36">
+                  <div>
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-bold flex items-center gap-1">
+                        <span>{meta.emoji}</span>
+                        <span className={cfg.colorClass.split(' ')[0]}>{meta.name}</span>
+                      </span>
+                      <span className="text-zinc-500 font-bold whitespace-nowrap">拥有: {qty}</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 line-clamp-2 leading-tight" title={meta.description}>
+                      {meta.description}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleUseItem(cfg.id)}
+                    disabled={qty <= 0}
+                    className={`w-full mt-2 py-1.5 border disabled:opacity-30 disabled:pointer-events-none font-bold rounded-lg transition-colors cursor-pointer text-center text-[10px] sm:text-xs ${cfg.colorClass.split(' ').slice(1).join(' ')}`}
+                  >
+                    {cfg.effectText}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 制造配方网格 */}

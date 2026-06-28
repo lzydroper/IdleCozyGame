@@ -5,6 +5,7 @@ import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/WorkshopTab';
 import LogTab from './components/LogTab';
+import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import {
   Sprout,
@@ -39,7 +40,7 @@ const App: React.FC = () => {
 
   const { showToast, showConfirm } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log'>('greenhouse');
+  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log'>('wilderness');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [newUsername, setNewUsername] = useState('');
 
@@ -264,6 +265,9 @@ const App: React.FC = () => {
                 );
               })}
             </div>
+            
+            {/* 云端同步面板 */}
+            <CloudSyncWidget />
           </div>
         )}
 
@@ -358,11 +362,11 @@ const App: React.FC = () => {
       {/* 底部导航栏 */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-5 py-2 z-40">
         {[
-          { tab: 'greenhouse', label: '温室', icon: Sprout, color: 'text-emerald-400' },
-          { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
-          { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' },
+          { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' },
           { tab: 'workshop', label: '工坊', icon: Hammer, color: 'text-amber-500' },
-          { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' }
+          { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
+          { tab: 'greenhouse', label: '温室', icon: Sprout, color: 'text-emerald-400' },
+          { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' }
         ].map(({ tab, label, icon: Icon, color }) => {
           const isActive = activeTab === tab;
           const isLocked = isExploring && activeTab !== tab;

@@ -4,7 +4,7 @@ export interface Recipe {
   description: string;
   cost: Record<string, number>;    // 材料消耗
   reward: Record<string, number>;  // 产出物品
-  special?: 'capsule_charge';      // 特殊效果标记
+  special?: 'capsule_charge' | 'greenhouse_expansion'; // 特殊效果标记
   capsuleTarget?: string;          // 充能的胶囊 ID
   capsuleAmount?: number;          // 充能数量
 }
@@ -75,5 +75,13 @@ export const RECIPES_CONFIG: Record<string, Recipe> = {
     description: '使用电芯、冰结晶和合金板组合的防爆电池组',
     cost: { plasma_cell: 1, frost_crystal: 1, alloy_plate: 1 },
     reward: { energy_refill: 3 }
+  },
+  greenhouse_expansion: {
+    id: 'greenhouse_expansion',
+    name: '温室智能扩展坞',
+    description: '使用合金与电芯建造的扩展槽位模块，能解锁额外 2 个高阶培养槽。最高支持扩展至 8 槽。',
+    cost: { scrap_metal: 50, alloy_plate: 10, plasma_cell: 2, mana_dust: 5 },
+    reward: {},
+    special: 'greenhouse_expansion'
   }
 };
