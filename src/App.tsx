@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Trash2
 } from 'lucide-react';
+import shelterBg from './assets/shelter_bg.jpg';
 
 const App: React.FC = () => {
   const {
@@ -66,7 +67,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl">
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden">
+      {/* 避难所全局背景图（磨砂暗化叠层） */}
+      <img
+        src={shelterBg}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover opacity-[0.06] pointer-events-none select-none z-0"
+        style={{ mixBlendMode: 'luminosity' }}
+      />
       {/* 顶部状态栏 */}
       <header className="p-4 bg-zinc-900/80 border-b border-zinc-800/80 sticky top-0 z-40 backdrop-blur-md">
         <div className="flex justify-between items-center mb-3">

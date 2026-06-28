@@ -178,11 +178,23 @@ const GreenhouseTab: React.FC = () => {
 
                 {crop ? (
                   <div>
-                    <h3 className="text-base font-bold text-white mb-1 flex items-center gap-1.5">
-                      <Sprout className="w-4 h-4 text-emerald-400" />
+                    {/* AI 生成的作物图像 */}
+                    <div className="w-full h-16 rounded-xl overflow-hidden mb-2 relative">
+                      <img
+                        src={(crop as typeof crop & { image?: string }).image}
+                        alt={crop.name}
+                        className="w-full h-full object-cover"
+                        style={{ filter: isReady ? 'saturate(1.4) brightness(1.1)' : 'saturate(0.8) brightness(0.7)' }}
+                      />
+                      {isReady && (
+                        <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-xl" />
+                      )}
+                    </div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <Sprout className="w-3.5 h-3.5 text-emerald-400" />
                       {crop.name}
                     </h3>
-                    <p className="text-xs text-zinc-400 line-clamp-2">{crop.description}</p>
+                    <p className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">{crop.description}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center mt-6 text-zinc-600">

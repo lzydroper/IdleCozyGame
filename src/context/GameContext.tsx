@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { GameState, GreenhouseSlot, PlayerStats } from '../types/game';
+import cropGlowGrass from '../assets/crop_glow_grass.jpg';
+import cropAetherBerry from '../assets/crop_aether_berry.jpg';
+import cropSteelSunflower from '../assets/crop_steel_sunflower.jpg';
 
 // 静态作物配置表
 export const CROPS_CONFIG = {
@@ -9,7 +12,8 @@ export const CROPS_CONFIG = {
     growthTime: 30, // 30秒
     yields: { glow_fiber: 2, mana_dust: 1 },
     seedCost: { seed_glow_grass: 1 },
-    description: "能在微弱辐射下散发冷光的杂草，蕴含微量魔力。"
+    description: "能在微弱辐射下散发冷光的杂草，蕴含微量魔力。",
+    image: cropGlowGrass
   },
   aether_berry: {
     id: "aether_berry",
@@ -17,7 +21,8 @@ export const CROPS_CONFIG = {
     growthTime: 120, // 2分钟
     yields: { aether_pulp: 3, dream_shard: 1 },
     seedCost: { seed_aether_berry: 1 },
-    description: "呈淡紫色的多汁浆果，能引起轻微的心灵共鸣。"
+    description: "呈淡紫色的多汁浆果，能引起轻微的心灵共鸣。",
+    image: cropAetherBerry
   },
   steel_sunflower: {
     id: "steel_sunflower",
@@ -25,7 +30,8 @@ export const CROPS_CONFIG = {
     growthTime: 600, // 10分钟
     yields: { steel_petal: 4, alloy_plate: 1 },
     seedCost: { seed_steel_sunflower: 1 },
-    description: "花瓣带金属纹路的植物，可提取出废土合金材料。"
+    description: "花瓣带金属纹路的植物，可提取出废土合金材料。",
+    image: cropSteelSunflower
   }
 };
 

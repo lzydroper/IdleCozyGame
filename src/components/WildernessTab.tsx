@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { RealityEvent, EventChoice } from '../data/realityEvents';
 import { Compass, ShieldAlert, Package, ArrowRight } from 'lucide-react';
+import wildernessCard from '../assets/wilderness_card.jpg';
 
 const WildernessTab: React.FC = () => {
   const { state, setState } = useGame();
@@ -203,14 +204,26 @@ const WildernessTab: React.FC = () => {
 
           {/* 遭遇卡牌 */}
           {currentEvent && (
-            <div className="p-5 rounded-3xl bg-zinc-900 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] animate-fade-in flex flex-col gap-4">
-              <div>
-                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">▲ 废土突发事件</span>
-                <h3 className="text-lg font-black text-white mt-1">{currentEvent.title}</h3>
-                <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed">{currentEvent.description}</p>
+            <div className="rounded-3xl bg-zinc-900 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] animate-fade-in flex flex-col gap-4 overflow-hidden">
+              {/* 荒野场景插图 */}
+              <div className="relative h-28 w-full overflow-hidden">
+                <img
+                  src={wildernessCard}
+                  alt="废土荒野"
+                  className="w-full h-full object-cover"
+                  style={{ filter: 'brightness(0.55) saturate(1.2)' }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-zinc-900" />
+                <div className="absolute bottom-3 left-4">
+                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">▲ 废土突发事件</span>
+                  <h3 className="text-lg font-black text-white">{currentEvent.title}</h3>
+                </div>
+              </div>
+              <div className="px-5 pb-1">
+                <p className="text-xs text-zinc-400 leading-relaxed">{currentEvent.description}</p>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5 mt-2">
+              <div className="grid grid-cols-1 gap-2.5 px-5 pb-5">
                 <button
                   onClick={() => handleMakeChoice(currentEvent.choices.A)}
                   className="p-3 text-left bg-zinc-950 border border-zinc-800 hover:border-cyan-500 rounded-2xl text-xs transition-all hover:bg-zinc-900 group"
