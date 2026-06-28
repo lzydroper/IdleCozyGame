@@ -74,4 +74,7 @@ export interface GameState {
   lastTick: number;
   dayStartTime: number;  // 当前游戏天开始时间戳
   logs: LogEntry[];      // 避难所日志
+  hasCatherine?: boolean;
+  hasBuster?: boolean;
+  hasNova?: boolean;
 }

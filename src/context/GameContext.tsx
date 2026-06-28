@@ -633,15 +633,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasNova = !!state.survivors.nova;
+  const hasCatherine = !!state.survivors.catherine;
+  const hasBuster = !!state.survivors.buster;
   const maxEnergy = hasNova ? 130 : 100;
   
-  // 动态拼装传递的 state，避免污染存盘
+  // 动态拼装传递的 state，避免污染存盘，同时提供同伴被动加成判断基础
+  // 凯瑟琳与巴斯特的被动加成虽然最终在 WildernessTab.tsx 结算，
+  // 但我们在这里动态注入 hasCatherine 和 hasBuster 标记，供其他消费组件读取判定。
   const adjustedState = {
     ...state,
     player: {
       ...state.player,
       maxEnergy
-    }
+    },
+    hasNova,
+    hasCatherine,
+    hasBuster
   };
 
   return (
