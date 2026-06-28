@@ -5,7 +5,7 @@ import { useToast } from './ToastSystem';
 import { Cloud, UploadCloud, DownloadCloud, Key } from 'lucide-react';
 
 const CloudSyncWidget: React.FC = () => {
-  const { state, currentUser, switchAccount, accounts } = useGame();
+  const { state, setState, currentUser, switchAccount, accounts } = useGame();
   const { showToast, showConfirm } = useToast();
   const [syncKey, setSyncKey] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -91,10 +91,13 @@ const CloudSyncWidget: React.FC = () => {
                const newAccounts = Array.from(new Set([...accounts, currentUser]));
                localStorage.setItem('aether_garden_accounts_list', JSON.stringify(newAccounts));
             }
-            showToast("云端数据下载成功！即将重启终端连接...", "success");
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
+            // 瞬间应用到内存，让 UI 瞬间变化，消除用户的疑惑
+            try {
+              const parsedState = JSON.parse(data.data);
+              setState(parsedState);
+            } catch(e) {}
+
+            showToast("云端数据下载成功！同步已完成。", "success");
           }
         } catch (err: any) {
           showToast(`下载异常: ${err.message}`, "error");
