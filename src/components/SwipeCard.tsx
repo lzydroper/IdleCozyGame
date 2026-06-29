@@ -10,8 +10,8 @@ interface SwipeCardProps {
   imageSrc?: string;
   leftLabel?: string;
   rightLabel?: string;
-  choiceA?: EventChoice;
-  choiceB?: EventChoice;
+  choiceA?: any;
+  choiceB?: any;
   eventType?: string; // 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly'
   playerStats?: PlayerStats;
   playerInventory?: Record<string, number>;
@@ -19,6 +19,7 @@ interface SwipeCardProps {
   hasBuster?: boolean;
   leftColor?: string;
   rightColor?: string;
+  dreamPollution?: number;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
 }
@@ -38,6 +39,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
   hasBuster = false,
   leftColor = 'bg-red-500/20',
   rightColor = 'bg-cyan-500/20',
+  dreamPollution = 0,
   onSwipeLeft,
   onSwipeRight
 }) => {
@@ -156,7 +158,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
     return text.replace(/\s*\(.*\)\s*/g, '');
   };
 
-  const renderChoicePreview = (choice: EventChoice) => {
+  const renderChoicePreview = (choice: any) => {
     if (!playerStats || !playerInventory) return null;
     const previews: React.ReactNode[] = [];
     
@@ -167,7 +169,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         const currentQty = playerInventory[item] || 0;
         const isMet = currentQty >= reqQty;
         previews.push(
-          <div key={`req-${item}`} className={`text-[10px] flex items-center gap-1.5 ${isMet ? 'text-zinc-400' : 'text-red-500 font-bold'}`}>
+          <div key={`req-${item}`} className={`text-[10px] flex items-center gap-1.5 ${isMet ? 'text-zinc-400' : 'text-red-500 font-bold'} whitespace-nowrap`}>
             <span>⚠️ 需 {itemName}</span>
             <span>{currentQty}/{reqQty}</span>
           </div>
@@ -179,13 +181,42 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
     if (choice.results.stats) {
       Object.entries(choice.results.stats).forEach(([stat, val]) => {
         if (val === 0) return;
-        let adjustedVal = val;
-        if (hasCatherine && val < 0 && (stat === 'hp' || stat === 'food')) {
-          adjustedVal = Math.round(val * 0.85);
+        let adjustedVal = val as number;
+        if (hasCatherine && adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
+          adjustedVal = Math.round(adjustedVal * 0.85);
         }
         
+        if (stat === 'pollution') {
+          const statIcon = '🔮';
+          const statColor = adjustedVal < 0 ? 'text-emerald-400' : 'text-purple-400';
+          const statLabel = '污染';
+          const curPollution = dreamPollution ?? 0;
+          const nextPollution = Math.max(0, Math.min(100, curPollution + adjustedVal));
+          previews.push(
+            <div key={`stat-${stat}`} className={`text-[10px] flex items-center justify-between w-full ${statColor} whitespace-nowrap`}>
+              <span className="flex items-center gap-1">{statIcon} {statLabel}</span>
+              <span className="font-mono">{curPollution}➔{nextPollution} ({adjustedVal > 0 ? `+${adjustedVal}` : adjustedVal})</span>
+            </div>
+          );
+          return;
+        }
+
+        if (stat === 'resonance') {
+          const statIcon = '🌾';
+          const statColor = 'text-emerald-400';
+          const statLabel = '共鸣';
+          previews.push(
+            <div key={`stat-${stat}`} className={`text-[10px] flex items-center justify-between w-full ${statColor} whitespace-nowrap`}>
+              <span className="flex items-center gap-1">{statIcon} {statLabel}</span>
+              <span className="font-mono">+{adjustedVal}%</span>
+            </div>
+          );
+          return;
+        }
+
         const key = stat as keyof PlayerStats;
         const currentValue = playerStats[key] as number;
+        if (currentValue === undefined) return;
         const nextValue = Math.max(0, Math.min(100, currentValue + adjustedVal));
         
         let statIcon = '';
@@ -215,7 +246,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         }
 
         previews.push(
-          <div key={`stat-${stat}`} className={`text-[10px] flex items-center justify-between w-full ${statColor}`}>
+          <div key={`stat-${stat}`} className={`text-[10px] flex items-center justify-between w-full ${statColor} whitespace-nowrap`}>
             <span className="flex items-center gap-1">{statIcon} {statLabel}</span>
             <span className="font-mono">{currentValue}➔{nextValue} ({adjustedVal > 0 ? `+${adjustedVal}` : adjustedVal})</span>
           </div>
@@ -235,7 +266,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         const itemName = ITEMS_CONFIG[item]?.name || item;
         const isGain = adjustedQty > 0;
         previews.push(
-          <div key={`item-${item}`} className={`text-[10px] flex items-center justify-between w-full ${isGain ? 'text-emerald-400 font-medium' : 'text-red-400'}`}>
+          <div key={`item-${item}`} className={`text-[10px] flex items-center justify-between w-full ${isGain ? 'text-emerald-400 font-medium' : 'text-red-400'} whitespace-nowrap`}>
             <span>📦 {itemName}</span>
             <span>{adjustedQty > 0 ? `+${adjustedQty}` : adjustedQty}</span>
           </div>

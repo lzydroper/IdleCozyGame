@@ -5,12 +5,14 @@ import type { DreamChoice } from '../data/dreamEvents';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Sparkles, Brain, AlertOctagon } from 'lucide-react';
+import { Sparkles, Brain, AlertOctagon, Clock } from 'lucide-react';
+import { ITEMS_CONFIG } from '../data/items';
 
 const DreamscapeTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
   const { showToast } = useToast();
   const [logMessages, setLogMessages] = useState<string[]>([]);
+  const [dreamSubTab, setDreamSubTab] = useState<'logs' | 'bag' | 'status'>('logs');
 
   const exploration = state.exploration;
   const player = state.player;
@@ -248,7 +250,43 @@ const DreamscapeTab: React.FC = () => {
   };
 
   return (
-    <div className="w-full pb-20">
+    <div className="w-full pb-20 space-y-4">
+      {/* 梦胶囊控制面板（置顶于最上方，确保在非入梦状态理智为0时依然能使用稳定胶囊，解决死锁） */}
+      {!exploration.inDreamExploration && (
+        <div className="p-3.5 bg-zinc-900/60 border border-zinc-800 rounded-3xl text-xs backdrop-blur-md animate-fade-in">
+          <h4 className="font-bold text-zinc-300 mb-2.5 flex items-center gap-1.5">
+            <Brain className="w-4 h-4 text-purple-400" />
+            心灵药剂与胶囊储备
+          </h4>
+          <div className="flex gap-2.5">
+            <button
+              onClick={() => handleUseCapsule('sanity')}
+              disabled={(state.exploration.capsulesCharge.sanity_capsule || 0) <= 0}
+              className={`flex-1 py-2 rounded-xl text-[10px] font-bold flex flex-col items-center gap-0.5 transition-all ${
+                (state.exploration.capsulesCharge.sanity_capsule || 0) > 0
+                  ? 'bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-900 cursor-pointer hover:border-purple-500/50 active:scale-95 animate-pulse'
+                  : 'bg-zinc-900/50 text-zinc-600 border border-zinc-950/50 cursor-not-allowed opacity-50'
+              }`}
+            >
+              <span>稳定胶囊 [拥有: {state.exploration.capsulesCharge.sanity_capsule || 0}次]</span>
+              <span className="text-[9px] opacity-75">服用恢复 +25 理智</span>
+            </button>
+            <button
+              onClick={() => handleUseCapsule('warp')}
+              disabled={(state.exploration.capsulesCharge.warp_capsule || 0) <= 0}
+              className={`flex-1 py-2 rounded-xl text-[10px] font-bold flex flex-col items-center gap-0.5 transition-all ${
+                (state.exploration.capsulesCharge.warp_capsule || 0) > 0
+                  ? 'bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-900 cursor-pointer hover:border-purple-500/50 active:scale-95'
+                  : 'bg-zinc-900/50 text-zinc-650 border border-zinc-950/50 cursor-not-allowed opacity-50'
+              }`}
+            >
+              <span>折跃胶囊 [拥有: {state.exploration.capsulesCharge.warp_capsule || 0}次]</span>
+              <span className="text-[9px] opacity-75">降低 -40 精神污染</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {!exploration.inDreamExploration ? (
         <div className="flex flex-col items-center justify-center p-6 bg-zinc-900/40 border border-zinc-800 rounded-3xl text-center">
           <Brain className="w-16 h-16 text-purple-400 mb-4 animate-pulse" />
@@ -275,77 +313,19 @@ const DreamscapeTab: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          
-
-          {/* 属性与污染条 */}
-          <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-2xl grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <span className="text-purple-300 font-bold">当前精神污染:</span>
-              <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden mt-1.5 border border-zinc-900">
-                <div
-                  className="bg-purple-500 h-full transition-all duration-300"
-                  style={{ width: `${exploration.dreamPollution}%` }}
-                />
-              </div>
-              <span className="text-[10px] text-zinc-500 mt-1 block">达到100%将引动梦魇入侵</span>
-            </div>
-
-            {/* Dynamic resonance displays */}
-            <div className="space-y-1">
-              {SURVIVORS_CONFIG.map(config => {
-                const res = exploration.survivorResonance?.[config.id] || 0;
-                if (res <= 0 || res >= 100) return null;
-                return (
-                  <div key={config.id} className="animate-fade-in">
-                    <span className="text-emerald-400 font-bold flex items-center gap-0.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                      同伴【{config.name}】共鸣: {res}%
-                    </span>
-                    <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden mt-1 border border-zinc-900">
-                      <div
-                        className="bg-emerald-400 h-full transition-all duration-300"
-                        style={{ width: `${res}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 梦胶囊控制面板 */}
-          <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-2xl text-xs">
-            <h4 className="font-bold text-zinc-400 mb-2 flex items-center gap-1.5">
-              <Brain className="w-3.5 h-3.5 text-purple-400" />
-              梦境专属道具 (充能数)：
-            </h4>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleUseCapsule('sanity')}
-                className="flex-1 py-2 bg-purple-950 hover:bg-purple-900 border border-purple-500/20 rounded-xl text-[10px] font-bold text-purple-300 flex flex-col items-center gap-0.5 cursor-pointer"
-              >
-                <span>稳定胶囊 [拥有: {state.exploration.capsulesCharge.sanity_capsule || 0}次]</span>
-                <span className="text-[9px] opacity-60">理智+25</span>
-              </button>
-              <button
-                onClick={() => handleUseCapsule('warp')}
-                className="flex-1 py-2 bg-purple-950 hover:bg-purple-900 border border-purple-500/20 rounded-xl text-[10px] font-bold text-purple-300 flex flex-col items-center gap-0.5 cursor-pointer"
-              >
-                <span>折跃胶囊 [拥有: {state.exploration.capsulesCharge.warp_capsule || 0}次]</span>
-                <span className="text-[9px] opacity-60">污染-40</span>
-              </button>
-            </div>
-          </div>
-
+        <div className="space-y-3 pt-0.5">
           {/* 梦境遭遇卡牌 - 滑动卡交互 */}
           {currentEvent && (
             <div className="w-full">
               <SwipeCard
                 title={currentEvent.title}
                 description={currentEvent.description}
-                leftLabel={currentEvent.choices.A.text}
-                rightLabel={currentEvent.choices.B.text}
+                choiceA={currentEvent.choices.A}
+                choiceB={currentEvent.choices.B}
+                playerStats={state.player}
+                playerInventory={state.inventory}
+                dreamPollution={state.exploration.dreamPollution}
+                eventType={currentEvent.type}
                 leftColor="bg-red-500/20"
                 rightColor="bg-purple-500/20"
                 onSwipeLeft={() => handleMakeChoice(currentEvent.choices.A)}
@@ -354,15 +334,146 @@ const DreamscapeTab: React.FC = () => {
             </div>
           )}
 
-          {/* 探索日志 */}
-          <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 flex flex-col gap-2 max-h-40 overflow-y-auto">
-            <h4 className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-left">梦境连结波束日志</h4>
-            <div className="space-y-1.5 text-[10px] leading-relaxed">
-              {logMessages.map((msg, i) => (
-                <p key={i} className="text-zinc-500 border-l border-zinc-800 pl-2 text-left">
-                  {msg}
-                </p>
-              ))}
+          {/* 临时心智背包与日志合并 Tab 面板 */}
+          <div className="p-3 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 flex flex-col gap-2">
+            <div className="flex gap-2.5 border-b border-zinc-800/60 pb-1.5 overflow-x-auto scrollbar-none">
+              <button
+                onClick={() => setDreamSubTab('logs')}
+                className={`text-[10px] font-black pb-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                  dreamSubTab === 'logs' ? 'text-purple-400 border-purple-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
+                }`}
+              >
+                🔮 波束日志
+              </button>
+              <button
+                onClick={() => setDreamSubTab('bag')}
+                className={`text-[10px] font-black pb-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                  dreamSubTab === 'bag' ? 'text-purple-400 border-purple-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
+                }`}
+              >
+                🎒 心智背囊 ({Object.keys(exploration.dreamBag || {}).length})
+              </button>
+              {(() => {
+                const pollution = exploration.dreamPollution || 0;
+                const isDangerous = pollution >= 80;
+                let titleColor = dreamSubTab === 'status' ? 'text-purple-400 border-purple-400 font-black' : 'text-zinc-500 border-transparent hover:text-zinc-400 font-bold';
+                if (isDangerous) {
+                  titleColor = dreamSubTab === 'status' ? 'text-rose-500 border-rose-500 animate-pulse font-black' : 'text-rose-400/90 border-transparent animate-pulse font-black';
+                }
+                return (
+                  <button
+                    onClick={() => setDreamSubTab('status')}
+                    className={`text-[10px] pb-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-0.5 ${titleColor}`}
+                  >
+                    📊 当前精神污染 ({pollution}%)
+                  </button>
+                );
+              })()}
+            </div>
+
+            <div className="min-h-[44px] flex flex-col justify-center">
+              {dreamSubTab === 'logs' && (
+                <div className="space-y-1 text-[9px] leading-relaxed max-h-14 overflow-y-auto pr-0.5 scrollbar-thin">
+                  {logMessages.slice(-3).map((msg, i) => (
+                    <p key={i} className="text-zinc-500 border-l border-zinc-850 pl-1.5 text-left truncate select-none">
+                      {msg}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {dreamSubTab === 'bag' && (
+                <div className="space-y-2">
+                  {/* 心灵胶囊快捷使用区 */}
+                  <div className="flex gap-2 pb-1.5 border-b border-zinc-900/60">
+                    <button
+                      onClick={() => handleUseCapsule('sanity')}
+                      disabled={(state.exploration.capsulesCharge.sanity_capsule || 0) <= 0}
+                      className={`flex-1 py-1 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1 transition-all ${
+                        (state.exploration.capsulesCharge.sanity_capsule || 0) > 0
+                          ? 'bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-900 cursor-pointer active:scale-95 animate-pulse'
+                          : 'bg-zinc-900/50 text-zinc-600 border border-zinc-950/50 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <span>💊 稳定胶囊 (剩{(state.exploration.capsulesCharge.sanity_capsule || 0)}次)</span>
+                    </button>
+                    <button
+                      onClick={() => handleUseCapsule('warp')}
+                      disabled={(state.exploration.capsulesCharge.warp_capsule || 0) <= 0}
+                      className={`flex-1 py-1 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1 transition-all ${
+                        (state.exploration.capsulesCharge.warp_capsule || 0) > 0
+                          ? 'bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-900 cursor-pointer active:scale-95'
+                          : 'bg-zinc-900/50 text-zinc-650 border border-zinc-950/50 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <span>🌀 折跃胶囊 (剩{(state.exploration.capsulesCharge.warp_capsule || 0)}次)</span>
+                    </button>
+                  </div>
+
+                  {/* 背包物资 */}
+                  {!exploration.dreamBag || Object.keys(exploration.dreamBag).length === 0 ? (
+                    <span className="text-[9px] text-zinc-600 italic text-left select-none block py-0.5">暂无其他心智战利品</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 max-h-12 overflow-y-auto pr-0.5 scrollbar-thin">
+                      {Object.entries(exploration.dreamBag).map(([item, qty]) => {
+                        const label = ITEMS_CONFIG[item]?.name || item;
+                        const isNegative = (qty as number) < 0;
+                        return (
+                          <span key={item} className={`px-1.5 py-0.5 rounded border text-[9px] font-bold select-none ${
+                            isNegative 
+                              ? 'bg-red-950/20 border-red-500/30 text-red-400' 
+                              : 'bg-zinc-950 border-zinc-850 text-zinc-350'
+                          }`}>
+                            {label}x{qty}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {dreamSubTab === 'status' && (
+                <div className="grid grid-cols-2 gap-2 text-[10px] animate-fade-in">
+                  <div className="flex flex-col justify-center border-r border-zinc-800/40 pr-2">
+                    <div className="flex justify-between items-center text-purple-300 font-bold mb-1 text-[9px]">
+                      <span>当前精神污染: {exploration.dreamPollution}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-purple-500 h-full transition-all duration-300"
+                        style={{ width: `${exploration.dreamPollution}%` }}
+                      />
+                    </div>
+                    <span className="text-[7.5px] text-zinc-500 mt-1 block">达到100%将引动梦魇入侵</span>
+                  </div>
+                  <div className="max-h-[48px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
+                    {SURVIVORS_CONFIG.map(config => {
+                      const res = exploration.survivorResonance?.[config.id] || 0;
+                      if (res <= 0 || res >= 100) return null;
+                      return (
+                        <div key={config.id} className="flex flex-col animate-fade-in">
+                          <div className="flex justify-between items-center text-emerald-400 font-bold text-[8.5px] mb-0.5">
+                            <span className="flex items-center gap-0.5">
+                              <Sparkles className="w-2 h-2 text-emerald-400" />
+                              同伴【{config.name}】共鸣: {res}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden">
+                            <div
+                              className="bg-emerald-400 h-full transition-all duration-300"
+                              style={{ width: `${res}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {Object.values(exploration.survivorResonance || {}).filter(res => (res as number) > 0 && (res as number) < 100).length === 0 && (
+                      <span className="text-[8px] text-zinc-600 italic block mt-1 text-center">无正在共鸣的同伴</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -93,6 +93,8 @@ const ShelterTab: React.FC = () => {
     if (selectedSlotId !== null) {
       const success = plantCrop(selectedSlotId, cropId);
       if (success) {
+        const cropName = CROPS_CONFIG[cropId as keyof typeof CROPS_CONFIG]?.name || cropId;
+        addLog(`🌱 培养槽 #${selectedSlotId + 1} 播种了 ${cropName}`, 'logistics');
         showToast("作物已播种入培养槽！", "success");
         setShowSeedSelector(false);
         setSelectedSlotId(null);
@@ -106,6 +108,10 @@ const ShelterTab: React.FC = () => {
     const rewards = harvestSlot(slotId);
     if (rewards) {
       triggerFlyingRewards(rewards, slotId);
+      const itemsStr = Object.entries(rewards)
+        .map(([id, qty]) => `${qty}个${ITEMS_CONFIG[id]?.name || id}`)
+        .join(', ');
+      addLog(`🌾 培养槽 #${slotId + 1} 收割并获得: ${itemsStr}`, 'logistics');
     }
   };
   useEffect(() => {
@@ -166,6 +172,7 @@ const ShelterTab: React.FC = () => {
         .map(([id, qty]) => `${qty}个${ITEMS_CONFIG[id]?.name || id}`)
         .join(', ');
       harvestMsg = `收获了 ${itemsStr}。`;
+      addLog(`🌾 一键收割完成，${harvestMsg}`, 'logistics');
     }
 
     // 2. 再播种
@@ -175,20 +182,20 @@ const ShelterTab: React.FC = () => {
       const availableSeeds = getInvQty(seedId);
       const freeSlotsCount = state.greenhouse.slots.filter(s => s.cropId === null).length;
 
-      if (freeSlotsCount === 0 && !harvestResult) {
+      if (freeSlotsCount === 0 && (!harvestResult || Object.keys(harvestResult).length === 0)) {
         showToast('温室没有可收割的作物，且没有空余槽位！', 'warning');
         return;
       }
 
       if (availableSeeds <= 0) {
-        showToast(`没有可用的 ${ITEMS_CONFIG[seedId]?.name || seedId} 种子进行播种！${harvestMsg ? '仅收割完成。' : ''}`, 'warning');
+        showToast(`没有可用的 ${ITEMS_CONFIG[seedId]?.name || seedId} 种子进行播种！${harvestResult && Object.keys(harvestResult).length > 0 ? '仅收割完成。' : ''}`, 'warning');
         return;
       }
 
       const plantSuccess = batchPlant(replantCropId);
       if (plantSuccess) {
         const cropName = ITEMS_CONFIG[seedId]?.name || seedId;
-        addLog(`🌱 一键收获并播种完成${harvestMsg ? '：' + harvestMsg : ''}，已续播 ${cropName}`, 'logistics');
+        addLog(`🌱 一键续播完成，已续播 ${cropName}`, 'logistics');
         showToast(`🌱 一键收割并重新播种成功！${harvestMsg}已连播入空余槽位。`, 'success');
       } else {
         showToast(`已完成收割。但重新播种失败，请检查种子数量！`, 'warning');
@@ -262,6 +269,7 @@ const ShelterTab: React.FC = () => {
 
     const success = startExpedition(selectedExpExplorerId, selectedLocationId);
     if (success) {
+      addLog(`🤠 探索员 ${explorer?.name || '幸存者'} 前往 ${loc.name} 开始挂机远征派遣`, 'logistics');
       showToast(`🤠 幸存者 ${explorer?.name} 已带足口粮前往 ${loc.name} 挂机派遣！`, 'success');
     } else {
       showToast('派遣失败，请检查人员状态！', 'error');
@@ -538,7 +546,10 @@ const ShelterTab: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                waterSlot(slot.id);
+                                const success = waterSlot(slot.id);
+                                if (success) {
+                                  addLog(`💦 手动为培养槽 #${slot.id + 1} 补充了水分`, 'logistics');
+                                }
                               }}
                               className="px-2 py-0.5 bg-blue-950/80 border border-blue-500/30 text-blue-400 rounded-md hover:bg-blue-900 active:scale-95 transition-all cursor-pointer text-[9px]"
                             >
@@ -581,7 +592,9 @@ const ShelterTab: React.FC = () => {
                 if (val === '') {
                   // 解雇当前浇水工
                   if (state.shelter.assignedWatererId) {
+                    const oldName = state.survivors[state.shelter.assignedWatererId]?.name || '幸存者';
                     assignSurvivorJob(state.shelter.assignedWatererId, null);
+                    addLog(`🛑 取消了 ${oldName} 在温室自动浇水岗的操作员指派`, 'logistics');
                     showToast('已取消温室浇水托管。', 'info');
                   }
                 } else {
@@ -615,6 +628,7 @@ const ShelterTab: React.FC = () => {
               <button
                 onClick={() => {
                   assignSurvivorJob('mei', 'waterer');
+                  addLog(`🌾 指派 ${meiSurvivor.name} 负责温室自动浇水`, 'logistics');
                   showToast('🌾 阿梅 (Mei) 已快速就位自动浇水岗位！', 'success');
                 }}
                 className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
@@ -748,7 +762,9 @@ const ShelterTab: React.FC = () => {
                       const val = e.target.value;
                       if (val === '') {
                         if (fac.assignedSurvivorId) {
+                          const oldName = state.survivors[fac.assignedSurvivorId]?.name || '幸存者';
                           assignSurvivorJob(fac.assignedSurvivorId, null);
+                          addLog(`🛑 取消了 ${oldName} 在魔导冶炼炉的工作指派`, 'logistics');
                           showToast('魔导冶炼炉已处于无人值守状态。', 'info');
                         }
                       } else {
@@ -794,6 +810,12 @@ const ShelterTab: React.FC = () => {
                     onChange={(e) => {
                       const val = e.target.value;
                       setFacilityRecipe('smelter', val === '' ? null : val);
+                      if (val === '') {
+                        addLog(`🛑 魔导冶炼炉已停止生产，处于停产待机状态`, 'logistics');
+                      } else {
+                        const recipeName = AUTO_RECIPES[val]?.name || val;
+                        addLog(`🏭 魔导冶炼炉部署了新配方: ${recipeName}`, 'logistics');
+                      }
                       showToast(val === '' ? '已清空冶炼炉配方。' : '配方已部署，产线就绪！', 'info');
                     }}
                     className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
@@ -988,7 +1010,9 @@ const ShelterTab: React.FC = () => {
                       const val = e.target.value;
                       if (val === '') {
                         if (fac.assignedSurvivorId) {
+                          const oldName = state.survivors[fac.assignedSurvivorId]?.name || '幸存者';
                           assignSurvivorJob(fac.assignedSurvivorId, null);
+                          addLog(`🛑 取消了 ${oldName} 在芯片组装台的工作指派`, 'logistics');
                           showToast('芯片组装台已处于无人值守状态。', 'info');
                         }
                       } else {
@@ -1034,6 +1058,12 @@ const ShelterTab: React.FC = () => {
                     onChange={(e) => {
                       const val = e.target.value;
                       setFacilityRecipe('assembler', val === '' ? null : val);
+                      if (val === '') {
+                        addLog(`🛑 芯片组装台已停止生产，处于停产待机状态`, 'logistics');
+                      } else {
+                        const recipeName = AUTO_RECIPES[val]?.name || val;
+                        addLog(`🏭 芯片组装台部署了新配方: ${recipeName}`, 'logistics');
+                      }
                       showToast(val === '' ? '已清空组装台配方。' : '配方已部署，芯片产线就绪！', 'info');
                     }}
                     className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
@@ -1240,7 +1270,10 @@ const ShelterTab: React.FC = () => {
             {/* 召回操作 */}
             <button
               onClick={() => {
+                const explorerName = currentExplorer?.name || '探索员';
+                const locName = expLocation?.name || '未知区域';
                 if (stopExpedition()) {
+                  addLog(`🤠 远征探索员 ${explorerName} 已从 ${locName} 安全召回`, 'logistics');
                   showToast('🤠 远征探索员已成功安全召回，拾荒所得物资已全部存入避难所储藏箱！', 'success');
                 } else {
                   showToast('召回失败，请稍后重试！', 'error');
@@ -1376,6 +1409,34 @@ const ShelterTab: React.FC = () => {
             })()}
           </div>
         )}
+      </section>
+
+      {/* 5. 后勤工作日志 */}
+      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40">
+        <h2 className="text-sm font-bold text-amber-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
+          <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+          后勤工作日志 Logistics Logs
+        </h2>
+        <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-900/50 max-h-48 overflow-y-auto space-y-2 text-[10px] leading-relaxed">
+          {state.logs.filter(log => log.type === 'logistics').length === 0 ? (
+            <p className="text-zinc-650 italic text-center py-4">暂无后勤工作日志</p>
+          ) : (
+            state.logs
+              .filter(log => log.type === 'logistics')
+              .map(log => (
+                <div key={log.id} className="flex gap-2.5 pb-2 border-b border-zinc-900/20 last:border-b-0">
+                  <span className="shrink-0 text-amber-400">🔩</span>
+                  <div className="flex-1 text-left">
+                    <p className="text-zinc-300">{log.text}</p>
+                    <span className="text-[8px] text-zinc-600 font-bold block mt-0.5 flex items-center gap-0.5">
+                      <Clock className="w-2.5 h-2.5" />
+                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))
+          )}
+        </div>
       </section>
 
       {/* 播种选择模态框 */}

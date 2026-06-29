@@ -104,7 +104,7 @@ const LogTab: React.FC = () => {
             {[
               { id: 'all', label: '全部', color: 'text-zinc-300 hover:bg-zinc-800' },
               { id: 'event', label: '探险', color: 'text-cyan-400 hover:bg-cyan-950/20' },
-              { id: 'logistics', label: '后勤', color: 'text-cyan-400 hover:bg-cyan-950/20' },
+              { id: 'logistics', label: '后勤', color: 'text-amber-400 hover:bg-amber-950/20' },
               { id: 'dream', label: '梦境', color: 'text-purple-400 hover:bg-purple-950/20' },
               { id: 'combat', label: '战斗', color: 'text-red-400 hover:bg-red-950/20' },
               { id: 'system', label: '系统', color: 'text-zinc-400 hover:bg-zinc-800' },
