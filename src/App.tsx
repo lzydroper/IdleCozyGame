@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './context/GameContext';
-import GreenhouseTab from './components/GreenhouseTab';
 import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/WorkshopTab';
@@ -10,7 +9,6 @@ import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import { ITEMS_CONFIG } from './data/items';
 import {
-  Sprout,
   Compass,
   Moon,
   Hammer,
@@ -447,8 +445,6 @@ const App: React.FC = () => {
 
       {/* 主工作区 */}
       <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent">
-        {activeTab === 'greenhouse' && <GreenhouseTab />}
-        
         {activeTab === 'wilderness' && <WildernessTab />}
 
         {activeTab === 'dreamscape' && <DreamscapeTab />}
@@ -461,12 +457,11 @@ const App: React.FC = () => {
       </main>
 
       {/* 底部导航栏 */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-6 py-2 z-40">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-5 py-2 z-40">
         {[
           { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' },
           { tab: 'workshop', label: '工坊', icon: Hammer, color: 'text-amber-500' },
           { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
-          { tab: 'greenhouse', label: '温室', icon: Sprout, color: 'text-emerald-400' },
           { tab: 'shelter', label: '控制台', icon: Cpu, color: 'text-cyan-300' },
           { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' }
         ].map(({ tab, label, icon: Icon, color }) => {
