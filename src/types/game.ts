@@ -42,6 +42,7 @@ export interface Survivor {
   isAssigned: boolean;      // 是否已指派工作
   assignedSlotId?: number;  // 指派的温室槽位或工坊槽位
   realityLocationId?: string; // 该幸存者在现实中的救援地点 ID
+  assignedJobId?: string | null;
 }
 
 export interface GameState {
@@ -79,4 +80,50 @@ export interface GameState {
   hasCatherine?: boolean;
   hasBuster?: boolean;
   hasNova?: boolean;
+  shelter: ShelterStats;
+  lastOfflineReport?: OfflineReport | null;
+}
+
+export interface AutoRecipe {
+  id: string;
+  name: string;
+  input: Record<string, number>;
+  output: Record<string, number>;
+  duration: number; // 单次生产耗时（秒）
+}
+
+export interface AutomationFacility {
+  id: string;                     // 'smelter' | 'assembler'
+  name: string;
+  level: number;                  // 设施等级，升级可缩短加工时间
+  activeRecipeId: string | null;  // 当前启用的加工配方，null表示未启用
+  currentProgress: number;        // 单次加工进度 (0 - 100)
+  timeLeft: number;               // 当前单次加工剩余时间 (秒)
+  assignedSurvivorId: string | null; // 派驻的幸存者ID（提供效率加成）
+}
+
+export interface ShelterStats {
+  maxOfflineDuration: number;     // 离线收益结算上限时长（秒），初始 4 小时 (14400)
+  batteryLevel: number;           // 蓄电池等级
+  generatorLevel: number;         // 发电机等级
+  recyclerLevel: number;           // 回收站等级
+  facilities: Record<string, AutomationFacility>;
+  
+  // 岗位分配
+  assignedWatererId: string | null;   // 指派自动浇水的幸存者ID
+  assignedExplorerId: string | null;  // 指派挂机探索的幸存者ID
+  
+  // 挂机派遣状态
+  expedition: {
+    locationId: string | null;       // 派遣目的地，如 'radar_station'
+    startTime: number | null;
+    lastScavengeTime: number | null;  // 上次拾荒计算时间戳
+  };
+}
+
+export interface OfflineReport {
+  elapsedSeconds: number;
+  recoveredEnergy: number;
+  recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
+  logs: string[];
 }

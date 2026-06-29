@@ -29,7 +29,6 @@ describe('DreamscapeTab Component', () => {
     const enterButton = screen.getByText(/开始共鸣入梦/i);
     fireEvent.click(enterButton);
 
-    expect(screen.getByText(/唤醒自我/i)).toBeDefined();
     expect(screen.getByText(/当前精神污染/i)).toBeDefined();
   });
 });

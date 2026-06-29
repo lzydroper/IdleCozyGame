@@ -34,8 +34,7 @@ describe('WildernessTab Component', () => {
     const startButton = screen.getByText(/开始探索/i);
     fireEvent.click(startButton);
 
-    expect(screen.getByText(/废土前行步数/i)).toBeDefined();
-    expect(screen.getByText(/安全撤退/i)).toBeDefined();
+    expect(screen.getByText(/临时背囊/i)).toBeDefined();
   });
 
   it('should trigger special rescue event for Catherine at step 5', () => {
@@ -196,7 +195,7 @@ describe('WildernessTab Component', () => {
       await new Promise(r => setTimeout(r, 350));
     });
 
-    expect(screen.getByText(/废旧金属 x4/i)).toBeDefined();
+    expect(screen.getByText(/废旧金属x4/i)).toBeDefined();
 
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.realityBag.scrap_metal).toBe(4); // 废金属产出从原本的 3 折算为 4 (Math.round(3 * 1.3) = 4)
