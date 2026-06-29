@@ -5,7 +5,7 @@ import type { DreamChoice } from '../data/dreamEvents';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Moon, Sparkles, Brain, AlertOctagon } from 'lucide-react';
+import { Sparkles, Brain, AlertOctagon } from 'lucide-react';
 
 const DreamscapeTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -196,29 +196,7 @@ const DreamscapeTab: React.FC = () => {
     }
   };
 
-  const handleWakeUp = () => {
-    // 将梦境包碎片存入主背包
-    setState(prev => {
-      const newInventory = { ...prev.inventory };
-      Object.entries(prev.exploration.dreamBag).forEach(([item, qty]) => {
-        newInventory[item] = (newInventory[item] || 0) + qty;
-      });
-
-      return {
-        ...prev,
-        inventory: newInventory,
-        exploration: {
-          ...prev.exploration,
-          inDreamExploration: false,
-          dreamSteps: 0,
-          dreamBag: {},
-          dreamEventId: null
-        }
-      };
-    });
-    showToast("你成功收回意识从梦境醒来，已带回梦境碎片！", "success");
-    addLog("从集体无意识梦境深处主动苏醒，返回现实。", "system");
-  };
+  
 
   // 使用梦胶囊
   const handleUseCapsule = (capsuleType: 'sanity' | 'warp') => {
@@ -298,19 +276,7 @@ const DreamscapeTab: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* 梦境探索控制头部 */}
-          <div className="flex justify-between items-center p-3 rounded-2xl bg-zinc-900/60 border border-purple-500/20">
-            <span className="text-xs text-zinc-400 font-bold flex items-center gap-1">
-              <Moon className="w-4 h-4 text-purple-400" />
-              梦境连结深度: <span className="text-white text-sm">{exploration.dreamSteps}</span> 层
-            </span>
-            <button
-              onClick={handleWakeUp}
-              className="px-3.5 py-1.5 bg-purple-950 border border-purple-500/40 text-purple-300 text-xs font-black rounded-xl hover:bg-purple-900 transition-colors cursor-pointer"
-            >
-              唤醒自我
-            </button>
-          </div>
+          
 
           {/* 属性与污染条 */}
           <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-2xl grid grid-cols-2 gap-4 text-xs">
