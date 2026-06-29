@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState, GreenhouseSlot, PlayerStats, AutoRecipe, OfflineReport, ShelterStats, AutomationFacility } from '../types/game';
+import type { GameState, GreenhouseSlot, PlayerStats, AutoRecipe, OfflineReport } from '../types/game';
 import cropGlowGrass from '../assets/crop_glow_grass.jpg';
 import cropAetherBerry from '../assets/crop_aether_berry.jpg';
 import cropSteelSunflower from '../assets/crop_steel_sunflower.jpg';
