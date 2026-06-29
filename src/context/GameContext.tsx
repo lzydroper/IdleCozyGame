@@ -266,11 +266,24 @@ export function calculateDetailedOfflineProgress(
 
   // 2. 发电机与回收站自动产出
   let energyGained = 0;
+  const hasNova = !!state.survivors.nova;
+  const currentMaxEnergy = hasNova ? 130 : (state.player.maxEnergy || 100);
+
+  let finalAccumulatedEnergy = state.shelter.accumulatedEnergy || 0;
   if (state.shelter.generatorLevel > 0) {
+    // 由于发电机没有独立岗位，此处理论上借用“魔导冶炼炉”中派驻的幸存者（需为工程师）作为魔力发电机调校员提供 50% 额外发电效率
     const speedBonus = 1 + (state.survivors[state.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
-    energyGained = Math.floor(actualSeconds * (state.shelter.generatorLevel * 0.005) * speedBonus);
-    const hasNova = !!state.survivors.nova;
-    const currentMaxEnergy = hasNova ? 130 : (state.player.maxEnergy || 100);
+    const totalOfflineEnergy = actualSeconds * (state.shelter.generatorLevel * 0.005) * speedBonus;
+    energyGained = Math.floor(totalOfflineEnergy);
+    
+    // 合并离线与下线前的魔能累加器，避免极微小的精度损失
+    finalAccumulatedEnergy += (totalOfflineEnergy - energyGained);
+    if (finalAccumulatedEnergy >= 1) {
+      const extraEnergy = Math.floor(finalAccumulatedEnergy);
+      energyGained += extraEnergy;
+      finalAccumulatedEnergy -= extraEnergy;
+    }
+    
     currentEnergy = Math.min(currentMaxEnergy, currentEnergy + energyGained);
     if (energyGained > 0) {
       reportLogs.push(`⚡ 避难所魔能发电机在挂机期间累计凝聚了 ${energyGained} 点魔能。`);
@@ -278,8 +291,19 @@ export function calculateDetailedOfflineProgress(
   }
 
   let scrapGained = 0;
+  let finalAccumulatedScrap = state.shelter.accumulatedScrap || 0;
   if (state.shelter.recyclerLevel > 0) {
-    scrapGained = Math.floor(actualSeconds * (state.shelter.recyclerLevel * 0.002));
+    const totalOfflineScrap = actualSeconds * (state.shelter.recyclerLevel * 0.002);
+    scrapGained = Math.floor(totalOfflineScrap);
+    
+    // 合并离线与下线前的回收站累加器
+    finalAccumulatedScrap += (totalOfflineScrap - scrapGained);
+    if (finalAccumulatedScrap >= 1) {
+      const extraScrap = Math.floor(finalAccumulatedScrap);
+      scrapGained += extraScrap;
+      finalAccumulatedScrap -= extraScrap;
+    }
+
     if (scrapGained > 0) {
       currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) + scrapGained;
       recoveredItems.scrap_metal = (recoveredItems.scrap_metal || 0) + scrapGained;
@@ -300,7 +324,9 @@ export function calculateDetailedOfflineProgress(
 
       if (scavengeTicks > 0) {
         const baseScavengeTime = exp.lastScavengeTime || exp.startTime || Date.now();
-        nextLastScavengeTime = baseScavengeTime + scavengeTicks * actualInterval * 1000;
+        // 核心修复：更新 lastScavengeTime 时，必须加上全部流逝时间 elapsedSeconds (即便超出了离线时长上限)
+        // 确保未被结算的多余溢出时间能够被彻底消耗，防止重新上线后被秒级 Tick 定时器恶意“补发”
+        nextLastScavengeTime = baseScavengeTime + elapsedSeconds * 1000;
       }
       
       let scavengedCount: Record<string, number> = {};
@@ -440,8 +466,8 @@ export function calculateDetailedOfflineProgress(
         ...exp,
         lastScavengeTime: nextLastScavengeTime
       },
-      accumulatedEnergy: 0,
-      accumulatedScrap: 0
+      accumulatedEnergy: finalAccumulatedEnergy,
+      accumulatedScrap: finalAccumulatedScrap
     }
   };
 
@@ -599,6 +625,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // 1. 发电机与回收站自动产出
         if (prev.shelter.generatorLevel > 0) {
+          // 由于发电机没有独立排班，此处借用“魔导冶炼炉”中派驻的工程师作为调校员提供发电机增益
           const speedBonus = 1 + (prev.survivors[prev.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
           const energyGained = (prev.shelter.generatorLevel * 0.005) * speedBonus;
           nextAccumulatedEnergy += energyGained;
@@ -1319,6 +1346,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!facility) return prev;
       if (recipeId && !AUTO_RECIPES[recipeId]) return prev;
 
+      const prevRecipeId = facility.activeRecipeId;
+      const prevRecipe = prevRecipeId ? AUTO_RECIPES[prevRecipeId] : null;
+      let updatedInventory = { ...prev.inventory };
+
+      // 如果前一个配方正在生产中，退还扣除的原材料
+      if (prevRecipe && facility.timeLeft > 0) {
+        Object.entries(prevRecipe.input).forEach(([itemId, qty]) => {
+          updatedInventory[itemId] = (updatedInventory[itemId] || 0) + qty;
+        });
+      }
+
       const updatedFacilities = {
         ...prev.shelter.facilities,
         [facilityId]: {
@@ -1332,6 +1370,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       success = true;
       return {
         ...prev,
+        inventory: updatedInventory,
         shelter: {
           ...prev.shelter,
           facilities: updatedFacilities
