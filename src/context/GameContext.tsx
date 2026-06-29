@@ -144,7 +144,41 @@ const INITIAL_STATE: GameState = {
   dayStartTime: Date.now(),
   logs: [
     { id: 'init', text: '▶ 避难所系统启动。欢迎来到废土魔导温室，生存者。', timestamp: Date.now(), type: 'system' }
-  ]
+  ],
+  shelter: {
+    maxOfflineDuration: 14400, // 4小时
+    batteryLevel: 1,
+    generatorLevel: 0, // 初始未启用自动发电机
+    recyclerLevel: 0,  // 初始未启用物资回收站
+    facilities: {
+      smelter: {
+        id: 'smelter',
+        name: '魔导冶炼炉',
+        level: 1,
+        activeRecipeId: null,
+        currentProgress: 0,
+        timeLeft: 0,
+        assignedSurvivorId: null
+      },
+      assembler: {
+        id: 'assembler',
+        name: '微型芯片组装台',
+        level: 1,
+        activeRecipeId: null,
+        currentProgress: 0,
+        timeLeft: 0,
+        assignedSurvivorId: null
+      }
+    },
+    assignedWatererId: null,
+    assignedExplorerId: null,
+    expedition: {
+      locationId: null,
+      startTime: null,
+      lastScavengeTime: null
+    }
+  },
+  lastOfflineReport: null
 };
 
 // 纯函数：计算离线或Tick生长时间扣减
