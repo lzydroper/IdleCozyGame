@@ -4,7 +4,7 @@ import { REALITY_EVENTS } from '../data/realityEvents';
 import type { RealityEvent, EventChoice } from '../data/realityEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ShieldAlert, Package, ChevronRight } from 'lucide-react';
+import { Compass, ShieldAlert, ChevronRight } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 
@@ -156,9 +156,10 @@ const NOVA_RESCUE_EVENT: RealityEvent = {
 
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
-  const { showToast, showConfirm } = useToast();
+  const { showToast } = useToast();
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [deathOccurred, setDeathOccurred] = useState(false);
+  const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
 
   const exploration = state.exploration;
   const player = state.player;
@@ -457,34 +458,7 @@ const WildernessTab: React.FC = () => {
     }
   };
 
-  const handleRetreat = () => {
-    showConfirm({
-      title: "安全撤退确认",
-      message: "确认折返回避难所吗？这会结束本次探索，带回当前临时背包里的战利品。",
-      onConfirm: () => {
-        setState(prev => {
-          const newInventory = { ...prev.inventory };
-          Object.entries(prev.exploration.realityBag).forEach(([item, qty]) => {
-            newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
-          });
-
-          return {
-            ...prev,
-            inventory: newInventory,
-            exploration: {
-              ...prev.exploration,
-              inRealityExploration: false,
-              realitySteps: 0,
-              realityBag: {},
-              realityEventId: null
-            }
-          };
-        });
-        showToast("安全撤退，战利品存入储藏箱！", "success");
-        addLog("安全折返回避难所，清点战利品入库。", "system");
-      }
-    });
-  };
+  
 
   // 整理出所有待营救同伴
   const rescueTargets = Object.values(state.survivors).filter(s => s.realityLocationId);
@@ -561,77 +535,77 @@ const WildernessTab: React.FC = () => {
         </div>
       ) : (
         /* In exploration display */
-        <div className="space-y-4">
-          {/* 探索头部信息 */}
-          <div className="flex justify-between items-center p-3 rounded-2xl bg-zinc-900/60 border border-cyan-500/20">
-            <span className="text-xs text-zinc-400 font-bold flex items-center gap-1">
-              <Compass className="w-4 h-4 text-cyan-400" />
-              {exploration.realityLocationId ? (
-                <>救援行动步数: <span className="text-white text-sm">{exploration.realitySteps}/5</span> 步</>
-              ) : (
-                <>废土前行步数: <span className="text-white text-sm">{exploration.realitySteps}</span> 步</>
-              )}
-            </span>
-            <button
-              onClick={handleRetreat}
-              className="px-3.5 py-1.5 bg-rose-950 border border-rose-500/40 text-rose-300 text-xs font-black rounded-xl hover:bg-rose-900 transition-colors cursor-pointer"
-            >
-              安全撤退
-            </button>
-          </div>
-
-          {/* 临时背包 */}
-          <div className="p-3 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-xs">
-            <h4 className="font-bold text-zinc-400 mb-2 flex items-center gap-1.5 select-none">
-              <Package className="w-3.5 h-3.5" /> 临时背囊 (撤退时方带回储藏):
-            </h4>
-            {Object.keys(exploration.realityBag).length === 0 ? (
-              <span className="text-zinc-600 italic">包包空荡，向前滑动卡片搜索物资吧</span>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(exploration.realityBag).map(([item, qty]) => {
-                  const label = ITEMS_CONFIG[item]?.name || item;
-                  const isNegative = qty < 0;
-                  return (
-                    <span key={item} className={`px-2 py-1 rounded-lg border font-bold select-none ${
-                      isNegative 
-                        ? 'bg-red-950/20 border-red-500/30 text-red-400' 
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-300'
-                    }`}>
-                      {label} x{qty}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
+        <div className="space-y-2.5 pt-0.5">
           {/* 遭遇卡牌 - 使用左右滑动交互组件 */}
           {currentEvent && (
-            <div className="w-full">
+            <div className="w-full pt-0">
               <SwipeCard
                 title={currentEvent.title}
                 description={currentEvent.description}
                 imageSrc={wildernessCard}
-                leftLabel={currentEvent.choices.A.text}
-                rightLabel={currentEvent.choices.B.text}
-                leftColor="bg-red-500/20"
-                rightColor="bg-cyan-500/20"
+                choiceA={currentEvent.choices.A}
+                choiceB={currentEvent.choices.B}
+                playerStats={state.player}
+                playerInventory={state.inventory}
+                hasCatherine={!!(state.hasCatherine || state.survivors.catherine)}
+                hasBuster={!!(state.survivors.buster && !state.survivors.buster.realityLocationId)}
+                eventType={currentEvent.type}
                 onSwipeLeft={() => handleMakeChoice(currentEvent.choices.A)}
                 onSwipeRight={() => handleMakeChoice(currentEvent.choices.B)}
               />
             </div>
           )}
 
-          {/* 探索日志 */}
-          <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 flex flex-col gap-2 max-h-40 overflow-y-auto">
-            <h4 className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-left">探索无线电日志</h4>
-            <div className="space-y-1.5 text-[10px] leading-relaxed">
-              {logMessages.map((msg, i) => (
-                <p key={i} className="text-zinc-500 border-l border-zinc-800 pl-2 text-left">
-                  {msg}
-                </p>
-              ))}
+          {/* 临时背包与日志合并 Tab 面板 */}
+          <div className="p-3 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 flex flex-col gap-2">
+            <div className="flex gap-2 border-b border-zinc-800/60 pb-1.5">
+              <button
+                onClick={() => setExploreSubTab('bag')}
+                className={`text-[10px] font-black pb-0.5 border-b-2 transition-all cursor-pointer ${
+                  exploreSubTab === 'bag' ? 'text-cyan-400 border-cyan-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
+                }`}
+              >
+                🎒 临时背囊 ({Object.keys(exploration.realityBag).length})
+              </button>
+              <button
+                onClick={() => setExploreSubTab('logs')}
+                className={`text-[10px] font-black pb-0.5 border-b-2 transition-all cursor-pointer ${
+                  exploreSubTab === 'logs' ? 'text-cyan-400 border-cyan-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
+                }`}
+              >
+                📻 无线电日志
+              </button>
+            </div>
+            <div className="min-h-[40px] flex flex-col justify-center">
+              {exploreSubTab === 'bag' ? (
+                Object.keys(exploration.realityBag).length === 0 ? (
+                  <span className="text-[10px] text-zinc-600 italic text-left select-none">暂无战利品，请滑动或点击按钮进行搜刮</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 max-h-14 overflow-y-auto">
+                    {Object.entries(exploration.realityBag).map(([item, qty]) => {
+                      const label = ITEMS_CONFIG[item]?.name || item;
+                      const isNegative = qty < 0;
+                      return (
+                        <span key={item} className={`px-1.5 py-0.5 rounded border text-[9px] font-bold select-none ${
+                          isNegative 
+                            ? 'bg-red-950/20 border-red-500/30 text-red-400' 
+                            : 'bg-zinc-950 border-zinc-850 text-zinc-350'
+                        }`}>
+                          {label}x{qty}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                <div className="space-y-1 text-[9px] leading-relaxed max-h-14 overflow-y-auto">
+                  {logMessages.slice(-3).map((msg, i) => (
+                    <p key={i} className="text-zinc-500 border-l border-zinc-850 pl-1.5 text-left truncate select-none">
+                      {msg}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
