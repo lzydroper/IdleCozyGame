@@ -8,6 +8,7 @@ import LogTab from './components/LogTab';
 import ShelterTab from './components/ShelterTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
+import { ITEMS_CONFIG } from './data/items';
 import {
   Sprout,
   Compass,
@@ -486,6 +487,91 @@ const App: React.FC = () => {
           );
         })}
       </nav>
+
+      {/* 离线结算弹窗 */}
+      {state.lastOfflineReport && (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-850 rounded-3xl p-5 max-w-sm w-full shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto">
+            
+            {/* 头部 */}
+            <div className="text-center">
+              <span className="inline-block px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2">
+                💾 避难所离线运转报告
+              </span>
+              <h2 className="text-sm font-bold text-zinc-150">
+                欢迎归来，生存者！
+              </h2>
+              <div className="text-[10px] text-zinc-500 mt-1 font-mono">
+                离线持续时长: {(() => {
+                  const s = state.lastOfflineReport.elapsedSeconds;
+                  const hours = Math.floor(s / 3600);
+                  const mins = Math.floor((s % 3600) / 60);
+                  const secs = s % 60;
+                  return `${hours > 0 ? `${hours}小时 ` : ''}${mins > 0 ? `${mins}分 ` : ''}${secs}秒`;
+                })()}
+              </div>
+            </div>
+
+            {/* 资源收益汇总 */}
+            <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/60 space-y-2.5">
+              <h3 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1">
+                📦 累计收集与产出
+              </h3>
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                {state.lastOfflineReport.recoveredEnergy > 0 && (
+                  <div className="flex items-center gap-1.5 text-amber-500">
+                    <span className="text-xs">⚡</span>
+                    <span>魔能: +{state.lastOfflineReport.recoveredEnergy}</span>
+                  </div>
+                )}
+                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 ? (
+                  <div className="col-span-2 text-center text-zinc-600 py-2 text-[10px]">
+                    本次无资源挂机产出 (升级设施或指派幸存者以启动自动产出)
+                  </div>
+                ) : (
+                  Object.entries(state.lastOfflineReport.recoveredItems).map(([id, qty]) => {
+                    const meta = ITEMS_CONFIG[id];
+                    return (
+                      <div key={id} className="flex items-center gap-1.5 text-zinc-300 font-mono">
+                        <span className="text-xs">{meta?.emoji || '📦'}</span>
+                        <span>{meta?.name || id}: +{qty}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* 结算日志明细 */}
+            {state.lastOfflineReport.logs.length > 0 && (
+              <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/60 flex flex-col space-y-1">
+                <h4 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 mb-1">
+                  📋 避难所自动运转明细
+                </h4>
+                <div className="space-y-1 text-[9px] text-zinc-400 font-mono max-h-[120px] overflow-y-auto pr-1">
+                  {state.lastOfflineReport.logs.map((log, idx) => (
+                    <div key={idx} className="flex items-start gap-1">
+                      <span className="text-zinc-600">▪</span>
+                      <span>{log}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 一键确认 */}
+            <button
+              onClick={() => {
+                setState(prev => ({ ...prev, lastOfflineReport: null }));
+              }}
+              className="w-full py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border border-cyan-400/20 text-white text-xs font-black rounded-xl shadow-lg shadow-cyan-950/20 transition-all cursor-pointer text-center"
+            >
+              收下物资，开始生存
+            </button>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };
