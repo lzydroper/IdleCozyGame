@@ -120,6 +120,8 @@ export interface ShelterStats {
     startTime: number | null;
     lastScavengeTime: number | null;  // 上次拾荒计算时间戳
   };
+  accumulatedEnergy?: number;
+  accumulatedScrap?: number;
 }
 
 export interface OfflineReport {

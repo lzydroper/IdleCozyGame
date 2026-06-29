@@ -221,7 +221,9 @@ const INITIAL_STATE: GameState = {
       locationId: null,
       startTime: null,
       lastScavengeTime: null
-    }
+    },
+    accumulatedEnergy: 0,
+    accumulatedScrap: 0
   },
   lastOfflineReport: null
 };
@@ -287,6 +289,7 @@ export function calculateDetailedOfflineProgress(
 
   // 3. 挂机派遣拾荒结算
   const exp = state.shelter.expedition;
+  let nextLastScavengeTime = exp.lastScavengeTime;
   if (exp.locationId && state.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
@@ -294,6 +297,11 @@ export function calculateDetailedOfflineProgress(
       const speedBonus = 1 + (explorer?.role === 'scout' ? explorer.bonus : 0);
       const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval / speedBonus));
       const scavengeTicks = Math.floor(actualSeconds / actualInterval);
+
+      if (scavengeTicks > 0) {
+        const baseScavengeTime = exp.lastScavengeTime || exp.startTime || Date.now();
+        nextLastScavengeTime = baseScavengeTime + scavengeTicks * actualInterval * 1000;
+      }
       
       let scavengedCount: Record<string, number> = {};
       for (let i = 0; i < scavengeTicks; i++) {
@@ -427,7 +435,13 @@ export function calculateDetailedOfflineProgress(
     greenhouse: { ...state.greenhouse, slots: updatedSlots },
     shelter: {
       ...state.shelter,
-      facilities: updatedFacilities
+      facilities: updatedFacilities,
+      expedition: {
+        ...exp,
+        lastScavengeTime: nextLastScavengeTime
+      },
+      accumulatedEnergy: 0,
+      accumulatedScrap: 0
     }
   };
 
@@ -580,16 +594,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const hasNova = !!prev.survivors.nova;
         const currentMaxEnergy = hasNova ? 130 : (prev.player.maxEnergy || 100);
 
+        let nextAccumulatedEnergy = prev.shelter.accumulatedEnergy ?? 0;
+        let nextAccumulatedScrap = prev.shelter.accumulatedScrap ?? 0;
+
         // 1. 发电机与回收站自动产出
         if (prev.shelter.generatorLevel > 0) {
           const speedBonus = 1 + (prev.survivors[prev.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
           const energyGained = (prev.shelter.generatorLevel * 0.005) * speedBonus;
-          currentEnergy = Math.min(currentMaxEnergy, currentEnergy + energyGained);
+          nextAccumulatedEnergy += energyGained;
         }
 
         if (prev.shelter.recyclerLevel > 0) {
           const scrapGained = prev.shelter.recyclerLevel * 0.002;
-          currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) + scrapGained;
+          nextAccumulatedScrap += scrapGained;
+        }
+
+        if (nextAccumulatedEnergy >= 1) {
+          const intEnergy = Math.floor(nextAccumulatedEnergy);
+          currentEnergy = Math.min(currentMaxEnergy, currentEnergy + intEnergy);
+          nextAccumulatedEnergy -= intEnergy;
+        }
+
+        if (nextAccumulatedScrap >= 1) {
+          const intScrap = Math.floor(nextAccumulatedScrap);
+          currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) + intScrap;
+          nextAccumulatedScrap -= intScrap;
         }
 
         // 2. 温室作物托管浇水与生长
@@ -685,20 +714,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval / speedBonus));
 
             const timeDiff = now - (exp.lastScavengeTime || exp.startTime || now);
-            if (timeDiff >= actualInterval * 1000) {
+            const ticks = Math.floor(timeDiff / (actualInterval * 1000));
+            if (ticks > 0) {
               let scavengedCount: Record<string, number> = {};
-              loc.lootTable.forEach(loot => {
-                if (Math.random() <= loot.chance) {
-                  const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
-                  scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
-                }
-              });
+              for (let t = 0; t < ticks; t++) {
+                loc.lootTable.forEach(loot => {
+                  if (Math.random() <= loot.chance) {
+                    const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
+                    scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
+                  }
+                });
+              }
 
               Object.entries(scavengedCount).forEach(([itemId, qty]) => {
                 currentInventory[itemId] = (currentInventory[itemId] || 0) + qty;
               });
 
-              nextLastScavengeTime = now;
+              nextLastScavengeTime = (exp.lastScavengeTime || exp.startTime || now) + ticks * actualInterval * 1000;
 
               if (Object.keys(scavengedCount).length > 0) {
                 const itemsStr = Object.entries(scavengedCount).map(([id, q]) => `${q}个${id}`).join(', ');
@@ -739,7 +771,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             expedition: {
               ...exp,
               lastScavengeTime: nextLastScavengeTime
-            }
+            },
+            accumulatedEnergy: nextAccumulatedEnergy,
+            accumulatedScrap: nextAccumulatedScrap
           },
           logs: newLogs,
           lastTick: now,
@@ -1220,6 +1254,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ...prev, survivors: updatedSurvivors, shelter: updatedShelter };
       }
 
+      let prevOccupantId: string | null = null;
+      if (jobId === 'waterer') {
+        prevOccupantId = updatedShelter.assignedWatererId;
+      } else if (jobId === 'explorer') {
+        prevOccupantId = updatedShelter.assignedExplorerId;
+      } else if (updatedShelter.facilities[jobId]) {
+        prevOccupantId = updatedShelter.facilities[jobId].assignedSurvivorId;
+      } else {
+        return prev;
+      }
+
       if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
       if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
       Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
@@ -1228,24 +1273,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      let prevOccupantId: string | null = null;
       if (jobId === 'waterer') {
-        prevOccupantId = updatedShelter.assignedWatererId;
         updatedShelter.assignedWatererId = survivorId;
       } else if (jobId === 'explorer') {
-        prevOccupantId = updatedShelter.assignedExplorerId;
         updatedShelter.assignedExplorerId = survivorId;
-      } else if (updatedShelter.facilities[jobId]) {
-        prevOccupantId = updatedShelter.facilities[jobId].assignedSurvivorId;
+        const now = Date.now();
+        updatedShelter.expedition = {
+          ...updatedShelter.expedition,
+          startTime: updatedShelter.expedition.startTime || now,
+          lastScavengeTime: updatedShelter.expedition.lastScavengeTime || now
+        };
+      } else {
         updatedShelter.facilities[jobId] = {
           ...updatedShelter.facilities[jobId],
           assignedSurvivorId: survivorId
         };
-      } else {
-        return prev;
       }
 
-      if (prevOccupantId && updatedSurvivors[prevOccupantId]) {
+      if (prevOccupantId && prevOccupantId !== survivorId && updatedSurvivors[prevOccupantId]) {
         updatedSurvivors[prevOccupantId] = {
           ...updatedSurvivors[prevOccupantId],
           isAssigned: false,
