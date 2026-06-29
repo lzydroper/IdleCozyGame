@@ -141,7 +141,7 @@ const ShelterTab: React.FC = () => {
   const nextRecRate = ((currentRecycler + 1) * 0.002 * 60).toFixed(2);
 
   // 2. 幸存者列表
-  const survivorsList = Object.values(state.survivors);
+  const survivorsList = Object.values(state.survivors).filter(s => !s.realityLocationId);
   const meiSurvivor = state.survivors.mei;
 
   // 一键浇水操作
@@ -236,7 +236,16 @@ const ShelterTab: React.FC = () => {
 
     // 检查角色要求
     const explorer = state.survivors[selectedExpExplorerId];
-    if (loc.requiredRole && explorer?.role !== loc.requiredRole) {
+    if (!explorer) {
+      showToast('派遣失败！未找到该幸存者。', 'error');
+      return;
+    }
+    // 检查是否已救援（防止绕过 UI 直接调用）
+    if (explorer.realityLocationId) {
+      showToast(`派遣失败！${explorer.name} 尚未从荒野救回，无法派遣远征。`, 'error');
+      return;
+    }
+    if (loc.requiredRole && explorer.role !== loc.requiredRole) {
       showToast(`派遣失败！该地点需要【${loc.requiredRole === 'scout' ? '侦察兵' : '工程师'}】职业。`, 'error');
       return;
     }
@@ -324,7 +333,7 @@ const ShelterTab: React.FC = () => {
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              升级 🔩{nextBatteryCost}
+              升级 🔧{nextBatteryCost}
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextMaxHours}h</span>
             </button>
           </div>
@@ -360,7 +369,7 @@ const ShelterTab: React.FC = () => {
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              升级 🔩{nextGeneratorCost}
+              升级 🔧{nextGeneratorCost}
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextGenRate}/分</span>
             </button>
           </div>
@@ -396,7 +405,7 @@ const ShelterTab: React.FC = () => {
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              升级 🔩{nextRecyclerCost}
+              升级 🔧{nextRecyclerCost}
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextRecRate}/分</span>
             </button>
           </div>
@@ -717,7 +726,7 @@ const ShelterTab: React.FC = () => {
                         : 'bg-zinc-900/50 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                     }`}
                   >
-                    升级 🔩{upgradeCost}
+                    升级 🔧{upgradeCost}
                   </button>
                 </div>
 
@@ -929,7 +938,7 @@ const ShelterTab: React.FC = () => {
                         : 'bg-zinc-900/50 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                     }`}
                   >
-                    升级 🔩{upgradeCost}
+                    升级 🔧{upgradeCost}
                   </button>
                 </div>
 
