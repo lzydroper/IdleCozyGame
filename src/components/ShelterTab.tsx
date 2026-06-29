@@ -233,7 +233,7 @@ const ShelterTab: React.FC = () => {
       </div>
 
       {/* 1. 避难所基建与挂机控制 */}
-      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-955/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40 relative overflow-hidden">
+      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -z-10" />
         <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
           <Settings className="w-4 h-4 text-cyan-400 animate-spin-slow" />
@@ -242,7 +242,7 @@ const ShelterTab: React.FC = () => {
 
         <div className="space-y-3.5">
           {/* 蓄电池升级 */}
-          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-850 hover:border-zinc-800 transition-all">
+          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
             <div className="flex gap-2.5 items-center">
               <div className="w-8 h-8 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
                 <Battery className="w-4 h-4" />
@@ -268,14 +268,14 @@ const ShelterTab: React.FC = () => {
               }`}
             >
               升级 🔩{nextBatteryCost}
-              <div className="text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextMaxHours}h</div>
+              <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextMaxHours}h</span>
             </button>
           </div>
 
           {/* 魔导发电机 */}
-          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-850 hover:border-zinc-800 transition-all">
+          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
             <div className="flex gap-2.5 items-center">
-              <div className="w-8 h-8 rounded-lg bg-amber-955/50 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <div className="w-8 h-8 rounded-lg bg-amber-950/50 border border-amber-500/30 flex items-center justify-center text-amber-400">
                 <Zap className="w-4 h-4" />
               </div>
               <div>
@@ -304,12 +304,12 @@ const ShelterTab: React.FC = () => {
               }`}
             >
               升级 🔩{nextGeneratorCost}
-              <div className="text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextGenRate}/分</div>
+              <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextGenRate}/分</span>
             </button>
           </div>
 
           {/* 物资回收站 */}
-          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-850 hover:border-zinc-800 transition-all">
+          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
             <div className="flex gap-2.5 items-center">
               <div className="w-8 h-8 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                 <RefreshCw className="w-4 h-4 text-emerald-400" />
@@ -340,7 +340,7 @@ const ShelterTab: React.FC = () => {
               }`}
             >
               升级 🔩{nextRecyclerCost}
-              <div className="text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextRecRate}/分</div>
+              <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextRecRate}/分</span>
             </button>
           </div>
         </div>
@@ -353,7 +353,7 @@ const ShelterTab: React.FC = () => {
             <Sprout className="w-4 h-4 text-emerald-400" />
             温室控制中心 Greenhouse Station
           </span>
-          <span className="text-[10px] bg-zinc-850 px-2 py-0.5 rounded-lg border border-zinc-800 text-zinc-400">
+          <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded-lg border border-zinc-800 text-zinc-400">
             自动浇水托管中
           </span>
         </h2>
@@ -371,7 +371,7 @@ const ShelterTab: React.FC = () => {
                     ? slot.growthProgress >= 100
                       ? 'bg-emerald-950/20 border-emerald-500/30 shadow-[0_0_8px_rgba(57,255,20,0.1)]'
                       : 'bg-zinc-900/60 border-zinc-800'
-                    : 'bg-zinc-955 border-zinc-900 border-dashed'
+                    : 'bg-zinc-950 border-zinc-900 border-dashed'
                 }`}
               >
                 {/* 状态徽章 */}
@@ -390,7 +390,7 @@ const ShelterTab: React.FC = () => {
                           可收获
                         </span>
                       ) : (
-                        <div className="w-full bg-zinc-850 h-1 rounded-full overflow-hidden mt-0.5 border border-zinc-800">
+                        <div className="w-full bg-zinc-800 h-1 rounded-full overflow-hidden mt-0.5 border border-zinc-800">
                           <div
                             className="bg-emerald-400 h-full"
                             style={{ width: `${slot.growthProgress}%` }}
@@ -408,7 +408,7 @@ const ShelterTab: React.FC = () => {
         </div>
 
         {/* 自动浇水托管岗位指派 */}
-        <div className="bg-zinc-955 border border-zinc-900 p-3 rounded-2xl mb-4 space-y-2">
+        <div className="bg-zinc-950 border border-zinc-900 p-3 rounded-2xl mb-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-bold text-zinc-300 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-zinc-400" />
@@ -489,7 +489,7 @@ const ShelterTab: React.FC = () => {
         <div className="grid grid-cols-2 gap-3.5 pt-1.5 border-t border-zinc-900">
           <button
             onClick={handleBatchWater}
-            className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-850 text-zinc-300 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
           >
             <Droplet className="w-3.5 h-3.5 text-blue-400" />
             一键手动浇水
@@ -510,7 +510,7 @@ const ShelterTab: React.FC = () => {
               <select
                 value={replantCropId}
                 onChange={(e) => setReplantCropId(e.target.value)}
-                className="flex-1 bg-zinc-950 border border-zinc-855 text-zinc-400 p-1 rounded-lg text-[9px] outline-none"
+                className="flex-1 bg-zinc-950 border border-zinc-900 text-zinc-400 p-1 rounded-lg text-[9px] outline-none"
               >
                 {Object.values(CROPS_CONFIG).map(c => {
                   const seedId = Object.keys(c.seedCost)[0];
@@ -582,7 +582,7 @@ const ShelterTab: React.FC = () => {
                     className={`px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all ${
                       getInvQty('scrap_metal') >= upgradeCost
                         ? 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-750 active:scale-95 cursor-pointer'
-                        : 'bg-zinc-900/50 text-zinc-650 border border-zinc-850 cursor-not-allowed'
+                        : 'bg-zinc-900/50 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                     }`}
                   >
                     升级 🔩{upgradeCost}
@@ -607,7 +607,7 @@ const ShelterTab: React.FC = () => {
                         showToast(`🔩 指派 ${name} 负责冶炼炉！工程师操作可获专属生产加速。`, 'success');
                       }
                     }}
-                    className="w-full bg-zinc-955 border border-zinc-850 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
                   >
                     <option value="">-- 无人值守 (无角色加成) --</option>
                     {survivorsList.map(s => {
@@ -645,7 +645,7 @@ const ShelterTab: React.FC = () => {
                       setFacilityRecipe('smelter', val === '' ? null : val);
                       showToast(val === '' ? '已清空冶炼炉配方。' : '配方已部署，产线就绪！', 'info');
                     }}
-                    className="w-full bg-zinc-950 border border-zinc-850 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
                   >
                     <option value="">-- 停产待机中 --</option>
                     {smelterRecipes.map(r => (
@@ -725,7 +725,7 @@ const ShelterTab: React.FC = () => {
                   disabled={!fac.activeRecipeId}
                   className={`w-full py-1.5 rounded-xl font-bold flex items-center justify-center gap-1 text-[10px] transition-all cursor-pointer ${
                     !fac.activeRecipeId
-                      ? 'bg-zinc-900/40 text-zinc-650 border border-zinc-850 cursor-not-allowed'
+                      ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                       : fac.active === false
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95'
                       : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 active:scale-95'
@@ -794,7 +794,7 @@ const ShelterTab: React.FC = () => {
                     className={`px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all ${
                       getInvQty('scrap_metal') >= upgradeCost
                         ? 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-750 active:scale-95 cursor-pointer'
-                        : 'bg-zinc-900/50 text-zinc-650 border border-zinc-850 cursor-not-allowed'
+                        : 'bg-zinc-900/50 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                     }`}
                   >
                     升级 🔩{upgradeCost}
@@ -819,7 +819,7 @@ const ShelterTab: React.FC = () => {
                         showToast(`🔩 指派 ${name} 负责组装台！派遣工程师可提速。`, 'success');
                       }
                     }}
-                    className="w-full bg-zinc-950 border border-zinc-850 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
                   >
                     <option value="">-- 无人值守 (无角色加成) --</option>
                     {survivorsList.map(s => {
@@ -857,7 +857,7 @@ const ShelterTab: React.FC = () => {
                       setFacilityRecipe('assembler', val === '' ? null : val);
                       showToast(val === '' ? '已清空组装台配方。' : '配方已部署，芯片产线就绪！', 'info');
                     }}
-                    className="w-full bg-zinc-955 border border-zinc-850 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-1.5 rounded-lg outline-none text-[10px]"
                   >
                     <option value="">-- 停产待机中 --</option>
                     {assemblerRecipes.map(r => (
@@ -870,7 +870,7 @@ const ShelterTab: React.FC = () => {
 
                 {/* 配方物料消耗展示 */}
                 {activeRecipe && (
-                  <div className="bg-zinc-955 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1">
+                  <div className="bg-zinc-950 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1">
                     <div className="flex justify-between items-start">
                       <span>单次消耗原料:</span>
                       <div className="font-mono text-zinc-500 text-right flex flex-col items-end">
@@ -937,7 +937,7 @@ const ShelterTab: React.FC = () => {
                   disabled={!fac.activeRecipeId}
                   className={`w-full py-1.5 rounded-xl font-bold flex items-center justify-center gap-1 text-[10px] transition-all cursor-pointer ${
                     !fac.activeRecipeId
-                      ? 'bg-zinc-900/40 text-zinc-650 border border-zinc-850 cursor-not-allowed'
+                      ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                       : fac.active === false
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95'
                       : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 active:scale-95'
@@ -1056,7 +1056,7 @@ const ShelterTab: React.FC = () => {
               <select
                 value={selectedExpExplorerId}
                 onChange={(e) => setSelectedExpExplorerId(e.target.value)}
-                className="w-full bg-zinc-955 border border-zinc-850 text-zinc-300 p-2 rounded-xl outline-none text-xs"
+                className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-2 rounded-xl outline-none text-xs"
               >
                 <option value="">-- 选择派遣的幸存者 --</option>
                 {survivorsList.map(s => {
