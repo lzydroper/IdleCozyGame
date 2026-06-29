@@ -376,7 +376,7 @@ const ShelterTab: React.FC = () => {
               >
                 {/* 状态徽章 */}
                 <div className="absolute top-1 right-1 flex gap-0.5 scale-75">
-                  {isWatered && <Droplet className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />}
+                  {slot.cropId && isWatered && <Droplet className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />}
                 </div>
 
                 <div className="text-[10px] text-zinc-500 font-bold">#{slot.id}</div>

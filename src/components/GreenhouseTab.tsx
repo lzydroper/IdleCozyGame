@@ -183,7 +183,7 @@ const GreenhouseTab: React.FC = () => {
               <div>
                 <div className="flex justify-between items-center text-xs text-zinc-500 mb-2 select-none">
                   <span>培养槽 #{slot.id}</span>
-                  {slot.isWatered && (
+                  {slot.isWatered && slot.cropId && (
                     <span className="flex items-center text-blue-400 font-semibold gap-0.5 animate-pulse">
                       <Droplet className="w-3.5 h-3.5 animate-bounce" /> 湿润
                     </span>
