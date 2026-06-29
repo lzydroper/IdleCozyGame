@@ -340,13 +340,13 @@ const ShelterTab: React.FC = () => {
                 }
               }}
               disabled={getInvQty('scrap_metal') < nextBatteryCost}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all text-[10px] ${
+              className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${
                 getInvQty('scrap_metal') >= nextBatteryCost
                   ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              升级 🔧{nextBatteryCost}
+              <span>升级 🔧{nextBatteryCost}</span>
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextMaxHours}h</span>
             </button>
           </div>
@@ -377,13 +377,13 @@ const ShelterTab: React.FC = () => {
                 }
               }}
               disabled={getInvQty('scrap_metal') < nextGeneratorCost}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all text-[10px] ${
+              className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${
                 getInvQty('scrap_metal') >= nextGeneratorCost
                   ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              升级 🔧{nextGeneratorCost}
+              <span>升级 🔧{nextGeneratorCost}</span>
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextGenRate}/分</span>
             </button>
           </div>
@@ -414,13 +414,13 @@ const ShelterTab: React.FC = () => {
                 }
               }}
               disabled={getInvQty('scrap_metal') < nextRecyclerCost}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all text-[10px] ${
+              className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${
                 getInvQty('scrap_metal') >= nextRecyclerCost
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 cursor-pointer'
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              升级 🔧{nextRecyclerCost}
+              <span>升级 🔧{nextRecyclerCost}</span>
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextRecRate}/分</span>
             </button>
           </div>
@@ -434,7 +434,7 @@ const ShelterTab: React.FC = () => {
             <Sprout className="w-4 h-4 text-emerald-400" />
             温室控制中心 Greenhouse Station
           </span>
-          <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded-lg border border-zinc-800 text-zinc-400">
+          <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded-lg border border-zinc-800 text-zinc-400 whitespace-nowrap flex-shrink-0">
             自动浇水托管中
           </span>
         </h2>
