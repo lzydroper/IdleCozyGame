@@ -659,18 +659,18 @@ const ShelterTab: React.FC = () => {
                 {/* 配方物料消耗展示 */}
                 {activeRecipe && (
                   <div className="bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-start">
                       <span>单次消耗原料:</span>
-                      <span className="font-mono text-zinc-500">
+                      <div className="font-mono text-zinc-500 text-right flex flex-col items-end">
                         {Object.entries(activeRecipe.input).map(([id, qty]) => {
                           const hasQty = getInvQty(id);
                           return (
-                            <span key={id} className={hasQty >= qty ? 'text-zinc-400' : 'text-rose-500 font-bold'}>
+                            <div key={id} className={hasQty >= qty ? 'text-zinc-400' : 'text-rose-500 font-bold'}>
                               {ITEMS_CONFIG[id]?.name || id} {qty} (持有:{hasQty})
-                            </span>
+                            </div>
                           );
                         })}
-                      </span>
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span>单次熔炼产出:</span>
@@ -871,9 +871,9 @@ const ShelterTab: React.FC = () => {
                 {/* 配方物料消耗展示 */}
                 {activeRecipe && (
                   <div className="bg-zinc-955 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-start">
                       <span>单次消耗原料:</span>
-                      <span className="font-mono text-zinc-500 text-right">
+                      <div className="font-mono text-zinc-500 text-right flex flex-col items-end">
                         {Object.entries(activeRecipe.input).map(([id, qty]) => {
                           const hasQty = getInvQty(id);
                           return (
@@ -882,7 +882,7 @@ const ShelterTab: React.FC = () => {
                             </div>
                           );
                         })}
-                      </span>
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span>单次组装产出:</span>
