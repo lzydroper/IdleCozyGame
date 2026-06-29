@@ -157,74 +157,94 @@ const NOVA_RESCUE_EVENT: RealityEvent = {
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
   const { showToast, showConfirm } = useToast();
-  const [currentEvent, setCurrentEvent] = useState<RealityEvent | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [deathOccurred, setDeathOccurred] = useState(false);
 
   const exploration = state.exploration;
   const player = state.player;
 
+  const currentEventId = exploration.realityEventId;
+  const currentEvent = (() => {
+    if (!currentEventId) return null;
+    if (currentEventId === 'rescue_roy') return ROY_RESCUE_EVENT;
+    if (currentEventId === 'rescue_mei') return MEI_RESCUE_EVENT;
+    if (currentEventId === 'rescue_zero') return ZERO_RESCUE_EVENT;
+    if (currentEventId === 'rescue_catherine') return CATHERINE_RESCUE_EVENT;
+    if (currentEventId === 'rescue_buster') return BUSTER_RESCUE_EVENT;
+    if (currentEventId === 'rescue_nova') return NOVA_RESCUE_EVENT;
+    return REALITY_EVENTS[currentEventId] || null;
+  })();
+
   // 随机抽取一张事件卡牌，或者是救援目的地的特殊事件
   const drawEvent = () => {
+    let selectedEvent: RealityEvent;
     // 救援任务到了第 5 步（steps === 4）
     if (exploration.realityLocationId && exploration.realitySteps >= 4) {
       if (exploration.realityLocationId === 'radar_station') {
-        setCurrentEvent(ROY_RESCUE_EVENT);
+        selectedEvent = ROY_RESCUE_EVENT;
       } else if (exploration.realityLocationId === 'green_ruins') {
-        setCurrentEvent(MEI_RESCUE_EVENT);
+        selectedEvent = MEI_RESCUE_EVENT;
       } else if (exploration.realityLocationId === 'signal_tower') {
-        setCurrentEvent(ZERO_RESCUE_EVENT);
+        selectedEvent = ZERO_RESCUE_EVENT;
       } else if (exploration.realityLocationId === 'bio_lab') {
-        setCurrentEvent(CATHERINE_RESCUE_EVENT);
+        selectedEvent = CATHERINE_RESCUE_EVENT;
       } else if (exploration.realityLocationId === 'collapsed_subway') {
-        setCurrentEvent(BUSTER_RESCUE_EVENT);
+        selectedEvent = BUSTER_RESCUE_EVENT;
       } else if (exploration.realityLocationId === 'military_depot') {
-        setCurrentEvent(NOVA_RESCUE_EVENT);
+        selectedEvent = NOVA_RESCUE_EVENT;
+      } else {
+        return;
       }
-      return;
+    } else {
+      // 正常抽随机事件
+      const keys = Object.keys(REALITY_EVENTS);
+      const events = keys.map(key => REALITY_EVENTS[key]);
+      
+      // 1. 根据分类大权重筛选事件类型
+      const CATEGORY_WEIGHTS: Record<string, number> = {
+        common: 100,
+        danger: 80,
+        combat: 60,
+        welfare: 40
+      };
+      
+      const availableCategories = Array.from(new Set(events.map(e => e.type)));
+      const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
+      
+      let randomCatNum = Math.random() * totalCatWeight;
+      let selectedCat = availableCategories[0];
+      for (const cat of availableCategories) {
+        const catWeight = CATEGORY_WEIGHTS[cat] ?? 100;
+        if (randomCatNum < catWeight) {
+          selectedCat = cat;
+          break;
+        }
+        randomCatNum -= catWeight;
+      }
+      
+      // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
+      const catEvents = events.filter(e => e.type === selectedCat);
+      const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
+      
+      let randomEvtNum = Math.random() * totalEventWeight;
+      selectedEvent = catEvents[0];
+      for (const evt of catEvents) {
+        const weight = evt.weight ?? 100;
+        if (randomEvtNum < weight) {
+          selectedEvent = evt;
+          break;
+        }
+        randomEvtNum -= weight;
+      }
     }
 
-    // 正常抽随机事件
-    const keys = Object.keys(REALITY_EVENTS);
-    const events = keys.map(key => REALITY_EVENTS[key]);
-    
-    // 1. 根据分类大权重筛选事件类型
-    const CATEGORY_WEIGHTS: Record<string, number> = {
-      common: 100,
-      danger: 80,
-      combat: 60,
-      welfare: 40
-    };
-    
-    const availableCategories = Array.from(new Set(events.map(e => e.type)));
-    const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
-    
-    let randomCatNum = Math.random() * totalCatWeight;
-    let selectedCat = availableCategories[0];
-    for (const cat of availableCategories) {
-      const catWeight = CATEGORY_WEIGHTS[cat] ?? 100;
-      if (randomCatNum < catWeight) {
-        selectedCat = cat;
-        break;
+    setState(prev => ({
+      ...prev,
+      exploration: {
+        ...prev.exploration,
+        realityEventId: selectedEvent.id
       }
-      randomCatNum -= catWeight;
-    }
-    
-    // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
-    const catEvents = events.filter(e => e.type === selectedCat);
-    const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
-    
-    let randomEvtNum = Math.random() * totalEventWeight;
-    let selectedEvent = catEvents[0];
-    for (const evt of catEvents) {
-      const weight = evt.weight ?? 100;
-      if (randomEvtNum < weight) {
-        selectedEvent = evt;
-        break;
-      }
-      randomEvtNum -= weight;
-    }
-    setCurrentEvent(selectedEvent);
+    }));
   };
 
   const handleStartExploration = (locationId: string | null) => {
@@ -262,7 +282,8 @@ const WildernessTab: React.FC = () => {
         inRealityExploration: true,
         realitySteps: 0,
         realityLocationId: locationId,
-        realityBag: {}
+        realityBag: {},
+        realityEventId: null
       }
     }));
 
@@ -273,10 +294,10 @@ const WildernessTab: React.FC = () => {
   };
 
   useEffect(() => {
-    if (exploration.inRealityExploration && !currentEvent) {
+    if (exploration.inRealityExploration && !exploration.realityEventId) {
       drawEvent();
     }
-  }, [exploration.inRealityExploration]);
+  }, [exploration.inRealityExploration, exploration.realityEventId]);
 
   const handleMakeChoice = (choice: EventChoice) => {
     // 检查前提条件
@@ -301,6 +322,24 @@ const WildernessTab: React.FC = () => {
       }
       if (adjustedStats.food !== undefined && adjustedStats.food < 0) {
         adjustedStats.food = Math.round(adjustedStats.food * 0.85);
+      }
+    }
+
+    // 检查属性是否足够 (饱食度和魔能)
+    if (adjustedStats) {
+      if (adjustedStats.food !== undefined && adjustedStats.food < 0) {
+        const foodCost = Math.abs(adjustedStats.food);
+        if (player.food < foodCost) {
+          showToast(`您的饱食度不足（需要 ${foodCost}）！`, "error");
+          return;
+        }
+      }
+      if (adjustedStats.energy !== undefined && adjustedStats.energy < 0) {
+        const energyCost = Math.abs(adjustedStats.energy);
+        if (player.energy < energyCost) {
+          showToast(`您的魔能不足（需要 ${energyCost}）！`, "error");
+          return;
+        }
       }
     }
 
@@ -379,7 +418,8 @@ const WildernessTab: React.FC = () => {
             inRealityExploration: false,
             realitySteps: 0,
             realityLocationId: null,
-            realityBag: {}
+            realityBag: {},
+            realityEventId: null
           }
         };
       }
@@ -392,7 +432,8 @@ const WildernessTab: React.FC = () => {
           ...prev.exploration,
           realitySteps: prev.exploration.realitySteps + (isDead ? 0 : 1),
           realityBag: isDead ? {} : newRealityBag,
-          inRealityExploration: !isDead
+          inRealityExploration: !isDead,
+          realityEventId: null
         }
       };
     });
@@ -404,7 +445,6 @@ const WildernessTab: React.FC = () => {
       const dieMsg = "🔴 警告：防化服严重破损！你重伤失去意识，避难所机械臂将你强行拖回。丢失了全部地表战利品...";
       setLogMessages(prev => [...prev, choice.results.logText, dieMsg]);
       addLog(dieMsg, 'combat');
-      setCurrentEvent(null);
     } else {
       setLogMessages(prev => [...prev, choice.results.logText]);
       addLog(choice.results.logText, 'event');
@@ -413,9 +453,6 @@ const WildernessTab: React.FC = () => {
         const congr = `🎉 营救成功！同伴【${rescuedName}】已安全护送回避难所！他已安顿，可在日志页面查看并为您提供强大的永久加成！`;
         showToast(`成功营救同伴 ${rescuedName}！`, "success");
         addLog(congr, 'system');
-        setCurrentEvent(null);
-      } else {
-        drawEvent();
       }
     }
   };
@@ -438,13 +475,13 @@ const WildernessTab: React.FC = () => {
               ...prev.exploration,
               inRealityExploration: false,
               realitySteps: 0,
-              realityBag: {}
+              realityBag: {},
+              realityEventId: null
             }
           };
         });
         showToast("安全撤退，战利品存入储藏箱！", "success");
         addLog("安全折返回避难所，清点战利品入库。", "system");
-        setCurrentEvent(null);
       }
     });
   };
