@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState, GreenhouseSlot, PlayerStats } from '../types/game';
+import type { GameState, GreenhouseSlot, PlayerStats, AutoRecipe, OfflineReport, ShelterStats, AutomationFacility } from '../types/game';
 import cropGlowGrass from '../assets/crop_glow_grass.jpg';
 import cropAetherBerry from '../assets/crop_aether_berry.jpg';
 import cropSteelSunflower from '../assets/crop_steel_sunflower.jpg';
@@ -8,6 +8,51 @@ import cropFrostBell from '../assets/crop_frost_bell.jpg';
 import cropPlasmaPumpkin from '../assets/crop_plasma_pumpkin.jpg';
 import cropVoidLotus from '../assets/crop_void_lotus.jpg';
 import { RECIPES_CONFIG } from '../data/recipes';
+
+export const AUTO_RECIPES: Record<string, AutoRecipe> = {
+  smelt_alloy: { id: 'smelt_alloy', name: '提炼合金金属板', input: { scrap_metal: 2 }, output: { alloy_plate: 1 }, duration: 30 },
+  smelt_sunflower: { id: 'smelt_sunflower', name: '钢纹花瓣熔炼', input: { steel_petal: 3, scrap_metal: 1 }, output: { alloy_plate: 2 }, duration: 45 },
+  assemble_ration: { id: 'assemble_ration', name: '自动合成压缩口粮', input: { glow_fiber: 3 }, output: { ration: 1 }, duration: 20 },
+  assemble_energy: { id: 'assemble_energy', name: '能量补充剂组装', input: { glow_fiber: 2, scrap_metal: 1 }, output: { energy_refill: 1 }, duration: 40 },
+  assemble_turret: { id: 'assemble_turret', name: '防御炮塔装配', input: { scrap_metal: 3, glow_fiber: 3 }, output: { defensive_turret: 1 }, duration: 90 }
+};
+
+export const EXPEDITION_LOCATIONS = {
+  radar_station: {
+    id: 'radar_station',
+    name: '雷达站废墟',
+    requiredRole: null,
+    scavengeInterval: 300,
+    lootTable: [
+      { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
+      { itemId: 'energy_refill', chance: 0.1, minQty: 1, maxQty: 1 },
+      { itemId: 'seed_glow_grass', chance: 0.2, minQty: 1, maxQty: 1 }
+    ]
+  },
+  subway_station: {
+    id: 'subway_station',
+    name: '坍塌地铁站',
+    requiredRole: 'scout',
+    scavengeInterval: 240,
+    lootTable: [
+      { itemId: 'scrap_metal', chance: 0.8, minQty: 1, maxQty: 3 },
+      { itemId: 'steel_petal', chance: 0.3, minQty: 1, maxQty: 2 },
+      { itemId: 'seed_aether_berry', chance: 0.15, minQty: 1, maxQty: 1 }
+    ]
+  },
+  bio_lab: {
+    id: 'bio_lab',
+    name: '生化实验室',
+    requiredRole: 'engineer',
+    scavengeInterval: 360,
+    lootTable: [
+      { itemId: 'mana_dust', chance: 0.5, minQty: 1, maxQty: 2 },
+      { itemId: 'dream_shard', chance: 0.2, minQty: 1, maxQty: 1 },
+      { itemId: 'purifying_serum', chance: 0.05, minQty: 1, maxQty: 1 }
+    ]
+  }
+};
+
 
 // 静态作物配置表
 export const CROPS_CONFIG = {
@@ -206,6 +251,197 @@ export function calculateOfflineProgress(
   });
 }
 
+export function calculateDetailedOfflineProgress(
+  state: GameState,
+  elapsedSeconds: number
+): { updatedState: GameState; report: OfflineReport } {
+  const actualSeconds = Math.min(elapsedSeconds, state.shelter.maxOfflineDuration);
+  const reportLogs: string[] = [];
+  const recoveredItems: Record<string, number> = {};
+
+  let currentInventory = { ...state.inventory };
+  let currentEnergy = state.player.energy;
+
+  // 2. 发电机与回收站自动产出
+  let energyGained = 0;
+  if (state.shelter.generatorLevel > 0) {
+    const speedBonus = 1 + (state.survivors[state.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
+    energyGained = Math.floor(actualSeconds * (state.shelter.generatorLevel * 0.005) * speedBonus);
+    const hasNova = !!state.survivors.nova;
+    const currentMaxEnergy = hasNova ? 130 : (state.player.maxEnergy || 100);
+    currentEnergy = Math.min(currentMaxEnergy, currentEnergy + energyGained);
+    if (energyGained > 0) {
+      reportLogs.push(`⚡ 避难所魔能发电机在挂机期间累计凝聚了 ${energyGained} 点魔能。`);
+    }
+  }
+
+  let scrapGained = 0;
+  if (state.shelter.recyclerLevel > 0) {
+    scrapGained = Math.floor(actualSeconds * (state.shelter.recyclerLevel * 0.002));
+    if (scrapGained > 0) {
+      currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) + scrapGained;
+      recoveredItems.scrap_metal = (recoveredItems.scrap_metal || 0) + scrapGained;
+      reportLogs.push(`🔧 物资回收站自动收集并提炼了 ${scrapGained} 个废旧金属。`);
+    }
+  }
+
+  // 3. 挂机派遣拾荒结算
+  const exp = state.shelter.expedition;
+  if (exp.locationId && state.shelter.assignedExplorerId) {
+    const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
+    if (loc) {
+      const explorer = state.survivors[state.shelter.assignedExplorerId];
+      const speedBonus = 1 + (explorer?.role === 'scout' ? explorer.bonus : 0);
+      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval / speedBonus));
+      const scavengeTicks = Math.floor(actualSeconds / actualInterval);
+      
+      let scavengedCount: Record<string, number> = {};
+      for (let i = 0; i < scavengeTicks; i++) {
+        loc.lootTable.forEach(loot => {
+          if (Math.random() <= loot.chance) {
+            const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
+            scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
+          }
+        });
+      }
+      
+      Object.entries(scavengedCount).forEach(([itemId, qty]) => {
+        currentInventory[itemId] = (currentInventory[itemId] || 0) + qty;
+        recoveredItems[itemId] = (recoveredItems[itemId] || 0) + qty;
+      });
+
+      if (Object.keys(scavengedCount).length > 0) {
+        reportLogs.push(`🤠 幸存者 ${explorer?.name || '探索员'} 挂机探索 ${loc.name} 结束，带回了物资。`);
+      }
+    }
+  }
+
+  // 4. 工厂自动化流水线结算
+  const updatedFacilities = { ...state.shelter.facilities };
+  Object.entries(updatedFacilities).forEach(([facId, fac]) => {
+    if (fac.active === false || !fac.activeRecipeId) return;
+    const recipe = AUTO_RECIPES[fac.activeRecipeId];
+    if (!recipe) return;
+
+    const operator = state.survivors[fac.assignedSurvivorId || ''];
+    const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (fac.level - 1) * 0.1;
+    const actualDuration = Math.max(1, Math.floor(recipe.duration / speedBonus));
+
+    let facilityGained = 0;
+    let facTimeLeft = fac.timeLeft;
+    let tempInventory = { ...currentInventory };
+
+    let remainingSeconds = actualSeconds;
+    if (facTimeLeft > 0) {
+      if (remainingSeconds < facTimeLeft) {
+        facTimeLeft -= remainingSeconds;
+        remainingSeconds = 0;
+      } else {
+        remainingSeconds -= facTimeLeft;
+        facilityGained += 1;
+        facTimeLeft = 0;
+      }
+    }
+
+    if (remainingSeconds > 0) {
+      const maxCycles = Math.floor(remainingSeconds / actualDuration);
+      if (maxCycles > 0) {
+        let limitCycles = maxCycles;
+        Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+          const available = tempInventory[itemId] || 0;
+          const possibleCycles = Math.floor(available / qtyNeeded);
+          limitCycles = Math.min(limitCycles, possibleCycles);
+        });
+
+        if (limitCycles > 0) {
+          Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+            tempInventory[itemId] = Math.max(0, (tempInventory[itemId] || 0) - qtyNeeded * limitCycles);
+          });
+          facilityGained += limitCycles;
+          remainingSeconds -= limitCycles * actualDuration;
+        }
+      }
+      
+      if (remainingSeconds > 0) {
+        let canStartNext = true;
+        Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+          if ((tempInventory[itemId] || 0) < qtyNeeded) {
+            canStartNext = false;
+          }
+        });
+        if (canStartNext) {
+          Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+            tempInventory[itemId] = (tempInventory[itemId] || 0) - qtyNeeded;
+          });
+          facTimeLeft = Math.max(1, Math.round(actualDuration - remainingSeconds));
+        } else {
+          facTimeLeft = 0;
+        }
+      } else {
+        facTimeLeft = 0;
+      }
+    }
+
+    if (facilityGained > 0) {
+      currentInventory = tempInventory;
+      Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
+        const totalQty = qtyProduced * facilityGained;
+        currentInventory[itemId] = (currentInventory[itemId] || 0) + totalQty;
+        recoveredItems[itemId] = (recoveredItems[itemId] || 0) + totalQty;
+      });
+      reportLogs.push(`🏭 ${fac.name} 离线运转 ${facilityGained} 次，加工出 ${recipe.name} 产物。`);
+    }
+
+    const progress = facTimeLeft > 0 ? Math.min(100, Math.round(((actualDuration - facTimeLeft) / actualDuration) * 100)) : 0;
+    updatedFacilities[facId] = {
+      ...fac,
+      timeLeft: facTimeLeft,
+      currentProgress: progress
+    };
+  });
+
+  // 5. 温室作物离线生长结算
+  const isWateredOffline = state.shelter.assignedWatererId !== null;
+  const updatedSlots = state.greenhouse.slots.map(slot => {
+    if (!slot.cropId) return slot;
+    const config = (CROPS_CONFIG as any)[slot.cropId];
+    if (!config) return slot;
+
+    const speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
+    const timeReduced = actualSeconds * speedMultiplier;
+    const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
+    const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
+
+    return {
+      ...slot,
+      growthTimeLeft: newTimeLeft,
+      growthProgress: progress,
+      isWatered: isWateredOffline ? true : slot.isWatered
+    };
+  });
+
+  const updatedState: GameState = {
+    ...state,
+    player: { ...state.player, energy: currentEnergy },
+    inventory: currentInventory,
+    greenhouse: { ...state.greenhouse, slots: updatedSlots },
+    shelter: {
+      ...state.shelter,
+      facilities: updatedFacilities
+    }
+  };
+
+  return {
+    updatedState,
+    report: {
+      elapsedSeconds,
+      recoveredEnergy: energyGained,
+      recoveredItems,
+      logs: reportLogs
+    }
+  };
+}
+
 interface GameContextType {
   state: GameState;
   setState: React.Dispatch<React.SetStateAction<GameState>>;
@@ -224,6 +460,12 @@ interface GameContextType {
   createAccount: (username: string) => boolean;
   deleteAccount: (username: string) => void;
   useSupplyItem: (itemId: string) => boolean;
+  assignSurvivorJob: (survivorId: string, jobId: string | null) => boolean;
+  setFacilityRecipe: (facilityId: string, recipeId: string | null) => boolean;
+  setFacilityActive: (facilityId: string, active: boolean) => boolean;
+  upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler') => boolean;
+  startExpedition: (survivorId: string, locationId: string) => boolean;
+  stopExpedition: () => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -255,12 +497,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as GameState;
-        const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
-        const updatedSlots = calculateOfflineProgress(parsed.greenhouse.slots, elapsedSeconds);
-        return {
+        const elapsedSeconds = parsed.lastTick ? Math.max(0, Math.floor((now - parsed.lastTick) / 1000)) : 0;
+        const mergedState: GameState = {
           ...INITIAL_STATE,
           ...parsed,
-          greenhouse: { ...parsed.greenhouse, slots: updatedSlots },
+          greenhouse: {
+            ...INITIAL_STATE.greenhouse,
+            ...(parsed.greenhouse || {})
+          },
+          shelter: {
+            ...INITIAL_STATE.shelter,
+            ...(parsed.shelter || {}),
+            facilities: {
+              ...INITIAL_STATE.shelter.facilities,
+              ...((parsed.shelter && parsed.shelter.facilities) || {})
+            }
+          },
           exploration: {
             ...INITIAL_STATE.exploration,
             ...(parsed.exploration || {}),
@@ -272,10 +524,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ...INITIAL_STATE.exploration.survivorResonance,
               ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
             }
-          },
+          }
+        };
+        const { updatedState, report } = calculateDetailedOfflineProgress(mergedState, elapsedSeconds);
+        return {
+          ...updatedState,
           lastTick: now,
           dayStartTime: parsed.dayStartTime || now,
-          logs: parsed.logs || INITIAL_STATE.logs
+          lastOfflineReport: report
         };
       } catch (e) {
         console.error("Failed to load save in state initializer", e);
@@ -319,7 +575,138 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { ...prev, lastTick: now };
         }
 
-        const updatedSlots = calculateOfflineProgress(prev.greenhouse.slots, 1);
+        let currentInventory = { ...prev.inventory };
+        let currentEnergy = prev.player.energy;
+        const hasNova = !!prev.survivors.nova;
+        const currentMaxEnergy = hasNova ? 130 : (prev.player.maxEnergy || 100);
+
+        // 1. 发电机与回收站自动产出
+        if (prev.shelter.generatorLevel > 0) {
+          const speedBonus = 1 + (prev.survivors[prev.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
+          const energyGained = (prev.shelter.generatorLevel * 0.005) * speedBonus;
+          currentEnergy = Math.min(currentMaxEnergy, currentEnergy + energyGained);
+        }
+
+        if (prev.shelter.recyclerLevel > 0) {
+          const scrapGained = prev.shelter.recyclerLevel * 0.002;
+          currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) + scrapGained;
+        }
+
+        // 2. 温室作物托管浇水与生长
+        const isWateredOffline = prev.shelter.assignedWatererId !== null;
+        const updatedSlots = prev.greenhouse.slots.map(slot => {
+          if (!slot.cropId) return slot;
+          const config = (CROPS_CONFIG as any)[slot.cropId];
+          if (!config) return slot;
+
+          const speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
+          const timeReduced = 1 * speedMultiplier;
+          const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
+          const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
+
+          return {
+            ...slot,
+            growthTimeLeft: newTimeLeft,
+            growthProgress: progress,
+            isWatered: isWateredOffline ? true : slot.isWatered
+          };
+        });
+
+        // 3. 工厂流水线 Tick
+        const updatedFacilities = { ...prev.shelter.facilities };
+        const logsToAdd: string[] = [];
+
+        Object.entries(updatedFacilities).forEach(([facId, fac]) => {
+          if (fac.active === false || !fac.activeRecipeId) return;
+          const recipe = AUTO_RECIPES[fac.activeRecipeId];
+          if (!recipe) return;
+
+          const operator = prev.survivors[fac.assignedSurvivorId || ''];
+          const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (fac.level - 1) * 0.1;
+          const actualDuration = Math.max(1, Math.floor(recipe.duration / speedBonus));
+
+          let facTimeLeft = fac.timeLeft;
+
+          if (facTimeLeft > 0) {
+            facTimeLeft -= 1;
+            if (facTimeLeft === 0) {
+              // 一轮完成，尝试产出
+              Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
+                currentInventory[itemId] = (currentInventory[itemId] || 0) + qtyProduced;
+              });
+              logsToAdd.push(`🏭 ${fac.name} 完成了 ${recipe.name} 的加工。`);
+
+              // 尝试扣除材料开始下一轮
+              let canStartNext = true;
+              Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+                if ((currentInventory[itemId] || 0) < qtyNeeded) {
+                  canStartNext = false;
+                }
+              });
+              if (canStartNext) {
+                Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+                  currentInventory[itemId] = (currentInventory[itemId] || 0) - qtyNeeded;
+                });
+                facTimeLeft = actualDuration;
+              }
+            }
+          } else {
+            // 处于空闲状态，尝试启动新一轮
+            let canStartNext = true;
+            Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+              if ((currentInventory[itemId] || 0) < qtyNeeded) {
+                canStartNext = false;
+              }
+            });
+            if (canStartNext) {
+              Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
+                currentInventory[itemId] = (currentInventory[itemId] || 0) - qtyNeeded;
+              });
+              facTimeLeft = actualDuration;
+            }
+          }
+
+          const progress = facTimeLeft > 0 ? Math.min(100, Math.round(((actualDuration - facTimeLeft) / actualDuration) * 100)) : 0;
+          updatedFacilities[facId] = {
+            ...fac,
+            timeLeft: facTimeLeft,
+            currentProgress: progress
+          };
+        });
+
+        // 4. 挂机探索派遣 Tick
+        const exp = prev.shelter.expedition;
+        let nextLastScavengeTime = exp.lastScavengeTime;
+        if (exp.locationId && prev.shelter.assignedExplorerId) {
+          const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
+          if (loc) {
+            const explorer = prev.survivors[prev.shelter.assignedExplorerId];
+            const speedBonus = 1 + (explorer?.role === 'scout' ? explorer.bonus : 0);
+            const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval / speedBonus));
+
+            const timeDiff = now - (exp.lastScavengeTime || exp.startTime || now);
+            if (timeDiff >= actualInterval * 1000) {
+              let scavengedCount: Record<string, number> = {};
+              loc.lootTable.forEach(loot => {
+                if (Math.random() <= loot.chance) {
+                  const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
+                  scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
+                }
+              });
+
+              Object.entries(scavengedCount).forEach(([itemId, qty]) => {
+                currentInventory[itemId] = (currentInventory[itemId] || 0) + qty;
+              });
+
+              nextLastScavengeTime = now;
+
+              if (Object.keys(scavengedCount).length > 0) {
+                const itemsStr = Object.entries(scavengedCount).map(([id, q]) => `${q}个${id}`).join(', ');
+                logsToAdd.push(`🤠 探索员 ${explorer?.name || '幸存者'} 拾荒带回了: ${itemsStr}`);
+              }
+            }
+          }
+        }
 
         // 天数递增
         let newDays = prev.player.days;
@@ -329,10 +716,32 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           newDayStartTime = now;
         }
 
+        // 更新日志
+        let newLogs = prev.logs;
+        if (logsToAdd.length > 0) {
+          const logEntries = logsToAdd.map(logText => ({
+            id: `${Date.now()}_${Math.random()}`,
+            text: logText,
+            timestamp: Date.now(),
+            type: 'system' as const
+          }));
+          newLogs = [...logEntries, ...prev.logs].slice(0, 100);
+        }
+
         return {
           ...prev,
-          player: { ...prev.player, days: newDays },
+          player: { ...prev.player, energy: currentEnergy, days: newDays },
+          inventory: currentInventory,
           greenhouse: { ...prev.greenhouse, slots: updatedSlots },
+          shelter: {
+            ...prev.shelter,
+            facilities: updatedFacilities,
+            expedition: {
+              ...exp,
+              lastScavengeTime: nextLastScavengeTime
+            }
+          },
+          logs: newLogs,
           lastTick: now,
           dayStartTime: newDayStartTime
         };
@@ -352,12 +761,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as GameState;
-        const elapsedSeconds = Math.max(0, Math.floor((now - parsed.lastTick) / 1000));
-        const updatedSlots = calculateOfflineProgress(parsed.greenhouse.slots, elapsedSeconds);
-        newState = {
+        const elapsedSeconds = parsed.lastTick ? Math.max(0, Math.floor((now - parsed.lastTick) / 1000)) : 0;
+        const mergedState: GameState = {
           ...INITIAL_STATE,
           ...parsed,
-          greenhouse: { ...parsed.greenhouse, slots: updatedSlots },
+          greenhouse: {
+            ...INITIAL_STATE.greenhouse,
+            ...(parsed.greenhouse || {})
+          },
+          shelter: {
+            ...INITIAL_STATE.shelter,
+            ...(parsed.shelter || {}),
+            facilities: {
+              ...INITIAL_STATE.shelter.facilities,
+              ...((parsed.shelter && parsed.shelter.facilities) || {})
+            }
+          },
           exploration: {
             ...INITIAL_STATE.exploration,
             ...(parsed.exploration || {}),
@@ -369,10 +788,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ...INITIAL_STATE.exploration.survivorResonance,
               ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
             }
-          },
+          }
+        };
+        const { updatedState, report } = calculateDetailedOfflineProgress(mergedState, elapsedSeconds);
+        newState = {
+          ...updatedState,
           lastTick: now,
           dayStartTime: parsed.dayStartTime || now,
-          logs: parsed.logs || INITIAL_STATE.logs
+          lastOfflineReport: report
         };
       } catch (e) {
         console.error("Failed to load save in switchAccount", e);
@@ -766,14 +1189,304 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const assignSurvivorJob = (survivorId: string, jobId: string | null): boolean => {
+    let success = false;
+    setState(prev => {
+      const survivor = prev.survivors[survivorId];
+      if (!survivor && survivorId !== '') return prev;
+
+      const updatedSurvivors = { ...prev.survivors };
+      const updatedShelter = {
+        ...prev.shelter,
+        facilities: { ...prev.shelter.facilities }
+      };
+
+      if (!jobId) {
+        if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
+        if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
+        Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
+          if (fac.assignedSurvivorId === survivorId) {
+            updatedShelter.facilities[facId] = { ...fac, assignedSurvivorId: null };
+          }
+        });
+        if (updatedSurvivors[survivorId]) {
+          updatedSurvivors[survivorId] = {
+            ...updatedSurvivors[survivorId],
+            isAssigned: false,
+            assignedJobId: null
+          };
+        }
+        success = true;
+        return { ...prev, survivors: updatedSurvivors, shelter: updatedShelter };
+      }
+
+      if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
+      if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
+      Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
+        if (fac.assignedSurvivorId === survivorId) {
+          updatedShelter.facilities[facId] = { ...fac, assignedSurvivorId: null };
+        }
+      });
+
+      let prevOccupantId: string | null = null;
+      if (jobId === 'waterer') {
+        prevOccupantId = updatedShelter.assignedWatererId;
+        updatedShelter.assignedWatererId = survivorId;
+      } else if (jobId === 'explorer') {
+        prevOccupantId = updatedShelter.assignedExplorerId;
+        updatedShelter.assignedExplorerId = survivorId;
+      } else if (updatedShelter.facilities[jobId]) {
+        prevOccupantId = updatedShelter.facilities[jobId].assignedSurvivorId;
+        updatedShelter.facilities[jobId] = {
+          ...updatedShelter.facilities[jobId],
+          assignedSurvivorId: survivorId
+        };
+      } else {
+        return prev;
+      }
+
+      if (prevOccupantId && updatedSurvivors[prevOccupantId]) {
+        updatedSurvivors[prevOccupantId] = {
+          ...updatedSurvivors[prevOccupantId],
+          isAssigned: false,
+          assignedJobId: null
+        };
+      }
+
+      if (updatedSurvivors[survivorId]) {
+        updatedSurvivors[survivorId] = {
+          ...updatedSurvivors[survivorId],
+          isAssigned: true,
+          assignedJobId: jobId
+        };
+      }
+
+      success = true;
+      return { ...prev, survivors: updatedSurvivors, shelter: updatedShelter };
+    });
+    return success;
+  };
+
+  const setFacilityRecipe = (facilityId: string, recipeId: string | null): boolean => {
+    let success = false;
+    setState(prev => {
+      const facility = prev.shelter.facilities[facilityId];
+      if (!facility) return prev;
+      if (recipeId && !AUTO_RECIPES[recipeId]) return prev;
+
+      const updatedFacilities = {
+        ...prev.shelter.facilities,
+        [facilityId]: {
+          ...facility,
+          activeRecipeId: recipeId,
+          currentProgress: 0,
+          timeLeft: 0
+        }
+      };
+
+      success = true;
+      return {
+        ...prev,
+        shelter: {
+          ...prev.shelter,
+          facilities: updatedFacilities
+        }
+      };
+    });
+    return success;
+  };
+
+  const setFacilityActive = (facilityId: string, active: boolean): boolean => {
+    let success = false;
+    setState(prev => {
+      const facility = prev.shelter.facilities[facilityId];
+      if (!facility) return prev;
+      success = true;
+      return {
+        ...prev,
+        shelter: {
+          ...prev.shelter,
+          facilities: {
+            ...prev.shelter.facilities,
+            [facilityId]: {
+              ...facility,
+              active
+            }
+          }
+        }
+      };
+    });
+    return success;
+  };
+
+  const upgradeShelterStat = (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler'): boolean => {
+    let success = false;
+    setState(prev => {
+      const currentInventory = { ...prev.inventory };
+      const currentShelter = {
+        ...prev.shelter,
+        facilities: { ...prev.shelter.facilities }
+      };
+
+      let costScrap = 0;
+      let nextLevel = 1;
+
+      if (statType === 'battery') {
+        const currentLevel = currentShelter.batteryLevel || 1;
+        costScrap = currentLevel * 10;
+        nextLevel = currentLevel + 1;
+      } else if (statType === 'generator') {
+        const currentLevel = currentShelter.generatorLevel || 0;
+        costScrap = (currentLevel + 1) * 15;
+        nextLevel = currentLevel + 1;
+      } else if (statType === 'recycler') {
+        const currentLevel = currentShelter.recyclerLevel || 0;
+        costScrap = (currentLevel + 1) * 15;
+        nextLevel = currentLevel + 1;
+      } else if (statType === 'smelter') {
+        const currentLevel = currentShelter.facilities.smelter.level || 1;
+        costScrap = currentLevel * 20;
+        nextLevel = currentLevel + 1;
+      } else if (statType === 'assembler') {
+        const currentLevel = currentShelter.facilities.assembler.level || 1;
+        costScrap = currentLevel * 20;
+        nextLevel = currentLevel + 1;
+      } else {
+        return prev;
+      }
+
+      if ((currentInventory.scrap_metal || 0) < costScrap) {
+        return prev;
+      }
+
+      currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) - costScrap;
+
+      if (statType === 'battery') {
+        currentShelter.batteryLevel = nextLevel;
+        currentShelter.maxOfflineDuration = 14400 + (nextLevel - 1) * 3600;
+      } else if (statType === 'generator') {
+        currentShelter.generatorLevel = nextLevel;
+      } else if (statType === 'recycler') {
+        currentShelter.recyclerLevel = nextLevel;
+      } else if (statType === 'smelter') {
+        currentShelter.facilities.smelter = {
+          ...currentShelter.facilities.smelter,
+          level: nextLevel
+        };
+      } else if (statType === 'assembler') {
+        currentShelter.facilities.assembler = {
+          ...currentShelter.facilities.assembler,
+          level: nextLevel
+        };
+      }
+
+      success = true;
+      return {
+        ...prev,
+        inventory: currentInventory,
+        shelter: currentShelter
+      };
+    });
+    return success;
+  };
+
+  const startExpedition = (survivorId: string, locationId: string): boolean => {
+    const loc = EXPEDITION_LOCATIONS[locationId as keyof typeof EXPEDITION_LOCATIONS];
+    if (!loc) return false;
+
+    let success = false;
+    setState(prev => {
+      const innerExplorer = prev.survivors[survivorId];
+      if (!innerExplorer) return prev;
+      if (loc.requiredRole && innerExplorer.role !== loc.requiredRole) return prev;
+
+      const updatedSurvivors = { ...prev.survivors };
+      const updatedShelter = {
+        ...prev.shelter,
+        facilities: { ...prev.shelter.facilities }
+      };
+
+      if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
+      if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
+      Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
+        if (fac.assignedSurvivorId === survivorId) {
+          updatedShelter.facilities[facId] = { ...fac, assignedSurvivorId: null };
+        }
+      });
+
+      const prevOccupantId = updatedShelter.assignedExplorerId;
+      if (prevOccupantId && updatedSurvivors[prevOccupantId]) {
+        updatedSurvivors[prevOccupantId] = {
+          ...updatedSurvivors[prevOccupantId],
+          isAssigned: false,
+          assignedJobId: null
+        };
+      }
+
+      updatedShelter.assignedExplorerId = survivorId;
+      updatedSurvivors[survivorId] = {
+        ...innerExplorer,
+        isAssigned: true,
+        assignedJobId: 'explorer'
+      };
+
+      const now = Date.now();
+      updatedShelter.expedition = {
+        locationId,
+        startTime: now,
+        lastScavengeTime: now
+      };
+
+      success = true;
+      return {
+        ...prev,
+        survivors: updatedSurvivors,
+        shelter: updatedShelter
+      };
+    });
+    return success;
+  };
+
+  const stopExpedition = (): boolean => {
+    let success = false;
+    setState(prev => {
+      if (!prev.shelter.expedition.locationId) return prev;
+
+      const updatedShelter = {
+        ...prev.shelter,
+        expedition: {
+          locationId: null,
+          startTime: null,
+          lastScavengeTime: null
+        }
+      };
+
+      const explorerId = prev.shelter.assignedExplorerId;
+      const updatedSurvivors = { ...prev.survivors };
+      if (explorerId && updatedSurvivors[explorerId]) {
+        updatedSurvivors[explorerId] = {
+          ...updatedSurvivors[explorerId],
+          isAssigned: false,
+          assignedJobId: null
+        };
+      }
+      updatedShelter.assignedExplorerId = null;
+
+      success = true;
+      return {
+        ...prev,
+        shelter: updatedShelter,
+        survivors: updatedSurvivors
+      };
+    });
+    return success;
+  };
+
   const hasNova = !!state.survivors.nova;
   const hasCatherine = !!state.survivors.catherine;
   const hasBuster = !!state.survivors.buster;
   const maxEnergy = hasNova ? 130 : 100;
   
-  // 动态拼装传递的 state，避免污染存盘，同时提供同伴被动加成判断基础
-  // 凯瑟琳与巴斯特的被动加成虽然最终在 WildernessTab.tsx 结算，
-  // 但我们在这里动态注入 hasCatherine 和 hasBuster 标记，供其他消费组件读取判定。
   const adjustedState = {
     ...state,
     player: {
@@ -803,8 +1516,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createAccount,
       deleteAccount,
       useSupplyItem,
-      batchWater
+      batchWater,
+      assignSurvivorJob,
+      setFacilityRecipe,
+      setFacilityActive,
+      upgradeShelterStat,
+      startExpedition,
+      stopExpedition
     }}>
+
       {children}
     </GameContext.Provider>
   );

@@ -2,8 +2,8 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { calculateOfflineProgress, GameProvider, useGame, CROPS_CONFIG } from './GameContext';
-import type { GreenhouseSlot } from '../types/game';
+import { calculateOfflineProgress, calculateDetailedOfflineProgress, GameProvider, useGame, CROPS_CONFIG, AUTO_RECIPES } from './GameContext';
+import type { GreenhouseSlot, GameState } from '../types/game';
 
 // 模拟作物配置表
 const MOCK_CROPS_CONFIG: Record<string, { growthTime: number }> = {
@@ -149,4 +149,200 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
     expect(CROPS_CONFIG.void_lotus.id).toBe('void_lotus');
     expect(CROPS_CONFIG.void_lotus.growthTime).toBe(1200);
   });
+
+  describe('calculateDetailedOfflineProgress - Generator & Recycler', () => {
+    it('should calculate correct offline gains for generator and recycler', () => {
+      const mockState: GameState = {
+        player: {
+          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          energy: 10, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
+        },
+        inventory: { scrap_metal: 5 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0 },
+        survivors: {},
+        exploration: {
+          inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
+          capsulesCharge: {}, survivorResonance: {}
+        },
+        discoveredBlueprints: [],
+        activeAlert: { type: null, hp: 0 },
+        lastTick: Date.now(),
+        dayStartTime: Date.now(),
+        logs: [],
+        shelter: {
+          maxOfflineDuration: 14400,
+          batteryLevel: 1,
+          generatorLevel: 2,
+          recyclerLevel: 3,
+          facilities: {},
+          assignedWatererId: null,
+          assignedExplorerId: null,
+          expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+        }
+      };
+
+      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 1000);
+
+      expect(updatedState.player.energy).toBe(20);
+      expect(updatedState.inventory.scrap_metal).toBe(11);
+      expect(report.recoveredEnergy).toBe(10);
+      expect(report.recoveredItems.scrap_metal).toBe(6);
+    });
+  });
+
+  describe('calculateDetailedOfflineProgress - Factory Automation Pipelines', () => {
+    it('should process factory smelt_alloy recipe with enough raw materials', () => {
+      const mockState: GameState = {
+        player: {
+          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
+        },
+        inventory: { scrap_metal: 10 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0 },
+        survivors: {},
+        exploration: {
+          inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
+          capsulesCharge: {}, survivorResonance: {}
+        },
+        discoveredBlueprints: [],
+        activeAlert: { type: null, hp: 0 },
+        lastTick: Date.now(),
+        dayStartTime: Date.now(),
+        logs: [],
+        shelter: {
+          maxOfflineDuration: 14400,
+          batteryLevel: 1,
+          generatorLevel: 0,
+          recyclerLevel: 0,
+          facilities: {
+            smelter: {
+              id: 'smelter',
+              name: '魔导冶炼炉',
+              level: 1,
+              activeRecipeId: 'smelt_alloy',
+              currentProgress: 0,
+              timeLeft: 0,
+              assignedSurvivorId: null,
+              active: true
+            }
+          },
+          assignedWatererId: null,
+          assignedExplorerId: null,
+          expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+        }
+      };
+
+      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
+
+      expect(updatedState.inventory.scrap_metal).toBe(2);
+      expect(updatedState.inventory.alloy_plate).toBe(3);
+      expect(report.recoveredItems.alloy_plate).toBe(3);
+      
+      const smelter = updatedState.shelter.facilities.smelter;
+      expect(smelter.timeLeft).toBe(20);
+      expect(smelter.currentProgress).toBe(33);
+    });
+
+    it('should stop factory processing early when raw materials run out', () => {
+      const mockState: GameState = {
+        player: {
+          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
+        },
+        inventory: { scrap_metal: 2 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0 },
+        survivors: {},
+        exploration: {
+          inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
+          capsulesCharge: {}, survivorResonance: {}
+        },
+        discoveredBlueprints: [],
+        activeAlert: { type: null, hp: 0 },
+        lastTick: Date.now(),
+        dayStartTime: Date.now(),
+        logs: [],
+        shelter: {
+          maxOfflineDuration: 14400,
+          batteryLevel: 1,
+          generatorLevel: 0,
+          recyclerLevel: 0,
+          facilities: {
+            smelter: {
+              id: 'smelter',
+              name: '魔导冶炼炉',
+              level: 1,
+              activeRecipeId: 'smelt_alloy',
+              currentProgress: 0,
+              timeLeft: 0,
+              assignedSurvivorId: null,
+              active: true
+            }
+          },
+          assignedWatererId: null,
+          assignedExplorerId: null,
+          expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+        }
+      };
+
+      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
+
+      expect(updatedState.inventory.scrap_metal).toBe(0);
+      expect(updatedState.inventory.alloy_plate).toBe(1);
+      expect(report.recoveredItems.alloy_plate).toBe(1);
+
+      const smelter = updatedState.shelter.facilities.smelter;
+      expect(smelter.timeLeft).toBe(0);
+      expect(smelter.currentProgress).toBe(0);
+    });
+  });
+
+  describe('calculateDetailedOfflineProgress - Greenhouse Watering and Crop Growth', () => {
+    it('should double growth speed and maintain watering status when a waterer is assigned', () => {
+      const mockState: GameState = {
+        player: {
+          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
+        },
+        inventory: {},
+        greenhouse: {
+          slots: [
+            { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: false }
+          ],
+          unlockedSlotsCount: 4
+        },
+        survivors: {},
+        exploration: {
+          inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
+          capsulesCharge: {}, survivorResonance: {}
+        },
+        discoveredBlueprints: [],
+        activeAlert: { type: null, hp: 0 },
+        lastTick: Date.now(),
+        dayStartTime: Date.now(),
+        logs: [],
+        shelter: {
+          maxOfflineDuration: 14400,
+          batteryLevel: 1,
+          generatorLevel: 0,
+          recyclerLevel: 0,
+          facilities: {},
+          assignedWatererId: 'survivor_waterer',
+          assignedExplorerId: null,
+          expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+        }
+      };
+
+      const { updatedState } = calculateDetailedOfflineProgress(mockState, 10);
+      const slot = updatedState.greenhouse.slots[0];
+      
+      expect(slot.growthTimeLeft).toBe(10);
+      expect(slot.growthProgress).toBe(67);
+      expect(slot.isWatered).toBe(true);
+    });
+  });
 });
+
