@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useGame, AUTO_RECIPES, EXPEDITION_LOCATIONS, CROPS_CONFIG } from '../context/GameContext';
 import { ITEMS_CONFIG } from '../data/items';
 import { useToast } from './ToastSystem';
@@ -20,7 +21,8 @@ import {
   Clock,
   Droplet,
   Sparkles,
-  Info
+  Info,
+  Timer
 } from 'lucide-react';
 
 const SURVIVOR_EMOJIS: Record<string, string> = {
@@ -43,13 +45,68 @@ const ShelterTab: React.FC = () => {
     stopExpedition,
     batchWater,
     batchHarvest,
-    batchPlant
+    batchPlant,
+    plantCrop,
+    waterSlot,
+    harvestSlot
   } = useGame();
 
   const { showToast } = useToast();
   
   // 本地每秒 tick，用于平滑更新远征计时和倒计时
   const [nowTime, setNowTime] = useState(Date.now());
+
+  // 嵌入温室控制需要的状态
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [showSeedSelector, setShowSeedSelector] = useState(false);
+  const [flyingRewards, setFlyingRewards] = useState<any[]>([]);
+
+  // 触发飘字特效
+  const triggerFlyingRewards = (yields: Record<string, number>, slotId: number) => {
+    const rewards: any[] = [];
+    let index = 0;
+    Object.entries(yields).forEach(([item, qty]) => {
+      const itemConfig = ITEMS_CONFIG[item]?.name || item;
+      rewards.push({
+        id: Date.now() + Math.random(),
+        text: `+${qty} ${itemConfig}`,
+        slotId,
+        offsetY: index * -22 // 避免重叠
+      });
+      index++;
+    });
+    setFlyingRewards(prev => [...prev, ...rewards]);
+    setTimeout(() => {
+      setFlyingRewards(prev => prev.filter(r => !rewards.some(nr => nr.id === r.id)));
+    }, 1500);
+  };
+
+  const handleSlotClick = (slotId: number, hasCrop: boolean) => {
+    if (!hasCrop) {
+      setSelectedSlotId(slotId);
+      setShowSeedSelector(true);
+    }
+  };
+
+  const handlePlant = (cropId: string) => {
+    if (selectedSlotId !== null) {
+      const success = plantCrop(selectedSlotId, cropId);
+      if (success) {
+        showToast("作物已播种入培养槽！", "success");
+        setShowSeedSelector(false);
+        setSelectedSlotId(null);
+      } else {
+        showToast("种子不足或槽位非空！", "error");
+      }
+    }
+  };
+
+  const handleHarvest = (slotId: number) => {
+    const rewards = harvestSlot(slotId);
+    if (rewards) {
+      triggerFlyingRewards(rewards, slotId);
+    }
+  };
   useEffect(() => {
     const timer = setInterval(() => {
       setNowTime(Date.now());
@@ -358,49 +415,124 @@ const ShelterTab: React.FC = () => {
           </span>
         </h2>
 
-        {/* 培养槽小型监视网格 */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        {/* 培养槽全功能监视网格 */}
+        <div className="grid grid-cols-2 gap-3.5 mb-4">
           {state.greenhouse.slots.map(slot => {
-            const cropMeta = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
+            const crop = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
+            const isReady = slot.growthProgress >= 100;
             const isWatered = slot.isWatered || state.shelter.assignedWatererId !== null;
+
             return (
               <div
                 key={slot.id}
-                className={`p-2 rounded-xl border flex flex-col justify-between items-center h-20 relative transition-all ${
-                  slot.cropId
-                    ? slot.growthProgress >= 100
-                      ? 'bg-emerald-950/20 border-emerald-500/30 shadow-[0_0_8px_rgba(57,255,20,0.1)]'
-                      : 'bg-zinc-900/60 border-zinc-800'
-                    : 'bg-zinc-950 border-zinc-900 border-dashed'
+                onClick={() => handleSlotClick(slot.id, !!crop)}
+                className={`p-3 rounded-2xl border transition-all duration-300 backdrop-blur-md flex flex-col justify-between h-44 relative cursor-pointer ${
+                  isReady
+                    ? 'bg-emerald-950/20 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                    : crop
+                    ? 'bg-zinc-900/60 border-zinc-800'
+                    : 'bg-zinc-950/60 border-dashed border-zinc-800 hover:border-purple-500/40'
                 }`}
               >
-                {/* 状态徽章 */}
-                <div className="absolute top-1 right-1 flex gap-0.5 scale-75">
-                  {slot.cropId && isWatered && <Droplet className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />}
+                {/* 飘字特效渲染 */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none z-30">
+                  {flyingRewards
+                    .filter(r => r.slotId === slot.id)
+                    .map(reward => (
+                      <div
+                        key={reward.id}
+                        className="text-[9px] font-black text-emerald-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] animate-float-up bg-zinc-950/95 px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center gap-1 whitespace-nowrap"
+                        style={{ transform: `translateY(${reward.offsetY}px)` }}
+                      >
+                        <Sparkles className="w-3 h-3 text-emerald-400" />
+                        {reward.text}
+                      </div>
+                    ))}
                 </div>
 
-                <div className="text-[10px] text-zinc-500 font-bold">#{slot.id}</div>
+                <div>
+                  <div className="flex justify-between items-center text-[10px] text-zinc-500 mb-1.5 select-none">
+                    <span>槽位 #{slot.id}</span>
+                    {isWatered && slot.cropId && (
+                      <span className="flex items-center text-blue-400 font-bold gap-0.5 animate-pulse">
+                        <Droplet className="w-3 h-3 text-blue-400 fill-blue-400 animate-bounce" /> 湿润
+                      </span>
+                    )}
+                  </div>
 
-                {slot.cropId && cropMeta ? (
-                  <div className="text-center w-full flex-1 flex flex-col justify-center mt-1">
-                    <div className="font-bold text-zinc-300 truncate max-w-full text-[9px]">{cropMeta.name}</div>
-                    <div className="mt-1">
-                      {slot.growthProgress >= 100 ? (
-                        <span className="text-[8px] px-1 py-0.2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded font-bold animate-pulse">
-                          可收获
-                        </span>
+                  {crop ? (
+                    <div>
+                      {/* 作物图像 */}
+                      <div className="w-full h-12 rounded-lg overflow-hidden mb-1.5 relative border border-zinc-800/40">
+                        <img
+                          src={(crop as any).image}
+                          alt={crop.name}
+                          className="w-full h-full object-cover select-none pointer-events-none"
+                          style={{ filter: isReady ? 'saturate(1.3) brightness(1.05)' : 'saturate(0.7) brightness(0.65)' }}
+                        />
+                        {isReady && (
+                          <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-lg" />
+                        )}
+                      </div>
+                      <h3 className="text-[10px] font-bold text-zinc-300 flex items-center gap-1 select-none">
+                        <Sprout className="w-3 h-3 text-emerald-400" />
+                        {crop.name}
+                      </h3>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center mt-3 text-zinc-500 select-none">
+                      <Sprout className="w-6 h-6 mb-1 opacity-20" />
+                      <span className="text-[10px] font-bold">闲置中</span>
+                      <span className="text-[8px] opacity-60">点击开始播种</span>
+                    </div>
+                  )}
+                </div>
+
+                {crop && (
+                  <div className="mt-2 shrink-0">
+                    {/* 进度条 */}
+                    <div className="w-full bg-zinc-950 rounded-full h-1.5 overflow-hidden mb-1.5 border border-zinc-900">
+                      <div
+                        className={`h-full transition-all duration-1000 ${
+                          isReady ? 'bg-emerald-500' : 'bg-purple-500'
+                        }`}
+                        style={{ width: `${slot.growthProgress}%` }}
+                      />
+                    </div>
+                    
+                    {/* 倒计时与动作按钮 */}
+                    <div className="flex justify-between items-center text-[10px]">
+                      {isReady ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHarvest(slot.id);
+                          }}
+                          className="w-full py-1 bg-emerald-500 text-zinc-950 font-extrabold rounded-md hover:bg-emerald-400 active:scale-95 transition-all text-center animate-pulse cursor-pointer"
+                        >
+                          收割
+                        </button>
                       ) : (
-                        <div className="w-full bg-zinc-800 h-1 rounded-full overflow-hidden mt-0.5 border border-zinc-800">
-                          <div
-                            className="bg-emerald-400 h-full"
-                            style={{ width: `${slot.growthProgress}%` }}
-                          />
-                        </div>
+                        <>
+                          <span className="text-zinc-400 flex items-center gap-1 select-none font-mono text-[9px]">
+                            <Timer className="w-3 h-3 text-purple-400" />
+                            {slot.growthTimeLeft}s
+                          </span>
+                          {!slot.isWatered && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                waterSlot(slot.id);
+                              }}
+                              className="px-2 py-0.5 bg-blue-950/80 border border-blue-500/30 text-blue-400 rounded-md hover:bg-blue-900 active:scale-95 transition-all cursor-pointer text-[9px]"
+                            >
+                              浇水
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
-                ) : (
-                  <div className="text-zinc-600 text-[10px] my-auto">空闲</div>
                 )}
               </div>
             );
@@ -1172,6 +1304,70 @@ const ShelterTab: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* 播种选择模态框 */}
+      {showSeedSelector && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={() => {
+            setShowSeedSelector(false);
+            setSelectedSlotId(null);
+          }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-5 shadow-2xl animate-fade-in flex flex-col max-h-[75vh]"
+          >
+            <div className="flex justify-between items-center mb-4 shrink-0">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Sprout className="w-4 h-4 text-purple-400" /> 选择种植作物
+              </h3>
+              <button
+                onClick={() => {
+                  setShowSeedSelector(false);
+                  setSelectedSlotId(null);
+                }}
+                className="text-zinc-500 hover:text-white cursor-pointer w-7 h-7 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 pt-1 pb-1">
+              {Object.values(CROPS_CONFIG).map(crop => {
+                const seedId = Object.keys(crop.seedCost)[0];
+                const seedCount = state.inventory[seedId] || 0;
+
+                return (
+                  <div
+                    key={crop.id}
+                    onClick={() => seedCount > 0 && handlePlant(crop.id)}
+                    className={`p-2.5 rounded-xl border flex justify-between items-center transition-all ${
+                      seedCount > 0
+                        ? 'bg-zinc-950 border-zinc-800 hover:border-purple-500 cursor-pointer'
+                        : 'bg-zinc-950/40 border-zinc-900 opacity-40 cursor-not-allowed'
+                    }`}
+                  >
+                    <div>
+                      <h4 className="font-bold text-xs text-white">{crop.name}</h4>
+                      <p className="text-[9px] text-zinc-500 mt-0.5 line-clamp-1">{crop.description}</p>
+                      <span className="inline-block mt-1 text-[8px] text-purple-400 bg-purple-950/40 px-1.5 py-0.2 rounded">
+                        生长时间: {crop.growthTime}s
+                      </span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] font-bold text-zinc-400">
+                        种子: <span className={seedCount > 0 ? 'text-white font-mono' : 'text-rose-500 font-mono'}>{seedCount}</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
