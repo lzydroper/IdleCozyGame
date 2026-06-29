@@ -5,6 +5,7 @@ import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/WorkshopTab';
 import LogTab from './components/LogTab';
+import ShelterTab from './components/ShelterTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import {
@@ -20,16 +21,17 @@ import {
   ShieldAlert,
   Terminal,
   UserPlus,
-  ChevronDown,
-  ChevronUp,
   Trash2,
-  Lock
+  Lock,
+  Cpu
 } from 'lucide-react';
 import shelterBg from './assets/shelter_bg.jpg';
 
 const App: React.FC = () => {
   const {
     state,
+    setState,
+    addLog,
     resetGame,
     currentUser,
     accounts,
@@ -40,7 +42,7 @@ const App: React.FC = () => {
 
   const { showToast, showConfirm } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log'>('wilderness');
+  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter'>('wilderness');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [newUsername, setNewUsername] = useState('');
 
@@ -120,6 +122,58 @@ const App: React.FC = () => {
     });
   };
 
+  const handleRetreat = () => {
+    showConfirm({
+      title: "安全撤退确认",
+      message: "确认折返回避难所吗？这会结束本次探索，带回当前临时背包里的战利品。",
+      onConfirm: () => {
+        setState(prev => {
+          const newInventory = { ...prev.inventory };
+          Object.entries(prev.exploration.realityBag).forEach(([item, qty]) => {
+            newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+          });
+
+          return {
+            ...prev,
+            inventory: newInventory,
+            exploration: {
+              ...prev.exploration,
+              inRealityExploration: false,
+              realitySteps: 0,
+              realityBag: {},
+              realityEventId: null
+            }
+          };
+        });
+        showToast("安全撤退，战利品存入储藏箱！", "success");
+        addLog("安全折返回避难所，清点战利品入库。", "system");
+      }
+    });
+  };
+
+  const handleWakeUp = () => {
+    setState(prev => {
+      const newInventory = { ...prev.inventory };
+      Object.entries(prev.exploration.dreamBag).forEach(([item, qty]) => {
+        newInventory[item] = (newInventory[item] || 0) + qty;
+      });
+
+      return {
+        ...prev,
+        inventory: newInventory,
+        exploration: {
+          ...prev.exploration,
+          inDreamExploration: false,
+          dreamSteps: 0,
+          dreamBag: {},
+          dreamEventId: null
+        }
+      };
+    });
+    showToast("你成功收回意识从梦境醒来，已带回梦境碎片！", "success");
+    addLog("从集体无意识梦境深处主动苏醒，返回现实。", "system");
+  };
+
   const getSurvivorPreview = (name: string) => {
     const saved = localStorage.getItem(`aether_garden_save_${name}`);
     if (saved) {
@@ -136,7 +190,7 @@ const App: React.FC = () => {
     return { days: 1, hp: 100 };
   };
 
-  const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log') => {
+  const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter') => {
     if (isExploring && activeTab !== tab) {
       showToast("正在废土地表或梦境探险中！请撤退或完成后再返回避难所。", "warning");
       return;
@@ -167,57 +221,92 @@ const App: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-zinc-400">
-              第 <span className="text-purple-400 font-black">{player.days}</span> 天
-            </span>
-            <button
-              onClick={handleResetGame}
-              title="重置当前游戏"
-              className="p-1 hover:text-rose-400 text-zinc-600 transition-colors cursor-pointer"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+            {state.exploration.inRealityExploration ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-zinc-950/80 border border-zinc-850 px-2 py-0.5 rounded-lg font-bold text-cyan-400 flex items-center gap-1">
+                  <Compass className="w-3 h-3 text-cyan-400 animate-spin-slow" />
+                  {state.exploration.realityLocationId ? `救援 ${state.exploration.realitySteps}/5` : `步数 ${state.exploration.realitySteps}`}
+                </span>
+                <button
+                  onClick={handleRetreat}
+                  className="px-2 py-0.5 bg-rose-950 border border-rose-500/40 text-rose-350 text-[10px] font-black rounded-lg hover:bg-rose-900 transition-colors cursor-pointer"
+                >
+                  撤退
+                </button>
+              </div>
+            ) : state.exploration.inDreamExploration ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-zinc-950/80 border border-zinc-850 px-2 py-0.5 rounded-lg font-bold text-purple-400 flex items-center gap-1">
+                  <Moon className="w-3 h-3 text-purple-400 animate-pulse" />
+                  深度 {state.exploration.dreamSteps} 层
+                </span>
+                <button
+                  onClick={handleWakeUp}
+                  className="px-2 py-0.5 bg-purple-950 border border-purple-500/40 text-purple-355 text-[10px] font-black rounded-lg hover:bg-purple-900 transition-colors cursor-pointer"
+                >
+                  苏醒
+                </button>
+              </div>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-zinc-400">
+                  第 <span className="text-purple-400 font-black">{player.days}</span> 天
+                </span>
+                <button
+                  onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+                  title="生存者终端"
+                  className={`p-1 transition-colors cursor-pointer ${
+                    isTerminalOpen ? 'text-purple-400' : 'text-zinc-500 hover:text-purple-400'
+                  }`}
+                >
+                  <Terminal className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 生存者终端胶囊按钮 */}
-        <div className="mb-3">
-          <button
-            onClick={() => setIsTerminalOpen(!isTerminalOpen)}
-            disabled={isExploring}
-            className={`w-full flex items-center justify-between px-3 py-2 bg-zinc-950/80 border border-zinc-800/60 rounded-xl hover:border-purple-500/50 hover:bg-zinc-900/40 active:scale-[0.99] transition-all text-xs text-zinc-400 font-bold cursor-pointer ${
-              isExploring ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            <span className="flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-              当前生存者：<span className="text-zinc-100 font-black">{currentUser}</span>
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800/80">终端</span>
-              {isTerminalOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </div>
-          </button>
-        </div>
-
         {/* 生存者终端展开面板 */}
-        {isTerminalOpen && !isExploring && (
-          <div className="mb-3 p-3 bg-zinc-950 border border-zinc-850 rounded-2xl transition-all">
+        {isTerminalOpen && (
+          <div className="mb-3 p-3 bg-zinc-950 border border-zinc-850 rounded-2xl transition-all animate-fade-in">
+            {/* 当前生存者与重置按钮 */}
+            <div className="text-xs text-zinc-500 font-bold mb-3 flex items-center justify-between border-b border-zinc-900 pb-2.5">
+              <span className="flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                当前生存者：<span className="text-zinc-100 font-black">{currentUser}</span>
+              </span>
+              <button
+                onClick={handleResetGame}
+                className="text-[10px] text-zinc-500 hover:text-rose-450 flex items-center gap-1 px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" /> 重置游戏
+              </button>
+            </div>
+            {isExploring && (
+              <div className="mb-3 px-3 py-1.5 bg-amber-950/20 border border-amber-500/20 text-[10px] text-amber-400 rounded-xl font-bold flex items-center gap-1 select-none animate-pulse">
+                ⚠️ 探险中无法切换或创建生存者
+              </div>
+            )}
+
             {/* 新建生存者输入区 */}
             <div className="flex items-center gap-2 mb-3">
               <input
                 type="text"
-                placeholder="输入新生存者代号..."
+                disabled={isExploring}
+                placeholder={isExploring ? "探险中已锁定输入..." : "输入新生存者代号..."}
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateAccount();
+                  if (e.key === 'Enter' && !isExploring) handleCreateAccount();
                 }}
-                className="flex-1 bg-zinc-900 border border-zinc-800 text-xs px-3 py-1.5 rounded-xl text-zinc-100 placeholder-zinc-650 focus:outline-none focus:border-purple-500 transition-colors"
+                className="flex-1 bg-zinc-900 border border-zinc-800 text-xs px-3 py-1.5 rounded-xl text-zinc-100 placeholder-zinc-650 focus:outline-none focus:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleCreateAccount}
-                className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                disabled={isExploring}
+                className={`flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                  isExploring ? 'opacity-40 cursor-not-allowed' : ''
+                }`}
               >
                 <UserPlus className="w-3 h-3" />
                 唤醒
@@ -238,9 +327,15 @@ const App: React.FC = () => {
                     className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
                       isCurrent
                         ? 'bg-purple-950/20 border-purple-500/40 text-purple-200'
+                        : isExploring
+                        ? 'bg-zinc-900/40 border-zinc-900 text-zinc-550 cursor-not-allowed'
                         : 'bg-zinc-900/60 border-zinc-850 hover:bg-zinc-800/40 text-zinc-300 cursor-pointer'
                     }`}
                     onClick={() => {
+                      if (isExploring) {
+                        showToast("探险中已锁定生存者切换！", "warning");
+                        return;
+                      }
                       if (!isCurrent) {
                         switchAccount(name);
                         showToast(`已成功切换生存者：${name}`, "info");
@@ -254,8 +349,11 @@ const App: React.FC = () => {
                       <span className="text-zinc-500">HP {preview.hp}</span>
                       {name !== 'Guest' && (
                         <button
-                          onClick={(e) => handleDeleteAccount(name, e)}
-                          className="p-1 hover:text-red-400 text-zinc-600 rounded transition-colors cursor-pointer"
+                          disabled={isExploring}
+                          onClick={(e) => !isExploring && handleDeleteAccount(name, e)}
+                          className={`p-1 hover:text-red-400 text-zinc-600 rounded transition-colors cursor-pointer ${
+                            isExploring ? 'opacity-30 cursor-not-allowed hover:text-zinc-600' : ''
+                          }`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -357,15 +455,18 @@ const App: React.FC = () => {
         {activeTab === 'workshop' && <WorkshopTab />}
 
         {activeTab === 'log' && <LogTab />}
+
+        {activeTab === 'shelter' && <ShelterTab />}
       </main>
 
       {/* 底部导航栏 */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-5 py-2 z-40">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-6 py-2 z-40">
         {[
           { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' },
           { tab: 'workshop', label: '工坊', icon: Hammer, color: 'text-amber-500' },
           { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
           { tab: 'greenhouse', label: '温室', icon: Sprout, color: 'text-emerald-400' },
+          { tab: 'shelter', label: '控制台', icon: Cpu, color: 'text-cyan-300' },
           { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' }
         ].map(({ tab, label, icon: Icon, color }) => {
           const isActive = activeTab === tab;
