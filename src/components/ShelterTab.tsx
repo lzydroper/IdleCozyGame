@@ -149,6 +149,7 @@ const ShelterTab: React.FC = () => {
   const handleBatchWater = () => {
     const wateredCount = batchWater();
     if (wateredCount > 0) {
+      addLog(`💦 自动灌溉完成，${wateredCount} 个培养槽已补充水分`, 'logistics');
       showToast(`💦 成功为 ${wateredCount} 个培养槽补充水分！`, 'success');
     } else {
       showToast('培养槽无需灌溉或目前没有作物。', 'info');
@@ -186,6 +187,8 @@ const ShelterTab: React.FC = () => {
 
       const plantSuccess = batchPlant(replantCropId);
       if (plantSuccess) {
+        const cropName = ITEMS_CONFIG[seedId]?.name || seedId;
+        addLog(`🌱 一键收获并播种完成${harvestMsg ? '：' + harvestMsg : ''}，已续播 ${cropName}`, 'logistics');
         showToast(`🌱 一键收割并重新播种成功！${harvestMsg}已连播入空余槽位。`, 'success');
       } else {
         showToast(`已完成收割。但重新播种失败，请检查种子数量！`, 'warning');

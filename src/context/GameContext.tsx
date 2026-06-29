@@ -681,7 +681,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // 3. 工厂流水线 Tick
         const updatedFacilities = { ...prev.shelter.facilities };
-        const logsToAdd: { text: string; type: 'event' | 'system' }[] = [];
+        const logsToAdd: { text: string; type: 'event' | 'logistics' | 'system' }[] = [];
 
         Object.entries(updatedFacilities).forEach(([facId, fac]) => {
           if (fac.active === false || !fac.activeRecipeId) return;
@@ -775,7 +775,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   const item = ITEMS_CONFIG[id];
                   return `${item?.emoji || ''} ${item?.name || id} ×${q}`;
                 }).join(' ');
-                logsToAdd.push({ text: `🤠 探索员 ${explorer?.name || '幸存者'} 拾荒带回: ${itemsStr}`, type: 'event' as const });
+                logsToAdd.push({ text: `🤠 探索员 ${explorer?.name || '幸存者'} 拾荒带回: ${itemsStr}`, type: 'logistics' as const });
               }
             }
           }
