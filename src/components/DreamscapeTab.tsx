@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { DREAM_EVENTS } from '../data/dreamEvents';
-import type { DreamEvent, DreamChoice } from '../data/dreamEvents';
+import type { DreamChoice } from '../data/dreamEvents';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
@@ -10,11 +10,13 @@ import { Moon, Sparkles, Brain, AlertOctagon } from 'lucide-react';
 const DreamscapeTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
   const { showToast } = useToast();
-  const [currentEvent, setCurrentEvent] = useState<DreamEvent | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
 
   const exploration = state.exploration;
   const player = state.player;
+
+  const currentEventId = exploration.dreamEventId;
+  const currentEvent = currentEventId ? DREAM_EVENTS[currentEventId] || null : null;
 
   const drawDreamEvent = () => {
     const keys = Object.keys(DREAM_EVENTS);
@@ -56,7 +58,14 @@ const DreamscapeTab: React.FC = () => {
       }
       randomEvtNum -= weight;
     }
-    setCurrentEvent(selectedEvent);
+    
+    setState(prev => ({
+      ...prev,
+      exploration: {
+        ...prev.exploration,
+        dreamEventId: selectedEvent.id
+      }
+    }));
   };
 
   const handleStartDream = () => {
@@ -75,7 +84,8 @@ const DreamscapeTab: React.FC = () => {
         ...prev.exploration,
         inDreamExploration: true,
         dreamSteps: 0,
-        dreamBag: {}
+        dreamBag: {},
+        dreamEventId: null
       }
     }));
     const text = "意识脱离肉体，缓缓坠入幽深的心灵海洋...";
@@ -84,10 +94,10 @@ const DreamscapeTab: React.FC = () => {
   };
 
   useEffect(() => {
-    if (exploration.inDreamExploration && !currentEvent) {
+    if (exploration.inDreamExploration && !exploration.dreamEventId) {
       drawDreamEvent();
     }
-  }, [exploration.inDreamExploration]);
+  }, [exploration.inDreamExploration, exploration.dreamEventId]);
 
   const handleMakeChoice = (choice: DreamChoice) => {
     let showSurvivorUnlockedAlert: { id: string; name: string; location: string } | null = null;
@@ -155,7 +165,8 @@ const DreamscapeTab: React.FC = () => {
           survivorResonance: newResonance,
           dreamSteps: forceWakeUp ? 0 : newExploration.dreamSteps + 1,
           dreamBag: forceWakeUp ? {} : newDreamBag,
-          inDreamExploration: !forceWakeUp
+          inDreamExploration: !forceWakeUp,
+          dreamEventId: null
         }
       };
     });
@@ -166,11 +177,9 @@ const DreamscapeTab: React.FC = () => {
     if (nextSanity <= 0) {
       showToast("理智耗尽！你精神休克被迫断开心灵连结，碎片全部消散！", "error");
       addLog("理智崩溃，强制切断梦境连结。", "combat");
-      setCurrentEvent(null);
     } else if (nextPollution >= 100) {
       showToast("⚠️ 警告：污染度达100%！深渊扭曲，梦魇怪兽顺着精神印记入侵现实！", "error");
       addLog("梦境污染溢出，引动梦魇兽入侵避难所！", "combat");
-      setCurrentEvent(null);
     } else {
       setLogMessages(prev => [...prev, choice.results.logText]);
       addLog(choice.results.logText, 'dream');
@@ -184,7 +193,6 @@ const DreamscapeTab: React.FC = () => {
         setLogMessages(prev => [...prev, msg]);
         addLog(msg, 'dream');
       }
-      drawDreamEvent();
     }
   };
 
@@ -203,13 +211,13 @@ const DreamscapeTab: React.FC = () => {
           ...prev.exploration,
           inDreamExploration: false,
           dreamSteps: 0,
-          dreamBag: {}
+          dreamBag: {},
+          dreamEventId: null
         }
       };
     });
     showToast("你成功收回意识从梦境醒来，已带回梦境碎片！", "success");
     addLog("从集体无意识梦境深处主动苏醒，返回现实。", "system");
-    setCurrentEvent(null);
   };
 
   // 使用梦胶囊

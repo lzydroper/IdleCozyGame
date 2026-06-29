@@ -58,11 +58,13 @@ export interface GameState {
     realitySteps: number;
     realityLocationId: string | null;
     realityBag: Record<string, number>; // 探索中临时背包
+    realityEventId?: string | null;     // 当前激活的现实事件ID
     // 梦境探索
     inDreamExploration: boolean;
     dreamSteps: number;
     dreamPollution: number;            // 梦境污染度 0-100
     dreamBag: Record<string, number>;  // 梦境中获得的碎片/线索
+    dreamEventId?: string | null;      // 当前激活的梦境事件ID
     capsulesCharge: Record<string, number>; // 梦胶囊ID -> 剩余可用次数
     survivorResonance: Record<string, number>; // 幸存者ID -> 共鸣度
   };

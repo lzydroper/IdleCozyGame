@@ -113,10 +113,12 @@ const INITIAL_STATE: GameState = {
     realitySteps: 0,
     realityLocationId: null,
     realityBag: {},
+    realityEventId: null,
     inDreamExploration: false,
     dreamSteps: 0,
     dreamPollution: 0,
     dreamBag: {},
+    dreamEventId: null,
     capsulesCharge: {
       sanity_capsule: 3, // 默认解锁并充能3次
       warp_capsule: 0    // 未解锁/无充能
