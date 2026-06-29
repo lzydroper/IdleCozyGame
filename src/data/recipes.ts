@@ -65,14 +65,14 @@ export const RECIPES_CONFIG: Record<string, Recipe> = {
   energy_refill_advanced: {
     id: 'energy_refill_advanced',
     name: '能量超频核心',
-    description: '消耗等离子电芯与废铁合成的备用高能滤罐',
+    description: '消耗等离子电芯与废旧金属，合成 2 份能量补充剂(⚡恢复30魔能)',
     cost: { plasma_cell: 2, scrap_metal: 3 },
     reward: { energy_refill: 2 }
   },
   shield_battery_recipe: {
     id: 'shield_battery_recipe',
     name: '重载避难所电池',
-    description: '使用电芯、冰结晶和合金板组合的防爆电池组',
+    description: '使用电芯、冰晶和合金板组装防爆电池组，产出 3 份能量补充剂(⚡恢复30魔能)',
     cost: { plasma_cell: 1, frost_crystal: 1, alloy_plate: 1 },
     reward: { energy_refill: 3 }
   },

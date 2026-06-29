@@ -300,6 +300,21 @@ const WorkshopTab: React.FC = () => {
                     {renderCostText(recipe.cost)}
                   </div>
                 </div>
+                {Object.keys(recipe.reward).length > 0 && (
+                  <div>
+                    <h5 className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-1">⚡ 产出:</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(recipe.reward).map(([item, qty]) => {
+                        const label = ITEMS_CONFIG[item]?.name || item;
+                        return (
+                          <span key={item} className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">
+                            {label} x{qty}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

@@ -8,6 +8,7 @@ import cropFrostBell from '../assets/crop_frost_bell.jpg';
 import cropPlasmaPumpkin from '../assets/crop_plasma_pumpkin.jpg';
 import cropVoidLotus from '../assets/crop_void_lotus.jpg';
 import { RECIPES_CONFIG } from '../data/recipes';
+import { ITEMS_CONFIG } from '../data/items';
 
 export const AUTO_RECIPES: Record<string, AutoRecipe> = {
   smelt_alloy: { id: 'smelt_alloy', name: '提炼合金金属板', input: { scrap_metal: 2 }, output: { alloy_plate: 1 }, duration: 30 },
@@ -680,7 +681,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // 3. 工厂流水线 Tick
         const updatedFacilities = { ...prev.shelter.facilities };
-        const logsToAdd: string[] = [];
+        const logsToAdd: { text: string; type: 'event' | 'system' }[] = [];
 
         Object.entries(updatedFacilities).forEach(([facId, fac]) => {
           if (fac.active === false || !fac.activeRecipeId) return;
@@ -700,7 +701,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
                 currentInventory[itemId] = (currentInventory[itemId] || 0) + qtyProduced;
               });
-              logsToAdd.push(`🏭 ${fac.name} 完成了 ${recipe.name} 的加工。`);
+              logsToAdd.push({ text: `🏭 ${fac.name} 完成了 ${recipe.name} 的加工。`, type: 'system' });
 
               // 尝试扣除材料开始下一轮
               let canStartNext = true;
@@ -770,8 +771,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               nextLastScavengeTime = (exp.lastScavengeTime || exp.startTime || now) + ticks * actualInterval * 1000;
 
               if (Object.keys(scavengedCount).length > 0) {
-                const itemsStr = Object.entries(scavengedCount).map(([id, q]) => `${q}个${id}`).join(', ');
-                logsToAdd.push(`🤠 探索员 ${explorer?.name || '幸存者'} 拾荒带回了: ${itemsStr}`);
+                const itemsStr = Object.entries(scavengedCount).map(([id, q]) => {
+                  const item = ITEMS_CONFIG[id];
+                  return `${item?.emoji || ''} ${item?.name || id} ×${q}`;
+                }).join(' ');
+                logsToAdd.push({ text: `🤠 探索员 ${explorer?.name || '幸存者'} 拾荒带回: ${itemsStr}`, type: 'event' as const });
               }
             }
           }
@@ -788,11 +792,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 更新日志
         let newLogs = prev.logs;
         if (logsToAdd.length > 0) {
-          const logEntries = logsToAdd.map(logText => ({
+          const logEntries = logsToAdd.map(entry => ({
             id: `${Date.now()}_${Math.random()}`,
-            text: logText,
+            text: entry.text,
             timestamp: Date.now(),
-            type: 'system' as const
+            type: entry.type
           }));
           newLogs = [...logEntries, ...prev.logs].slice(0, 100);
         }

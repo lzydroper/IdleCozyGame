@@ -799,26 +799,51 @@ const ShelterTab: React.FC = () => {
 
                 {/* 配方物料消耗展示 */}
                 {activeRecipe && (
-                  <div className="bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1">
-                    <div className="flex justify-between items-start">
-                      <span>单次消耗原料:</span>
-                      <div className="font-mono text-zinc-500 text-right flex flex-col items-end">
+                  <div className="bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1.5">
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 items-baseline">
+                      <span className="whitespace-nowrap">⛏ 单次消耗:</span>
+                      <div className="text-right flex flex-wrap gap-x-2 gap-y-0.5 justify-end">
                         {Object.entries(activeRecipe.input).map(([id, qty]) => {
                           const hasQty = getInvQty(id);
+                          const item = ITEMS_CONFIG[id];
                           return (
-                            <div key={id} className={hasQty >= qty ? 'text-zinc-400' : 'text-rose-500 font-bold'}>
-                              {ITEMS_CONFIG[id]?.name || id} {qty} (持有:{hasQty})
-                            </div>
+                            <span key={id} className={`whitespace-nowrap ${hasQty >= qty ? 'text-zinc-400' : 'text-rose-500 font-bold'}`}>
+                              {item?.emoji || ''} {item?.name || id} ×{qty}
+                              <span className="text-zinc-600 ml-0.5">(余{hasQty})</span>
+                            </span>
                           );
                         })}
                       </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>单次熔炼产出:</span>
-                      <span className="text-cyan-400 font-bold">
-                        {Object.entries(activeRecipe.output).map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} x${qty}`)}
-                      </span>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 items-baseline">
+                      <span className="whitespace-nowrap">⚡ 单次产出:</span>
+                      <div className="text-right flex flex-wrap gap-x-2 gap-y-0.5 justify-end">
+                        {Object.entries(activeRecipe.output).map(([id, qty]) => {
+                          const item = ITEMS_CONFIG[id];
+                          return (
+                            <span key={id} className="whitespace-nowrap text-emerald-400 font-bold">
+                              {item?.emoji || ''} {item?.name || id} ×{qty}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
+                    {(() => {
+                      const cycleTime = Math.max(1, Math.floor(activeRecipe.duration / speedBonus));
+                      const cyclesPerMin = 60 / cycleTime;
+                      return (
+                        <div className="grid grid-cols-[auto_1fr] gap-x-3 items-baseline text-[8px] text-zinc-600 pt-0.5 border-t border-zinc-900/40">
+                          <span className="whitespace-nowrap">⏱ 每分钟产能:</span>
+                          <span className="text-right">
+                            {Object.entries(activeRecipe.output).map(([id, qty]) => {
+                              const item = ITEMS_CONFIG[id];
+                              const perMin = (qty * cyclesPerMin).toFixed(1);
+                              return `${item?.emoji || ''} ${item?.name || id} ${perMin}/min`;
+                            }).join(' ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1011,26 +1036,51 @@ const ShelterTab: React.FC = () => {
 
                 {/* 配方物料消耗展示 */}
                 {activeRecipe && (
-                  <div className="bg-zinc-950 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1">
-                    <div className="flex justify-between items-start">
-                      <span>单次消耗原料:</span>
-                      <div className="font-mono text-zinc-500 text-right flex flex-col items-end">
+                  <div className="bg-zinc-950 p-2 rounded-xl border border-zinc-900/60 text-[9px] text-zinc-400 space-y-1.5">
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 items-baseline">
+                      <span className="whitespace-nowrap">⛏ 单次消耗:</span>
+                      <div className="text-right flex flex-wrap gap-x-2 gap-y-0.5 justify-end">
                         {Object.entries(activeRecipe.input).map(([id, qty]) => {
                           const hasQty = getInvQty(id);
+                          const item = ITEMS_CONFIG[id];
                           return (
-                            <div key={id} className={hasQty >= qty ? 'text-zinc-400' : 'text-rose-500 font-bold'}>
-                              {ITEMS_CONFIG[id]?.name || id} {qty} (持有:{hasQty})
-                            </div>
+                            <span key={id} className={`whitespace-nowrap ${hasQty >= qty ? 'text-zinc-400' : 'text-rose-500 font-bold'}`}>
+                              {item?.emoji || ''} {item?.name || id} ×{qty}
+                              <span className="text-zinc-600 ml-0.5">(余{hasQty})</span>
+                            </span>
                           );
                         })}
                       </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>单次组装产出:</span>
-                      <span className="text-purple-400 font-bold">
-                        {Object.entries(activeRecipe.output).map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} x${qty}`)}
-                      </span>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 items-baseline">
+                      <span className="whitespace-nowrap">⚡ 单次产出:</span>
+                      <div className="text-right flex flex-wrap gap-x-2 gap-y-0.5 justify-end">
+                        {Object.entries(activeRecipe.output).map(([id, qty]) => {
+                          const item = ITEMS_CONFIG[id];
+                          return (
+                            <span key={id} className="whitespace-nowrap text-purple-400 font-bold">
+                              {item?.emoji || ''} {item?.name || id} ×{qty}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
+                    {(() => {
+                      const cycleTime = Math.max(1, Math.floor(activeRecipe.duration / speedBonus));
+                      const cyclesPerMin = 60 / cycleTime;
+                      return (
+                        <div className="grid grid-cols-[auto_1fr] gap-x-3 items-baseline text-[8px] text-zinc-600 pt-0.5 border-t border-zinc-900/40">
+                          <span className="whitespace-nowrap">⏱ 每分钟产能:</span>
+                          <span className="text-right">
+                            {Object.entries(activeRecipe.output).map(([id, qty]) => {
+                              const item = ITEMS_CONFIG[id];
+                              const perMin = (qty * cyclesPerMin).toFixed(1);
+                              return `${item?.emoji || ''} ${item?.name || id} ${perMin}/min`;
+                            }).join(' ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
