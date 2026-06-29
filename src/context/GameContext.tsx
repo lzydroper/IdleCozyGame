@@ -443,7 +443,11 @@ export function calculateDetailedOfflineProgress(
     const config = (CROPS_CONFIG as any)[slot.cropId];
     if (!config) return slot;
 
-    const speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
+    let speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
+    // Mei (阿梅) 作为农夫被动：指派在温室岗位时温室作物生长速度 +25%
+    if (state.shelter.assignedWatererId === 'mei') {
+      speedMultiplier *= 1.25;
+    }
     const timeReduced = actualSeconds * speedMultiplier;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
@@ -573,7 +577,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...updatedState,
           lastTick: now,
           dayStartTime: parsed.dayStartTime || now,
-          lastOfflineReport: report
+          lastOfflineReport: elapsedSeconds > 10 ? report : null
         };
       } catch (e) {
         console.error("Failed to load save in state initializer", e);
@@ -651,13 +655,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // 2. 温室作物托管浇水与生长
-        const isWateredOffline = prev.shelter.assignedWatererId !== null;
+        const isWateredOnline = prev.shelter.assignedWatererId !== null;
         const updatedSlots = prev.greenhouse.slots.map(slot => {
           if (!slot.cropId) return slot;
           const config = (CROPS_CONFIG as any)[slot.cropId];
           if (!config) return slot;
 
-          const speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
+          let speedMultiplier = (slot.isWatered || isWateredOnline) ? 2 : 1;
+          // Mei (阿梅) 作为农夫被动：指派在温室岗位时温室作物生长速度 +25%
+          if (prev.shelter.assignedWatererId === 'mei') {
+            speedMultiplier *= 1.25;
+          }
           const timeReduced = 1 * speedMultiplier;
           const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
           const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
@@ -666,7 +674,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...slot,
             growthTimeLeft: newTimeLeft,
             growthProgress: progress,
-            isWatered: isWateredOffline ? true : slot.isWatered
+            isWatered: isWateredOnline ? true : slot.isWatered
           };
         });
 
@@ -858,7 +866,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...updatedState,
           lastTick: now,
           dayStartTime: parsed.dayStartTime || now,
-          lastOfflineReport: report
+          lastOfflineReport: elapsedSeconds > 10 ? report : null
         };
       } catch (e) {
         console.error("Failed to load save in switchAccount", e);
@@ -1255,8 +1263,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const assignSurvivorJob = (survivorId: string, jobId: string | null): boolean => {
     let success = false;
     setState(prev => {
+      if (!survivorId || survivorId.trim() === '') return prev;
       const survivor = prev.survivors[survivorId];
-      if (!survivor && survivorId !== '') return prev;
+      if (!survivor) return prev;
 
       const updatedSurvivors = { ...prev.survivors };
       const updatedShelter = {
