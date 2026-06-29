@@ -416,8 +416,10 @@ export function calculateDetailedOfflineProgress(
       }
     }
 
+    // 无论本次离线是否产出了成品，凡是涉及到启动下一轮生产或者有原料消耗的改动，都必须同步写回给背包
+    currentInventory = tempInventory;
+
     if (facilityGained > 0) {
-      currentInventory = tempInventory;
       Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
         const totalQty = qtyProduced * facilityGained;
         currentInventory[itemId] = (currentInventory[itemId] || 0) + totalQty;
