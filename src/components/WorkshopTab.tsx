@@ -227,7 +227,7 @@ const WorkshopTab: React.FC = () => {
         </div>
 
         {isSupplyExpanded && (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 text-xs mt-4 animate-fade-in">
+          <div className="grid grid-cols-2 gap-3 text-xs mt-4 animate-fade-in">
             {supplyConfigs.map(cfg => {
               const meta = ITEMS_CONFIG[cfg.id];
               const qty = inventory[cfg.id] || 0;
@@ -239,7 +239,7 @@ const WorkshopTab: React.FC = () => {
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-bold flex items-center gap-1">
                         <span>{meta.emoji}</span>
-                        <span className={cfg.colorClass.split(' ')[0]}>{meta.name}</span>
+                        <span className={`whitespace-nowrap ${cfg.colorClass.split(' ')[0]}`}>{meta.name}</span>
                       </span>
                       <span className="text-zinc-500 font-bold whitespace-nowrap">拥有: {qty}</span>
                     </div>
