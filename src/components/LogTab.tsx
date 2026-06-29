@@ -132,7 +132,7 @@ const LogTab: React.FC = () => {
                 let emoji = '⚙️';
                 let textColor = 'text-zinc-400';
                 if (log.type === 'event') { emoji = '🧭'; textColor = 'text-cyan-300'; }
-                else if (log.type === 'logistics') { emoji = '🔩'; textColor = 'text-cyan-300'; }
+                else if (log.type === 'logistics') { emoji = '🔩'; textColor = 'text-amber-400'; }
                 else if (log.type === 'dream') { emoji = '🔮'; textColor = 'text-purple-300'; }
                 else if (log.type === 'combat') { emoji = '💥'; textColor = 'text-red-300'; }
                 else if (log.type === 'system') { emoji = '💾'; textColor = 'text-zinc-500'; }
