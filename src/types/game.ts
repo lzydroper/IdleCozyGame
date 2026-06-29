@@ -23,7 +23,7 @@ export interface LogEntry {
   id: string;
   text: string;
   timestamp: number;
-  type: 'event' | 'harvest' | 'combat' | 'dream' | 'system';
+  type: 'event' | 'logistics' | 'combat' | 'dream' | 'system';
 }
 
 export interface GreenhouseSlot {

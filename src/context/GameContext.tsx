@@ -499,7 +499,7 @@ interface GameContextType {
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
   craftItem: (recipeId: string) => boolean;
-  addLog: (text: string, type: 'event' | 'harvest' | 'combat' | 'dream' | 'system') => void;
+  addLog: (text: string, type: 'event' | 'logistics' | 'combat' | 'dream' | 'system') => void;
   resetGame: () => void;
   currentUser: string;
   accounts: string[];
@@ -701,7 +701,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
                 currentInventory[itemId] = (currentInventory[itemId] || 0) + qtyProduced;
               });
-              logsToAdd.push({ text: `🏭 ${fac.name} 完成了 ${recipe.name} 的加工。`, type: 'system' });
+              logsToAdd.push({ text: `🏭 ${fac.name} 完成了 ${recipe.name} 的加工。`, type: 'logistics' });
 
               // 尝试扣除材料开始下一轮
               let canStartNext = true;
@@ -1165,7 +1165,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 日志系统
-  const addLog = (text: string, type: 'event' | 'harvest' | 'combat' | 'dream' | 'system') => {
+  const addLog = (text: string, type: 'event' | 'logistics' | 'combat' | 'dream' | 'system') => {
     setState(prev => {
       const newEntry = { id: `${Date.now()}_${Math.random()}`, text, timestamp: Date.now(), type };
       const updatedLogs = [newEntry, ...prev.logs].slice(0, 100); // 最多保留 100 条

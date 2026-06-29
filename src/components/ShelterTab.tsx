@@ -48,7 +48,8 @@ const ShelterTab: React.FC = () => {
     batchPlant,
     plantCrop,
     waterSlot,
-    harvestSlot
+    harvestSlot,
+    addLog
   } = useGame();
 
   const { showToast } = useToast();
@@ -321,6 +322,7 @@ const ShelterTab: React.FC = () => {
             <button
               onClick={() => {
                 if (upgradeShelterStat('battery')) {
+                  addLog(`🔋 蓄电池矩阵升级至 Lv.${currentBattery + 1}，最大挂机时间延长至 ${nextMaxHours}h`, 'logistics');
                   showToast('🔋 蓄电池矩阵升级成功！最大挂机时间延长。', 'success');
                 } else {
                   showToast('废旧金属不足，无法升级！', 'error');
@@ -357,6 +359,7 @@ const ShelterTab: React.FC = () => {
             <button
               onClick={() => {
                 if (upgradeShelterStat('generator')) {
+                  addLog(`⚡ 魔能发电机升级至 Lv.${currentGenerator + 1}，凝结率 ${nextGenRate}/分`, 'logistics');
                   showToast('⚡ 魔能发电机升级成功！能量凝结效率提高。', 'success');
                 } else {
                   showToast('废旧金属不足，无法升级！', 'error');
@@ -393,6 +396,7 @@ const ShelterTab: React.FC = () => {
             <button
               onClick={() => {
                 if (upgradeShelterStat('recycler')) {
+                  addLog(`♻️ 物资回收站升级至 Lv.${currentRecycler + 1}，回收率 ${nextRecRate}/分`, 'logistics');
                   showToast('♻️ 物资回收站升级成功！废弃金属回收速率提升。', 'success');
                 } else {
                   showToast('废旧金属不足，无法升级！', 'error');
@@ -580,6 +584,7 @@ const ShelterTab: React.FC = () => {
                 } else {
                   assignSurvivorJob(val, 'waterer');
                   const name = state.survivors[val]?.name || '幸存者';
+                  addLog(`💦 指派 ${name} 负责温室自动浇水`, 'logistics');
                   showToast(`💦 指派 ${name} 负责温室浇水！所有作物获得自动灌溉加成。`, 'success');
                 }
               }}
@@ -714,6 +719,7 @@ const ShelterTab: React.FC = () => {
                   <button
                     onClick={() => {
                       if (upgradeShelterStat('smelter')) {
+                        addLog(`🏭 ${fac.name} 升级至 Lv.${level + 1}`, 'logistics');
                         showToast('🏭 魔导冶炼炉超频升级成功！产线效率提升。', 'success');
                       } else {
                         showToast('废旧金属不足，无法升级！', 'error');
@@ -745,6 +751,7 @@ const ShelterTab: React.FC = () => {
                       } else {
                         assignSurvivorJob(val, 'smelter');
                         const name = state.survivors[val]?.name || '幸存者';
+                        addLog(`🔩 指派 ${name} 负责 ${fac.name} 操作`, 'logistics');
                         showToast(`🔩 指派 ${name} 负责冶炼炉！工程师操作可获专属生产加速。`, 'success');
                       }
                     }}
@@ -886,6 +893,7 @@ const ShelterTab: React.FC = () => {
                   onClick={() => {
                     const nextState = fac.active === false;
                     setFacilityActive('smelter', nextState);
+                    addLog(nextState ? `🔥 ${fac.name} 已开机运转` : `🛑 ${fac.name} 已关机待命`, 'logistics');
                     showToast(nextState ? '🔥 魔导冶炼炉已开机运转！' : '🛑 魔导冶炼炉已关机待命。', 'info');
                   }}
                   disabled={!fac.activeRecipeId}
@@ -951,6 +959,7 @@ const ShelterTab: React.FC = () => {
                   <button
                     onClick={() => {
                       if (upgradeShelterStat('assembler')) {
+                        addLog(`🏭 ${fac.name} 升级至 Lv.${level + 1}`, 'logistics');
                         showToast('🏭 微型芯片组装台升级成功！制造效率提高。', 'success');
                       } else {
                         showToast('废旧金属不足，无法升级！', 'error');
@@ -982,6 +991,7 @@ const ShelterTab: React.FC = () => {
                       } else {
                         assignSurvivorJob(val, 'assembler');
                         const name = state.survivors[val]?.name || '幸存者';
+                        addLog(`🔩 指派 ${name} 负责 ${fac.name} 操作`, 'logistics');
                         showToast(`🔩 指派 ${name} 负责组装台！派遣工程师可提速。`, 'success');
                       }
                     }}
@@ -1123,6 +1133,7 @@ const ShelterTab: React.FC = () => {
                   onClick={() => {
                     const nextState = fac.active === false;
                     setFacilityActive('assembler', nextState);
+                    addLog(nextState ? `🔥 ${fac.name} 已开机运转` : `🛑 ${fac.name} 已关机待命`, 'logistics');
                     showToast(nextState ? '⚡ 芯片组装流水线已开机！' : '🛑 芯片组装流水线已关机待命。', 'info');
                   }}
                   disabled={!fac.activeRecipeId}

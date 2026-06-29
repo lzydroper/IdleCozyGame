@@ -462,7 +462,7 @@ const App: React.FC = () => {
           { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' },
           { tab: 'workshop', label: '工坊', icon: Hammer, color: 'text-amber-500' },
           { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
-          { tab: 'shelter', label: '控制台', icon: Cpu, color: 'text-cyan-300' },
+          { tab: 'shelter', label: '后勤', icon: Cpu, color: 'text-cyan-300' },
           { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' }
         ].map(({ tab, label, icon: Icon, color }) => {
           const isActive = activeTab === tab;
