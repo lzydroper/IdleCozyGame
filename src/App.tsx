@@ -444,16 +444,22 @@ const App: React.FC = () => {
       )}
 
       {/* 主工作区 */}
-      <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent">
-        {activeTab === 'wilderness' && <WildernessTab />}
-
-        {activeTab === 'dreamscape' && <DreamscapeTab />}
-
-        {activeTab === 'workshop' && <WorkshopTab />}
-
-        {activeTab === 'log' && <LogTab />}
-
-        {activeTab === 'shelter' && <ShelterTab />}
+      <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent relative">
+        <div className={`absolute inset-0 overflow-y-auto transition-all duration-200 ease-out ${activeTab === 'wilderness' ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-2 z-0 pointer-events-none'}`}>
+          <WildernessTab />
+        </div>
+        <div className={`absolute inset-0 overflow-y-auto transition-all duration-200 ease-out ${activeTab === 'dreamscape' ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-2 z-0 pointer-events-none'}`}>
+          <DreamscapeTab />
+        </div>
+        <div className={`absolute inset-0 overflow-y-auto transition-all duration-200 ease-out ${activeTab === 'workshop' ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-2 z-0 pointer-events-none'}`}>
+          <WorkshopTab />
+        </div>
+        <div className={`absolute inset-0 overflow-y-auto transition-all duration-200 ease-out ${activeTab === 'log' ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-2 z-0 pointer-events-none'}`}>
+          <LogTab />
+        </div>
+        <div className={`absolute inset-0 overflow-y-auto transition-all duration-200 ease-out ${activeTab === 'shelter' ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-2 z-0 pointer-events-none'}`}>
+          <ShelterTab />
+        </div>
       </main>
 
       {/* 底部导航栏 */}
