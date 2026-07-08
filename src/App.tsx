@@ -445,21 +445,21 @@ const App: React.FC = () => {
 
       {/* 主工作区 */}
       <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent">
-        {activeTab === 'wilderness' && (
-          <div className="animate-tab-enter"><WildernessTab /></div>
-        )}
-        {activeTab === 'dreamscape' && (
-          <div className="animate-tab-enter"><DreamscapeTab /></div>
-        )}
-        {activeTab === 'workshop' && (
-          <div className="animate-tab-enter"><WorkshopTab /></div>
-        )}
-        {activeTab === 'log' && (
-          <div className="animate-tab-enter"><LogTab /></div>
-        )}
-        {activeTab === 'shelter' && (
-          <div className="animate-tab-enter"><ShelterTab /></div>
-        )}
+        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'wilderness' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <WildernessTab />
+        </div>
+        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'dreamscape' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <DreamscapeTab />
+        </div>
+        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'workshop' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <WorkshopTab />
+        </div>
+        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'log' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <LogTab />
+        </div>
+        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'shelter' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <ShelterTab />
+        </div>
       </main>
 
       {/* 底部导航栏 */}
