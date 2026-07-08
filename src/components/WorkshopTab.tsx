@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
+import GameIcon from './GameIcon';
+import ItemGridItem from './ItemGridItem';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
-import { Hammer, ShieldAlert, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
 const WorkshopTab: React.FC = () => {
   const { state, setState, craftItem, useSupplyItem } = useGame();
   const { showToast } = useToast();
-  const [isSupplyExpanded, setIsSupplyExpanded] = useState(false);
 
   const inventory = state.inventory;
   const player = state.player;
@@ -160,10 +161,11 @@ const WorkshopTab: React.FC = () => {
       return (
         <span
           key={item}
-          className={`mr-2 inline-block px-1.5 py-0.5 rounded text-[10px] ${
+          className={`mr-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${
             isEnough ? 'bg-zinc-800 text-zinc-400 border border-zinc-700' : 'bg-red-950/40 text-red-400 border border-red-500/20'
           }`}
         >
+          <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
           {label}: {current}/{qty}
         </span>
       );
@@ -214,45 +216,40 @@ const WorkshopTab: React.FC = () => {
         </div>
       )}
 
-      {/* 补给品快捷面板 */}
+      {/* 补给品快捷面板 - 扁平平铺，固定高度与滚动条 */}
       <div className="p-4 rounded-3xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-md transition-all">
-        <div 
-          onClick={() => setIsSupplyExpanded(!isSupplyExpanded)}
-          className="flex justify-between items-center cursor-pointer select-none"
-        >
-          <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-            <Zap className="w-4 h-4 text-cyan-400" />
-            避难所生存补给发放
-          </h3>
-          <div className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 bg-zinc-800/50 rounded-full">
-            {isSupplyExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </div>
+        <h3 className="text-sm font-black text-white flex items-center gap-1.5 mb-3.5 select-none">
+          <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
+          避难所生存补给发放
+        </h3>
 
-        {isSupplyExpanded && (
-          <div className="flex flex-wrap gap-2 text-xs mt-3 animate-fade-in">
-            {supplyConfigs.map(cfg => {
-              const meta = ITEMS_CONFIG[cfg.id];
-              const qty = inventory[cfg.id] || 0;
-              if (!meta) return null;
+        <div className="grid grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-1">
+          {supplyConfigs.map(cfg => {
+            const meta = ITEMS_CONFIG[cfg.id];
+            const qty = inventory[cfg.id] || 0;
+            if (!meta) return null;
 
-              return (
-                <div key={cfg.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-bold select-none bg-zinc-950 border-zinc-800">
-                  <span>{meta.emoji}</span>
-                  <span className="text-zinc-300">{meta.name}</span>
-                  <span className="text-zinc-500">x{qty}</span>
+            return (
+              <ItemGridItem
+                key={cfg.id}
+                id={cfg.id}
+                qty={qty}
+                name={meta.name}
+                description={meta.description}
+                actionButton={
                   <button
                     onClick={() => handleUseItem(cfg.id)}
                     disabled={qty <= 0}
-                    className="ml-0.5 px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                    className="w-full py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[8px] font-bold text-zinc-300 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer text-center"
                   >
-                    {cfg.effectText}
+                    <span className="sr-only">{cfg.effectText}</span>
+                    使用
                   </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                }
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* 制造配方网格 */}
@@ -271,6 +268,7 @@ const WorkshopTab: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center">
                     <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                      <GameIcon type="item" id={recipe.id} className="w-4 h-4 mr-0.5" />
                       {recipe.name}
                       {recipe.id === 'sanity_capsule' && (
                         <span className="text-[9px] text-purple-400 font-extrabold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/30">
@@ -301,7 +299,8 @@ const WorkshopTab: React.FC = () => {
                       {Object.entries(recipe.reward).map(([item, qty]) => {
                         const label = ITEMS_CONFIG[item]?.name || item;
                         return (
-                          <span key={item} className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">
+                          <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">
+                            <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
                             {label} x{qty}
                           </span>
                         );

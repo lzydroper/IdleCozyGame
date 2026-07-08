@@ -7,6 +7,7 @@ import LogTab from './components/LogTab';
 import ShelterTab from './components/ShelterTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
+import GameIcon from './components/GameIcon';
 import { ITEMS_CONFIG } from './data/items';
 import {
   Compass,
@@ -445,19 +446,19 @@ const App: React.FC = () => {
 
       {/* 主工作区 */}
       <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent">
-        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'wilderness' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={activeTab === 'wilderness' ? 'block animate-tab-enter' : 'hidden'}>
           <WildernessTab />
         </div>
-        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'dreamscape' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={activeTab === 'dreamscape' ? 'block animate-tab-enter' : 'hidden'}>
           <DreamscapeTab />
         </div>
-        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'workshop' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={activeTab === 'workshop' ? 'block animate-tab-enter' : 'hidden'}>
           <WorkshopTab />
         </div>
-        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'log' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={activeTab === 'log' ? 'block animate-tab-enter' : 'hidden'}>
           <LogTab />
         </div>
-        <div className={`transition-all duration-300 ease-out overflow-hidden ${activeTab === 'shelter' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={activeTab === 'shelter' ? 'block animate-tab-enter' : 'hidden'}>
           <ShelterTab />
         </div>
       </main>
@@ -534,7 +535,7 @@ const App: React.FC = () => {
                     const meta = ITEMS_CONFIG[id];
                     return (
                       <div key={id} className="flex items-center gap-1.5 text-zinc-300 font-mono">
-                        <span className="text-xs">{meta?.emoji || '📦'}</span>
+                        <GameIcon type="item" id={id} className="w-4 h-4 mr-0.5" />
                         <span>{meta?.name || id}: +{qty}</span>
                       </div>
                     );

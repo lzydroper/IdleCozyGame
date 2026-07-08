@@ -3,8 +3,11 @@ import { useGame } from '../context/GameContext';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { ITEMS_CONFIG } from '../data/items';
 import { SURVIVORS_CONFIG } from '../data/survivors';
+import GameIcon from './GameIcon';
+import ItemGridItem from './ItemGridItem';
 import { BookOpen, Package, Users, Clock } from 'lucide-react';
 
+// Force reload trigger: upgraded layout to ItemGridItem grid
 const LogTab: React.FC = () => {
   const { state } = useGame();
   const [subTab, setSubTab] = useState<'logs' | 'survivors'>('logs');
@@ -59,19 +62,15 @@ const LogTab: React.FC = () => {
         {backpackItems.length === 0 ? (
           <p className="text-xs text-zinc-600 italic py-2 text-center">暂无储备物资，前往温室播种或地表探索收集</p>
         ) : (
-          <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+          <div className="grid grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-1">
             {backpackItems.map(item => (
-              <div
+              <ItemGridItem
                 key={item.id}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-950 border border-zinc-800/80 rounded-xl hover:border-zinc-700/60 transition-all text-xs"
-                title={item.description}
-              >
-                <span className="text-sm">{item.emoji}</span>
-                <span className="font-bold text-zinc-300">{item.name}</span>
-                <span className="bg-zinc-900 text-emerald-400 border border-zinc-800 text-[10px] px-1.5 py-0.2 rounded-md font-black ml-0.5">
-                  x{item.qty}
-                </span>
-              </div>
+                id={item.id}
+                qty={item.qty}
+                name={item.name}
+                description={item.description}
+              />
             ))}
           </div>
         )}
@@ -184,15 +183,18 @@ const LogTab: React.FC = () => {
             }
 
             const isUnknown = surv.status === 'unknown';
-            const displayEmoji = isUnknown ? '❓' : surv.emoji;
             const displayName = isUnknown ? '未知幸存者信号' : surv.name;
             const displayRole = isUnknown ? '职位不明' : (surv.role === 'farmer' ? '农学者' : surv.role === 'engineer' ? '工程师' : '侦察兵');
             const displayBackstory = isUnknown ? '（正接收到废土中微弱的共鸣频率...当共鸣达到 100% 时即可精确定位此人的方位）' : surv.backstory;
 
             return (
               <div key={surv.id} className={`p-4 rounded-3xl border flex gap-4 transition-all duration-300 ${borderStyle}`}>
-                <div className="text-3xl shrink-0 flex items-center bg-zinc-900/50 p-2.5 rounded-2xl border border-zinc-800/40 opacity-70">
-                  {displayEmoji}
+                <div className="w-14 h-14 shrink-0 overflow-hidden rounded-2xl flex items-center justify-center bg-zinc-900/50 border border-zinc-800/40 opacity-90">
+                  {isUnknown ? (
+                    <span className="text-2xl select-none">❓</span>
+                  ) : (
+                    <GameIcon type="survivor" id={surv.id} className="w-full h-full" />
+                  )}
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex justify-between items-center">
