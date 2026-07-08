@@ -11,7 +11,7 @@
 ---
 
 ## 2. 核心状态中心 (`GameContext.tsx`)
-游戏的所有全局状态和核心业务逻辑均封装在 `src/context/GameContext.tsx` 中（约 1638 行）。
+游戏的所有全局状态和核心业务逻辑均封装在 `src/context/GameContext.tsx` 中（约 1392 行）。
 
 ### 核心状态结构 (`GameState`，定义于 `src/types/game.ts`)
 ```typescript
@@ -72,7 +72,7 @@ interface GameState {
 
 ### 3.1 温室种植系统 (`ShelterTab.tsx` 内置)
 温室的种植、浇水、收割功能集成在 `ShelterTab.tsx` 中，与该页签的避难所管理共享 UI。
-* **作物配置**：定义在 `GameContext.tsx` 的 `CROPS_CONFIG` 中，包含 7 种作物（辐射荧光草、以太浆果、钢纹向日葵、熔岩椒、霜冻风铃草、等离子南瓜、虚空魔莲）。
+* **作物配置**：定义在 `src/data/crops.ts` 的 `CROPS_CONFIG` 中，包含 7 种作物（辐射荧光草、以太浆果、钢纹向日葵、熔岩椒、霜冻风铃草、等离子南瓜、虚空魔莲）。
 * **时间流逝**：支持**离线成长逻辑**。在初始化或每秒 Tick 时计算时间差。
 * **灌溉机制**：浇水消耗 2 点魔能，使作物成长速度翻倍。
 * **一键操作**：`batchWater`（批量浇水）、`batchHarvest`（批量收割）、`batchPlant`（批量种植荧光草）。
@@ -108,14 +108,23 @@ interface GameState {
 * **离线收益结算**：重连时弹出 `OfflineReport` 弹窗，展示离线期间避难所自动运转的累计收益。
 
 ### 3.6 数据驱动设计系统 (Data-Driven System)
-游戏的各项数据、遭遇、配方和物品全数采用**数据驱动（Data-Driven）**的解耦设计，所有配置文件集中在 `src/data/` 目录下。
+游戏的各项数据、遭遇、配方和物品全数采用**数据驱动（Data-Driven）**的解耦设计，所有配置文件集中在 `src/data/` 目录下，类型定义集中在 `src/types/config.ts`。
 
-* **物品系统 (`items.ts`)**：`ITEMS_CONFIG` 统一定义物品元数据（ID、中文名、Emoji、描述、分类），引擎和 UI 直接读取。
+* **类型定义 (`config.ts`)**：`PassiveEffect`、`CostFormula`、`UpgradeEffect`、`UpgradePath` 等纯配置接口。
+* **物品系统 (`items.ts`)**：`ITEMS_CONFIG` 统一定义物品元数据（ID、中文名、Emoji、描述、分类、`useEffect`），引擎和 UI 直接读取。
 * **配方系统 (`recipes.ts`)**：`RECIPES_CONFIG` 驱动工坊渲染，每种配方含 `cost`、`reward`、`special` 标记。
-* **卡牌事件系统 (`realityEvents.ts` / `dreamEvents.ts`)**：
+* **作物系统 (`crops.ts`)**：`CROPS_CONFIG` 定义 7 种作物（生长时间、产出、种子消耗、图片）。
+* **自动流水线 (`autoRecipes.ts`)**：`AUTO_RECIPES` 定义冶炼炉/组装台的自动配方（输入、输出、耗时、所属设施 `facilityId`）。
+* **卡牌事件系统 (`realityEvents.ts` / `dreamEvents.ts` / `rescueEvents.ts`)**：
   * `RealityEvent` 和 `DreamEvent` 结构体包含 `type`（事件类型）、`weight`（出现权重）、`choices(A/B)` 及 `requirements`（前置物资门槛）。
+  * `RESCUE_EVENTS` + `RESCUE_LOCATION_MAP` 驱动 6 个救援事件的位置映射。
   * 梦境事件额外支持 `targetSurvivorId`（共鸣目标）和 `resonance` 值。
-* **同伴档案 (`survivors.ts`)**：6 位幸存者的基础数据（ID、角色、Emoji、背景故事、梦境触发文本、救援地点、效率加成）。
+* **探险地点 (`expeditionLocations.ts`)**：`EXPEDITION_LOCATIONS` 定义现实探索目的地（战利品表、所需角色、`displayName`/`shortName`）。
+* **同伴档案 (`survivors.ts`)**：6 位幸存者的基础数据（ID、角色、Emoji、背景故事、梦境触发文本、救援地点、效率加成、`passives` 被动效果数组）。
+* **升级路径 (`shelterUpgrades.ts`)**：`SHELTER_UPGRADES` 定义 5 个设施的升级费用公式与效果增量。
+* **游戏常量 (`gameConstants.ts`)**：`GAME_CONSTANTS` 集中定义游戏数值（游戏天秒数、浇水能耗、温室上限、探索消耗等）。
+* **梦魇配置 (`nightmareConfig.ts`)**：`NIGHTMARE_CONFIG` 定义梦魇防御数值（炮塔伤害、超频能耗/伤害、梦境泄露伤害）。
+* **初始状态 (`initialState.ts`)**：`INITIAL_STATE` + `INITIAL_PLAYER_STATS` 定义游戏初始状态，被 GameContext 导入使用。
 
 ---
 
@@ -166,15 +175,24 @@ IdleCozyGame/
 ├── src/
 │   ├── assets/                        # UI 插画与作物图片资源 (JPG/PNG)
 │   ├── types/
-│   │   └── game.ts                    # 全局 TypeScript 接口声明 (GameState, PlayerStats, ShelterStats 等)
+│   │   ├── game.ts                    # 全局 TypeScript 接口声明 (GameState, PlayerStats, ShelterStats 等)
+│   │   └── config.ts                  # 配置类型接口 (PassiveEffect, CostFormula, UpgradePath 等)
 │   ├── data/                          # 静态配置数据表（全数据驱动）
-│   │   ├── items.ts                   # 物品与元数据元组
+│   │   ├── items.ts                   # 物品与元数据元组 (含 useEffect)
 │   │   ├── recipes.ts                 # 配方列表（工坊图纸/胶囊充能/温室扩建）
-│   │   ├── survivors.ts               # 同伴基础档案 (6 位幸存者)
+│   │   ├── survivors.ts               # 同伴基础档案 (6 位幸存者 + passives)
+│   │   ├── crops.ts                   # 作物配置 (7 种，含图片引用)
+│   │   ├── autoRecipes.ts             # 自动流水线配方 (5 个，含 facilityId)
+│   │   ├── expeditionLocations.ts     # 探险目的地 (3 个 + 4 救援点)
+│   │   ├── rescueEvents.ts            # 救援事件 (6 个 + 位置映射表)
+│   │   ├── shelterUpgrades.ts         # 设施升级路径 (5 个，含费用公式)
+│   │   ├── gameConstants.ts           # 游戏常量 (天数/能耗/上限等)
+│   │   ├── nightmareConfig.ts         # 梦魇防御数值配置
+│   │   ├── initialState.ts            # 初始游戏状态
 │   │   ├── realityEvents.ts           # 现实探索卡牌事件池（含类型/权重/要求）
 │   │   └── dreamEvents.ts             # 梦境共鸣卡牌事件池（含幸存者目标标记）
 │   ├── context/
-│   │   ├── GameContext.tsx            # 全局状态引擎 (CROPS_CONFIG, AUTO_RECIPES, EXPEDITION_LOCATIONS)
+│   │   ├── GameContext.tsx            # 全局状态引擎（从 src/data/ 导入所有配置）
 │   │   ├── GameContext.test.tsx       # GameContext 核心逻辑测试
 │   │   └── Account.test.tsx           # 账户管理测试
 │   ├── components/                    # UI 组件与分页

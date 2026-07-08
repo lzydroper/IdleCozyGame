@@ -32,10 +32,11 @@
 
 ## Project architecture
 
-- **`src/context/GameContext.tsx`** (~1638 lines) — central game state machine, all core game logic, offline tick calculation, account management
-- **`src/data/`** — data-driven config (items, recipes, survivors, event pools). No component changes needed to add content
-- **`src/components/`** — 7 tab components + `SwipeCard.tsx` + `ToastSystem.tsx` + `CloudSyncWidget.tsx`
+- **`src/context/GameContext.tsx`** (~1392 lines) — central game state machine, all core game logic, offline tick calculation, account management
+- **`src/data/`** — data-driven config (items, crops, autoRecipes, expeditionLocations, rescueEvents, survivors, shelterUpgrades, gameConstants, nightmareConfig, initialState, recipes, realityEvents, dreamEvents). No component changes needed to add content
+- **`src/types/config.ts`** — pure configuration interfaces (`PassiveEffect`, `CostFormula`, `UpgradePath`)
 - **`src/types/game.ts`** — all TypeScript interfaces (`GameState`, `PlayerStats`, `GreenhouseSlot`, etc.)
+- **`src/components/`** — 7 tab components + `SwipeCard.tsx` + `ToastSystem.tsx` + `CloudSyncWidget.tsx`
 - Entry: `index.html` → `src/main.tsx` → `src/App.tsx`
 
 ## Persistence
