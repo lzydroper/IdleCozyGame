@@ -11,9 +11,9 @@
 ---
 
 ## 2. 核心状态中心 (`GameContext.tsx`)
-游戏的所有全局状态和核心业务逻辑均封装在 `src/context/GameContext.tsx` 中。
+游戏的所有全局状态和核心业务逻辑均封装在 `src/context/GameContext.tsx` 中（约 1638 行）。
 
-### 核心状态结构 (`GameState`)
+### 核心状态结构 (`GameState`，定义于 `src/types/game.ts`)
 ```typescript
 interface GameState {
   player: PlayerStats;       // HP, maxHP, food, maxFood, energy, maxEnergy, sanity, maxSanity, days
@@ -22,15 +22,41 @@ interface GameState {
     slots: GreenhouseSlot[]; // 培养槽状态（id, cropId, growthProgress, growthTimeLeft, isWatered）
     unlockedSlotsCount: number; // 当前已解锁的槽位数（上限 8 个）
   };
-  survivors: Record<string, SurvivorState>; // 同伴状态（包含是否解锁、现实坐标、指派状态等）
-  exploration: ExplorationState; // 现实探索与梦境探索的临时状态（包含临时背包 realityBag / dreamBag 等）
-  discoveredBlueprints: string[]; // 已解锁的制造图纸
-  activeAlert: { type: string | null; hp: number }; // 避难所紧急危机（如梦魇兽入侵）
+  survivors: Record<string, Survivor>; // 同伴状态（包含是否解锁、现实坐标、指派状态等）
+  exploration: {
+    inRealityExploration: boolean;
+    realitySteps: number;
+    realityLocationId: string | null;
+    realityBag: Record<string, number>; // 探索中临时背包
+    realityEventId?: string | null;
+    inDreamExploration: boolean;
+    dreamSteps: number;
+    dreamPollution: number;            // 0-100
+    dreamBag: Record<string, number>;
+    dreamEventId?: string | null;
+    capsulesCharge: Record<string, number>; // 梦胶囊剩余可用次数
+    survivorResonance: Record<string, number>; // 幸存者ID -> 共鸣度
+  };
+  discoveredBlueprints: string[];
+  activeAlert: { type: "dream_leak" | null; hp: number };
   lastTick: number;          // 上一次心跳时间（用于离线生长时间计算）
   dayStartTime: number;      // 每一天开始的时间戳
   logs: LogEntry[];          // 无线电系统日志
+  hasCatherine?: boolean;
+  hasBuster?: boolean;
+  hasNova?: boolean;
+  shelter: ShelterStats;     // 避难所升级与自动化设施
+  lastOfflineReport?: OfflineReport | null; // 离线收益结算弹窗
 }
 ```
+
+### 额外关键接口
+- **`ShelterStats`** — 避难所基础属性：`maxOfflineDuration`, `batteryLevel`, `generatorLevel`, `recyclerLevel`, `facilities`（自动化设施）、`assignedWatererId`（自动浇水）、`assignedExplorerId`（挂机探索）、`expedition`（挂机派遣状态）
+- **`AutomationFacility`** — 自动化设施（`smelter`/`assembler`）：`level`, `activeRecipeId`, `currentProgress`, `timeLeft`, `assignedSurvivorId`
+- **`AutoRecipe`** — 自动流水线配方：输入输出与耗时
+- **`OfflineReport`** — 离线收益报告：`elapsedSeconds`, `recoveredEnergy`, `recoveredItems`, `logs`
+- **`GreenhouseSlot`** — 培养槽：`cropId`, `growthProgress`(0-100), `growthTimeLeft`, `isWatered`
+- **`Survivor`** — 同伴状态：`role`, `bonus`, `isAssigned`, `realityLocationId`
 
 ### 账号与存档管理
 * **多存档机制**：系统支持多用户切换。默认积分为 `Guest`。
@@ -44,106 +70,90 @@ interface GameState {
 
 ## 3. 核心游戏系统 (Gameplay Modules)
 
-### 3.1 温室种植系统 (`GreenhouseTab.tsx`)
-* **作物配置** (`src/data/crops.ts`)：包括成长周期、消耗种子和产出。
+### 3.1 温室种植系统 (`ShelterTab.tsx` 内置)
+温室的种植、浇水、收割功能集成在 `ShelterTab.tsx` 中，与该页签的避难所管理共享 UI。
+* **作物配置**：定义在 `GameContext.tsx` 的 `CROPS_CONFIG` 中，包含 7 种作物（辐射荧光草、以太浆果、钢纹向日葵、熔岩椒、霜冻风铃草、等离子南瓜、虚空魔莲）。
 * **时间流逝**：支持**离线成长逻辑**。在初始化或每秒 Tick 时计算时间差。
 * **灌溉机制**：浇水消耗 2 点魔能，使作物成长速度翻倍。
-* **一键灌溉 (`batchWater`)**：引擎层统一计算能量，在一次 React 更新周期内批量完成，避免多重异步 `setState` 竞争造成的数据错乱。
-* **温室扩建**：制作特殊图纸配方 `greenhouse_expansion`（温室智能扩展坞）将激活温室扩建逻辑，最大可将槽位扩充至 8 个。
+* **一键操作**：`batchWater`（批量浇水）、`batchHarvest`（批量收割）、`batchPlant`（批量种植荧光草）。
+* **温室扩建**：制作特殊配方 `greenhouse_expansion` 可将槽位扩充至 8 个。
 
 ### 3.2 工坊制造与生存补给 (`WorkshopTab.tsx`)
-* **图纸系统** (`src/data/recipes.ts`)：图纸分为材料加工、设备制造、生存补给和特殊配方。
-* **生存补给**：
-  * **魔能熔岩热烩 (`hot_stew`)**：食用后恢复饱食与生命值。
-  * **纳米修复注射针 (`nanite_injector`)**：注射后快速修复生命损伤。
-  * **心灵净化血清 (`purifying_serum`)**：清除大量心灵污染度，稳定理智。
-* **折叠体验**：工坊中的生存补给面板支持折叠/展开，使后期游戏配方增多时界面依然整洁。
+* **图纸系统** (`src/data/recipes.ts`)：使用 `RECIPES_CONFIG` 驱动列表渲染。每个配方包含 `cost`（消耗）、`reward`（产出）、`special`（特殊标记如胶囊充能/温室扩建）。
+* **生存补给**：折叠面板展示可消耗品（`hot_stew`、`nanite_injector`、`purifying_serum`），点击直接使用。
+* **制作制造**：消耗魔能 `energy` 制作物品。若诺娃(Nova)已解锁，魔能消耗降低 20%。
+* **胶囊充能**：`sanity_capsule` 和 `warp_capsule` 通过特殊配方充能，充能次数存储在 `exploration.capsulesCharge`。
 
 ### 3.3 地表探索与同伴营救 (`WildernessTab.tsx`)
 * **卡牌滑动交互**：引入了 `SwipeCard.tsx`。玩家可以通过左滑/右滑卡牌做出选择。
 * **临时背囊机制**：探索中的收益和损失先计入 `exploration.realityBag`：
-  * **负向扣除防护**：扣除物品（如事件损坏）的最大量不能超过 `主背包 + 临时背包` 的总和，防止资产扣成负数。
-  * **负向红字提示**：临时背囊中若为负数，将以红字高亮提醒损失，撤退时安全核销。
+  * **负向扣除防护**：扣除物品的最大量不能超过 `主背包 + 临时背包` 的总和。
+  * **负向红字提示**：临时背囊中若为负数，将以红字高亮提醒损失。
   * **安全撤退/救援成功**：数据合并至主背包并清空临时背囊。
   * **探索死亡**：扣除临时背囊的全部战利品，不影响主背包。
+* **救援任务**：当幸存者共鸣度达 100% 后，解锁现实坐标。在第 5 步触发特殊救援事件。
 
 ### 3.4 心灵梦境探索 (`DreamscapeTab.tsx`)
-* **机制**：潜入梦境需要消耗理智。
-* **梦境污染**：每走一步都会积累污染度，如果污染度达到 100% 将触发“梦境泄露（梦魇入侵）”警报，在现实中扣除玩家 60 点生命值。
-* **同伴共鸣**：梦境中的事件可以解锁同伴在现实地表的救援坐标（例如锁定雷达站、温室废墟或信号塔）。
+* **入梦消耗**：潜入梦境需要消耗理智值。
+* **梦境污染**：每步积累污染度，达到 100% 触发"梦境泄露"警报，扣除 60 点生命值。
+* **同伴共鸣**：梦境事件可以解锁同伴在现实地表的救援坐标。共鸣度通过 `survivorResonance` 追踪，目标幸存者由 `targetSurvivorId` 标记。
+* **梦胶囊**：`sanity_capsule`（恢复理智）和 `warp_capsule`（跃迁）通过工坊充能后使用。
 
-### 3.5 数据驱动设计系统 (Data-Driven System)
-游戏的各项数据、遭遇、配方和物品全数采用**数据驱动（Data-Driven）**的解耦设计，所有配置文件集中在 `src/data/` 目录下。这意味着无需修改 React 组件逻辑，仅需编辑配置文件即可扩展游戏内容。
+### 3.5 避难所后勤与自动化 (`ShelterTab.tsx`，约 1509 行)
+避难所管理是游戏的核心中后期系统，包含以下子系统：
+* **设施升级**：发电机（离线魔能产出）、蓄电池（离线收益上限延长）、回收站（自动收集废金属）。
+* **自动化流水线**：`smelter`（熔炼合金）和 `assembler`（组装口粮/能量剂/炮塔）。可指派幸存者提高效率。
+* **挂机派遣探索**：选择目的地（雷达站/地铁站/生化实验室）派遣幸存者挂机自动拾荒，按间隔时间产出物资。
+* **幸存者岗位分配**：指派特定幸存者从事自动浇水或挂机探索。
+* **离线收益结算**：重连时弹出 `OfflineReport` 弹窗，展示离线期间避难所自动运转的累计收益。
 
-* **物品系统 (`items.ts`)**：
-  * 通过 `ITEMS_CONFIG` 统一定义物品元数据，包括 ID、中文名称、代表 Emoji、详情描述及分类（种子/材料/食物/装备/特殊）。
-  * 游戏引擎与临时背囊等 UI 直接读取此数据字典进行显示与汉化，杜绝了硬编码文案。
-* **配方系统 (`recipes.ts`)**：
-  * 制造工坊的列表渲染完全由 `RECIPES_CONFIG` 驱动。
-  * 每个配方包含：`cost`（配方消耗）、`yields`（产出）、`energyCost`（消耗魔能）、`category`（所属页签）以及是否默认解锁等。
-  * 诺娃（Nova）的“过载减耗”被动直接读取配方的魔能消耗并动态计算，同时可过滤掉标记有 `special: true`（如温室扩建）的特殊配方。
+### 3.6 数据驱动设计系统 (Data-Driven System)
+游戏的各项数据、遭遇、配方和物品全数采用**数据驱动（Data-Driven）**的解耦设计，所有配置文件集中在 `src/data/` 目录下。
+
+* **物品系统 (`items.ts`)**：`ITEMS_CONFIG` 统一定义物品元数据（ID、中文名、Emoji、描述、分类），引擎和 UI 直接读取。
+* **配方系统 (`recipes.ts`)**：`RECIPES_CONFIG` 驱动工坊渲染，每种配方含 `cost`、`reward`、`special` 标记。
 * **卡牌事件系统 (`realityEvents.ts` / `dreamEvents.ts`)**：
-  * 现实和梦境的探索事件均定义为 `RealityEvent` 和 `DreamEvent` 结构体数组。
-  * **结构体定义**：
-    ```typescript
-    interface RealityEvent {
-      id: string;
-      title: string;
-      description: string;
-      choices: {
-        A: EventChoice;
-        B: EventChoice;
-      };
-    }
-    interface EventChoice {
-      text: string;                  // 选项文字说明
-      requirements?: Record<string, number>; // 玩家主背包前提物资门槛（如：需防御炮塔x1）
-      results: {
-        stats?: { hp?: number; food?: number; energy?: number; sanity?: number; pollution?: number }; // 属性增减
-        items?: Record<string, number>; // 获得或扣除物品（如：废铁 -5，熔岩核心 +1）
-        logText: string;              // 做出选择后打印到日志面板的文本
-      };
-    }
-    ```
-  * 滑动卡片组件 `SwipeCard.tsx` 会读取当前卡牌的 `requirements` 进行置灰或校验，并根据 `results` 执行数值与物品的清算。
+  * `RealityEvent` 和 `DreamEvent` 结构体包含 `type`（事件类型）、`weight`（出现权重）、`choices(A/B)` 及 `requirements`（前置物资门槛）。
+  * 梦境事件额外支持 `targetSurvivorId`（共鸣目标）和 `resonance` 值。
+* **同伴档案 (`survivors.ts`)**：6 位幸存者的基础数据（ID、角色、Emoji、背景故事、梦境触发文本、救援地点、效率加成）。
 
 ---
 
 ## 4. 幸存同伴与生存被动技能 (Survivor Passives)
-当同伴被营救回避难所后（即清除 `realityLocationId` 坐标，状态标记为已解救），其独一无二的被动加成将立刻全局生效：
+当同伴被营救回避难所后（清除 `realityLocationId` 坐标），其被动加成立刻全局生效：
 
 1. **工程师：罗伊 (Roy)**
-   * **加成**：高级制造技术。
-   * **效果**：解锁高级温室和高阶能源电池的配方权限。
-2. **学者：诺娃 (Nova)**
-   * **加成**：核心过载减耗。
-   * **效果**：除了“温室扩建”等特殊配方外，工坊制造任何物品消耗的魔能（energy）**降低 10%**（向上取整，且最低消耗为 0）。
-3. **前哨卫兵：凯瑟琳 (Catherine)**
-   * **加成**：野外生存特训。
-   * **效果**：在地表探索遭遇的负面事件中，受到的 HP 损失和饱食度损失**降低 15%**（四舍五入）。
-4. **机械搜寻犬：巴斯特 (Buster)**
-   * **加成**：废铁磁力收集。
-   * **效果**：野外搜寻时，获得的废旧金属（`scrap_metal`）数量**提升 30%**（四舍五入）。
+   * **加成**：工坊能耗 -20%
+   * **救援地点**：雷达站废墟 (radar_station)
+
+2. **农学家：阿梅 (Mei)**
+   * **加成**：温室作物生长速度 +25%
+   * **救援地点**：温室废墟 (green_ruins)
+
+3. **信使：赛罗 (Zero)**
+   * **加成**：地表探索消耗 -15%
+   * **救援地点**：高频信号塔 (signal_tower)
+
+4. **前哨卫兵：凯瑟琳 (Catherine)**
+   * **加成**：所有行动饱食度与生命消耗降低 15%
+   * **救援地点**：生化实验室 (bio_lab)
+
+5. **机械搜寻犬：巴斯特 (Buster)**
+   * **加成**：野外搜寻时，获得的`scrap_metal`数量提升 30%
+   * **救援地点**：坍塌地铁站 (collapsed_subway)
+
+6. **机甲驾驶员：诺娃 (Nova)**
+   * **加成**：最大魔能上限提升 30 点 & 核心超频防守消耗降低
+   * **救援地点**：军事仓库 (military_depot)
 
 ---
 
 ## 5. 云端同步系统 (`CloudSyncWidget.tsx` & `lib/supabase.ts`)
 * **架构方案**：项目采用 **Supabase** 作为后端数据库。
 * **密匙存储**：Vite 自动读取 `.env` 中配置的 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY`。
-* **密钥静默记忆**：
-  * 玩家首次在 `CloudSyncWidget` 中输入密匙并成功上传或下载后，密匙将被记录到本地 `localStorage` 的 `aether_garden_sync_key_${currentUser}` 中。
-  * 下一次切换账户或重启终端时自动读取，无需玩家重复手输。
-* **直插式同步 (`setState(parsedState)`)**：数据从云端下载解密后，直接覆盖 React 全局状态 and 本地 localStorage，玩家界面瞬间同步完毕，无需重新刷新网页。
-* **云端数据表结构 SQL**：
-  ```sql
-  create table public.saves (
-    username text not null,
-    sync_key text not null,
-    data jsonb null,
-    updated_at timestamp with time zone null,
-    constraint saves_pkey primary key (username)
-  );
-  ```
+* **密钥静默记忆**：密匙记录到 `localStorage` 的 `aether_garden_sync_key_${currentUser}` 中。
+* **直插式同步 (`setState(parsedState)`)**：数据从云端下载后直接覆盖 React 全局状态和 localStorage。
+* **优雅降级**：Supabase 连接为可选功能。当 `.env` 未配置时，CloudSyncWidget 不显示，游戏仅使用 localStorage 正常运行。
 
 ---
 
@@ -156,24 +166,31 @@ IdleCozyGame/
 ├── src/
 │   ├── assets/                        # UI 插画与作物图片资源 (JPG/PNG)
 │   ├── types/
-│   │   └── game.ts                    # 全局 TypeScript 接口声明
-│   ├── data/                          # 静态配置数据表
+│   │   └── game.ts                    # 全局 TypeScript 接口声明 (GameState, PlayerStats, ShelterStats 等)
+│   ├── data/                          # 静态配置数据表（全数据驱动）
 │   │   ├── items.ts                   # 物品与元数据元组
-│   │   ├── recipes.ts                 # 配方列表 (Nova 减耗在此关联)
-│   │   ├── survivors.ts               # 同伴基础档案 (Roy, Nova, Catherine, Buster)
-│   │   ├── realityEvents.ts           # 现实探索卡牌事件池
-│   │   └── dreamEvents.ts             # 梦境共鸣卡牌事件池
+│   │   ├── recipes.ts                 # 配方列表（工坊图纸/胶囊充能/温室扩建）
+│   │   ├── survivors.ts               # 同伴基础档案 (6 位幸存者)
+│   │   ├── realityEvents.ts           # 现实探索卡牌事件池（含类型/权重/要求）
+│   │   └── dreamEvents.ts             # 梦境共鸣卡牌事件池（含幸存者目标标记）
 │   ├── context/
-│   │   └── GameContext.tsx            # 全局状态引擎 (包含一键浇水、Nova被动、Buster加成等)
+│   │   ├── GameContext.tsx            # 全局状态引擎 (CROPS_CONFIG, AUTO_RECIPES, EXPEDITION_LOCATIONS)
+│   │   ├── GameContext.test.tsx       # GameContext 核心逻辑测试
+│   │   └── Account.test.tsx           # 账户管理测试
 │   ├── components/                    # UI 组件与分页
-│   │   ├── GreenhouseTab.tsx          # 魔导温室面板 (一键种植/一键收割/一键灌溉/扩建显示)
-│   │   ├── WorkshopTab.tsx            # 制造工坊面板 (被动减耗UI/补给折叠)
-│   │   ├── WildernessTab.tsx          # 荒野地表探险 (滑动卡牌/救援阶段/扣除边界控制)
-│   │   ├── DreamscapeTab.tsx          # 心灵深海梦境 (稳定胶囊/污染度危机)
-│   │   ├── LogTab.tsx                 # 避难所无线电日志 (同伴未救出时显示为防剧透占位符)
-│   │   ├── CloudSyncWidget.tsx        # 云同步端点小部件 (Supabase接入/密匙记忆)
-│   │   ├── SwipeCard.tsx              # 滑动卡片组件 (Touch与Mouse事件)
-│   │   └── ToastSystem.tsx            # 吐司消息提醒系统
-│   ├── App.tsx                        # 主框架入口 (底部玻璃化导航/首屏探索路由/终端控制台)
-│   └── expansion.test.tsx             # 扩展生存补给与被动效果的集成测试用例
+│   │   ├── ShelterTab.tsx             # 避难所后勤（温室种植/设施升级/自动化流水线/挂机派遣/幸存者岗位分配）
+│   │   ├── WorkshopTab.tsx            # 制造工坊（配方制造/生存补给折叠面板/梦魇防御控制台）
+│   │   ├── WildernessTab.tsx          # 荒野地表探险（滑动卡牌/临时背囊/救援阶段）
+│   │   ├── DreamscapeTab.tsx          # 心灵梦境（梦胶囊/污染度/同伴共鸣）
+│   │   ├── LogTab.tsx                 # 避难所无线电日志（过滤/幸存者图鉴）
+│   │   ├── SwipeCard.tsx              # 滑动卡牌组件（Touch 与 Mouse 事件，含 requirement 校验）
+│   │   ├── ToastSystem.tsx            # 吐司消息与确认弹窗系统
+│   │   └── CloudSyncWidget.tsx        # 云同步端点小部件（Supabase 接入/密钥记忆）
+│   ├── lib/
+│   │   └── supabase.ts                # Supabase 客户端初始化（优雅降级处理）
+│   ├── App.tsx                        # 主框架入口（5 页签导航：日志/工坊/探索/后勤/梦境，探险锁定，离线弹窗）
+│   ├── main.tsx                       # App 挂载与 Provider 包裹
+│   ├── index.css                      # Tailwind v4 引入与全局主题（暗色废土风格）
+│   ├── expansion.test.tsx             # 生存补给与被动效果的集成测试
+│   └── smoke.test.ts                  # 基础冒烟测试
 ```
