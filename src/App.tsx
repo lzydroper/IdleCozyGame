@@ -444,22 +444,22 @@ const App: React.FC = () => {
       )}
 
       {/* 主工作区 */}
-      <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent relative">
-        <div className={`absolute inset-0 transition-all duration-200 ease-out ${activeTab === 'wilderness' ? 'opacity-100 translate-y-0 z-10 overflow-y-auto' : 'opacity-0 translate-y-2 z-0 pointer-events-none overflow-hidden'}`}>
-          <WildernessTab />
-        </div>
-        <div className={`absolute inset-0 transition-all duration-200 ease-out ${activeTab === 'dreamscape' ? 'opacity-100 translate-y-0 z-10 overflow-y-auto' : 'opacity-0 translate-y-2 z-0 pointer-events-none overflow-hidden'}`}>
-          <DreamscapeTab />
-        </div>
-        <div className={`absolute inset-0 transition-all duration-200 ease-out ${activeTab === 'workshop' ? 'opacity-100 translate-y-0 z-10 overflow-y-auto' : 'opacity-0 translate-y-2 z-0 pointer-events-none overflow-hidden'}`}>
-          <WorkshopTab />
-        </div>
-        <div className={`absolute inset-0 transition-all duration-200 ease-out ${activeTab === 'log' ? 'opacity-100 translate-y-0 z-10 overflow-y-auto' : 'opacity-0 translate-y-2 z-0 pointer-events-none overflow-hidden'}`}>
-          <LogTab />
-        </div>
-        <div className={`absolute inset-0 transition-all duration-200 ease-out ${activeTab === 'shelter' ? 'opacity-100 translate-y-0 z-10 overflow-y-auto' : 'opacity-0 translate-y-2 z-0 pointer-events-none overflow-hidden'}`}>
-          <ShelterTab />
-        </div>
+      <main className="flex-1 p-4 overflow-y-auto z-10 bg-transparent">
+        {activeTab === 'wilderness' && (
+          <div className="animate-tab-enter"><WildernessTab /></div>
+        )}
+        {activeTab === 'dreamscape' && (
+          <div className="animate-tab-enter"><DreamscapeTab /></div>
+        )}
+        {activeTab === 'workshop' && (
+          <div className="animate-tab-enter"><WorkshopTab /></div>
+        )}
+        {activeTab === 'log' && (
+          <div className="animate-tab-enter"><LogTab /></div>
+        )}
+        {activeTab === 'shelter' && (
+          <div className="animate-tab-enter"><ShelterTab /></div>
+        )}
       </main>
 
       {/* 底部导航栏 */}

@@ -16,7 +16,7 @@ const WorkshopTab: React.FC = () => {
   const player = state.player;
   const activeAlert = state.activeAlert;
   const novaDefPassive = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'defense_cost');
-  const overloadEnergyCost = (state.hasNova && novaDefPassive) ? Math.round(20 * novaDefPassive.multiplier) : 20;
+  const overloadEnergyCost = (state.hasNova && novaDefPassive) ? Math.round(20 * (novaDefPassive.multiplier ?? 1)) : 20;
 
   const supplyConfigs = [
     {
@@ -230,30 +230,21 @@ const WorkshopTab: React.FC = () => {
         </div>
 
         {isSupplyExpanded && (
-          <div className="grid grid-cols-2 gap-3 text-xs mt-4 animate-fade-in">
+          <div className="flex flex-wrap gap-2 text-xs mt-3 animate-fade-in">
             {supplyConfigs.map(cfg => {
               const meta = ITEMS_CONFIG[cfg.id];
               const qty = inventory[cfg.id] || 0;
               if (!meta) return null;
 
               return (
-                <div key={cfg.id} className="p-3 bg-zinc-950/60 border border-zinc-900 rounded-2xl flex flex-col justify-between h-36">
-                  <div>
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold flex items-center gap-1">
-                        <span>{meta.emoji}</span>
-                        <span className={`whitespace-nowrap ${cfg.colorClass.split(' ')[0]}`}>{meta.name}</span>
-                      </span>
-                      <span className="text-zinc-500 font-bold whitespace-nowrap">拥有: {qty}</span>
-                    </div>
-                    <p className="text-[10px] text-zinc-500 line-clamp-2 leading-tight" title={meta.description}>
-                      {meta.description}
-                    </p>
-                  </div>
+                <div key={cfg.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-bold select-none bg-zinc-950 border-zinc-800">
+                  <span>{meta.emoji}</span>
+                  <span className="text-zinc-300">{meta.name}</span>
+                  <span className="text-zinc-500">x{qty}</span>
                   <button
                     onClick={() => handleUseItem(cfg.id)}
                     disabled={qty <= 0}
-                    className={`w-full mt-2 py-1.5 border disabled:opacity-30 disabled:pointer-events-none font-bold rounded-lg transition-colors cursor-pointer text-center text-[10px] sm:text-xs ${cfg.colorClass.split(' ').slice(1).join(' ')}`}
+                    className="ml-0.5 px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                   >
                     {cfg.effectText}
                   </button>

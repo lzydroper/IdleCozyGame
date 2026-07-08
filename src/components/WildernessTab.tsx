@@ -93,8 +93,8 @@ const WildernessTab: React.FC = () => {
         if (p.type === 'exploration_cost') {
           const isRescued = !state.survivors[config.id]?.realityLocationId;
           if (state.survivors[config.id] && (p.condition !== 'rescued' || isRescued)) {
-            if (p.target === 'energy') energyCost = Math.round(energyCost * p.multiplier);
-            if (p.target === 'food') foodCost = Math.round(foodCost * p.multiplier);
+            if (p.target === 'energy') energyCost = Math.round(energyCost * (p.multiplier ?? 1));
+            if (p.target === 'food') foodCost = Math.round(foodCost * (p.multiplier ?? 1));
           }
         }
       });
@@ -154,7 +154,7 @@ const WildernessTab: React.FC = () => {
       c.passives.filter(p => p.type === 'stat_cost' && state.survivors[c.id])
     );
     if (adjustedStats && statCostPassives.length > 0) {
-      const multi = statCostPassives.reduce((m, p) => m * p.multiplier, 1);
+      const multi = statCostPassives.reduce((m, p) => m * (p.multiplier ?? 1), 1);
       if (adjustedStats.hp !== undefined && adjustedStats.hp < 0) {
         adjustedStats.hp = Math.round(adjustedStats.hp * multi);
       }
@@ -214,7 +214,7 @@ const WildernessTab: React.FC = () => {
               if (p.type === 'item_yield' && p.target === item && qty > 0) {
                 const isRescued = !prev.survivors[config.id]?.realityLocationId;
                 if (prev.survivors[config.id] && (p.condition !== 'rescued' || isRescued)) {
-                  adjustedQty = Math.round(qty * p.multiplier);
+                  adjustedQty = Math.round(qty * (p.multiplier ?? 1));
                 }
               }
             });

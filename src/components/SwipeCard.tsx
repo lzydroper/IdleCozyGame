@@ -116,7 +116,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
     const selectedChoice = dir === 'left' ? choiceA : choiceB;
     if (selectedChoice && selectedChoice.requirements && playerInventory) {
       let reqsMet = true;
-      Object.entries(selectedChoice.requirements).forEach(([item, qty]) => {
+      (Object.entries(selectedChoice.requirements) as [string, number][]).forEach(([item, qty]) => {
         if ((playerInventory[item] || 0) < qty) reqsMet = false;
       });
       if (!reqsMet) return; // WildernessTab will toast, we just prevent swipe trigger
@@ -165,7 +165,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
     
     // Requirements
     if (choice.requirements) {
-      Object.entries(choice.requirements).forEach(([item, reqQty]) => {
+      (Object.entries(choice.requirements) as [string, number][]).forEach(([item, reqQty]) => {
         const itemName = ITEMS_CONFIG[item]?.name || item;
         const currentQty = playerInventory[item] || 0;
         const isMet = currentQty >= reqQty;
@@ -185,7 +185,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         let adjustedVal = val as number;
         const statCostPassive = SURVIVORS_CONFIG.find(s => s.id === 'catherine')?.passives.find(p => p.type === 'stat_cost');
         if (hasCatherine && statCostPassive && adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
-          adjustedVal = Math.round(adjustedVal * statCostPassive.multiplier);
+          adjustedVal = Math.round(adjustedVal * (statCostPassive.multiplier ?? 1));
         }
         
         if (stat === 'pollution') {
@@ -258,11 +258,11 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
 
     // Items
     if (choice.results.items) {
-      Object.entries(choice.results.items).forEach(([item, qty]) => {
+      (Object.entries(choice.results.items) as [string, number][]).forEach(([item, qty]) => {
         let adjustedQty = qty;
         const itemYieldPassive = SURVIVORS_CONFIG.find(s => s.id === 'buster')?.passives.find(p => p.type === 'item_yield' && p.target === 'scrap_metal');
         if (item === 'scrap_metal' && qty > 0 && hasBuster && itemYieldPassive) {
-          adjustedQty = Math.round(qty * itemYieldPassive.multiplier);
+          adjustedQty = Math.round(qty * (itemYieldPassive.multiplier ?? 1));
         }
         if (adjustedQty === 0) return;
 
@@ -284,7 +284,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
   const checkRequirementsMet = (choice?: EventChoice) => {
     if (!choice || !choice.requirements || !playerInventory) return true;
     let met = true;
-    Object.entries(choice.requirements).forEach(([item, qty]) => {
+    (Object.entries(choice.requirements) as [string, number][]).forEach(([item, qty]) => {
       if ((playerInventory[item] || 0) < qty) met = false;
     });
     return met;

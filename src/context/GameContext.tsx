@@ -7,7 +7,7 @@ import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { INITIAL_PLAYER_STATS, INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../data/initialState';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 // 纯函数：计算离线或Tick生长时间扣减
 export function calculateOfflineProgress(

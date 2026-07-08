@@ -7,6 +7,12 @@
   --color-magic-green: #39ff14;
   --color-magic-blue: #00f0ff;
   --color-warn-red: #ff0055;
+  --animate-tab-enter: tab-enter 200ms ease-out;
+}
+
+@keyframes tab-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 body {
