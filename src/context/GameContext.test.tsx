@@ -2,7 +2,8 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { calculateOfflineProgress, calculateDetailedOfflineProgress, GameProvider, useGame, CROPS_CONFIG } from './GameContext';
+import { calculateOfflineProgress, calculateDetailedOfflineProgress, GameProvider, useGame } from './GameContext';
+import { CROPS_CONFIG } from '../data/crops';
 import type { GreenhouseSlot, GameState } from '../types/game';
 
 // 模拟作物配置表

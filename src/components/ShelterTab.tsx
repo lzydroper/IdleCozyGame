@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useGame, AUTO_RECIPES, EXPEDITION_LOCATIONS, CROPS_CONFIG } from '../context/GameContext';
+import { useGame } from '../context/GameContext';
+import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { AUTO_RECIPES } from '../data/autoRecipes';
+import { CROPS_CONFIG } from '../data/crops';
 import { ITEMS_CONFIG } from '../data/items';
+import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
+import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
 import {
   Flame,
@@ -24,15 +29,6 @@ import {
   Info,
   Timer
 } from 'lucide-react';
-
-const SURVIVOR_EMOJIS: Record<string, string> = {
-  roy: '🔧',
-  mei: '🌾',
-  zero: '🏃',
-  catherine: '🩺',
-  buster: '🦾',
-  nova: '☄️'
-};
 
 const ShelterTab: React.FC = () => {
   const {
@@ -133,18 +129,21 @@ const ShelterTab: React.FC = () => {
 
   // 1. 避难所基建与挂机控制 (Base Upgrades) 属性计算
   const currentBattery = state.shelter.batteryLevel || 1;
-  const nextBatteryCost = currentBattery * 10;
+  const batteryUpgrade = SHELTER_UPGRADES.battery;
+  const nextBatteryCost = batteryUpgrade.costFormula.multiply * (currentBattery + batteryUpgrade.costFormula.offset);
   const currentMaxHours = (state.shelter.maxOfflineDuration / 3600).toFixed(1);
-  const nextMaxHours = ((14400 + currentBattery * 3600) / 3600).toFixed(1);
+  const nextMaxHours = ((batteryUpgrade.effects[0].baseValue + currentBattery * batteryUpgrade.effects[0].increment) / 3600).toFixed(1);
 
   const currentGenerator = state.shelter.generatorLevel || 0;
-  const nextGeneratorCost = (currentGenerator + 1) * 15;
-  const currentGenRate = (currentGenerator * 0.005 * 60).toFixed(2); // 每分钟
+  const genUpgrade = SHELTER_UPGRADES.generator;
+  const nextGeneratorCost = genUpgrade.costFormula.multiply * (currentGenerator + genUpgrade.costFormula.offset);
+  const currentGenRate = (currentGenerator * 0.005 * 60).toFixed(2);
   const nextGenRate = ((currentGenerator + 1) * 0.005 * 60).toFixed(2);
 
   const currentRecycler = state.shelter.recyclerLevel || 0;
-  const nextRecyclerCost = (currentRecycler + 1) * 15;
-  const currentRecRate = (currentRecycler * 0.002 * 60).toFixed(2); // 每分钟
+  const recUpgrade = SHELTER_UPGRADES.recycler;
+  const nextRecyclerCost = recUpgrade.costFormula.multiply * (currentRecycler + recUpgrade.costFormula.offset);
+  const currentRecRate = (currentRecycler * 0.002 * 60).toFixed(2);
   const nextRecRate = ((currentRecycler + 1) * 0.002 * 60).toFixed(2);
 
   // 2. 幸存者列表
@@ -204,8 +203,8 @@ const ShelterTab: React.FC = () => {
   };
 
   // 3. 工厂流水线配方分类
-  const smelterRecipes = Object.values(AUTO_RECIPES).filter(r => r.id.startsWith('smelt_'));
-  const assemblerRecipes = Object.values(AUTO_RECIPES).filter(r => r.id.startsWith('assemble_'));
+  const smelterRecipes = Object.values(AUTO_RECIPES).filter(r => r.facilityId === 'smelter');
+  const assemblerRecipes = Object.values(AUTO_RECIPES).filter(r => r.facilityId === 'assembler');
 
   // 4. 挂机探索状态与数据计算
   const exp = state.shelter.expedition;
@@ -616,7 +615,7 @@ const ShelterTab: React.FC = () => {
                   : ' (空闲)';
                 return (
                   <option key={s.id} value={s.id}>
-                    {SURVIVOR_EMOJIS[s.id] || '👤'} {s.name} ({s.role === 'farmer' ? '农学家' : s.role === 'engineer' ? '工程师' : '侦察兵'})
+                    {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'farmer' ? '农学家' : s.role === 'engineer' ? '工程师' : '侦察兵'})
                     {isRecommended ? ' ★ 优先推荐' : ''} {statusStr}
                   </option>
                 );
@@ -703,7 +702,8 @@ const ShelterTab: React.FC = () => {
             const fac = state.shelter.facilities.smelter;
             if (!fac) return null;
             const level = fac.level || 1;
-            const upgradeCost = level * 20;
+            const smelterUpgrade = SHELTER_UPGRADES.smelter;
+            const upgradeCost = smelterUpgrade.costFormula.multiply * (level + smelterUpgrade.costFormula.offset);
             const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
             const operator = fac.assignedSurvivorId ? state.survivors[fac.assignedSurvivorId] : null;
             const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (level - 1) * 0.1;
@@ -785,7 +785,7 @@ const ShelterTab: React.FC = () => {
                         : ' (空闲)';
                       return (
                         <option key={s.id} value={s.id}>
-                          {SURVIVOR_EMOJIS[s.id] || '👤'} {s.name} ({s.role === 'farmer' ? '农学' : s.role === 'engineer' ? '工程 ★' : '探索'}) {statusStr}
+                          {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'farmer' ? '农学' : s.role === 'engineer' ? '工程 ★' : '探索'}) {statusStr}
                         </option>
                       );
                     })}
@@ -951,7 +951,8 @@ const ShelterTab: React.FC = () => {
             const fac = state.shelter.facilities.assembler;
             if (!fac) return null;
             const level = fac.level || 1;
-            const upgradeCost = level * 20;
+            const assemblerUpgrade = SHELTER_UPGRADES.assembler;
+            const upgradeCost = assemblerUpgrade.costFormula.multiply * (level + assemblerUpgrade.costFormula.offset);
             const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
             const operator = fac.assignedSurvivorId ? state.survivors[fac.assignedSurvivorId] : null;
             const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (level - 1) * 0.1;
@@ -1033,7 +1034,7 @@ const ShelterTab: React.FC = () => {
                         : ' (空闲)';
                       return (
                         <option key={s.id} value={s.id}>
-                          {SURVIVOR_EMOJIS[s.id] || '👤'} {s.name} ({s.role === 'farmer' ? '农学' : s.role === 'engineer' ? '工程 ★' : '探索'}) {statusStr}
+                          {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'farmer' ? '农学' : s.role === 'engineer' ? '工程 ★' : '探索'}) {statusStr}
                         </option>
                       );
                     })}
@@ -1216,7 +1217,7 @@ const ShelterTab: React.FC = () => {
                     {expLocation.name}
                   </h3>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
-                    带队幸存者: {SURVIVOR_EMOJIS[currentExplorer.id] || '👤'} <strong className="text-zinc-200 font-bold">{currentExplorer.name}</strong> 
+                    带队幸存者: {SURVIVORS_CONFIG.find(c => c.id === currentExplorer.id)?.emoji || '👤'} <strong className="text-zinc-200 font-bold">{currentExplorer.name}</strong> 
                     <span className="text-cyan-400/90 ml-1">({currentExplorer.role === 'scout' ? '侦察兵 +速' : '无加速'})</span>
                   </div>
                 </div>
@@ -1303,7 +1304,7 @@ const ShelterTab: React.FC = () => {
                     : ' (空闲在避难所)';
                   return (
                     <option key={s.id} value={s.id}>
-                      {SURVIVOR_EMOJIS[s.id] || '👤'} {s.name} ({s.role === 'scout' ? '侦察兵 ★' : s.role === 'engineer' ? '工程师' : '农学家'}) {statusStr}
+                      {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'scout' ? '侦察兵 ★' : s.role === 'engineer' ? '工程师' : '农学家'}) {statusStr}
                     </option>
                   );
                 })}

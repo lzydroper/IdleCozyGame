@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Cog, TestTube, Crosshair, Tent, FlaskConical, Cl
 import type { EventChoice } from '../data/realityEvents';
 import type { PlayerStats } from '../types/game';
 import { ITEMS_CONFIG } from '../data/items';
+import { SURVIVORS_CONFIG } from '../data/survivors';
 
 interface SwipeCardProps {
   title: string;
@@ -182,8 +183,9 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
       Object.entries(choice.results.stats).forEach(([stat, val]) => {
         if (val === 0) return;
         let adjustedVal = val as number;
-        if (hasCatherine && adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
-          adjustedVal = Math.round(adjustedVal * 0.85);
+        const statCostPassive = SURVIVORS_CONFIG.find(s => s.id === 'catherine')?.passives.find(p => p.type === 'stat_cost');
+        if (hasCatherine && statCostPassive && adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
+          adjustedVal = Math.round(adjustedVal * statCostPassive.multiplier);
         }
         
         if (stat === 'pollution') {
@@ -258,8 +260,9 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
     if (choice.results.items) {
       Object.entries(choice.results.items).forEach(([item, qty]) => {
         let adjustedQty = qty;
-        if (item === 'scrap_metal' && qty > 0 && hasBuster) {
-          adjustedQty = Math.round(qty * 1.3);
+        const itemYieldPassive = SURVIVORS_CONFIG.find(s => s.id === 'buster')?.passives.find(p => p.type === 'item_yield' && p.target === 'scrap_metal');
+        if (item === 'scrap_metal' && qty > 0 && hasBuster && itemYieldPassive) {
+          adjustedQty = Math.round(qty * itemYieldPassive.multiplier);
         }
         if (adjustedQty === 0) return;
 

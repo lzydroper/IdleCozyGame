@@ -1,158 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
+import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { RealityEvent, EventChoice } from '../data/realityEvents';
+import { CATEGORY_WEIGHTS } from '../data/realityEvents';
+import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
 import { Compass, ShieldAlert, ChevronRight } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
-
-// 特殊救援事件定义
-const ROY_RESCUE_EVENT: RealityEvent = {
-  id: "rescue_roy",
-  title: "雷达站：营救罗伊",
-  description: "在破碎的雷达阵列控制舱中，你发现了饥寒交迫的工程师罗伊。然而，废墟的阴暗处有一只高能辐射蝎挡在门口嘶吼！你可以部署防御电磁塔击杀它，或者超频护盾顶着攻击冲过去。",
-  type: "combat",
-  choices: {
-    A: {
-      text: "部署防御炮塔消灭怪兽 (需炮塔x1, 生命-10)",
-      requirements: { defensive_turret: 1 },
-      results: {
-        stats: { hp: -10 },
-        items: { defensive_turret: -1 },
-        logText: "你快速部署了防御炮塔，激发的电磁炮击碎了蝎子的外壳，但余波也震裂了你的防化服。你成功背起罗伊！"
-      }
-    },
-    B: {
-      text: "使用能量补充剂强突 (需补充剂x2, 生命-20)",
-      requirements: { energy_refill: 2 },
-      results: {
-        stats: { hp: -20 },
-        items: { energy_refill: -2 },
-        logText: "你启动双份能量补充剂强开电荷屏障，硬扛着蝎毒的腐蚀将罗伊抱走，乘升降机成功脱险！"
-      }
-    }
-  }
-};
-
-const MEI_RESCUE_EVENT: RealityEvent = {
-  id: "rescue_mei",
-  title: "温室废墟：营救阿梅",
-  description: "在坍塌的古代魔导温室深处，阿梅被带毒的发光寄生藤蔓死死卷在空中，已经处于半昏迷状态。你必须熔断藤蔓救她，或者喂食压缩口粮给她提供能量挣脱藤蔓。",
-  type: "danger",
-  choices: {
-    A: {
-      text: "魔能超频熔毁藤蔓 (魔能-30)",
-      results: {
-        stats: { energy: -30 },
-        logText: "你将魔导拳超频，爆发出一圈炽热弧光烧断了毒藤，接住了掉落的阿梅。营救成功！"
-      }
-    },
-    B: {
-      text: "喂食口粮提供体力 (需口粮x3)",
-      requirements: { ration: 3 },
-      results: {
-        items: { ration: -3 },
-        logText: "你用刀片切开一线藤蔓，将三份压缩口粮喂给阿梅。她恢复了体力配合你的拉扯扯断了藤蔓！"
-      }
-    }
-  }
-};
-
-const ZERO_RESCUE_EVENT: RealityEvent = {
-  id: "rescue_zero",
-  title: "信号塔：营救 Zero",
-  description: "Zero 在信号塔顶部被一群高速移动的废土电磁黄蜂包围，腿部严重骨折。黄蜂发出的静电风暴极其剧烈，你必须部署防御炮塔，或者超频护盾顶着电弧突击。",
-  type: "combat",
-  choices: {
-    A: {
-      text: "部署电磁防御塔掩护 (需炮塔x1)",
-      requirements: { defensive_turret: 1 },
-      results: {
-        items: { defensive_turret: -1 },
-        logText: "你掷出炮塔形成诱饵雷区，引走了疯狂的金属黄蜂，成功滑索将 Zero 救下！"
-      }
-    },
-    B: {
-      text: "硬扛静电防护网强冲 (生命-25, 魔能-20)",
-      results: {
-        stats: { hp: -25, energy: -20 },
-        logText: "你强开防护盾，顶着万伏高压电弧的撕咬，强行撕开黄蜂群背起 Zero 滑降！"
-      }
-    }
-  }
-};
-
-const CATHERINE_RESCUE_EVENT: RealityEvent = {
-  id: "rescue_catherine",
-  title: "生化实验室：营救凯瑟琳",
-  description: "实验室里弥漫着毒气，凯瑟琳医生被一群魔化辐射老鼠包围在配药舱内。你可以使用纳米修复针强攻，或者用魔能超频强熔溶解锁。",
-  type: "danger",
-  choices: {
-    A: {
-      text: "使用纳米修复针破除大门 (需纳米针x1, 生命-10)",
-      requirements: { nanite_injector: 1 },
-      results: {
-        stats: { hp: -10 },
-        logText: "你快速使用纳米修复针打破封锁并保护凯瑟琳，虽然防化服被毒气微量腐蚀，但成功救出！"
-      }
-    },
-    B: {
-      text: "魔能超频强熔溶解锁 (生命-20, 魔能-35)",
-      results: {
-        stats: { hp: -20, energy: -35 },
-        logText: "你强开魔能高热熔断锁孔，在变异鼠群合围前破门而入，成功救出凯瑟琳！"
-      }
-    }
-  }
-};
-
-const BUSTER_RESCUE_EVENT: RealityEvent = {
-  id: "rescue_buster",
-  title: "坍塌地铁站：营救巴斯特",
-  description: "地铁站月台半塌陷，巴斯特的腿被碎石死死压住，而黑暗的隧道深处传来变异掘墓兽的沉重咆哮声。你需要部署防御炮塔，或者强行肉搏拉人。",
-  type: "combat",
-  choices: {
-    A: {
-      text: "部署防御炮塔压制怪物 (需防御炮塔x1)",
-      requirements: { defensive_turret: 1 },
-      results: {
-        logText: "你迅速部署炮塔建立防线。强烈的电磁火花在隧道中爆发，你趁机用铁锹撬开碎石，救出巴斯特！"
-      }
-    },
-    B: {
-      text: "肉搏变异体强行拉人 (生命-35, 魔能-15)",
-      results: {
-        stats: { hp: -35, energy: -15 },
-        logText: "你丢开武器徒手推开巨石。狂暴的怪兽撕咬伤了你的侧腹，但你强忍重伤背起巴斯特脱离了地铁站！"
-      }
-    }
-  }
-};
-
-const NOVA_RESCUE_EVENT: RealityEvent = {
-  id: "rescue_nova",
-  title: "军火库：营救诺娃",
-  description: "诺娃被困在受辐射的报废魔导机甲驾驶舱内，机甲核心已经处于临界过载的边缘，极度危险！你需要使用重载护盾电池稳定磁场，或者超频暴力破拆机甲。",
-  type: "danger",
-  choices: {
-    A: {
-      text: "使用重载护盾电池稳定磁场 (需护盾电池x1)",
-      requirements: { shield_battery: 1 },
-      results: {
-        logText: "你抛出重载护盾电池。柔和的能量磁场稳定了机甲核心，驾驶舱盖自动弹开，你成功扶出诺娃！"
-      }
-    },
-    B: {
-      text: "超频砸开驾驶舱 (生命-25, 魔能-30)",
-      results: {
-        stats: { hp: -25, energy: -30 },
-        logText: "你魔能超频，一拳一拳强行砸烂了防爆座舱玻璃，抢在机甲核心殉爆前将诺娃拖出！"
-      }
-    }
-  }
-};
+import { SURVIVORS_CONFIG } from '../data/survivors';
+import { GAME_CONSTANTS } from '../data/gameConstants';
 
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -165,49 +24,25 @@ const WildernessTab: React.FC = () => {
   const player = state.player;
 
   const currentEventId = exploration.realityEventId;
-  const currentEvent = (() => {
-    if (!currentEventId) return null;
-    if (currentEventId === 'rescue_roy') return ROY_RESCUE_EVENT;
-    if (currentEventId === 'rescue_mei') return MEI_RESCUE_EVENT;
-    if (currentEventId === 'rescue_zero') return ZERO_RESCUE_EVENT;
-    if (currentEventId === 'rescue_catherine') return CATHERINE_RESCUE_EVENT;
-    if (currentEventId === 'rescue_buster') return BUSTER_RESCUE_EVENT;
-    if (currentEventId === 'rescue_nova') return NOVA_RESCUE_EVENT;
-    return REALITY_EVENTS[currentEventId] || null;
-  })();
+  const currentEvent = currentEventId
+    ? (RESCUE_EVENTS[currentEventId] || REALITY_EVENTS[currentEventId] || null)
+    : null;
 
   // 随机抽取一张事件卡牌，或者是救援目的地的特殊事件
   const drawEvent = () => {
     let selectedEvent: RealityEvent;
     // 救援任务到了第 5 步（steps === 4）
     if (exploration.realityLocationId && exploration.realitySteps >= 4) {
-      if (exploration.realityLocationId === 'radar_station') {
-        selectedEvent = ROY_RESCUE_EVENT;
-      } else if (exploration.realityLocationId === 'green_ruins') {
-        selectedEvent = MEI_RESCUE_EVENT;
-      } else if (exploration.realityLocationId === 'signal_tower') {
-        selectedEvent = ZERO_RESCUE_EVENT;
-      } else if (exploration.realityLocationId === 'bio_lab') {
-        selectedEvent = CATHERINE_RESCUE_EVENT;
-      } else if (exploration.realityLocationId === 'collapsed_subway') {
-        selectedEvent = BUSTER_RESCUE_EVENT;
-      } else if (exploration.realityLocationId === 'military_depot') {
-        selectedEvent = NOVA_RESCUE_EVENT;
-      } else {
-        return;
-      }
+      const rescueEventId = RESCUE_LOCATION_MAP[exploration.realityLocationId];
+      if (!rescueEventId) return;
+      selectedEvent = RESCUE_EVENTS[rescueEventId];
+      if (!selectedEvent) return;
     } else {
       // 正常抽随机事件
       const keys = Object.keys(REALITY_EVENTS);
       const events = keys.map(key => REALITY_EVENTS[key]);
       
       // 1. 根据分类大权重筛选事件类型
-      const CATEGORY_WEIGHTS: Record<string, number> = {
-        common: 100,
-        danger: 80,
-        combat: 60,
-        welfare: 40
-      };
       
       const availableCategories = Array.from(new Set(events.map(e => e.type)));
       const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
@@ -250,21 +85,20 @@ const WildernessTab: React.FC = () => {
 
   const handleStartExploration = (locationId: string | null) => {
     const isRescue = locationId !== null;
-    let foodCost = isRescue ? 15 : 10;
-    let energyCost = isRescue ? 15 : 10;
+    let foodCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST : GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST;
+    let energyCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST : GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST;
 
-    // Zero 的被动：存在则魔能消耗 -15%，若已营救则饱食度消耗 -15%
-    if (state.survivors.zero) {
-      energyCost = Math.round(energyCost * 0.85);
-      if (!state.survivors.zero.realityLocationId) {
-        foodCost = Math.round(foodCost * 0.85);
-      }
-    }
-
-    // Catherine 的被动：已营救则饱食度消耗 -15%
-    if (state.survivors.catherine && !state.survivors.catherine.realityLocationId) {
-      foodCost = Math.round(foodCost * 0.85);
-    }
+    SURVIVORS_CONFIG.forEach(config => {
+      config.passives.forEach(p => {
+        if (p.type === 'exploration_cost') {
+          const isRescued = !state.survivors[config.id]?.realityLocationId;
+          if (state.survivors[config.id] && (p.condition !== 'rescued' || isRescued)) {
+            if (p.target === 'energy') energyCost = Math.round(energyCost * p.multiplier);
+            if (p.target === 'food') foodCost = Math.round(foodCost * p.multiplier);
+          }
+        }
+      });
+    });
 
     if (player.food < foodCost || player.energy < energyCost) {
       showToast(`生存指标过低（饱食度需 >= ${foodCost}，魔能需 >= ${energyCost}），请先补充！`, "error");
@@ -315,14 +149,17 @@ const WildernessTab: React.FC = () => {
       }
     }
 
-    // 凯瑟琳的消耗降低被动效果：若 hasCatherine 或 survivors.catherine 存在，且 stats 扣减为负且属于 hp / food，乘 0.85 并四舍五入。
     let adjustedStats = choice.results.stats ? { ...choice.results.stats } : undefined;
-    if (adjustedStats && (state.hasCatherine || state.survivors.catherine)) {
+    const statCostPassives = SURVIVORS_CONFIG.flatMap(c =>
+      c.passives.filter(p => p.type === 'stat_cost' && state.survivors[c.id])
+    );
+    if (adjustedStats && statCostPassives.length > 0) {
+      const multi = statCostPassives.reduce((m, p) => m * p.multiplier, 1);
       if (adjustedStats.hp !== undefined && adjustedStats.hp < 0) {
-        adjustedStats.hp = Math.round(adjustedStats.hp * 0.85);
+        adjustedStats.hp = Math.round(adjustedStats.hp * multi);
       }
       if (adjustedStats.food !== undefined && adjustedStats.food < 0) {
-        adjustedStats.food = Math.round(adjustedStats.food * 0.85);
+        adjustedStats.food = Math.round(adjustedStats.food * multi);
       }
     }
 
@@ -372,13 +209,16 @@ const WildernessTab: React.FC = () => {
       if (choice.results.items) {
         Object.entries(choice.results.items).forEach(([item, qty]) => {
           let adjustedQty = qty;
-          // 巴斯特的废铁加成：已救出（即 state.survivors.buster && !state.survivors.buster.realityLocationId）
-          if (item === 'scrap_metal' && qty > 0) {
-            const hasBuster = prev.survivors.buster && !prev.survivors.buster.realityLocationId;
-            if (hasBuster) {
-              adjustedQty = Math.round(qty * 1.3);
-            }
-          }
+          SURVIVORS_CONFIG.forEach(config => {
+            config.passives.forEach(p => {
+              if (p.type === 'item_yield' && p.target === item && qty > 0) {
+                const isRescued = !prev.survivors[config.id]?.realityLocationId;
+                if (prev.survivors[config.id] && (p.condition !== 'rescued' || isRescued)) {
+                  adjustedQty = Math.round(qty * p.multiplier);
+                }
+              }
+            });
+          });
           // 限制扣除数量，不能超过玩家在避难所库存和当前临时背包拥有的总和
           const currentTotal = (prev.inventory[item] || 0) + (prev.exploration.realityBag[item] || 0);
           const maxDeductible = -currentTotal;
@@ -505,13 +345,8 @@ const WildernessTab: React.FC = () => {
 
             {/* Rescue explorations */}
             {rescueTargets.map(target => {
-              const locationName = 
-                target.realityLocationId === 'radar_station' ? '废弃雷达站' :
-                target.realityLocationId === 'green_ruins' ? '古代温室废墟' :
-                target.realityLocationId === 'signal_tower' ? '高频信号塔' :
-                target.realityLocationId === 'bio_lab' ? '生化实验室' :
-                target.realityLocationId === 'collapsed_subway' ? '坍塌地铁站' :
-                target.realityLocationId === 'military_depot' ? '废弃军火库' : '未知废墟';
+              const loc = EXPEDITION_LOCATIONS[target.realityLocationId || ''];
+              const locationName = loc?.displayName || '未知废墟';
 
               return (
                 <div

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
+import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { ITEMS_CONFIG } from '../data/items';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { BookOpen, Package, Users, Clock } from 'lucide-react';
@@ -169,8 +170,7 @@ const LogTab: React.FC = () => {
               statusBadge = (
                 <span className="text-[9px] bg-amber-950/60 border border-amber-800 text-amber-400 px-2 py-0.5 rounded-full font-black">
                   现实坐标锁定 (待营救：{
-                    surv.realityLocationId === 'radar_station' ? '雷达站' :
-                    surv.realityLocationId === 'green_ruins' ? '温室废墟' : '信号塔'
+                    (() => { const l2 = EXPEDITION_LOCATIONS[surv.realityLocationId || '']; return l2?.shortName || l2?.displayName || '信号塔'; })()
                   })
                 </span>
               );

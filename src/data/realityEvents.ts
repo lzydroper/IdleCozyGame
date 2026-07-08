@@ -740,3 +740,12 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     }
   }
 };
+
+export const CATEGORY_WEIGHTS: Record<string, number> = {
+  common: 100,
+  danger: 80,
+  combat: 60,
+  welfare: 40,
+  relic: 30,
+  anomaly: 20
+};

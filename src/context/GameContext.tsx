@@ -1,234 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState, GreenhouseSlot, PlayerStats, AutoRecipe, OfflineReport } from '../types/game';
-import cropGlowGrass from '../assets/crop_glow_grass.jpg';
-import cropAetherBerry from '../assets/crop_aether_berry.jpg';
-import cropSteelSunflower from '../assets/crop_steel_sunflower.jpg';
-import cropMagmaPepper from '../assets/crop_magma_pepper.jpg';
-import cropFrostBell from '../assets/crop_frost_bell.jpg';
-import cropPlasmaPumpkin from '../assets/crop_plasma_pumpkin.jpg';
-import cropVoidLotus from '../assets/crop_void_lotus.jpg';
+import type { GameState, GreenhouseSlot, PlayerStats, OfflineReport } from '../types/game';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
-
-export const AUTO_RECIPES: Record<string, AutoRecipe> = {
-  smelt_alloy: { id: 'smelt_alloy', name: '提炼合金金属板', input: { scrap_metal: 2 }, output: { alloy_plate: 1 }, duration: 30 },
-  smelt_sunflower: { id: 'smelt_sunflower', name: '钢纹花瓣熔炼', input: { steel_petal: 3, scrap_metal: 1 }, output: { alloy_plate: 2 }, duration: 45 },
-  assemble_ration: { id: 'assemble_ration', name: '自动合成压缩口粮', input: { glow_fiber: 3 }, output: { ration: 1 }, duration: 20 },
-  assemble_energy: { id: 'assemble_energy', name: '能量补充剂组装', input: { glow_fiber: 2, scrap_metal: 1 }, output: { energy_refill: 1 }, duration: 40 },
-  assemble_turret: { id: 'assemble_turret', name: '防御炮塔装配', input: { scrap_metal: 3, glow_fiber: 3 }, output: { defensive_turret: 1 }, duration: 90 }
-};
-
-export const EXPEDITION_LOCATIONS = {
-  radar_station: {
-    id: 'radar_station',
-    name: '雷达站废墟',
-    requiredRole: null,
-    scavengeInterval: 300,
-    lootTable: [
-      { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
-      { itemId: 'energy_refill', chance: 0.1, minQty: 1, maxQty: 1 },
-      { itemId: 'seed_glow_grass', chance: 0.2, minQty: 1, maxQty: 1 }
-    ]
-  },
-  subway_station: {
-    id: 'subway_station',
-    name: '坍塌地铁站',
-    requiredRole: 'scout',
-    scavengeInterval: 240,
-    lootTable: [
-      { itemId: 'scrap_metal', chance: 0.8, minQty: 1, maxQty: 3 },
-      { itemId: 'steel_petal', chance: 0.3, minQty: 1, maxQty: 2 },
-      { itemId: 'seed_aether_berry', chance: 0.15, minQty: 1, maxQty: 1 }
-    ]
-  },
-  bio_lab: {
-    id: 'bio_lab',
-    name: '生化实验室',
-    requiredRole: 'engineer',
-    scavengeInterval: 360,
-    lootTable: [
-      { itemId: 'mana_dust', chance: 0.5, minQty: 1, maxQty: 2 },
-      { itemId: 'dream_shard', chance: 0.2, minQty: 1, maxQty: 1 },
-      { itemId: 'purifying_serum', chance: 0.05, minQty: 1, maxQty: 1 }
-    ]
-  }
-};
-
-
-// 静态作物配置表
-export const CROPS_CONFIG = {
-  glow_grass: {
-    id: "glow_grass",
-    name: "辐射荧光草",
-    growthTime: 30, // 30秒
-    yields: { glow_fiber: 2, mana_dust: 1 },
-    seedCost: { seed_glow_grass: 1 },
-    description: "能在微弱辐射下散发冷光的杂草，蕴含微量魔力。",
-    image: cropGlowGrass
-  },
-  aether_berry: {
-    id: "aether_berry",
-    name: "以太浆果",
-    growthTime: 120, // 2分钟
-    yields: { aether_pulp: 3, dream_shard: 1 },
-    seedCost: { seed_aether_berry: 1 },
-    description: "呈淡紫色的多汁浆果，能引起轻微的心灵共鸣。",
-    image: cropAetherBerry
-  },
-  steel_sunflower: {
-    id: "steel_sunflower",
-    name: "钢纹向日葵",
-    growthTime: 600, // 10分钟
-    yields: { steel_petal: 4, alloy_plate: 1 },
-    seedCost: { seed_steel_sunflower: 1 },
-    description: "花瓣带金属纹路的植物，可提取出废土合金材料。",
-    image: cropSteelSunflower
-  },
-  magma_pepper: {
-    id: "magma_pepper",
-    name: "熔岩椒",
-    growthTime: 240, // 4分钟
-    yields: { magma_core: 2, glow_fiber: 1 },
-    seedCost: { seed_magma_pepper: 1 },
-    description: "表皮滚烫，蕴含大量热能的变异辣椒。",
-    image: cropMagmaPepper
-  },
-  frost_bell: {
-    id: "frost_bell",
-    name: "霜冻风铃草",
-    growthTime: 480, // 8分钟
-    yields: { frost_crystal: 2, mana_dust: 1 },
-    seedCost: { seed_frost_bell: 1 },
-    description: "发出清脆魔能共鸣的低温花卉。",
-    image: cropFrostBell
-  },
-  plasma_pumpkin: {
-    id: "plasma_pumpkin",
-    name: "等离子南瓜",
-    growthTime: 720, // 12分钟
-    yields: { plasma_cell: 2, alloy_plate: 1 },
-    seedCost: { seed_plasma_pumpkin: 1 },
-    description: "外皮流淌金色电弧，可用于提炼应急能源。",
-    image: cropPlasmaPumpkin
-  },
-  void_lotus: {
-    id: "void_lotus",
-    name: "虚空魔莲",
-    growthTime: 1200, // 20分钟
-    yields: { void_essence: 3, dream_shard: 2 },
-    seedCost: { seed_void_lotus: 1 },
-    description: "生长在心灵裂隙边缘的幽紫色花朵，能调和脑电波。",
-    image: cropVoidLotus
-  }
-};
-
-
-const INITIAL_PLAYER_STATS: PlayerStats = {
-  hp: 100,
-  maxHp: 100,
-  food: 100,
-  maxFood: 100,
-  energy: 100,
-  maxEnergy: 100,
-  sanity: 100,
-  maxSanity: 100,
-  days: 1
-};
-
-const INITIAL_STATE: GameState = {
-  player: INITIAL_PLAYER_STATS,
-  inventory: {
-    seed_glow_grass: 5,   // 初始赠送5个种子
-    seed_aether_berry: 2,
-    ration: 5,            // 5份口粮
-    scrap_metal: 10,       // 10个废铁
-    dream_shard: 5        // 5个梦境碎片用于初期制造梦胶囊
-  },
-  greenhouse: {
-    slots: [
-      { id: 1, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false },
-      { id: 2, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false },
-      { id: 3, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false },
-      { id: 4, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false }
-    ],
-    unlockedSlotsCount: 4
-  },
-  survivors: {},
-  exploration: {
-    inRealityExploration: false,
-    realitySteps: 0,
-    realityLocationId: null,
-    realityBag: {},
-    realityEventId: null,
-    inDreamExploration: false,
-    dreamSteps: 0,
-    dreamPollution: 0,
-    dreamBag: {},
-    dreamEventId: null,
-    capsulesCharge: {
-      sanity_capsule: 3, // 默认解锁并充能3次
-      warp_capsule: 0    // 未解锁/无充能
-    },
-    survivorResonance: {}
-  },
-  discoveredBlueprints: [
-    'filter_refill',
-    'ration_pack',
-    'sanity_capsule',
-    'hot_stew',
-    'nanite_injector',
-    'purifying_serum',
-    'energy_refill_advanced',
-    'shield_battery_recipe',
-    'greenhouse_expansion'
-  ],
-  activeAlert: {
-    type: null,
-    hp: 0
-  },
-  lastTick: Date.now(),
-  dayStartTime: Date.now(),
-  logs: [
-    { id: 'init', text: '▶ 避难所系统启动。欢迎来到废土魔导温室，生存者。', timestamp: Date.now(), type: 'system' }
-  ],
-  shelter: {
-    maxOfflineDuration: 14400, // 4小时
-    batteryLevel: 1,
-    generatorLevel: 0, // 初始未启用自动发电机
-    recyclerLevel: 0,  // 初始未启用物资回收站
-    facilities: {
-      smelter: {
-        id: 'smelter',
-        name: '魔导冶炼炉',
-        level: 1,
-        activeRecipeId: null,
-        currentProgress: 0,
-        timeLeft: 0,
-        assignedSurvivorId: null
-      },
-      assembler: {
-        id: 'assembler',
-        name: '微型芯片组装台',
-        level: 1,
-        activeRecipeId: null,
-        currentProgress: 0,
-        timeLeft: 0,
-        assignedSurvivorId: null
-      }
-    },
-    assignedWatererId: null,
-    assignedExplorerId: null,
-    expedition: {
-      locationId: null,
-      startTime: null,
-      lastScavengeTime: null
-    },
-    accumulatedEnergy: 0,
-    accumulatedScrap: 0
-  },
-  lastOfflineReport: null
-};
-
+import { AUTO_RECIPES } from '../data/autoRecipes';
+import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { CROPS_CONFIG } from '../data/crops';
+import { SURVIVORS_CONFIG } from '../data/survivors';
+import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
+import { INITIAL_PLAYER_STATS, INITIAL_STATE } from '../data/initialState';
+import { GAME_CONSTANTS } from '../data/gameConstants';
 // 纯函数：计算离线或Tick生长时间扣减
 export function calculateOfflineProgress(
   slots: GreenhouseSlot[],
@@ -267,8 +47,8 @@ export function calculateDetailedOfflineProgress(
 
   // 2. 发电机与回收站自动产出
   let energyGained = 0;
-  const hasNova = !!state.survivors.nova;
-  const currentMaxEnergy = hasNova ? 130 : (state.player.maxEnergy || 100);
+  const novaPassive = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'max_energy');
+  const currentMaxEnergy = (novaPassive && state.survivors.nova) ? 100 + (novaPassive.flatBonus || 0) : (state.player.maxEnergy || 100);
 
   let finalAccumulatedEnergy = state.shelter.accumulatedEnergy || 0;
   if (state.shelter.generatorLevel > 0) {
@@ -611,7 +391,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // 3. ✅ 游戏全局 Tick 循环 - 修复天数递增
-  const GAME_DAY_SECONDS = 300; // 5分钟真实时间 = 1游戏天（可配置）
+  const GAME_DAY_SECONDS = GAME_CONSTANTS.GAME_DAY_SECONDS;
   useEffect(() => {
     const timer = setInterval(() => {
       setState(prev => {
@@ -624,8 +404,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         let currentInventory = { ...prev.inventory };
         let currentEnergy = prev.player.energy;
-        const hasNova = !!prev.survivors.nova;
-        const currentMaxEnergy = hasNova ? 130 : (prev.player.maxEnergy || 100);
+        const novaPassive2 = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'max_energy');
+        const currentMaxEnergy = (novaPassive2 && prev.survivors.nova) ? 100 + (novaPassive2.flatBonus || 0) : (prev.player.maxEnergy || 100);
 
         let nextAccumulatedEnergy = prev.shelter.accumulatedEnergy ?? 0;
         let nextAccumulatedScrap = prev.shelter.accumulatedScrap ?? 0;
@@ -970,7 +750,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let success = false;
     setState(prev => {
       // 浇水消耗 2 点魔能
-      if (prev.player.energy < 2) return prev;
+      if (prev.player.energy < GAME_CONSTANTS.WATER_ENERGY_COST) return prev;
 
       const updatedSlots = prev.greenhouse.slots.map(slot => {
         if (slot.id === slotId && slot.cropId !== null && !slot.isWatered) {
@@ -1005,7 +785,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (needWaterSlots.length === 0 || energyAvailable < 2) return 0;
     
-    const maxWaterable = Math.floor(energyAvailable / 2);
+    const maxWaterable = Math.floor(energyAvailable / GAME_CONSTANTS.WATER_ENERGY_COST);
     const actualWaterCount = Math.min(needWaterSlots.length, maxWaterable);
     
     if (actualWaterCount <= 0) return 0;
@@ -1013,7 +793,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(prev => {
       let energy = prev.player.energy;
       const updatedSlots = prev.greenhouse.slots.map(slot => {
-        if (slot.cropId !== null && !slot.isWatered && energy >= 2) {
+        if (slot.cropId !== null && !slot.isWatered && energy >= GAME_CONSTANTS.WATER_ENERGY_COST) {
           energy -= 2;
           return { ...slot, isWatered: true };
         }
@@ -1178,7 +958,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!recipe) return false;
 
     const current = stateRef.current;
-    if (recipe.special === 'greenhouse_expansion' && current.greenhouse.unlockedSlotsCount >= 8) {
+    if (recipe.special === 'greenhouse_expansion' && current.greenhouse.unlockedSlotsCount >= GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS) {
       return false;
     }
 
@@ -1199,7 +979,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       } else if (recipe.special === 'greenhouse_expansion') {
         const currentCount = prev.greenhouse.unlockedSlotsCount;
-        const nextCount = currentCount + 2;
+        const nextCount = currentCount + GAME_CONSTANTS.GREENHOUSE_EXPANSION_INCREMENT;
         const newSlots = [...prev.greenhouse.slots];
         for (let i = currentCount + 1; i <= nextCount; i++) {
           newSlots.push({ id: i, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false });
@@ -1227,6 +1007,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentQty = prev.inventory[itemId] || 0;
       if (currentQty <= 0) return prev;
 
+      const meta = ITEMS_CONFIG[itemId];
+      if (!meta?.useEffect) return prev;
+
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = currentQty - 1;
 
@@ -1235,22 +1018,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const isNovaPresent = !!prev.survivors.nova;
       const currentMaxEnergy = isNovaPresent ? 130 : 100;
+      const STAT_MAX: Record<string, number> = { hp: 100, food: 100, energy: currentMaxEnergy, sanity: 100 };
 
-      if (itemId === 'ration') {
-        newPlayer.food = Math.min(100, newPlayer.food + 30);
-      } else if (itemId === 'energy_refill') {
-        newPlayer.energy = Math.min(currentMaxEnergy, newPlayer.energy + 30);
-      } else if (itemId === 'hot_stew') {
-        newPlayer.food = Math.min(100, newPlayer.food + 60);
-        newPlayer.hp = Math.min(100, newPlayer.hp + 20);
-      } else if (itemId === 'nanite_injector') {
-        newPlayer.hp = Math.min(100, newPlayer.hp + 60);
-        newPlayer.food = Math.min(100, newPlayer.food + 10);
-      } else if (itemId === 'purifying_serum') {
-        newPlayer.sanity = Math.min(100, newPlayer.sanity + 30);
-        newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution - 30);
-      } else {
-        return prev;
+      if (meta.useEffect.stats) {
+        Object.entries(meta.useEffect.stats).forEach(([stat, val]) => {
+          const key = stat as keyof PlayerStats;
+          const max = STAT_MAX[stat] ?? 100;
+          newPlayer[key] = Math.min(max, Math.max(0, (newPlayer[key] as number) + val)) as never;
+        });
+      }
+
+      if (meta.useEffect.pollution !== undefined) {
+        newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution + meta.useEffect.pollution);
       }
 
       return {
@@ -1421,70 +1200,45 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const upgradeShelterStat = (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler'): boolean => {
     let success = false;
     setState(prev => {
+      const upgrade = SHELTER_UPGRADES[statType];
+      if (!upgrade) return prev;
+
       const currentInventory = { ...prev.inventory };
       const currentShelter = {
         ...prev.shelter,
         facilities: { ...prev.shelter.facilities }
       };
 
-      let costScrap = 0;
-      let nextLevel = 1;
+      let currentLevel = 1;
+      if (statType === 'battery') currentLevel = currentShelter.batteryLevel || 1;
+      else if (statType === 'generator') currentLevel = currentShelter.generatorLevel || 0;
+      else if (statType === 'recycler') currentLevel = currentShelter.recyclerLevel || 0;
+      else if (statType === 'smelter') currentLevel = currentShelter.facilities.smelter.level || 1;
+      else if (statType === 'assembler') currentLevel = currentShelter.facilities.assembler.level || 1;
 
-      if (statType === 'battery') {
-        const currentLevel = currentShelter.batteryLevel || 1;
-        costScrap = currentLevel * 10;
-        nextLevel = currentLevel + 1;
-      } else if (statType === 'generator') {
-        const currentLevel = currentShelter.generatorLevel || 0;
-        costScrap = (currentLevel + 1) * 15;
-        nextLevel = currentLevel + 1;
-      } else if (statType === 'recycler') {
-        const currentLevel = currentShelter.recyclerLevel || 0;
-        costScrap = (currentLevel + 1) * 15;
-        nextLevel = currentLevel + 1;
-      } else if (statType === 'smelter') {
-        const currentLevel = currentShelter.facilities.smelter.level || 1;
-        costScrap = currentLevel * 20;
-        nextLevel = currentLevel + 1;
-      } else if (statType === 'assembler') {
-        const currentLevel = currentShelter.facilities.assembler.level || 1;
-        costScrap = currentLevel * 20;
-        nextLevel = currentLevel + 1;
-      } else {
-        return prev;
-      }
+      if (currentLevel >= upgrade.maxLevel) return prev;
 
-      if ((currentInventory.scrap_metal || 0) < costScrap) {
-        return prev;
-      }
+      const costScrap = upgrade.costFormula.multiply * (currentLevel + upgrade.costFormula.offset);
+      if ((currentInventory.scrap_metal || 0) < costScrap) return prev;
 
       currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) - costScrap;
+      const nextLevel = currentLevel + 1;
 
       if (statType === 'battery') {
         currentShelter.batteryLevel = nextLevel;
-        currentShelter.maxOfflineDuration = 14400 + (nextLevel - 1) * 3600;
+        currentShelter.maxOfflineDuration = upgrade.effects[0].baseValue + (nextLevel - 1) * upgrade.effects[0].increment;
       } else if (statType === 'generator') {
         currentShelter.generatorLevel = nextLevel;
       } else if (statType === 'recycler') {
         currentShelter.recyclerLevel = nextLevel;
       } else if (statType === 'smelter') {
-        currentShelter.facilities.smelter = {
-          ...currentShelter.facilities.smelter,
-          level: nextLevel
-        };
+        currentShelter.facilities.smelter = { ...currentShelter.facilities.smelter, level: nextLevel };
       } else if (statType === 'assembler') {
-        currentShelter.facilities.assembler = {
-          ...currentShelter.facilities.assembler,
-          level: nextLevel
-        };
+        currentShelter.facilities.assembler = { ...currentShelter.facilities.assembler, level: nextLevel };
       }
 
       success = true;
-      return {
-        ...prev,
-        inventory: currentInventory,
-        shelter: currentShelter
-      };
+      return { ...prev, inventory: currentInventory, shelter: currentShelter };
     });
     return success;
   };
@@ -1584,7 +1338,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasNova = !!state.survivors.nova;
   const hasCatherine = !!state.survivors.catherine;
   const hasBuster = !!state.survivors.buster;
-  const maxEnergy = hasNova ? 130 : 100;
+  const novaMaxPassive = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'max_energy');
+  const maxEnergy = (novaMaxPassive && hasNova) ? 100 + (novaMaxPassive.flatBonus || 0) : 100;
   
   const adjustedState = {
     ...state,

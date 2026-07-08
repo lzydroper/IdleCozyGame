@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
+import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import type { DreamChoice } from '../data/dreamEvents';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Sparkles, Brain, AlertOctagon, Clock } from 'lucide-react';
+import { Sparkles, Brain, AlertOctagon } from 'lucide-react';
 import { ITEMS_CONFIG } from '../data/items';
+import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 
 const DreamscapeTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -160,7 +162,7 @@ const DreamscapeTab: React.FC = () => {
         player: newPlayer,
         survivors: newSurvivors,
         activeAlert: isPollutionFull
-          ? { type: "dream_leak", hp: 60 }
+          ? { type: "dream_leak", hp: NIGHTMARE_CONFIG.dreamLeakDamage }
           : prev.activeAlert,
         exploration: {
           ...newExploration,
@@ -188,9 +190,8 @@ const DreamscapeTab: React.FC = () => {
       
       if (showSurvivorUnlockedAlert) {
         const { name, location } = showSurvivorUnlockedAlert;
-        const locationName = 
-          location === 'radar_station' ? '废弃雷达站' :
-          location === 'green_ruins' ? '温室废墟' : '信号塔';
+        const loc = EXPEDITION_LOCATIONS[location];
+        const locationName = loc?.shortName || loc?.displayName || location;
         const msg = `✨ 脑波连结成功！已完美锁定幸存同伴【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
         setLogMessages(prev => [...prev, msg]);
         addLog(msg, 'dream');

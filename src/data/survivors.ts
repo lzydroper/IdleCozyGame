@@ -1,13 +1,22 @@
+export interface PassiveEffect {
+  type: 'exploration_cost' | 'stat_cost' | 'item_yield' | 'max_energy' | 'craft_energy' | 'growth_speed' | 'defense_cost';
+  target?: string;
+  multiplier?: number;
+  flatBonus?: number;
+  condition?: 'rescued' | 'assigned';
+}
+
 export interface SurvivorConfig {
   id: string;
   name: string;
   role: 'farmer' | 'engineer' | 'scout';
   emoji: string;
-  backstory: string;          // 背景故事
-  dreamTrigger: string;       // 在梦境中联络到他的提示信息
-  realityLocationId: string;  // 现实中的救援地点 ID
-  bonus: number;              // 提供的效率加成
-  bonusDescription: string;   // 加成描述
+  backstory: string;
+  dreamTrigger: string;
+  realityLocationId: string;
+  bonus: number;
+  bonusDescription: string;
+  passives: PassiveEffect[];
 }
 
 export const SURVIVORS_CONFIG: SurvivorConfig[] = [
@@ -20,7 +29,8 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     dreamTrigger: '在梦境的机械废墟中，你听到了工具碰撞金属的声音...',
     realityLocationId: 'radar_station', // 对应雷达站
     bonus: 0.2,
-    bonusDescription: '工坊能耗 -20%'
+    bonusDescription: '工坊能耗 -20%',
+    passives: [{ type: 'craft_energy', multiplier: 0.8, condition: 'rescued' }]
   },
   {
     id: 'mei',
@@ -31,7 +41,8 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     dreamTrigger: '在梦境的荧光花海中，有人在轻声哼歌...',
     realityLocationId: 'green_ruins', // 对应温室废墟
     bonus: 0.25,
-    bonusDescription: '温室作物生长速度 +25%'
+    bonusDescription: '温室作物生长速度 +25%',
+    passives: [{ type: 'growth_speed', multiplier: 1.25, condition: 'assigned' }]
   },
   {
     id: 'zero',
@@ -42,7 +53,11 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     dreamTrigger: '在梦境的迷宫中，一道快速移动的身影在前方引路...',
     realityLocationId: 'signal_tower', // 对应信号塔
     bonus: 0.15,
-    bonusDescription: '地表探索消耗 -15%'
+    bonusDescription: '地表探索消耗 -15%',
+    passives: [
+      { type: 'exploration_cost', target: 'energy', multiplier: 0.85, condition: 'rescued' },
+      { type: 'exploration_cost', target: 'food', multiplier: 0.85, condition: 'rescued' },
+    ]
   },
   {
     id: 'catherine',
@@ -53,7 +68,8 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     dreamTrigger: '在梦境深处，你隐约闻到了一股散发着消毒水味的气息，以及微弱的手术刀碰撞声...',
     realityLocationId: 'bio_lab',
     bonus: 0.15,
-    bonusDescription: '所有行动饱食度与生命消耗降低 15%'
+    bonusDescription: '所有行动饱食度与生命消耗降低 15%',
+    passives: [{ type: 'stat_cost', target: 'hp/food', multiplier: 0.85, condition: 'rescued' }]
   },
   {
     id: 'buster',
@@ -64,7 +80,8 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     dreamTrigger: '在一阵极其嘈杂的心灵电波中，你听到了伴随金属电吉他嘶吼的粗犷歌声...',
     realityLocationId: 'collapsed_subway',
     bonus: 0.3,
-    bonusDescription: '地表探索获得的废旧金属数量增加 30%'
+    bonusDescription: '地表探索获得的废旧金属数量增加 30%',
+    passives: [{ type: 'item_yield', target: 'scrap_metal', multiplier: 1.3, condition: 'rescued' }]
   },
   {
     id: 'nova',
@@ -75,6 +92,10 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     dreamTrigger: '在梦境的钢铁废墟上空，一道刺眼的橙色强光伴随着机甲过载警报声不断闪烁...',
     realityLocationId: 'military_depot',
     bonus: 0.3,
-    bonusDescription: '最大魔能上限提升 30点 & 核心超频防守消耗降低'
+    bonusDescription: '最大魔能上限提升 30点 & 核心超频防守消耗降低',
+    passives: [
+      { type: 'max_energy', flatBonus: 30, condition: 'rescued' },
+      { type: 'defense_cost', multiplier: 0.5, condition: 'rescued' },
+    ]
   }
 ];

@@ -3,6 +3,8 @@ import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
+import { SURVIVORS_CONFIG } from '../data/survivors';
+import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { Hammer, ShieldAlert, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
 const WorkshopTab: React.FC = () => {
@@ -13,6 +15,8 @@ const WorkshopTab: React.FC = () => {
   const inventory = state.inventory;
   const player = state.player;
   const activeAlert = state.activeAlert;
+  const novaDefPassive = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'defense_cost');
+  const overloadEnergyCost = (state.hasNova && novaDefPassive) ? Math.round(20 * novaDefPassive.multiplier) : 20;
 
   const supplyConfigs = [
     {
@@ -85,12 +89,11 @@ const WorkshopTab: React.FC = () => {
         const newInventory = { ...prev.inventory };
         newInventory.defensive_turret = turretQty - 1;
 
-        const newHp = Math.max(0, prev.activeAlert.hp - 35);
+        const newHp = Math.max(0, prev.activeAlert.hp - NIGHTMARE_CONFIG.turretDamage);
         const isDead = newHp <= 0;
 
-        // 若击杀，获得虚空结晶
         if (isDead) {
-          newInventory.void_core = (newInventory.void_core || 0) + 1;
+          newInventory.void_core = (newInventory.void_core || 0) + NIGHTMARE_CONFIG.turretReward.void_core;
         }
 
         return {
@@ -109,7 +112,7 @@ const WorkshopTab: React.FC = () => {
       showToast("电磁塔已启动，重创梦魇 (HP -35)", "success");
     } else if (method === 'overload') {
       const hasNova = !!state.hasNova || !!state.survivors.nova;
-      const energyCost = hasNova ? 10 : 20;
+      const energyCost = overloadEnergyCost;
       const damage = hasNova ? 20 : 15;
 
       if (player.energy < energyCost) {
@@ -205,7 +208,7 @@ const WorkshopTab: React.FC = () => {
               onClick={() => handleDefendNightmare('overload')}
               className="py-2.5 bg-zinc-900 border border-red-500/30 text-red-400 font-extrabold text-xs rounded-xl transition-all active:scale-95 text-center cursor-pointer"
             >
-              核心超频 (耗{state.hasNova ? 10 : 20}魔能)
+              核心超频 (耗{overloadEnergyCost}魔能)
             </button>
           </div>
         </div>

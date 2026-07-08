@@ -90,6 +90,7 @@ export interface AutoRecipe {
   input: Record<string, number>;
   output: Record<string, number>;
   duration: number; // 单次生产耗时（秒）
+  facilityId: 'smelter' | 'assembler';
 }
 
 export interface AutomationFacility {
