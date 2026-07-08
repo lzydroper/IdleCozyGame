@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
@@ -7,6 +7,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
+import GameIcon from './GameIcon';
 import {
   Zap,
   Settings,
@@ -272,28 +273,28 @@ const ShelterTab: React.FC = () => {
       {/* 废土资源微型指示器 */}
       <div className="grid grid-cols-4 gap-2 bg-zinc-950/80 border border-zinc-800 p-2.5 rounded-2xl backdrop-blur-md">
         <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <span className="text-base">🔧</span>
+          <GameIcon type="item" id="scrap_metal" className="w-7 h-7 flex-shrink-0" title="废旧金属" />
           <div>
             <div className="text-[10px] text-zinc-500 font-semibold">废旧金属</div>
             <div className="text-zinc-200 font-bold text-xs">{getInvQty('scrap_metal')}</div>
           </div>
         </div>
         <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <span className="text-base">🔩</span>
+          <GameIcon type="item" id="alloy_plate" className="w-7 h-7 flex-shrink-0" title="合金金属板" />
           <div>
             <div className="text-[10px] text-zinc-500 font-semibold">合金金属板</div>
             <div className="text-zinc-200 font-bold text-xs">{getInvQty('alloy_plate')}</div>
           </div>
         </div>
         <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <span className="text-base">🍱</span>
+          <GameIcon type="item" id="ration" className="w-7 h-7 flex-shrink-0" title="压缩口粮" />
           <div>
             <div className="text-[10px] text-zinc-500 font-semibold">压缩口粮</div>
             <div className="text-zinc-200 font-bold text-xs">{getInvQty('ration')}</div>
           </div>
         </div>
         <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <span className="text-base">⚡</span>
+          <GameIcon type="item" id="energy_cell" className="w-7 h-7 flex-shrink-0" title="魔能储备" />
           <div>
             <div className="text-[10px] text-zinc-500 font-semibold">魔能储备</div>
             <div className="text-cyan-400 font-bold text-xs">{Math.floor(state.player.energy)}/{state.player.maxEnergy}</div>
@@ -309,7 +310,7 @@ const ShelterTab: React.FC = () => {
           避难所基建与挂机控制 Core Upgrades
         </h2>
 
-        <div className="space-y-3.5">
+        <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1">
           {/* 蓄电池升级 */}
           <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
             <div className="flex gap-2.5 items-center">
@@ -337,7 +338,7 @@ const ShelterTab: React.FC = () => {
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              <span>升级 🔧{nextBatteryCost}</span>
+              <span className="flex items-center gap-0.5">升级 <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />{nextBatteryCost}</span>
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextMaxHours}h</span>
             </button>
           </div>
@@ -374,7 +375,7 @@ const ShelterTab: React.FC = () => {
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              <span>升级 🔧{nextGeneratorCost}</span>
+              <span className="flex items-center gap-0.5">升级 <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />{nextGeneratorCost}</span>
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextGenRate}/分</span>
             </button>
           </div>
@@ -411,7 +412,7 @@ const ShelterTab: React.FC = () => {
                   : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
               }`}
             >
-              <span>升级 🔧{nextRecyclerCost}</span>
+              <span className="flex items-center gap-0.5">升级 <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />{nextRecyclerCost}</span>
               <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextRecRate}/分</span>
             </button>
           </div>
@@ -431,7 +432,7 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         {/* 培养槽全功能监视网格 */}
-        <div className="grid grid-cols-2 gap-3.5 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           {state.greenhouse.slots.map(slot => {
             const crop = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
             const isReady = slot.growthProgress >= 100;
@@ -441,15 +442,15 @@ const ShelterTab: React.FC = () => {
               <div
                 key={slot.id}
                 onClick={() => handleSlotClick(slot.id, !!crop)}
-                className={`p-3 rounded-2xl border transition-all duration-300 backdrop-blur-md flex flex-col justify-between h-44 relative cursor-pointer ${
+                className={`relative aspect-square rounded-2xl overflow-hidden border cursor-pointer transition-all duration-300 select-none ${
                   isReady
-                    ? 'bg-emerald-950/20 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                    ? 'border-emerald-500/60 shadow-[0_0_16px_rgba(16,185,129,0.25)]'
                     : crop
-                    ? 'bg-zinc-900/60 border-zinc-800'
-                    : 'bg-zinc-950/60 border-dashed border-zinc-800 hover:border-purple-500/40'
+                    ? 'border-zinc-700/60'
+                    : 'border-dashed border-zinc-700/50 hover:border-purple-500/40'
                 }`}
               >
-                {/* 飘字特效渲染 */}
+                {/* 飘字特效 */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none z-30">
                   {flyingRewards
                     .filter(r => r.slotId === slot.id)
@@ -465,72 +466,65 @@ const ShelterTab: React.FC = () => {
                     ))}
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-center text-[10px] text-zinc-500 mb-1.5 select-none">
-                    <span>槽位 #{slot.id}</span>
-                    {isWatered && slot.cropId && (
-                      <span className="flex items-center text-blue-400 font-bold gap-0.5 animate-pulse">
-                        <Droplet className="w-3 h-3 text-blue-400 fill-blue-400 animate-bounce" /> 湿润
-                      </span>
+                {crop ? (
+                  <>
+                    {/* 背景作物图 */}
+                    <img
+                      src={(crop as any).image}
+                      alt={crop.name}
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                      style={{
+                        filter: isReady
+                          ? 'saturate(1.3) brightness(1.05)'
+                          : 'saturate(0.75) brightness(0.6)',
+                      }}
+                    />
+
+                    {/* 顶部渐变蒙层 */}
+                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-zinc-950/80 to-transparent px-2 pt-1.5 pb-3 flex items-center justify-between z-10">
+                      <span className="text-[9px] text-zinc-400 font-semibold">槽位 #{slot.id}</span>
+                      {isWatered && (
+                        <span className="flex items-center gap-0.5 text-blue-400 text-[9px] font-bold animate-pulse">
+                          <Droplet className="w-2.5 h-2.5 fill-blue-400" />湿润
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 就绪光晕 */}
+                    {isReady && (
+                      <div className="absolute inset-0 bg-emerald-400/10 animate-pulse pointer-events-none z-10" />
                     )}
-                  </div>
 
-                  {crop ? (
-                    <div>
-                      {/* 作物图像 */}
-                      <div className="w-full h-12 rounded-lg overflow-hidden mb-1.5 relative border border-zinc-800/40">
-                        <img
-                          src={(crop as any).image}
-                          alt={crop.name}
-                          className="w-full h-full object-cover select-none pointer-events-none"
-                          style={{ filter: isReady ? 'saturate(1.3) brightness(1.05)' : 'saturate(0.7) brightness(0.65)' }}
-                        />
-                        {isReady && (
-                          <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-lg" />
-                        )}
+                    {/* 底部控制栏 */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/70 to-transparent px-2 pt-4 pb-2 z-20">
+                      <div className="text-[9px] font-bold text-zinc-200 flex items-center gap-1 mb-1">
+                        <Sprout className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />
+                        <span className="truncate">{crop.name}</span>
                       </div>
-                      <h3 className="text-[10px] font-bold text-zinc-300 flex items-center gap-1 select-none">
-                        <Sprout className="w-3 h-3 text-emerald-400" />
-                        {crop.name}
-                      </h3>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center mt-3 text-zinc-500 select-none">
-                      <Sprout className="w-6 h-6 mb-1 opacity-20" />
-                      <span className="text-[10px] font-bold">闲置中</span>
-                      <span className="text-[8px] opacity-60">点击开始播种</span>
-                    </div>
-                  )}
-                </div>
-
-                {crop && (
-                  <div className="mt-2 shrink-0">
-                    {/* 进度条 */}
-                    <div className="w-full bg-zinc-950 rounded-full h-1.5 overflow-hidden mb-1.5 border border-zinc-900">
-                      <div
-                        className={`h-full transition-all duration-1000 ${
-                          isReady ? 'bg-emerald-500' : 'bg-purple-500'
-                        }`}
-                        style={{ width: `${slot.growthProgress}%` }}
-                      />
-                    </div>
-                    
-                    {/* 倒计时与动作按钮 */}
-                    <div className="flex justify-between items-center text-[10px]">
+                      <div className="w-full bg-zinc-900/80 rounded-full h-1 overflow-hidden mb-1.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ${
+                            isReady
+                              ? 'bg-emerald-400 shadow-[0_0_4px_#34d399]'
+                              : 'bg-purple-500'
+                          }`}
+                          style={{ width: `${slot.growthProgress}%` }}
+                        />
+                      </div>
                       {isReady ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleHarvest(slot.id);
                           }}
-                          className="w-full py-1 bg-emerald-500 text-zinc-950 font-extrabold rounded-md hover:bg-emerald-400 active:scale-95 transition-all text-center animate-pulse cursor-pointer"
+                          className="w-full py-1 bg-emerald-500 text-zinc-950 font-extrabold rounded-md hover:bg-emerald-400 active:scale-95 transition-all text-[9px] text-center animate-pulse cursor-pointer"
                         >
                           收割
                         </button>
                       ) : (
-                        <>
-                          <span className="text-zinc-400 flex items-center gap-1 select-none font-mono text-[9px]">
-                            <Timer className="w-3 h-3 text-purple-400" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-400 flex items-center gap-0.5 font-mono text-[9px]">
+                            <Timer className="w-2.5 h-2.5 text-purple-400" />
                             {slot.growthTimeLeft}s
                           </span>
                           {!slot.isWatered && (
@@ -539,17 +533,24 @@ const ShelterTab: React.FC = () => {
                                 e.stopPropagation();
                                 const success = waterSlot(slot.id);
                                 if (success) {
-                                  addLog(`💦 手动为培养槽 #${slot.id + 1} 补充了水分`, 'logistics');
+                                  addLog(`手动为培养槽 #${slot.id + 1} 补充了水分`, 'logistics');
                                 }
                               }}
-                              className="px-2 py-0.5 bg-blue-950/80 border border-blue-500/30 text-blue-400 rounded-md hover:bg-blue-900 active:scale-95 transition-all cursor-pointer text-[9px]"
+                              className="px-2 py-0.5 bg-blue-950/90 border border-blue-500/40 text-blue-400 rounded-md hover:bg-blue-900 active:scale-95 transition-all cursor-pointer text-[9px]"
                             >
                               浇水
                             </button>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-zinc-950/60 flex flex-col items-center justify-center text-zinc-600">
+                    <div className="text-[9px] text-zinc-600 font-semibold mb-2">槽位 #{slot.id}</div>
+                    <Sprout className="w-7 h-7 mb-1.5 opacity-20" />
+                    <span className="text-[10px] font-bold text-zinc-500">闲置中</span>
+                    <span className="text-[8px] opacity-50 mt-0.5">点击播种</span>
                   </div>
                 )}
               </div>
