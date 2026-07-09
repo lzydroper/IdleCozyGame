@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "~/.config/opencode/node_modules/superpowers"
+    // "~/.config/opencode/node_modules/superpowers"
   ]
 }
