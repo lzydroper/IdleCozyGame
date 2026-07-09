@@ -5,10 +5,10 @@ import { ITEMS_CONFIG } from '../data/items';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
-import { SURVIVORS_CONFIG } from '../data/survivors';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { INITIAL_STATE } from '../data/initialState';
 import { GAME_CONSTANTS } from '../data/gameConstants';
+import { getAdjustment } from '../systems/passiveModifiers';
 // 纯函数：计算离线或Tick生长时间扣减
 export function calculateOfflineProgress(
   slots: GreenhouseSlot[],
@@ -47,8 +47,8 @@ export function calculateDetailedOfflineProgress(
 
   // 2. 发电机与回收站自动产出
   let energyGained = 0;
-  const novaPassive = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'max_energy');
-  const currentMaxEnergy = (novaPassive && state.survivors.nova) ? 100 + (novaPassive.flatBonus || 0) : (state.player.maxEnergy || 100);
+  const maxEnergyAdjustment = getAdjustment(state, 'max_energy');
+  const currentMaxEnergy = (state.player.maxEnergy || 100) + maxEnergyAdjustment;
 
   let finalAccumulatedEnergy = state.shelter.accumulatedEnergy || 0;
   if (state.shelter.generatorLevel > 0) {
@@ -225,10 +225,9 @@ export function calculateDetailedOfflineProgress(
     if (!config) return slot;
 
     let speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
-    // Mei (阿梅) 作为农夫被动：指派在温室岗位时温室作物生长速度 +25%
-    if (state.shelter.assignedWatererId === 'mei') {
-      speedMultiplier *= 1.25;
-    }
+    // 幸存者被动：指派在温室岗位时生长速度加成
+    const growthAdj = getAdjustment(state, 'growth_speed', state.shelter.assignedWatererId ?? undefined);
+    speedMultiplier *= (1 + growthAdj);
     const timeReduced = actualSeconds * speedMultiplier;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
@@ -404,8 +403,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         let currentInventory = { ...prev.inventory };
         let currentEnergy = prev.player.energy;
-        const novaPassive2 = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'max_energy');
-        const currentMaxEnergy = (novaPassive2 && prev.survivors.nova) ? 100 + (novaPassive2.flatBonus || 0) : (prev.player.maxEnergy || 100);
+        const maxEnergyAdjustment2 = getAdjustment(prev, 'max_energy');
+        const currentMaxEnergy = (prev.player.maxEnergy || 100) + maxEnergyAdjustment2;
 
         let nextAccumulatedEnergy = prev.shelter.accumulatedEnergy ?? 0;
         let nextAccumulatedScrap = prev.shelter.accumulatedScrap ?? 0;
@@ -443,10 +442,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!config) return slot;
 
           let speedMultiplier = (slot.isWatered || isWateredOnline) ? 2 : 1;
-          // Mei (阿梅) 作为农夫被动：指派在温室岗位时温室作物生长速度 +25%
-          if (prev.shelter.assignedWatererId === 'mei') {
-            speedMultiplier *= 1.25;
-          }
+          // 幸存者被动：指派在温室岗位时生长速度加成
+          const growthAdj = getAdjustment(prev, 'growth_speed', prev.shelter.assignedWatererId ?? undefined);
+          speedMultiplier *= (1 + growthAdj);
           const timeReduced = 1 * speedMultiplier;
           const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
           const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
@@ -1338,8 +1336,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasNova = !!state.survivors.nova;
   const hasCatherine = !!state.survivors.catherine;
   const hasBuster = !!state.survivors.buster;
-  const novaMaxPassive = SURVIVORS_CONFIG.find(s => s.id === 'nova')?.passives.find(p => p.type === 'max_energy');
-  const maxEnergy = (novaMaxPassive && hasNova) ? 100 + (novaMaxPassive.flatBonus || 0) : 100;
+  const maxEnergy = (state.player.maxEnergy || 100) + getAdjustment(state, 'max_energy');
   
   const adjustedState = {
     ...state,

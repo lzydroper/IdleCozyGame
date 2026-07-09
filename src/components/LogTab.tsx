@@ -184,7 +184,7 @@ const LogTab: React.FC = () => {
 
             const isUnknown = surv.status === 'unknown';
             const displayName = isUnknown ? '未知幸存者信号' : surv.name;
-            const displayRole = isUnknown ? '职位不明' : (surv.role === 'farmer' ? '农学者' : surv.role === 'engineer' ? '工程师' : '侦察兵');
+            const displayRole = isUnknown ? '职位不明' : (surv.role === 'farmer' ? '农学者' : surv.role === 'engineer' ? '工程师' : surv.role === 'scout' ? '侦察兵' : surv.role === 'guard' ? '卫兵' : surv.role === 'chemist' ? '药剂师' : '拾荒者');
             const displayBackstory = isUnknown ? '（正接收到废土中微弱的共鸣频率...当共鸣达到 100% 时即可精确定位此人的方位）' : surv.backstory;
 
             return (

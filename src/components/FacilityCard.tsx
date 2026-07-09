@@ -92,7 +92,7 @@ function SurvivorSelect({
             ? `(忙于 ${s.assignedJobId})`
             : '(空闲)';
         const roleLabel =
-          s.role === 'farmer' ? '农' : s.role === 'engineer' ? '工程★' : '探索';
+          s.role === 'farmer' ? '农' : s.role === 'engineer' ? '工程★' : s.role === 'scout' ? '探索' : s.role === 'guard' ? '卫兵' : s.role === 'chemist' ? '药剂师' : '拾荒者';
         return (
           <option key={s.id} value={s.id}>
             {cfg?.emoji || '👤'} {s.name} [{roleLabel}] {statusStr}

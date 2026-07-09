@@ -608,7 +608,7 @@ const ShelterTab: React.FC = () => {
                   : ' (空闲)';
                 return (
                   <option key={s.id} value={s.id}>
-                    {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'farmer' ? '农学家' : s.role === 'engineer' ? '工程师' : '侦察兵'})
+                    {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'farmer' ? '农学家' : s.role === 'engineer' ? '工程师' : s.role === 'scout' ? '侦察兵' : s.role === 'guard' ? '卫兵' : s.role === 'chemist' ? '药剂师' : '拾荒者'})
                     {isRecommended ? ' ★ 优先推荐' : ''} {statusStr}
                   </option>
                 );
@@ -802,7 +802,7 @@ const ShelterTab: React.FC = () => {
                     : ' (空闲在避难所)';
                   return (
                     <option key={s.id} value={s.id}>
-                      {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'scout' ? '侦察兵 ★' : s.role === 'engineer' ? '工程师' : '农学家'}) {statusStr}
+                      {SURVIVORS_CONFIG.find(c => c.id === s.id)?.emoji || '👤'} {s.name} ({s.role === 'scout' ? '侦察兵 ★' : s.role === 'engineer' ? '工程师' : s.role === 'farmer' ? '农学家' : s.role === 'guard' ? '卫兵' : s.role === 'chemist' ? '药剂师' : '拾荒者'}) {statusStr}
                     </option>
                   );
                 })}

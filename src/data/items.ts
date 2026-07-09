@@ -38,4 +38,34 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
   nanite_injector: { id: 'nanite_injector', name: '纳米修复注射针', emoji: '💉', description: '快速修复身体损伤，恢复大量生命值的药剂。', category: 'equipment', useEffect: { stats: { hp: 60, food: 10 } } },
   purifying_serum: { id: 'purifying_serum', name: '心灵净化血清', emoji: '🧪', description: '清除大量心灵污染度，稳定理智的净化血清。', category: 'special', useEffect: { stats: { sanity: 30 }, pollution: -30 } },
   shield_battery: { id: 'shield_battery', name: '重载护盾电池', emoji: '⚡', description: '用于部分高难地表救援任务的能量护盾电池。', category: 'equipment' },
+
+  // === 种子: spritesheet_seeds.png 索引 7-15 ===
+  seed_echo_shroom: { id: 'seed_echo_shroom', name: '回音真菌孢子', emoji: '🍄', description: '散发淡粉色圈状光晕的魔法菌菇孢子囊', category: 'seed' },
+  seed_magnetic_clover: { id: 'seed_magnetic_clover', name: '磁力三叶草种子', emoji: '🍀', description: '带有金属光泽、叶片呈偏心磁铁形态的种子', category: 'seed' },
+  seed_solar_cactus: { id: 'seed_solar_cactus', name: '烈阳仙人掌球', emoji: '🌵', description: '散发微弱暖橙色光的带刺小仙人掌种球', category: 'seed' },
+  seed_stellar_rose: { id: 'seed_stellar_rose', name: '星辰玫瑰种子', emoji: '🌹', description: '亮蓝色多面体结晶形态的花卉种子', category: 'seed' },
+  seed_nebula_moss: { id: 'seed_nebula_moss', name: '星云苔藓孢子', emoji: '🪴', description: '瓶中含有紫色星团烟雾的细小苔藓孢子颗粒', category: 'seed' },
+  seed_storm_sprout: { id: 'seed_storm_sprout', name: '雷暴幼芽种子', emoji: '⚡', description: '带有隐约金色闪电裂纹与焦黑表皮的种子', category: 'seed' },
+  seed_crystal_reed: { id: 'seed_crystal_reed', name: '水晶芦苇根茎', emoji: '🔮', description: '莹白色半透明的坚硬芦苇根茎块', category: 'seed' },
+  seed_shadow_fern: { id: 'seed_shadow_fern', name: '暗影蕨孢子', emoji: '🌑', description: '吞噬周围光线、呈黑雾气泡包裹的孢子团', category: 'seed' },
+  seed_chrono_vine: { id: 'seed_chrono_vine', name: '时光藤蔓种子', emoji: '🕐', description: '呈双螺旋结构微弱旋转的发光翠绿色种子', category: 'seed' },
+
+  // === 材料: spritesheet_materials.png 索引 10-15 ===
+  aether_ingot: { id: 'aether_ingot', name: '以太魔导合金锭', emoji: '🔷', description: '亮蓝色发光的高纯度魔导合金砖块', category: 'material' },
+  crystal_silicon: { id: 'crystal_silicon', name: '晶体硅面板', emoji: '💠', description: '表面带有蓝色反光折射面的废土精密电子硅基母板', category: 'material' },
+  nanite_slurry: { id: 'nanite_slurry', name: '纳米修复泥', emoji: '🧪', description: '装着莹绿色活性修复物质的密封高科技玻璃试管', category: 'material' },
+  nightmare_tear: { id: 'nightmare_tear', name: '梦魇之泪', emoji: '💧', description: '纯黑色、不断冒着黑色魔性迷雾的小小密封玻璃瓶', category: 'special' },
+  rusted_spring: { id: 'rusted_spring', name: '生锈弹簧零件', emoji: '🔩', description: '机械感生锈的重型压缩弹簧和减震组件', category: 'material' },
+  plasma_arc: { id: 'plasma_arc', name: '等离子弧能核心', emoji: '⚡', description: '带有金色线圈包裹和亮色球形电能的弧光核心', category: 'material' },
+
+  // === 补给: spritesheet_supplies.png 索引 10-15 ===
+  ration_deluxe: { id: 'ration_deluxe', name: '高级生存罐头', emoji: '🥫', description: '印有红色爱心徽标和铁皮密封扣的废土罐头', category: 'food', useEffect: { stats: { food: 45, hp: 10 } } },
+  stimpack: { id: 'stimpack', name: '废土肾上腺素', emoji: '💉', description: '橙色瞬时急救药剂针管，代表红血时的极限求生', category: 'equipment', useEffect: { stats: { hp: 35, energy: 15 } } },
+  geiger_counter: { id: 'geiger_counter', name: '盖革探测仪', emoji: '📡', description: '黄色外壳、带有科幻刻度表盘和雷达扫描的手持探测仪', category: 'equipment' },
+  canteen: { id: 'canteen', name: '军用水壶', emoji: '🧴', description: '带迷彩保温护套和电子屏显示的科技感军用大水壶', category: 'equipment', useEffect: { stats: { food: 15 } } },
+  deflective_lens: { id: 'deflective_lens', name: '偏光魔导镜片', emoji: '🔍', description: '折射七彩极光的六角形魔导透镜', category: 'special' },
+  dream_lantern: { id: 'dream_lantern', name: '引梦魔灯', emoji: '🏮', description: '散发深蓝色星光光晕、带有魔导浮雕的复古手提挂灯', category: 'special', useEffect: { stats: { sanity: 10 } } },
+
+  // === 虚空核心 (nightmareConfig 引用, 但之前缺失 item 定义) ===
+  void_core: { id: 'void_core', name: '虚空核心', emoji: '💜', description: '击败梦魇入侵后掉落的能量核心', category: 'special' },
 };

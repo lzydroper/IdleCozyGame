@@ -10,7 +10,7 @@ import SwipeCard from './SwipeCard';
 import { Compass, ShieldAlert, ChevronRight } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
-import { SURVIVORS_CONFIG } from '../data/survivors';
+import { getAdjustment } from '../systems/passiveModifiers';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 
 const WildernessTab: React.FC = () => {
@@ -88,17 +88,10 @@ const WildernessTab: React.FC = () => {
     let foodCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST : GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST;
     let energyCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST : GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST;
 
-    SURVIVORS_CONFIG.forEach(config => {
-      config.passives.forEach(p => {
-        if (p.type === 'exploration_cost') {
-          const isRescued = !state.survivors[config.id]?.realityLocationId;
-          if (state.survivors[config.id] && (p.condition !== 'rescued' || isRescued)) {
-            if (p.target === 'energy') energyCost = Math.round(energyCost * (p.multiplier ?? 1));
-            if (p.target === 'food') foodCost = Math.round(foodCost * (p.multiplier ?? 1));
-          }
-        }
-      });
-    });
+    const foodAdj = getAdjustment(state, 'exploration_food_cost');
+    const energyAdj = getAdjustment(state, 'exploration_energy_cost');
+    foodCost = Math.round(foodCost * (1 + foodAdj));
+    energyCost = Math.round(energyCost * (1 + energyAdj));
 
     if (player.food < foodCost || player.energy < energyCost) {
       showToast(`生存指标过低（饱食度需 >= ${foodCost}，魔能需 >= ${energyCost}），请先补充！`, "error");
@@ -150,16 +143,14 @@ const WildernessTab: React.FC = () => {
     }
 
     let adjustedStats = choice.results.stats ? { ...choice.results.stats } : undefined;
-    const statCostPassives = SURVIVORS_CONFIG.flatMap(c =>
-      c.passives.filter(p => p.type === 'stat_cost' && state.survivors[c.id])
-    );
-    if (adjustedStats && statCostPassives.length > 0) {
-      const multi = statCostPassives.reduce((m, p) => m * (p.multiplier ?? 1), 1);
+    if (adjustedStats) {
+      const statHpAdj = getAdjustment(state, 'stat_cost_hp');
+      const statFoodAdj = getAdjustment(state, 'stat_cost_food');
       if (adjustedStats.hp !== undefined && adjustedStats.hp < 0) {
-        adjustedStats.hp = Math.round(adjustedStats.hp * multi);
+        adjustedStats.hp = Math.round(adjustedStats.hp * (1 + statHpAdj));
       }
       if (adjustedStats.food !== undefined && adjustedStats.food < 0) {
-        adjustedStats.food = Math.round(adjustedStats.food * multi);
+        adjustedStats.food = Math.round(adjustedStats.food * (1 + statFoodAdj));
       }
     }
 
@@ -209,16 +200,12 @@ const WildernessTab: React.FC = () => {
       if (choice.results.items) {
         Object.entries(choice.results.items).forEach(([item, qty]) => {
           let adjustedQty = qty;
-          SURVIVORS_CONFIG.forEach(config => {
-            config.passives.forEach(p => {
-              if (p.type === 'item_yield' && p.target === item && qty > 0) {
-                const isRescued = !prev.survivors[config.id]?.realityLocationId;
-                if (prev.survivors[config.id] && (p.condition !== 'rescued' || isRescued)) {
-                  adjustedQty = Math.round(qty * (p.multiplier ?? 1));
-                }
-              }
-            });
-          });
+          if (qty > 0) {
+            const itemAdj = getAdjustment(prev, `item_yield:${item}` as any);
+            if (itemAdj) {
+              adjustedQty = Math.round(qty * (1 + itemAdj));
+            }
+          }
           // 限制扣除数量，不能超过玩家在避难所库存和当前临时背包拥有的总和
           const currentTotal = (prev.inventory[item] || 0) + (prev.exploration.realityBag[item] || 0);
           const maxDeductible = -currentTotal;
@@ -382,8 +369,8 @@ const WildernessTab: React.FC = () => {
                 choiceB={currentEvent.choices.B}
                 playerStats={state.player}
                 playerInventory={state.inventory}
-                hasCatherine={!!(state.hasCatherine || state.survivors.catherine)}
-                hasBuster={!!(state.survivors.buster && !state.survivors.buster.realityLocationId)}
+                statCostAdjustment={getAdjustment(state, 'stat_cost_hp')}
+                itemYieldAdjustments={{ scrap_metal: getAdjustment(state, 'item_yield:scrap_metal') }}
                 eventType={currentEvent.type}
                 onSwipeLeft={() => handleMakeChoice(currentEvent.choices.A)}
                 onSwipeRight={() => handleMakeChoice(currentEvent.choices.B)}

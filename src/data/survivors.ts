@@ -1,15 +1,16 @@
+import type { ModifierKey } from '../systems/passiveModifiers';
+
 export interface PassiveEffect {
-  type: 'exploration_cost' | 'stat_cost' | 'item_yield' | 'max_energy' | 'craft_energy' | 'growth_speed' | 'defense_cost';
-  target?: string;
-  multiplier?: number;
-  flatBonus?: number;
+  modifier: ModifierKey;
+  adjustment: number;
+  operator: 'add' | 'mul';
   condition?: 'rescued' | 'assigned';
 }
 
 export interface SurvivorConfig {
   id: string;
   name: string;
-  role: 'farmer' | 'engineer' | 'scout';
+  role: 'farmer' | 'engineer' | 'scout' | 'guard' | 'chemist' | 'scavenger';
   emoji: string;
   backstory: string;
   dreamTrigger: string;
@@ -30,7 +31,7 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     realityLocationId: 'radar_station', // 对应雷达站
     bonus: 0.2,
     bonusDescription: '工坊能耗 -20%',
-    passives: [{ type: 'craft_energy', multiplier: 0.8, condition: 'rescued' }]
+    passives: [{ modifier: 'craft_energy_cost', adjustment: -0.2, operator: 'mul', condition: 'rescued' }]
   },
   {
     id: 'mei',
@@ -42,7 +43,7 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     realityLocationId: 'green_ruins', // 对应温室废墟
     bonus: 0.25,
     bonusDescription: '温室作物生长速度 +25%',
-    passives: [{ type: 'growth_speed', multiplier: 1.25, condition: 'assigned' }]
+    passives: [{ modifier: 'growth_speed', adjustment: 0.25, operator: 'mul', condition: 'assigned' }]
   },
   {
     id: 'zero',
@@ -55,8 +56,8 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     bonus: 0.15,
     bonusDescription: '地表探索消耗 -15%',
     passives: [
-      { type: 'exploration_cost', target: 'energy', multiplier: 0.85, condition: 'rescued' },
-      { type: 'exploration_cost', target: 'food', multiplier: 0.85, condition: 'rescued' },
+      { modifier: 'exploration_energy_cost', adjustment: -0.15, operator: 'mul', condition: 'rescued' },
+      { modifier: 'exploration_food_cost', adjustment: -0.15, operator: 'mul', condition: 'rescued' },
     ]
   },
   {
@@ -69,7 +70,10 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     realityLocationId: 'bio_lab',
     bonus: 0.15,
     bonusDescription: '所有行动饱食度与生命消耗降低 15%',
-    passives: [{ type: 'stat_cost', target: 'hp/food', multiplier: 0.85, condition: 'rescued' }]
+    passives: [
+      { modifier: 'stat_cost_hp', adjustment: -0.15, operator: 'mul', condition: 'rescued' },
+      { modifier: 'stat_cost_food', adjustment: -0.15, operator: 'mul', condition: 'rescued' },
+    ]
   },
   {
     id: 'buster',
@@ -81,7 +85,7 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     realityLocationId: 'collapsed_subway',
     bonus: 0.3,
     bonusDescription: '地表探索获得的废旧金属数量增加 30%',
-    passives: [{ type: 'item_yield', target: 'scrap_metal', multiplier: 1.3, condition: 'rescued' }]
+    passives: [{ modifier: 'item_yield:scrap_metal', adjustment: 0.3, operator: 'mul', condition: 'rescued' }]
   },
   {
     id: 'nova',
@@ -94,8 +98,46 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     bonus: 0.3,
     bonusDescription: '最大魔能上限提升 30点 & 核心超频防守消耗降低',
     passives: [
-      { type: 'max_energy', flatBonus: 30, condition: 'rescued' },
-      { type: 'defense_cost', multiplier: 0.5, condition: 'rescued' },
+      { modifier: 'max_energy', adjustment: 30, operator: 'add', condition: 'rescued' },
+      { modifier: 'defense_energy_cost', adjustment: -0.5, operator: 'mul', condition: 'rescued' },
     ]
+  },
+
+  // === 新幸存者 ===
+  {
+    id: 'soldier',
+    name: '铁卫',
+    role: 'guard',
+    emoji: '🛡️',
+    backstory: '避难所防御队长，曾负责废土前哨站的安保工作，擅长防御部署与阵地战。',
+    dreamTrigger: '在梦境的钢铁堡垒废墟中，你听到了沉重的金属脚步声和盾牌撞击地面的回响...',
+    realityLocationId: 'radar_station', // placeholder - 救援事件待后续实现
+    bonus: 0.2,
+    bonusDescription: '最大生命 +20',
+    passives: [{ modifier: 'max_hp', adjustment: 20, operator: 'add', condition: 'rescued' }]
+  },
+  {
+    id: 'healer',
+    name: '艾拉',
+    role: 'chemist',
+    emoji: '⚗️',
+    backstory: '前避难所联合制药厂的药剂配方师，精通各种净化药剂的调配与改良。',
+    dreamTrigger: '在梦境的药草园实验室中，你闻到了熟悉的消毒水和草药混合的气味...',
+    realityLocationId: 'bio_lab', // placeholder - 救援事件待后续实现
+    bonus: 0.2,
+    bonusDescription: '心灵净化血清产出 +30%',
+    passives: [{ modifier: 'item_yield:purifying_serum', adjustment: 0.3, operator: 'mul', condition: 'rescued' }]
+  },
+  {
+    id: 'apprentice',
+    name: '小米',
+    role: 'scavenger',
+    emoji: '🔧',
+    backstory: '在废土中长大的拾荒学徒，虽然年纪不大但已经在垃圾堆里摸爬滚打了许多年。',
+    dreamTrigger: '在梦境的霓虹垃圾场中，你听到了小女孩哼着不成调的废土歌谣...',
+    realityLocationId: 'collapsed_subway', // placeholder - 救援事件待后续实现
+    bonus: 0.2,
+    bonusDescription: '远征拾荒间隔缩短 25%',
+    passives: [{ modifier: 'scavenge_interval', adjustment: -0.25, operator: 'mul', condition: 'rescued' }]
   }
 ];

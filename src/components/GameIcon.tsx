@@ -20,6 +20,9 @@ const ICON_CONFIG: Record<string, IconConfig> = {
   catherine: { sheet: 'survivors', index: 3 },
   buster: { sheet: 'survivors', index: 4 },
   nova: { sheet: 'survivors', index: 5 },
+  soldier: { sheet: 'survivors', index: 6 },
+  healer: { sheet: 'survivors', index: 7 },
+  apprentice: { sheet: 'survivors', index: 8 },
 
   // 1. seeds (4x4)
   seed_glow_grass: { sheet: 'seeds', index: 0 },
@@ -29,6 +32,15 @@ const ICON_CONFIG: Record<string, IconConfig> = {
   seed_frost_bell: { sheet: 'seeds', index: 4 },
   seed_plasma_pumpkin: { sheet: 'seeds', index: 5 },
   seed_void_lotus: { sheet: 'seeds', index: 6 },
+  seed_echo_shroom: { sheet: 'seeds', index: 7 },
+  seed_magnetic_clover: { sheet: 'seeds', index: 8 },
+  seed_solar_cactus: { sheet: 'seeds', index: 9 },
+  seed_stellar_rose: { sheet: 'seeds', index: 10 },
+  seed_nebula_moss: { sheet: 'seeds', index: 11 },
+  seed_storm_sprout: { sheet: 'seeds', index: 12 },
+  seed_crystal_reed: { sheet: 'seeds', index: 13 },
+  seed_shadow_fern: { sheet: 'seeds', index: 14 },
+  seed_chrono_vine: { sheet: 'seeds', index: 15 },
 
   // 2. materials (4x4)
   glow_fiber: { sheet: 'materials', index: 0 },
@@ -41,6 +53,12 @@ const ICON_CONFIG: Record<string, IconConfig> = {
   frost_crystal: { sheet: 'materials', index: 7 },
   plasma_cell: { sheet: 'materials', index: 8 },
   void_essence: { sheet: 'materials', index: 9 },
+  aether_ingot: { sheet: 'materials', index: 10 },
+  crystal_silicon: { sheet: 'materials', index: 11 },
+  nanite_slurry: { sheet: 'materials', index: 12 },
+  nightmare_tear: { sheet: 'materials', index: 13 },
+  rusted_spring: { sheet: 'materials', index: 14 },
+  plasma_arc: { sheet: 'materials', index: 15 },
 
   // 3. supplies (4x4)
   ration: { sheet: 'supplies', index: 0 },
@@ -53,6 +71,12 @@ const ICON_CONFIG: Record<string, IconConfig> = {
   nanite_injector: { sheet: 'supplies', index: 7 },
   purifying_serum: { sheet: 'supplies', index: 8 },
   shield_battery: { sheet: 'supplies', index: 9 },
+  ration_deluxe: { sheet: 'supplies', index: 10 },
+  stimpack: { sheet: 'supplies', index: 11 },
+  geiger_counter: { sheet: 'supplies', index: 12 },
+  canteen: { sheet: 'supplies', index: 13 },
+  deflective_lens: { sheet: 'supplies', index: 14 },
+  dream_lantern: { sheet: 'supplies', index: 15 },
 };
 
 const GameIcon: React.FC<GameIconProps> = ({ id, type, className = 'w-4 h-4', ...rest }) => {

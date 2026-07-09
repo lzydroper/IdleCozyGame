@@ -37,7 +37,7 @@ export interface GreenhouseSlot {
 export interface Survivor {
   id: string;
   name: string;
-  role: "farmer" | "engineer" | "scout";
+  role: "farmer" | "engineer" | "scout" | "guard" | "chemist" | "scavenger";
   bonus: number;            // 效率提升比例（例如 0.15 表示提升15%）
   isAssigned: boolean;      // 是否已指派工作
   assignedSlotId?: number;  // 指派的温室槽位或工坊槽位

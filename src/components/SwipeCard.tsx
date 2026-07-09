@@ -3,7 +3,6 @@ import { ArrowLeft, ArrowRight, Cog, TestTube, Crosshair, Tent, FlaskConical, Cl
 import type { EventChoice } from '../data/realityEvents';
 import type { PlayerStats } from '../types/game';
 import { ITEMS_CONFIG } from '../data/items';
-import { SURVIVORS_CONFIG } from '../data/survivors';
 
 interface SwipeCardProps {
   title: string;
@@ -16,8 +15,8 @@ interface SwipeCardProps {
   eventType?: string; // 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly'
   playerStats?: PlayerStats;
   playerInventory?: Record<string, number>;
-  hasCatherine?: boolean;
-  hasBuster?: boolean;
+  statCostAdjustment?: number;
+  itemYieldAdjustments?: Record<string, number>;
   leftColor?: string;
   rightColor?: string;
   dreamPollution?: number;
@@ -36,8 +35,8 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
   eventType = 'common',
   playerStats,
   playerInventory,
-  hasCatherine = false,
-  hasBuster = false,
+  statCostAdjustment = 0,
+  itemYieldAdjustments = {},
   leftColor = 'bg-red-500/20',
   rightColor = 'bg-cyan-500/20',
   dreamPollution = 0,
@@ -183,9 +182,8 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
       Object.entries(choice.results.stats).forEach(([stat, val]) => {
         if (val === 0) return;
         let adjustedVal = val as number;
-        const statCostPassive = SURVIVORS_CONFIG.find(s => s.id === 'catherine')?.passives.find(p => p.type === 'stat_cost');
-        if (hasCatherine && statCostPassive && adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
-          adjustedVal = Math.round(adjustedVal * (statCostPassive.multiplier ?? 1));
+        if (adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
+          adjustedVal = Math.round(adjustedVal * (1 + statCostAdjustment));
         }
         
         if (stat === 'pollution') {
@@ -260,9 +258,9 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
     if (choice.results.items) {
       (Object.entries(choice.results.items) as [string, number][]).forEach(([item, qty]) => {
         let adjustedQty = qty;
-        const itemYieldPassive = SURVIVORS_CONFIG.find(s => s.id === 'buster')?.passives.find(p => p.type === 'item_yield' && p.target === 'scrap_metal');
-        if (item === 'scrap_metal' && qty > 0 && hasBuster && itemYieldPassive) {
-          adjustedQty = Math.round(qty * (itemYieldPassive.multiplier ?? 1));
+        const itemAdj = itemYieldAdjustments[item];
+        if (qty > 0 && itemAdj) {
+          adjustedQty = Math.round(qty * (1 + itemAdj));
         }
         if (adjustedQty === 0) return;
 

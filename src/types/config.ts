@@ -1,8 +1,9 @@
+import type { ModifierKey } from '../systems/passiveModifiers';
+
 export interface PassiveEffect {
-  type: 'exploration_cost' | 'stat_cost' | 'item_yield' | 'max_energy' | 'craft_energy' | 'growth_speed' | 'defense_cost';
-  target?: string;
-  multiplier?: number;
-  flatBonus?: number;
+  modifier: ModifierKey;
+  adjustment: number;
+  operator: 'add' | 'mul';
   condition?: 'rescued' | 'assigned';
 }
 
