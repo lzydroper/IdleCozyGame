@@ -117,6 +117,32 @@
 
 ---
 
-## 四、 页面代码引用配置
+## 四、 幸存者头像雪碧图 (3x3 网格)
+
+为了拼满标准的正方形网格，我们采用 **3列 x 3行 = 9个格子** 布局。除当前游戏中存在的 6 个主要角色外，我们额外补充了 3 个具有废土科幻设定的备用角色，便于生成完美的方形网格头像。
+
+- **网格索引表（从左到右，从上到下，从 0 开始计数）**：
+
+| 索引 | 幸存者 ID | 姓名 | 职业类型 | 视觉特征与背景描述 |
+|:---|:---|:---|:---|:---|
+|**0**|`roy`| 罗伊 | 工程师 | 前废土矿山工程师。硬朗沉稳的中年男性，脸上有些许胡茬，戴着机械防镜和标志性的黄色工程师安全帽。 |
+|**1**|`mei`| 阿梅 | 农学家 | 辐射温室研究员。温婉知性的年轻女性，神情温柔，戴着一顶编织草帽，耳边别着一株细碎的荧光植物。 |
+|**2**|`zero`| 赛罗 | 侦察兵 | 废土信使。精悍、目光敏锐的短发青年，穿着防风兜帽斗篷，戴着大号的防尘护目镜，面带坚毅。 |
+|**3**|`catherine`| 凯瑟琳 | 农学家 | 辐射防治所前主任。干练冷静的中年女性医生，戴着细框眼镜，神情专业且略带严肃，穿着高领防护便装。 |
+|**4**|`buster`| 巴斯特 | 侦察兵 | 废土清道夫硬汉。面容粗犷，留着钢针般的灰色短发，右眼戴着黑色眼罩，穿着厚重的铁片改装皮甲。 |
+|**5**|`nova`| 诺娃 | 工程师 | 前联合防卫军魔导机甲驾驶员。性格豪爽泼辣的短发女性，红褐色乱发，穿着醒目的魔导橙色驾驶紧身衣。 |
+|**6**|`soldier`| 铁卫（备用） | 卫兵 (Guard) | 避难所防御队长。神情严肃的硬派士兵，头戴全覆式钢铁呼吸面罩，身穿厚重的避难所装甲。 |
+|**7**|`healer`| 艾拉（备用） | 药剂师 (Chemist) | 避难所药剂配方师。戴着半透明防护口罩和淡蓝色头巾的女研究员，神情专注，身旁有化学试管。 |
+|**8**|`apprentice`| 小米（备用）| 拾荒学徒 | 机灵好奇的小女孩，扎着双马尾，戴着防毒面罩，脖子上挂着大号螺丝刀，眼神充满好奇。 |
+
+### 幸存者 AI 生成 Prompt
+
+> **Prompt**: `A survivor avatar spritesheet sheet containing 9 distinct wasteland character portraits, arranged in a perfect 3x3 grid. The characters include: 1. a rugged male engineer with safety goggles, 2. a gentle female botanist wearing a straw hat, 3. a swift young male scout with a windproof hood and goggles, 4. a smart female doctor with glasses, 5. a scarred veteran scavenger with a black eyepatch, 6. a tomboy female mech pilot in orange suit, 7. a heavy armored male security guard wearing a breathing mask, 8. a female chemist in a hazmat coat with face mask, 9. a young scavenge apprentice girl with goggles and dual pigtails. Cozy anime game style, styled in futuristic cyberpunk cozy post-apocalyptic UI icon pack, matching lighting, colorful backgrounds, clean 2D vector style, transparent background --v 6.0`
+
+
+
+---
+
+## 五、 页面代码引用配置
 
 代码中已完成对应的分类路由，当检测到 `/assets/spritesheet_seeds.png`、`_materials.png` 及 `_supplies.png` 存在时，便会自动加载并按 4x4 的行、列精确显示对应图标。若某些图片缺失，将无缝安全退回显示原有 Emoji，保证游戏流畅无碍。
