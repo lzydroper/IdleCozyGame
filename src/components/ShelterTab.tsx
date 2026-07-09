@@ -468,17 +468,22 @@ const ShelterTab: React.FC = () => {
 
                 {crop ? (
                   <>
-                    {/* 背景作物图 */}
-                    <img
-                      src={(crop as any).image}
-                      alt={crop.name}
-                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                      style={{
-                        filter: isReady
-                          ? 'saturate(1.3) brightness(1.05)'
-                          : 'saturate(0.75) brightness(0.6)',
-                      }}
-                    />
+                    {crop.image ? (
+                      <img
+                        src={crop.image}
+                        alt={crop.name}
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                        style={{
+                          filter: isReady
+                            ? 'saturate(1.3) brightness(1.05)'
+                            : 'saturate(0.75) brightness(0.6)',
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center pointer-events-none">
+                        <span className="text-3xl opacity-20">🌱</span>
+                      </div>
+                    )}
 
                     {/* 顶部渐变蒙层 */}
                     <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-zinc-950/80 to-transparent px-2 pt-1.5 pb-3 flex items-center justify-between z-10">

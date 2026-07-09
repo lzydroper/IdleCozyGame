@@ -54,6 +54,33 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
       A: { text: "使用重载护盾电池稳定磁场 (需护盾电池x1)", requirements: { shield_battery: 1 }, results: { logText: "你抛出重载护盾电池。柔和的能量磁场稳定了机甲核心，驾驶舱盖自动弹开，你成功扶出诺娃！" } },
       B: { text: "超频砸开驾驶舱 (生命-25, 魔能-30)", results: { stats: { hp: -25, energy: -30 }, logText: "你魔能超频，一拳一拳强行砸烂了防爆座舱玻璃，抢在机甲核心殉爆前将诺娃拖出！" } }
     }
+  },
+  rescue_soldier: {
+    id: "rescue_soldier", title: "废弃制药厂：营救铁卫",
+    description: "制药厂的废墟深处，一名身披重甲的高大守卫者被压在一根钢筋横梁下，四周弥漫着生化毒雾，变异鼠群正在逼近。你要部署防御炮塔击杀鼠群，或者硬扛毒雾救人。",
+    type: "combat",
+    choices: {
+      A: { text: "部署防御炮塔清场 (需炮塔x1, 生命-10)", requirements: { defensive_turret: 1 }, results: { stats: { hp: -10 }, items: { defensive_turret: -1 }, logText: "你迅速部署炮塔形成电磁屏障，击退了鼠群。你撬开横梁救出了铁卫，他沉默但坚定地加入了你的队伍！" } },
+      B: { text: "硬扛毒雾强攻救人 (生命-25, 魔能-20)", results: { stats: { hp: -25, energy: -20 }, logText: "你启动护盾冲入毒雾，双臂发力将横梁扛起。铁卫脱困后撕下衣角为你包扎伤口，眼中满是感激。" } }
+    }
+  },
+  rescue_healer: {
+    id: "rescue_healer", title: "坍塌军械库：营救艾拉",
+    description: "军械库内布满倒塌的金属武器架，药剂师艾拉被压在一根倒塌的承重柱旁边，她的药箱散落一地，腿部流着血。你需要修复支撑结构，或者强行破拆救人。",
+    type: "danger",
+    choices: {
+      A: { text: "使用纳米修复针稳定伤势 (需纳米针x1)", requirements: { nanite_injector: 1 }, results: { items: { nanite_injector: -1 }, logText: "你用纳米修复针为艾拉止血。她恢复行动力后与你配合撬开了压住她的柱子，你搀扶着她离开了军械库。" } },
+      B: { text: "魔能超频举起柱子 (生命-15, 魔能-25)", results: { stats: { hp: -15, energy: -25 }, logText: "你咬牙催动魔能，双掌爆发出炽热的光芒将柱子硬生生抬起。艾拉在最后一刻滚了出来，你们两人都筋疲力尽。" } }
+    }
+  },
+  rescue_apprentice: {
+    id: "rescue_apprentice", title: "旧世图书馆：营救小米",
+    description: "图书馆的巨型书架在地震中倾倒，一名看起来还十分年轻的拾荒者小米被卡在倒塌的书架和墙壁之间。她紧紧抱着一本旧世古籍，眼中充满恐惧。你需要清理障碍，或者引导她自行钻出。",
+    type: "danger",
+    choices: {
+      A: { text: "用口粮诱她钻出缝隙 (需口粮x3)", requirements: { ration: 3 }, results: { items: { ration: -3 }, logText: "你掏出三包口粮，撕开包装让香味飘进去。小米犹豫片刻后终于钻了出来，接过口粮狼吞虎咽。她感激地跟你走了。" } },
+      B: { text: "魔能震开书架 (魔能-30)", results: { stats: { energy: -30 }, logText: "你释放魔能冲击波震碎了卡住她的书架。小米被碎裂的木屑呛得直咳，但她抱紧古籍冲你露出了微笑。" } }
+    }
   }
 };
 
@@ -64,4 +91,7 @@ export const RESCUE_LOCATION_MAP: Record<string, string> = {
   bio_lab: 'rescue_catherine',
   collapsed_subway: 'rescue_buster',
   military_depot: 'rescue_nova',
+  poison_factory: 'rescue_soldier',
+  ruined_armory: 'rescue_healer',
+  ancient_library: 'rescue_apprentice',
 };

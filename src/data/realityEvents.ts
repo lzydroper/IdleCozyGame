@@ -45,9 +45,11 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       },
       B: {
-        text: "绕开卡车安全离开",
+        text: "魔能拆卸车厢电路板 (魔能-8)",
         results: {
-          logText: "你警惕地绕过了倾覆的卡车。直觉告诉你，废土上的任何未知角落都可能隐藏着致命危险。"
+          stats: { energy: -8 },
+          items: { crystal_silicon: 1, scrap_metal: 1 },
+          logText: "你撬开仪表盘，用魔能熔断了电路接口，拆下一块完好的晶体硅面板和一块废铁。"
         }
       }
     }
@@ -321,16 +323,16 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         text: "暴力砸开货运车厢 (饱食-6)",
         results: {
           stats: { food: -6 },
-          items: { alloy_plate: 2, scrap_metal: 3 },
-          logText: "你一撬棍砸开了木箱，虽然里面大部分物资已经腐烂，但找到了几块完好的防辐射合金板和一堆可熔炼的废金属。"
+          items: { alloy_plate: 2, scrap_metal: 3, rusted_spring: 1 },
+          logText: "你一撬棍砸开了木箱，虽然里面大部分物资已经腐烂，但找到了几块完好的防辐射合金板、弹簧零件和一堆可熔炼的废金属。"
         }
       },
       B: {
         text: "检查驾驶室 (魔能-6)",
         results: {
           stats: { energy: -6 },
-          items: { plasma_cell: 1, scrap_metal: 1 },
-          logText: "驾驶台还有残存的电力，你熟练地拆下了车载辅助电源中的等离子电芯，顺手薅了一把废铁。"
+          items: { plasma_cell: 1, scrap_metal: 1, crystal_silicon: 1 },
+          logText: "驾驶台还有残存的电力，你熟练地拆下了车载辅助电源中的等离子电芯和一块晶体硅面板，顺手薅了一把废铁。"
         }
       }
     }
@@ -431,8 +433,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         text: "远距离魔能焚烧 (魔能-10)",
         results: {
           stats: { energy: -10 },
-          items: { mana_dust: 3, scrap_metal: 1 },
-          logText: "你引导魔能火焰喷向菌丝巢穴，荧光的菌群在高温中卷曲焦化。火焰过后除了满地灰烬，你还在灰烬中扒拉出了一捧魔能之尘和一块融化的废铁。"
+          items: { mana_dust: 3, scrap_metal: 1, nanite_slurry: 1 },
+          logText: "你引导魔能火焰喷向菌丝巢穴，荧光的菌群在高温中卷曲焦化。火焰过后除了满地灰烬，你发现一支未被完全烧毁的纳米修复泥试剂管，小心地拾了起来。"
         }
       }
     }
@@ -525,8 +527,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         text: "先发制人反击 (生命-12, 魔能-8)",
         results: {
           stats: { hp: -12, energy: -8 },
-          items: { scrap_metal: 3, ration: 1, mana_dust: 1 },
-          logText: "你以迅雷之势轰出一记魔能震荡，三个劫匪被打了个措手不及。虽然你挂了彩，但他们的破烂物资现在都是你的了。"
+          items: { scrap_metal: 3, ration: 1, mana_dust: 1, stimpack: 1 },
+          logText: "你以迅雷之势轰出一记魔能震荡，三个劫匪被打了个措手不及。虽然你挂了彩，但他们的破烂物资和战利品中的一支废土肾上腺素现在都是你的了。"
         }
       },
       B: {
@@ -624,16 +626,16 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         text: "小心破解培养皿加密锁 (魔能-12)",
         results: {
           stats: { energy: -12 },
-          items: { seed_void_lotus: 1, void_essence: 1 },
-          logText: "你屏住呼吸，小心翼翼地将魔能探入培养皿的加密锁芯。咔一声解锁，培养皿中静静躺着一颗虚空魔莲种子和一管提炼好的虚空精华！"
+          items: { seed_void_lotus: 1, void_essence: 1, aether_ingot: 1 },
+          logText: "你屏住呼吸，小心翼翼地将魔能探入培养皿的加密锁芯。咔一声解锁，培养皿中静静躺着一颗虚空魔莲种子、一管虚空精华和一块以太合金锭！"
         }
       },
       B: {
         text: "搜刮实验室设备零件 (饱食-6)",
         results: {
           stats: { food: -6 },
-          items: { nanite_injector: 1, alloy_plate: 1 },
-          logText: "你在倒塌的仪器台间翻找，拆下了几块高纯度合金板和一支应急医疗舱备用的纳米修复注射针。虽然错过了植物样本，收获也不赖。"
+          items: { nanite_injector: 1, alloy_plate: 1, nanite_slurry: 1 },
+          logText: "你在倒塌的仪器台间翻找，拆下了几块高纯度合金板、一支纳米修复针和一管封装完好的纳米修复泥。虽然错过了植物样本，收获也不赖。"
         }
       }
     }
@@ -684,8 +686,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         text: "展开能量护盾继续赶路 (魔能-14)",
         results: {
           stats: { energy: -14 },
-          items: { dream_shard: 1, mana_dust: 2 },
-          logText: "你咬牙将护盾功率开到最大，在漫天黄沙中艰难前行。风暴中紊乱的魔能环境意外地在你周围凝结出了梦境碎片和魔能之尘！"
+          items: { dream_shard: 1, mana_dust: 2, geiger_counter: 1 },
+          logText: "你咬牙将护盾功率开到最大，在漫天黄沙中艰难前行。风暴中紊乱的魔能环境意外地在你周围凝结出了梦境碎片和魔能之尘，还从沙堆里踢出一个被掩埋的盖革探测仪。"
         }
       }
     }

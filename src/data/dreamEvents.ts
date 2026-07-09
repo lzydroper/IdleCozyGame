@@ -219,6 +219,78 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
       }
     }
   },
+  soldier_signal: {
+    id: "soldier_signal",
+    title: "钢铁锻造的回响 (铁卫的信号)",
+    description: "梦境深处传来沉重而有节奏的钢铁敲击声，伴随着低沉的战吼。这似乎是某位强大的重甲守护者在用铁砧敲击出求救莫尔斯码。与他建立共鸣或许能获得他的方位。",
+    type: "signal",
+    weight: 100,
+    choices: {
+      A: {
+        text: "建立心灵连结 (理智-8, 共鸣+50)",
+        results: {
+          stats: { sanity: -8, resonance: 50 },
+          targetSurvivorId: "soldier",
+          logText: "你循着铁砧的节奏探出精神触角。在四溅的火星与钢铁碰撞声中，你牢牢抓住了铁卫坚毅的心灵信号。"
+        }
+      },
+      B: {
+        text: "忽略敲击声 (理智-1)",
+        results: {
+          stats: { sanity: -1 },
+          logText: "钢铁的回响渐渐远去，消失在梦境深处的迷雾中。"
+        }
+      }
+    }
+  },
+  healer_signal: {
+    id: "healer_signal",
+    title: "草药的清香气流 (艾拉的信号)",
+    description: "空气中弥漫着一阵若有若无的草药清香，混杂着消毒水和医用酒精的气味。这是一名精通药剂学的医者在用嗅觉信号传递求救坐标。",
+    type: "signal",
+    weight: 100,
+    choices: {
+      A: {
+        text: "循着药香建立连结 (理智-8, 共鸣+50)",
+        results: {
+          stats: { sanity: -8, resonance: 50 },
+          targetSurvivorId: "healer",
+          logText: "你深吸一口药香，让意识顺着气味分子飘散的方向延伸。在一片手术灯般的白色光芒中，你抓住了艾拉的信号。"
+        }
+      },
+      B: {
+        text: "屏住呼吸离开 (理智-1)",
+        results: {
+          stats: { sanity: -1 },
+          logText: "你警惕地屏住呼吸，快步离开了这片充满药味的梦境区域。"
+        }
+      }
+    }
+  },
+  apprentice_signal: {
+    id: "apprentice_signal",
+    title: "沙哑的收音机杂音 (小米的信号)",
+    description: "一段断断续续的旧世收音机节目飘荡在梦境中，夹杂着沙哑的广播噪音和一个年轻女声的小声啜泣。这是一个名为『小米』的年轻拾荒者微弱的心灵电波。",
+    type: "signal",
+    weight: 100,
+    choices: {
+      A: {
+        text: "追踪电波建立连结 (理智-8, 共鸣+50)",
+        results: {
+          stats: { sanity: -8, resonance: 50 },
+          targetSurvivorId: "apprentice",
+          logText: "你细细分辨着广播噪音中的啜泣频率，就像拨弄老式收音机的旋钮一样逐渐对准了她的精神波长。连接成功！"
+        }
+      },
+      B: {
+        text: "关闭接收器离开 (理智-1)",
+        results: {
+          stats: { sanity: -1 },
+          logText: "你关闭了梦境中的心灵接收器，啜泣声和广播噪音一同消失了。"
+        }
+      }
+    }
+  },
   nova_signal: {
     id: "nova_signal",
     title: "警报与闪光信标 (诺娃的信号)",

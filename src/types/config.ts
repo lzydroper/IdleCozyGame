@@ -1,5 +1,15 @@
 import type { ModifierKey } from '../systems/passiveModifiers';
 
+export interface CropConfig {
+  id: string;
+  name: string;
+  growthTime: number;
+  yields: Record<string, number>;
+  seedCost: Record<string, number>;
+  description: string;
+  image?: string;
+}
+
 export interface PassiveEffect {
   modifier: ModifierKey;
   adjustment: number;

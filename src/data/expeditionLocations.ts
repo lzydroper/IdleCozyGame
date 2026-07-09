@@ -17,7 +17,8 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocationsMap = {
     lootTable: [
       { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
       { itemId: 'energy_refill', chance: 0.1, minQty: 1, maxQty: 1 },
-      { itemId: 'seed_glow_grass', chance: 0.2, minQty: 1, maxQty: 1 }
+      { itemId: 'seed_glow_grass', chance: 0.2, minQty: 1, maxQty: 1 },
+      { itemId: 'crystal_silicon', chance: 0.05, minQty: 1, maxQty: 1 }
     ]
   },
   subway_station: {
@@ -26,7 +27,8 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocationsMap = {
     lootTable: [
       { itemId: 'scrap_metal', chance: 0.8, minQty: 1, maxQty: 3 },
       { itemId: 'steel_petal', chance: 0.3, minQty: 1, maxQty: 2 },
-      { itemId: 'seed_aether_berry', chance: 0.15, minQty: 1, maxQty: 1 }
+      { itemId: 'seed_aether_berry', chance: 0.15, minQty: 1, maxQty: 1 },
+      { itemId: 'rusted_spring', chance: 0.1, minQty: 1, maxQty: 1 }
     ]
   },
   bio_lab: {
@@ -35,7 +37,8 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocationsMap = {
     lootTable: [
       { itemId: 'mana_dust', chance: 0.5, minQty: 1, maxQty: 2 },
       { itemId: 'dream_shard', chance: 0.2, minQty: 1, maxQty: 1 },
-      { itemId: 'purifying_serum', chance: 0.05, minQty: 1, maxQty: 1 }
+      { itemId: 'purifying_serum', chance: 0.05, minQty: 1, maxQty: 1 },
+      { itemId: 'nanite_slurry', chance: 0.15, minQty: 1, maxQty: 1 }
     ]
   },
   green_ruins: {
@@ -53,5 +56,37 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocationsMap = {
   military_depot: {
     id: 'military_depot', name: '废弃军火库', displayName: '废弃军火库', shortName: '军火库',
     requiredRole: null, scavengeInterval: 0, lootTable: []
+  },
+
+  // === 新幸存者救援地点 ===
+  poison_factory: {
+    id: 'poison_factory', name: '废弃制药厂', displayName: '废弃制药厂', shortName: '制药厂',
+    requiredRole: 'engineer', scavengeInterval: 420,
+    lootTable: [
+      { itemId: 'crystal_silicon', chance: 0.4, minQty: 1, maxQty: 2 },
+      { itemId: 'nanite_slurry', chance: 0.2, minQty: 1, maxQty: 1 },
+      { itemId: 'scrap_metal', chance: 0.6, minQty: 1, maxQty: 3 },
+      { itemId: 'ration', chance: 0.2, minQty: 1, maxQty: 1 }
+    ]
+  },
+  ruined_armory: {
+    id: 'ruined_armory', name: '坍塌军械库', displayName: '坍塌军械库', shortName: '军械库',
+    requiredRole: 'guard', scavengeInterval: 360,
+    lootTable: [
+      { itemId: 'rusted_spring', chance: 0.5, minQty: 1, maxQty: 2 },
+      { itemId: 'alloy_plate', chance: 0.3, minQty: 1, maxQty: 1 },
+      { itemId: 'mana_dust', chance: 0.4, minQty: 1, maxQty: 2 },
+      { itemId: 'seed_crystal_reed', chance: 0.15, minQty: 1, maxQty: 1 }
+    ]
+  },
+  ancient_library: {
+    id: 'ancient_library', name: '旧世大图书馆', displayName: '旧世大图书馆', shortName: '图书馆',
+    requiredRole: null, scavengeInterval: 300,
+    lootTable: [
+      { itemId: 'dream_shard', chance: 0.3, minQty: 1, maxQty: 2 },
+      { itemId: 'mana_dust', chance: 0.5, minQty: 1, maxQty: 2 },
+      { itemId: 'nightmare_tear', chance: 0.05, minQty: 1, maxQty: 1 },
+      { itemId: 'seed_stellar_rose', chance: 0.1, minQty: 1, maxQty: 1 }
+    ]
   }
 };
