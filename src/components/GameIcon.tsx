@@ -59,6 +59,8 @@ const ICON_CONFIG: Record<string, IconConfig> = {
   nightmare_tear: { sheet: 'materials', index: 13 },
   rusted_spring: { sheet: 'materials', index: 14 },
   plasma_arc: { sheet: 'materials', index: 15 },
+  void_core: { sheet: 'materials', index: 9 },
+  energy_cell: { sheet: 'materials', index: 8 },
 
   // 3. supplies (4x4)
   ration: { sheet: 'supplies', index: 0 },

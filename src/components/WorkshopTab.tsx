@@ -9,6 +9,14 @@ import { getAdjustment } from '../systems/passiveModifiers';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
+const getRecipeIconId = (recipe: any) => {
+  const rewardKeys = Object.keys(recipe.reward || {});
+  if (rewardKeys.length > 0) return rewardKeys[0];
+  if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) return recipe.capsuleTarget;
+  if (recipe.id === 'greenhouse_expansion') return 'plasma_cell';
+  return recipe.id;
+};
+
 const WorkshopTab: React.FC = () => {
   const { state, setState, craftItem, useSupplyItem } = useGame();
   const { showToast } = useToast();
@@ -268,7 +276,7 @@ const WorkshopTab: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center">
                     <h4 className="font-black text-sm text-white flex items-center gap-1.5">
-                      <GameIcon type="item" id={recipe.id} className="w-4 h-4 mr-0.5" />
+                      <GameIcon type="item" id={getRecipeIconId(recipe)} className="w-4 h-4 mr-0.5" />
                       {recipe.name}
                       {recipe.id === 'sanity_capsule' && (
                         <span className="text-[9px] text-purple-400 font-extrabold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/30">

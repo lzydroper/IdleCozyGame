@@ -122,13 +122,15 @@ export const SmelterCard: React.FC = () => {
 
   const level = fac.level || 1;
   const upgrade = SHELTER_UPGRADES.smelter;
-  const upgradeCost = upgrade.costFormula.multiply * (level + upgrade.costFormula.offset);
+  const isMax = level >= upgrade.maxLevel;
+  const nextConfig = upgrade.levels.find(l => l.level === level + 1);
   const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
   const operator = fac.assignedSurvivorId ? state.survivors[fac.assignedSurvivorId] : null;
   const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (level - 1) * 0.1;
   const survivorsList = Object.values(state.survivors).filter((s) => !s.realityLocationId);
   const smelterRecipes = Object.values(AUTO_RECIPES).filter((r) => r.facilityId === 'smelter');
   const getInvQty = (id: string) => state.inventory[id] || 0;
+  const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
 
   let hasInputMaterials = true;
   if (activeRecipe) {
@@ -174,24 +176,37 @@ export const SmelterCard: React.FC = () => {
           </div>
           <button
             onClick={() => {
+              if (isMax) return;
               if (upgradeShelterStat('smelter')) {
                 addLog(`🏭 ${fac.name} 升级至 Lv.${level + 1}`, 'logistics');
                 showToast('魔导冶炼炉升级成功！产线效率提升。', 'success');
               } else {
-                showToast('废旧金属不足，无法升级！', 'error');
+                showToast('所需资源不足，无法升级！', 'error');
               }
             }}
-            disabled={getInvQty('scrap_metal') < upgradeCost}
+            disabled={isMax || !canAfford}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
-              getInvQty('scrap_metal') >= upgradeCost
-                ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
-                : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
+              isMax
+                ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800/60 cursor-default'
+                : canAfford
+                  ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
+                  : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
             }`}
           >
             <TrendingUp className="w-2.5 h-2.5" />
-            <span>升级</span>
-            <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />
-            <span>{upgradeCost}</span>
+            {isMax ? (
+              <span>已满级</span>
+            ) : (
+              <>
+                <span>升级</span>
+                {nextConfig && Object.entries(nextConfig.cost).map(([itemId, qty]) => (
+                  <React.Fragment key={itemId}>
+                    <GameIcon type="item" id={itemId} className="w-3 h-3" title={itemId} />
+                    <span>{qty}</span>
+                  </React.Fragment>
+                ))}
+              </>
+            )}
           </button>
         </div>
 
@@ -383,13 +398,15 @@ export const AssemblerCard: React.FC = () => {
 
   const level = fac.level || 1;
   const upgrade = SHELTER_UPGRADES.assembler;
-  const upgradeCost = upgrade.costFormula.multiply * (level + upgrade.costFormula.offset);
+  const isMax = level >= upgrade.maxLevel;
+  const nextConfig = upgrade.levels.find(l => l.level === level + 1);
   const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
   const operator = fac.assignedSurvivorId ? state.survivors[fac.assignedSurvivorId] : null;
   const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (level - 1) * 0.1;
   const survivorsList = Object.values(state.survivors).filter((s) => !s.realityLocationId);
   const assemblerRecipes = Object.values(AUTO_RECIPES).filter((r) => r.facilityId === 'assembler');
   const getInvQty = (id: string) => state.inventory[id] || 0;
+  const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
 
   let hasInputMaterials = true;
   if (activeRecipe) {
@@ -435,24 +452,37 @@ export const AssemblerCard: React.FC = () => {
           </div>
           <button
             onClick={() => {
+              if (isMax) return;
               if (upgradeShelterStat('assembler')) {
                 addLog(`🏭 ${fac.name} 升级至 Lv.${level + 1}`, 'logistics');
                 showToast('微型芯片组装台升级成功！', 'success');
               } else {
-                showToast('废旧金属不足，无法升级！', 'error');
+                showToast('所需资源不足，无法升级！', 'error');
               }
             }}
-            disabled={getInvQty('scrap_metal') < upgradeCost}
+            disabled={isMax || !canAfford}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
-              getInvQty('scrap_metal') >= upgradeCost
-                ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
-                : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
+              isMax
+                ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800/60 cursor-default'
+                : canAfford
+                  ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
+                  : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
             }`}
           >
             <TrendingUp className="w-2.5 h-2.5" />
-            <span>升级</span>
-            <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />
-            <span>{upgradeCost}</span>
+            {isMax ? (
+              <span>已满级</span>
+            ) : (
+              <>
+                <span>升级</span>
+                {nextConfig && Object.entries(nextConfig.cost).map(([itemId, qty]) => (
+                  <React.Fragment key={itemId}>
+                    <GameIcon type="item" id={itemId} className="w-3 h-3" title={itemId} />
+                    <span>{qty}</span>
+                  </React.Fragment>
+                ))}
+              </>
+            )}
           </button>
         </div>
 

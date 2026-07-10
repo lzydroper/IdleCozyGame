@@ -54,7 +54,9 @@ export function calculateDetailedOfflineProgress(
   if (state.shelter.generatorLevel > 0) {
     // 由于发电机没有独立岗位，此处理论上借用“魔导冶炼炉”中派驻的幸存者（需为工程师）作为魔力发电机调校员提供 50% 额外发电效率
     const speedBonus = 1 + (state.survivors[state.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
-    const totalOfflineEnergy = actualSeconds * (state.shelter.generatorLevel * 0.005) * speedBonus;
+    const genConfig = SHELTER_UPGRADES.generator.levels.find(l => l.level === state.shelter.generatorLevel);
+    const generatorRate = genConfig ? genConfig.effectValue : 0;
+    const totalOfflineEnergy = actualSeconds * generatorRate * speedBonus;
     energyGained = Math.floor(totalOfflineEnergy);
     
     // 合并离线与下线前的魔能累加器，避免极微小的精度损失
@@ -74,7 +76,9 @@ export function calculateDetailedOfflineProgress(
   let scrapGained = 0;
   let finalAccumulatedScrap = state.shelter.accumulatedScrap || 0;
   if (state.shelter.recyclerLevel > 0) {
-    const totalOfflineScrap = actualSeconds * (state.shelter.recyclerLevel * 0.002);
+    const recConfig = SHELTER_UPGRADES.recycler.levels.find(l => l.level === state.shelter.recyclerLevel);
+    const recyclerRate = recConfig ? recConfig.effectValue : 0;
+    const totalOfflineScrap = actualSeconds * recyclerRate;
     scrapGained = Math.floor(totalOfflineScrap);
     
     // 合并离线与下线前的回收站累加器
@@ -277,6 +281,7 @@ interface GameContextType {
   harvestSlot: (slotId: number) => Record<string, number> | null;
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
+  batchHarvestAndReplant: (cropId: string) => { harvested: Record<string, number> | null, replantedCount: number };
   craftItem: (recipeId: string) => boolean;
   addLog: (text: string, type: 'event' | 'logistics' | 'combat' | 'dream' | 'system') => void;
   resetGame: () => void;
@@ -413,12 +418,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (prev.shelter.generatorLevel > 0) {
           // 由于发电机没有独立排班，此处借用“魔导冶炼炉”中派驻的工程师作为调校员提供发电机增益
           const speedBonus = 1 + (prev.survivors[prev.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
-          const energyGained = (prev.shelter.generatorLevel * 0.005) * speedBonus;
+          const genConfig = SHELTER_UPGRADES.generator.levels.find(l => l.level === prev.shelter.generatorLevel);
+          const generatorRate = genConfig ? genConfig.effectValue : 0;
+          const energyGained = generatorRate * speedBonus;
           nextAccumulatedEnergy += energyGained;
         }
 
         if (prev.shelter.recyclerLevel > 0) {
-          const scrapGained = prev.shelter.recyclerLevel * 0.002;
+          const recConfig = SHELTER_UPGRADES.recycler.levels.find(l => l.level === prev.shelter.recyclerLevel);
+          const recyclerRate = recConfig ? recConfig.effectValue : 0;
+          const scrapGained = recyclerRate;
           nextAccumulatedScrap += scrapGained;
         }
 
@@ -935,6 +944,73 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const batchHarvestAndReplant = (cropId: string): { harvested: Record<string, number> | null, replantedCount: number } => {
+    let gatheredItems: Record<string, number> | null = null;
+    let replantedCount = 0;
+
+    setState(prev => {
+      // 1. 收割所有成熟槽位
+      const slotsToHarvest = prev.greenhouse.slots.filter(s => s.cropId !== null && s.growthProgress >= 100);
+      const newInventory = { ...prev.inventory };
+
+      if (slotsToHarvest.length > 0) {
+        gatheredItems = {};
+        slotsToHarvest.forEach(slot => {
+          const config = CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG];
+          Object.entries(config.yields).forEach(([item, qty]) => {
+            gatheredItems![item] = (gatheredItems![item] || 0) + qty;
+            newInventory[item] = (newInventory[item] || 0) + qty;
+          });
+        });
+      }
+
+      // 收割后的槽位状态
+      const slotsAfterHarvest = prev.greenhouse.slots.map(s => {
+        if (s.cropId !== null && s.growthProgress >= 100) {
+          return {
+            ...s,
+            cropId: null,
+            growthProgress: 0,
+            growthTimeLeft: 0,
+            isWatered: false
+          };
+        }
+        return s;
+      });
+
+      // 2. 播种
+      const cropConfig = CROPS_CONFIG[cropId as keyof typeof CROPS_CONFIG];
+      if (!cropConfig) {
+        return {
+          ...prev,
+          inventory: newInventory,
+          greenhouse: { ...prev.greenhouse, slots: slotsAfterHarvest }
+        };
+      }
+
+      const seedId = Object.keys(cropConfig.seedCost)[0];
+      const seedQtyNeeded = (cropConfig.seedCost as Record<string, number>)[seedId] || 0;
+      let availableSeeds = newInventory[seedId] || 0;
+
+      const updatedSlots = slotsAfterHarvest.map(slot => {
+        if (slot.cropId === null && availableSeeds >= seedQtyNeeded) {
+          availableSeeds -= seedQtyNeeded;
+          replantedCount++;
+          return { ...slot, cropId, growthProgress: 0, growthTimeLeft: cropConfig.growthTime, isWatered: false };
+        }
+        return slot;
+      });
+
+      return {
+        ...prev,
+        inventory: { ...newInventory, [seedId]: availableSeeds },
+        greenhouse: { ...prev.greenhouse, slots: updatedSlots }
+      };
+    });
+
+    return { harvested: gatheredItems, replantedCount };
+  };
+
   const resetGame = () => {
     const now = Date.now();
     const freshState = { ...INITIAL_STATE, lastTick: now, dayStartTime: now };
@@ -1196,35 +1272,42 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const upgradeShelterStat = (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler'): boolean => {
-    let success = false;
-    setState(prev => {
-      const upgrade = SHELTER_UPGRADES[statType];
-      if (!upgrade) return prev;
+    const current = stateRef.current;
+    const upgrade = SHELTER_UPGRADES[statType];
+    if (!upgrade) return false;
 
+    let currentLevel = 1;
+    if (statType === 'battery') currentLevel = current.shelter.batteryLevel || 1;
+    else if (statType === 'generator') currentLevel = current.shelter.generatorLevel || 0;
+    else if (statType === 'recycler') currentLevel = current.shelter.recyclerLevel || 0;
+    else if (statType === 'smelter') currentLevel = current.shelter.facilities.smelter.level || 1;
+    else if (statType === 'assembler') currentLevel = current.shelter.facilities.assembler.level || 1;
+
+    const nextLevelConfig = upgrade.levels.find(l => l.level === currentLevel + 1);
+    if (!nextLevelConfig) return false;
+
+    // Check all required costs synchronously
+    const canAfford = Object.entries(nextLevelConfig.cost).every(([item, qty]) => (current.inventory[item] || 0) >= qty);
+    if (!canAfford) return false;
+
+    // Validation passed, perform the update asynchronously
+    setState(prev => {
       const currentInventory = { ...prev.inventory };
       const currentShelter = {
         ...prev.shelter,
         facilities: { ...prev.shelter.facilities }
       };
 
-      let currentLevel = 1;
-      if (statType === 'battery') currentLevel = currentShelter.batteryLevel || 1;
-      else if (statType === 'generator') currentLevel = currentShelter.generatorLevel || 0;
-      else if (statType === 'recycler') currentLevel = currentShelter.recyclerLevel || 0;
-      else if (statType === 'smelter') currentLevel = currentShelter.facilities.smelter.level || 1;
-      else if (statType === 'assembler') currentLevel = currentShelter.facilities.assembler.level || 1;
+      // Deduct materials
+      Object.entries(nextLevelConfig.cost).forEach(([item, qty]) => {
+        currentInventory[item] = (currentInventory[item] || 0) - qty;
+      });
 
-      if (currentLevel >= upgrade.maxLevel) return prev;
-
-      const costScrap = upgrade.costFormula.multiply * (currentLevel + upgrade.costFormula.offset);
-      if ((currentInventory.scrap_metal || 0) < costScrap) return prev;
-
-      currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) - costScrap;
-      const nextLevel = currentLevel + 1;
+      const nextLevel = nextLevelConfig.level;
 
       if (statType === 'battery') {
         currentShelter.batteryLevel = nextLevel;
-        currentShelter.maxOfflineDuration = upgrade.effects[0].baseValue + (nextLevel - 1) * upgrade.effects[0].increment;
+        currentShelter.maxOfflineDuration = nextLevelConfig.effectValue;
       } else if (statType === 'generator') {
         currentShelter.generatorLevel = nextLevel;
       } else if (statType === 'recycler') {
@@ -1235,10 +1318,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentShelter.facilities.assembler = { ...currentShelter.facilities.assembler, level: nextLevel };
       }
 
-      success = true;
       return { ...prev, inventory: currentInventory, shelter: currentShelter };
     });
-    return success;
+
+    return true;
   };
 
   const startExpedition = (survivorId: string, locationId: string): boolean => {
@@ -1358,6 +1441,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       harvestSlot,
       batchHarvest,
       batchPlant,
+      batchHarvestAndReplant,
       craftItem,
       addLog,
       resetGame,

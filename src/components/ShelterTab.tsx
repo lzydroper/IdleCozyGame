@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
@@ -28,6 +28,61 @@ import {
 } from 'lucide-react';
 import { SmelterCard, AssemblerCard } from './FacilityCard';
 
+const getUpgradeIcon = (id: string) => {
+  switch (id) {
+    case 'battery':
+      return <Battery className="w-4 h-4 text-cyan-400" />;
+    case 'generator':
+      return <Zap className="w-4 h-4 text-amber-400" />;
+    case 'recycler':
+      return <RefreshCw className="w-4 h-4 text-emerald-400" />;
+    default:
+      return <Settings className="w-4 h-4 text-zinc-400" />;
+  }
+};
+
+const THEME_MAP: Record<string, { iconBg: string; iconBorder: string; buttonClass: (isMax: boolean, canAfford: boolean) => string }> = {
+  battery: {
+    iconBg: 'bg-cyan-950/50',
+    iconBorder: 'border-cyan-500/30',
+    buttonClass: (isMax, canAfford) => isMax
+      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford
+        ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
+        : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  },
+  generator: {
+    iconBg: 'bg-amber-950/50',
+    iconBorder: 'border-amber-500/30',
+    buttonClass: (isMax, canAfford) => isMax
+      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford
+        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
+        : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  },
+  recycler: {
+    iconBg: 'bg-emerald-950/50',
+    iconBorder: 'border-emerald-500/30',
+    buttonClass: (isMax, canAfford) => isMax
+      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford
+        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 cursor-pointer'
+        : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  }
+};
+
+const getTheme = (id: string) => {
+  return THEME_MAP[id] || {
+    iconBg: 'bg-zinc-950/50',
+    iconBorder: 'border-zinc-500/30',
+    buttonClass: (isMax: boolean, canAfford: boolean) => isMax
+      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford
+        ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
+        : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
+  };
+};
+
 const ShelterTab: React.FC = () => {
   const {
     state,
@@ -36,8 +91,7 @@ const ShelterTab: React.FC = () => {
     startExpedition,
     stopExpedition,
     batchWater,
-    batchHarvest,
-    batchPlant,
+    batchHarvestAndReplant,
     plantCrop,
     waterSlot,
     harvestSlot,
@@ -124,23 +178,12 @@ const ShelterTab: React.FC = () => {
   const getInvQty = (itemId: string) => state.inventory[itemId] || 0;
 
   // 1. 避难所基建与挂机控制 (Base Upgrades) 属性计算
-  const currentBattery = state.shelter.batteryLevel || 1;
-  const batteryUpgrade = SHELTER_UPGRADES.battery;
-  const nextBatteryCost = batteryUpgrade.costFormula.multiply * (currentBattery + batteryUpgrade.costFormula.offset);
-  const currentMaxHours = (state.shelter.maxOfflineDuration / 3600).toFixed(1);
-  const nextMaxHours = ((batteryUpgrade.effects[0].baseValue + currentBattery * batteryUpgrade.effects[0].increment) / 3600).toFixed(1);
-
-  const currentGenerator = state.shelter.generatorLevel || 0;
-  const genUpgrade = SHELTER_UPGRADES.generator;
-  const nextGeneratorCost = genUpgrade.costFormula.multiply * (currentGenerator + genUpgrade.costFormula.offset);
-  const currentGenRate = (currentGenerator * 0.005 * 60).toFixed(2);
-  const nextGenRate = ((currentGenerator + 1) * 0.005 * 60).toFixed(2);
-
-  const currentRecycler = state.shelter.recyclerLevel || 0;
-  const recUpgrade = SHELTER_UPGRADES.recycler;
-  const nextRecyclerCost = recUpgrade.costFormula.multiply * (currentRecycler + recUpgrade.costFormula.offset);
-  const currentRecRate = (currentRecycler * 0.002 * 60).toFixed(2);
-  const nextRecRate = ((currentRecycler + 1) * 0.002 * 60).toFixed(2);
+  const getUpgradeLevel = (id: string) => {
+    if (id === 'battery') return state.shelter.batteryLevel || 1;
+    if (id === 'generator') return state.shelter.generatorLevel || 0;
+    if (id === 'recycler') return state.shelter.recyclerLevel || 0;
+    return (state.shelter as any)[id + 'Level'] || 0;
+  };
 
   // 2. 幸存者列表
   const survivorsList = Object.values(state.survivors).filter(s => !s.realityLocationId);
@@ -159,41 +202,35 @@ const ShelterTab: React.FC = () => {
 
   // 一键收获并循环播种
   const handleBatchHarvestAndReplant = () => {
-    // 1. 先收割
-    const harvestResult = batchHarvest();
+    const { harvested, replantedCount } = batchHarvestAndReplant(replantCropId);
+    
+    const hasHarvested = harvested && Object.keys(harvested).length > 0;
+    if (!hasHarvested && replantedCount === 0) {
+      showToast('温室没有可收割的作物，且没有空余槽位！', 'warning');
+      return;
+    }
+
     let harvestMsg = '';
-    if (harvestResult && Object.keys(harvestResult).length > 0) {
-      const itemsStr = Object.entries(harvestResult)
+    if (hasHarvested) {
+      const itemsStr = Object.entries(harvested)
         .map(([id, qty]) => `${qty}个${ITEMS_CONFIG[id]?.name || id}`)
         .join(', ');
       harvestMsg = `收获了 ${itemsStr}。`;
       addLog(`🌾 一键收割完成，${harvestMsg}`, 'logistics');
     }
 
-    // 2. 再播种
     const cropConfig = CROPS_CONFIG[replantCropId as keyof typeof CROPS_CONFIG];
-    if (cropConfig) {
-      const seedId = Object.keys(cropConfig.seedCost)[0];
-      const availableSeeds = getInvQty(seedId);
-      const freeSlotsCount = state.greenhouse.slots.filter(s => s.cropId === null).length;
+    const seedId = cropConfig ? Object.keys(cropConfig.seedCost)[0] : '';
+    const seedName = ITEMS_CONFIG[seedId]?.name || seedId;
 
-      if (freeSlotsCount === 0 && (!harvestResult || Object.keys(harvestResult).length === 0)) {
-        showToast('温室没有可收割的作物，且没有空余槽位！', 'warning');
-        return;
-      }
-
-      if (availableSeeds <= 0) {
-        showToast(`没有可用的 ${ITEMS_CONFIG[seedId]?.name || seedId} 种子进行播种！${harvestResult && Object.keys(harvestResult).length > 0 ? '仅收割完成。' : ''}`, 'warning');
-        return;
-      }
-
-      const plantSuccess = batchPlant(replantCropId);
-      if (plantSuccess) {
-        const cropName = ITEMS_CONFIG[seedId]?.name || seedId;
-        addLog(`🌱 一键续播完成，已续播 ${cropName}`, 'logistics');
-        showToast(`🌱 一键收割并重新播种成功！${harvestMsg}已连播入空余槽位。`, 'success');
+    if (replantedCount > 0) {
+      addLog(`🌱 一键续播完成，已续播 ${seedName}`, 'logistics');
+      showToast(`🌱 一键收割并重新播种成功！${harvestMsg}已续播 ${replantedCount} 个槽位。`, 'success');
+    } else {
+      if (hasHarvested) {
+        showToast(`🌾 收获完成！${harvestMsg}但未播种（种子不足或无空余槽位）。`, 'warning');
       } else {
-        showToast(`已完成收割。但重新播种失败，请检查种子数量！`, 'warning');
+        showToast(`无法播种，请检查种子数量！`, 'warning');
       }
     }
   };
@@ -311,111 +348,72 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1">
-          {/* 蓄电池升级 */}
-          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
-            <div className="flex gap-2.5 items-center">
-              <div className="w-8 h-8 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Battery className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-bold text-zinc-200">蓄电池矩阵 (Lv.{currentBattery})</div>
-                <div className="text-[10px] text-zinc-400">离线最大挂机续航时间：<span className="text-cyan-400 font-bold">{currentMaxHours}h</span></div>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (upgradeShelterStat('battery')) {
-                  addLog(`🔋 蓄电池矩阵升级至 Lv.${currentBattery + 1}，最大挂机时间延长至 ${nextMaxHours}h`, 'logistics');
-                  showToast('🔋 蓄电池矩阵升级成功！最大挂机时间延长。', 'success');
-                } else {
-                  showToast('废旧金属不足，无法升级！', 'error');
-                }
-              }}
-              disabled={getInvQty('scrap_metal') < nextBatteryCost}
-              className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${
-                getInvQty('scrap_metal') >= nextBatteryCost
-                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
-                  : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-              }`}
-            >
-              <span className="flex items-center gap-0.5">升级 <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />{nextBatteryCost}</span>
-              <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextMaxHours}h</span>
-            </button>
-          </div>
+          {Object.values(SHELTER_UPGRADES)
+            .filter((upg) => upg.category === 'base')
+            .map((upgrade) => {
+              const currentLevel = getUpgradeLevel(upgrade.id);
+              const isMax = currentLevel >= upgrade.maxLevel;
+              const currentConfig = upgrade.levels.find((l) => l.level === currentLevel);
+              const nextConfig = upgrade.levels.find((l) => l.level === currentLevel + 1);
+              const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([item, qty]) => getInvQty(item) >= qty) : false;
+              const theme = getTheme(upgrade.id);
 
-          {/* 魔导发电机 */}
-          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
-            <div className="flex gap-2.5 items-center">
-              <div className="w-8 h-8 rounded-lg bg-amber-950/50 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Zap className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-bold text-zinc-200">魔能凝结发电机 (Lv.{currentGenerator})</div>
-                <div className="text-[10px] text-zinc-400">
-                  能量凝结率：
-                  <span className={currentGenerator > 0 ? 'text-amber-400 font-bold' : 'text-zinc-500'}>
-                    {currentGenerator > 0 ? `${currentGenRate} 能量/分` : '已停机'}
-                  </span>
+              return (
+                <div key={upgrade.id} className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-emerald-500/20 transition-all">
+                  <div className="flex gap-2.5 items-center">
+                    <div className={`w-8 h-8 rounded-lg ${theme.iconBg} border ${theme.iconBorder} flex items-center justify-center`}>
+                      {getUpgradeIcon(upgrade.id)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-zinc-200">
+                        {upgrade.name} (Lv.{currentLevel})
+                      </div>
+                      <div className="text-[10px] text-zinc-400">
+                        {upgrade.effectLabel}：
+                        <span className={currentLevel > 0 ? 'text-zinc-200 font-bold' : 'text-zinc-500'}>
+                          {currentConfig ? currentConfig.effectText : '已停机'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (isMax) return;
+                      if (upgradeShelterStat(upgrade.id as any)) {
+                        addLog(`🔧 ${upgrade.name} 升级至 Lv.${currentLevel + 1}`, 'logistics');
+                        showToast(`🔧 ${upgrade.name} 升级成功！`, 'success');
+                      } else {
+                        showToast('所需资源不足，无法升级！', 'error');
+                      }
+                    }}
+                    disabled={isMax || !canAfford}
+                    className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${theme.buttonClass(isMax, canAfford)}`}
+                  >
+                    {isMax ? (
+                      <>
+                        <span className="font-extrabold text-[11px] text-zinc-500">已满级</span>
+                        <span className="block text-[8px] font-normal text-zinc-600 mt-0.5">MAX</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-0.5 justify-center flex-wrap">
+                          升级
+                          {nextConfig && Object.entries(nextConfig.cost).map(([item, qty]) => (
+                            <React.Fragment key={item}>
+                              <GameIcon type="item" id={item} className="w-3 h-3" title={item} />
+                              {qty}
+                            </React.Fragment>
+                          ))}
+                        </span>
+                        <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">
+                          下一级: {nextConfig ? nextConfig.effectText : 'MAX'}
+                        </span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (upgradeShelterStat('generator')) {
-                  addLog(`⚡ 魔能发电机升级至 Lv.${currentGenerator + 1}，凝结率 ${nextGenRate}/分`, 'logistics');
-                  showToast('⚡ 魔能发电机升级成功！能量凝结效率提高。', 'success');
-                } else {
-                  showToast('废旧金属不足，无法升级！', 'error');
-                }
-              }}
-              disabled={getInvQty('scrap_metal') < nextGeneratorCost}
-              className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${
-                getInvQty('scrap_metal') >= nextGeneratorCost
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
-                  : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-              }`}
-            >
-              <span className="flex items-center gap-0.5">升级 <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />{nextGeneratorCost}</span>
-              <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextGenRate}/分</span>
-            </button>
-          </div>
-
-          {/* 物资回收站 */}
-          <div className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-800 transition-all">
-            <div className="flex gap-2.5 items-center">
-              <div className="w-8 h-8 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <RefreshCw className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div>
-                <div className="font-bold text-zinc-200">物资自动回收站 (Lv.{currentRecycler})</div>
-                <div className="text-[10px] text-zinc-400">
-                  废铁提炼率：
-                  <span className={currentRecycler > 0 ? 'text-emerald-400 font-bold' : 'text-zinc-500'}>
-                    {currentRecycler > 0 ? `${currentRecRate} 废铁/分` : '已停机'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (upgradeShelterStat('recycler')) {
-                  addLog(`♻️ 物资回收站升级至 Lv.${currentRecycler + 1}，回收率 ${nextRecRate}/分`, 'logistics');
-                  showToast('♻️ 物资回收站升级成功！废弃金属回收速率提升。', 'success');
-                } else {
-                  showToast('废旧金属不足，无法升级！', 'error');
-                }
-              }}
-              disabled={getInvQty('scrap_metal') < nextRecyclerCost}
-              className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${
-                getInvQty('scrap_metal') >= nextRecyclerCost
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 cursor-pointer'
-                  : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-              }`}
-            >
-              <span className="flex items-center gap-0.5">升级 <GameIcon type="item" id="scrap_metal" className="w-3 h-3" title="废旧金属" />{nextRecyclerCost}</span>
-              <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">下一级: {nextRecRate}/分</span>
-            </button>
-          </div>
+              );
+            })}
         </div>
       </section>
 
@@ -432,135 +430,137 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         {/* 培养槽全功能监视网格 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          {state.greenhouse.slots.map(slot => {
-            const crop = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
-            const isReady = slot.growthProgress >= 100;
-            const isWatered = slot.isWatered || state.shelter.assignedWatererId !== null;
+        <div className="max-h-72 overflow-y-auto pr-1 mb-4">
+          <div className="grid grid-cols-2 gap-3">
+            {state.greenhouse.slots.map(slot => {
+              const crop = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
+              const isReady = slot.growthProgress >= 100;
+              const isWatered = slot.isWatered || state.shelter.assignedWatererId !== null;
 
-            return (
-              <div
-                key={slot.id}
-                onClick={() => handleSlotClick(slot.id, !!crop)}
-                className={`relative aspect-square rounded-2xl overflow-hidden border cursor-pointer transition-all duration-300 select-none ${
-                  isReady
-                    ? 'border-emerald-500/60 shadow-[0_0_16px_rgba(16,185,129,0.25)]'
-                    : crop
-                    ? 'border-zinc-700/60'
-                    : 'border-dashed border-zinc-700/50 hover:border-purple-500/40'
-                }`}
-              >
-                {/* 飘字特效 */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none z-30">
-                  {flyingRewards
-                    .filter(r => r.slotId === slot.id)
-                    .map(reward => (
-                      <div
-                        key={reward.id}
-                        className="text-[9px] font-black text-emerald-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] animate-float-up bg-zinc-950/95 px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center gap-1 whitespace-nowrap"
-                        style={{ transform: `translateY(${reward.offsetY}px)` }}
-                      >
-                        <Sparkles className="w-3 h-3 text-emerald-400" />
-                        {reward.text}
-                      </div>
-                    ))}
-                </div>
-
-                {crop ? (
-                  <>
-                    {crop.image ? (
-                      <img
-                        src={crop.image}
-                        alt={crop.name}
-                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                        style={{
-                          filter: isReady
-                            ? 'saturate(1.3) brightness(1.05)'
-                            : 'saturate(0.75) brightness(0.6)',
-                        }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center pointer-events-none">
-                        <span className="text-3xl opacity-20">🌱</span>
-                      </div>
-                    )}
-
-                    {/* 顶部渐变蒙层 */}
-                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-zinc-950/80 to-transparent px-2 pt-1.5 pb-3 flex items-center justify-between z-10">
-                      <span className="text-[9px] text-zinc-400 font-semibold">槽位 #{slot.id}</span>
-                      {isWatered && (
-                        <span className="flex items-center gap-0.5 text-blue-400 text-[9px] font-bold animate-pulse">
-                          <Droplet className="w-2.5 h-2.5 fill-blue-400" />湿润
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 就绪光晕 */}
-                    {isReady && (
-                      <div className="absolute inset-0 bg-emerald-400/10 animate-pulse pointer-events-none z-10" />
-                    )}
-
-                    {/* 底部控制栏 */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/70 to-transparent px-2 pt-4 pb-2 z-20">
-                      <div className="text-[9px] font-bold text-zinc-200 flex items-center gap-1 mb-1">
-                        <Sprout className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />
-                        <span className="truncate">{crop.name}</span>
-                      </div>
-                      <div className="w-full bg-zinc-900/80 rounded-full h-1 overflow-hidden mb-1.5">
+              return (
+                <div
+                  key={slot.id}
+                  onClick={() => handleSlotClick(slot.id, !!crop)}
+                  className={`relative aspect-square rounded-2xl overflow-hidden border cursor-pointer transition-all duration-300 select-none ${
+                    isReady
+                      ? 'border-emerald-500/60 shadow-[0_0_16px_rgba(16,185,129,0.25)]'
+                      : crop
+                      ? 'border-zinc-700/60'
+                      : 'border-dashed border-zinc-700/50 hover:border-purple-500/40'
+                  }`}
+                >
+                  {/* 飘字特效 */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none z-30">
+                    {flyingRewards
+                      .filter(r => r.slotId === slot.id)
+                      .map(reward => (
                         <div
-                          className={`h-full rounded-full transition-all duration-1000 ${
-                            isReady
-                              ? 'bg-emerald-400 shadow-[0_0_4px_#34d399]'
-                              : 'bg-purple-500'
-                          }`}
-                          style={{ width: `${slot.growthProgress}%` }}
-                        />
-                      </div>
-                      {isReady ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleHarvest(slot.id);
-                          }}
-                          className="w-full py-1 bg-emerald-500 text-zinc-950 font-extrabold rounded-md hover:bg-emerald-400 active:scale-95 transition-all text-[9px] text-center animate-pulse cursor-pointer"
+                          key={reward.id}
+                          className="text-[9px] font-black text-emerald-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] animate-float-up bg-zinc-950/95 px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center gap-1 whitespace-nowrap"
+                          style={{ transform: `translateY(${reward.offsetY}px)` }}
                         >
-                          收割
-                        </button>
+                          <Sparkles className="w-3 h-3 text-emerald-400" />
+                          {reward.text}
+                        </div>
+                      ))}
+                  </div>
+
+                  {crop ? (
+                    <>
+                      {crop.image ? (
+                        <img
+                          src={crop.image}
+                          alt={crop.name}
+                          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                          style={{
+                            filter: isReady
+                              ? 'saturate(1.3) brightness(1.05)'
+                              : 'saturate(0.75) brightness(0.6)',
+                          }}
+                        />
                       ) : (
-                        <div className="flex items-center justify-between">
-                          <span className="text-zinc-400 flex items-center gap-0.5 font-mono text-[9px]">
-                            <Timer className="w-2.5 h-2.5 text-purple-400" />
-                            {slot.growthTimeLeft}s
-                          </span>
-                          {!slot.isWatered && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const success = waterSlot(slot.id);
-                                if (success) {
-                                  addLog(`手动为培养槽 #${slot.id + 1} 补充了水分`, 'logistics');
-                                }
-                              }}
-                              className="px-2 py-0.5 bg-blue-950/90 border border-blue-500/40 text-blue-400 rounded-md hover:bg-blue-900 active:scale-95 transition-all cursor-pointer text-[9px]"
-                            >
-                              浇水
-                            </button>
-                          )}
+                        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center pointer-events-none">
+                          <span className="text-3xl opacity-20">🌱</span>
                         </div>
                       )}
+
+                      {/* 顶部渐变蒙层 */}
+                      <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-zinc-950/80 to-transparent px-2 pt-1.5 pb-3 flex items-center justify-between z-10">
+                        <span className="text-[9px] text-zinc-400 font-semibold">槽位 #{slot.id}</span>
+                        {isWatered && (
+                          <span className="flex items-center gap-0.5 text-blue-400 text-[9px] font-bold animate-pulse">
+                            <Droplet className="w-2.5 h-2.5 fill-blue-400" />湿润
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 就绪光晕 */}
+                      {isReady && (
+                        <div className="absolute inset-0 bg-emerald-400/10 animate-pulse pointer-events-none z-10" />
+                      )}
+
+                      {/* 底部控制栏 */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/70 to-transparent px-2 pt-4 pb-2 z-20">
+                        <div className="text-[9px] font-bold text-zinc-200 flex items-center gap-1 mb-1">
+                          <Sprout className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />
+                          <span className="truncate">{crop.name}</span>
+                        </div>
+                        <div className="w-full bg-zinc-900/80 rounded-full h-1 overflow-hidden mb-1.5">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ${
+                              isReady
+                                ? 'bg-emerald-400 shadow-[0_0_4px_#34d399]'
+                                : 'bg-purple-500'
+                            }`}
+                            style={{ width: `${slot.growthProgress}%` }}
+                          />
+                        </div>
+                        {isReady ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleHarvest(slot.id);
+                            }}
+                            className="w-full py-1 bg-emerald-500 text-zinc-950 font-extrabold rounded-md hover:bg-emerald-400 active:scale-95 transition-all text-[9px] text-center animate-pulse cursor-pointer"
+                          >
+                            收割
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 flex items-center gap-0.5 font-mono text-[9px]">
+                              <Timer className="w-2.5 h-2.5 text-purple-400" />
+                              {slot.growthTimeLeft}s
+                            </span>
+                            {!slot.isWatered && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const success = waterSlot(slot.id);
+                                  if (success) {
+                                    addLog(`手动为培养槽 #${slot.id + 1} 补充了水分`, 'logistics');
+                                  }
+                                }}
+                                className="px-2 py-0.5 bg-blue-950/90 border border-blue-500/40 text-blue-400 rounded-md hover:bg-blue-900 active:scale-95 transition-all cursor-pointer text-[9px]"
+                              >
+                                浇水
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-zinc-950/60 flex flex-col items-center justify-center text-zinc-600">
+                      <div className="text-[9px] text-zinc-600 font-semibold mb-2">槽位 #{slot.id}</div>
+                      <Sprout className="w-7 h-7 mb-1.5 opacity-20" />
+                      <span className="text-[10px] font-bold text-zinc-500">闲置中</span>
+                      <span className="text-[8px] opacity-50 mt-0.5">点击播种</span>
                     </div>
-                  </>
-                ) : (
-                  <div className="absolute inset-0 bg-zinc-950/60 flex flex-col items-center justify-center text-zinc-600">
-                    <div className="text-[9px] text-zinc-600 font-semibold mb-2">槽位 #{slot.id}</div>
-                    <Sprout className="w-7 h-7 mb-1.5 opacity-20" />
-                    <span className="text-[10px] font-bold text-zinc-500">闲置中</span>
-                    <span className="text-[8px] opacity-50 mt-0.5">点击播种</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* 自动浇水托管岗位指派 */}
