@@ -447,7 +447,7 @@ const App: React.FC = () => {
           }} className="flex flex-col gap-2">
             <input
               type="text"
-              placeholder="输入生存者代号 (例如: 至尊肥仔)"
+              placeholder="输入生存者代号 (例如: 至臻肥仔)"
               value={newCharName}
               onChange={(e) => setNewCharName(e.target.value)}
               className="bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 rounded-xl text-zinc-100 focus:outline-none focus:border-purple-500"

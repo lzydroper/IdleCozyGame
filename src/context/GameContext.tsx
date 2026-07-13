@@ -303,6 +303,11 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+const isUuid = (str: string) => {
+  const simpleUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return simpleUuidRegex.test(str);
+};
+
 const getAccountsList = (): string[] => {
   const isTest = typeof globalThis !== 'undefined' && ((globalThis as any).process?.env?.NODE_ENV === 'test' || !!(globalThis as any).process?.env?.VITEST);
   const listJson = localStorage.getItem('aether_garden_accounts_list');
@@ -311,7 +316,46 @@ const getAccountsList = (): string[] => {
       const parsed = JSON.parse(listJson);
       if (Array.isArray(parsed)) {
         if (isTest) return parsed;
-        return parsed.filter((u: string) => u !== 'Guest');
+        
+        const list = parsed.filter((u: string) => u !== 'Guest');
+        let hasMigrated = false;
+        const newList: string[] = [];
+
+        for (const item of list) {
+          if (isUuid(item)) {
+            newList.push(item);
+          } else {
+            // 就地将老旧角色代号迁移为规范的 UUID
+            const oldKey = `aether_garden_save_${item}`;
+            const oldData = localStorage.getItem(oldKey);
+            if (oldData) {
+              const newId = typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : 'char_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+              
+              try {
+                const saveObj = JSON.parse(oldData);
+                saveObj.username = item; // 写入自描述
+                localStorage.setItem(`aether_garden_save_${newId}`, JSON.stringify(saveObj));
+                localStorage.removeItem(oldKey);
+                newList.push(newId);
+                hasMigrated = true;
+
+                // 如果当前选中的也是这个老代号，更新它
+                const curUser = localStorage.getItem('aether_garden_save_current_user');
+                if (curUser === item) {
+                  localStorage.setItem('aether_garden_save_current_user', newId);
+                }
+              } catch {}
+            }
+          }
+        }
+
+        if (hasMigrated) {
+          localStorage.setItem('aether_garden_accounts_list', JSON.stringify(newList));
+          return newList;
+        }
+        return list;
       }
     } catch (e) {
       console.error("Failed to parse accounts list", e);
