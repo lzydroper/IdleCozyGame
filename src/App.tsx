@@ -37,9 +37,12 @@ const App: React.FC = () => {
     resetGame,
     currentUser,
     accounts,
+    isSyncing,
     switchAccount,
     createAccount,
-    deleteAccount
+    deleteAccount,
+    fetchCloudCharacterSummaries,
+    downloadCloudCharacter
   } = useGame();
 
   const { showToast, showConfirm } = useToast();
@@ -49,6 +52,11 @@ const App: React.FC = () => {
   const [isCreatingFirstChar, setIsCreatingFirstChar] = useState(false);
   const [deletingCharId, setDeletingCharId] = useState<string | null>(null);
   const [deleteCloudChecked, setDeleteCloudChecked] = useState(false);
+  // 创角面板：云端角色摘要列表（需求 2）
+  const [cloudSummaries, setCloudSummaries] = useState<Array<{ id: string; username: string; days: number; hp: number }>>([]);
+  const [isFetchingCloud, setIsFetchingCloud] = useState(false);
+  // 记录已经展示过云端摘要的 userId，避免重复请求
+  const [cloudSummaryFetchedForUser, setCloudSummaryFetchedForUser] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter'>('wilderness');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -90,7 +98,8 @@ const App: React.FC = () => {
       showToast("请输入生存者代号！", "warning");
       return;
     }
-    const success = await createAccount(newUsername.trim(), user?.id);
+    // 需求 8：创建角色不传入 userId，不自动同步云端
+    const success = await createAccount(newUsername.trim());
     if (success) {
       showToast(`生存者 ${newUsername} 唤醒成功！已自动切换。`, "success");
       setNewUsername('');
@@ -199,6 +208,26 @@ const App: React.FC = () => {
     setActiveTab(tab);
   };
 
+  // 需求 2：当进入无角色面板时，拉取云端角色摘要
+  useEffect(() => {
+    if (user && accounts.length === 0 && cloudSummaryFetchedForUser !== user.id) {
+      setIsFetchingCloud(true);
+      fetchCloudCharacterSummaries(user.id).then((summaries) => {
+        setCloudSummaries(summaries);
+        setCloudSummaryFetchedForUser(user.id);
+      }).catch(() => {
+        setCloudSummaries([]);
+      }).finally(() => {
+        setIsFetchingCloud(false);
+      });
+    }
+    // 如果已有本地角色，清除云端摘要（不再展示）
+    if (accounts.length > 0) {
+      setCloudSummaries([]);
+      setCloudSummaryFetchedForUser(null);
+    }
+  }, [user, accounts.length, fetchCloudCharacterSummaries, cloudSummaryFetchedForUser]);
+
   if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto border-x border-zinc-900 shadow-2xl">
@@ -232,6 +261,7 @@ const App: React.FC = () => {
   }
 
   if (accounts.length === 0) {
+    // 需求 2：已登录但本地无角色，显示创建角色面板（顶部展示云端角色摘要）
     return (
       <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden p-6 justify-center">
         <img
@@ -241,10 +271,10 @@ const App: React.FC = () => {
           className="absolute inset-0 w-full h-full object-cover opacity-[0.08] pointer-events-none select-none z-0"
           style={{ mixBlendMode: 'luminosity' }}
         />
-        <div className="relative z-10 bg-zinc-900/80 border border-purple-500/30 p-5 rounded-2xl backdrop-blur-md">
-          <div className="flex justify-between items-center mb-3">
+        <div className="relative z-10 bg-zinc-900/80 border border-purple-500/30 p-5 rounded-2xl backdrop-blur-md flex flex-col gap-4">
+          <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
             <h2 className="text-xs font-black text-purple-400 flex items-center gap-1">● 检测到以太冷冻舱空置</h2>
-            <button 
+            <button
               onClick={async () => {
                 if (supabase) await supabase.auth.signOut();
               }}
@@ -253,7 +283,52 @@ const App: React.FC = () => {
               退出登录
             </button>
           </div>
-          <p className="text-[10px] text-zinc-400 mb-4 leading-relaxed">
+
+          {/* 需求 2：云端角色摘要列表 */}
+          {supabase && (
+            <div className="flex flex-col gap-2">
+              <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-black">
+                以太云层已归档的冷冻舱
+              </div>
+              {isFetchingCloud ? (
+                <div className="flex items-center justify-center py-4 text-[10px] text-zinc-500 animate-pulse">
+                  正在扫描以太信号...
+                </div>
+              ) : cloudSummaries.length > 0 ? (
+                <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                  {cloudSummaries.map((char) => (
+                    <button
+                      key={char.id}
+                      disabled={isSyncing}
+                      onClick={async () => {
+                        // 需求 2a：点击云端角色 → 自动拉取并进入游戏
+                        const ok = await downloadCloudCharacter(char.id);
+                        if (!ok) showToast('拉取失败，请稍后重试。', 'error');
+                      }}
+                      className="flex items-center justify-between p-2.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-950/40 text-zinc-200 cursor-pointer transition-all active:scale-98 disabled:opacity-50 w-full text-left"
+                    >
+                      <span className="text-xs font-black">{char.username}</span>
+                      <div className="flex items-center gap-2 text-[9px] text-zinc-400">
+                        <span>存活 {char.days} 天</span>
+                        <span>HP {char.hp}</span>
+                        <span className="text-purple-400 text-[8px]">[点击拉取]</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[9px] text-zinc-600 text-center py-2">
+                  云端无历史存档——请在下方创建新角色
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="text-center text-[9px] text-zinc-500 border-t border-zinc-850 pt-3">
+            —— 或输入新角色代号创建 ——
+          </div>
+
+          <p className="text-[10px] text-zinc-400 leading-relaxed -mt-2">
             当前云端和本地均无您的生存数据。请在避难所数据库中输入首位角色的代号以同步激活唤醒程序。
           </p>
           <form onSubmit={async (e) => {
@@ -264,9 +339,10 @@ const App: React.FC = () => {
             }
             setIsCreatingFirstChar(true);
             try {
-              const charId = await createAccount(newCharName.trim(), user.id);
+              // 需求 8：不传 userId，不自动同步云端
+              const charId = await createAccount(newCharName.trim());
               if (charId) {
-                showToast(`生存者【${newCharName.trim()}】已顺利唤醒并注入云端！`, "success");
+                showToast(`生存者【${newCharName.trim()}】已顺利唤醒！`, "success");
                 setNewCharName('');
               } else {
                 showToast("创建角色失败，请重试。", "error");
@@ -287,10 +363,10 @@ const App: React.FC = () => {
             />
             <button
               type="submit"
-              disabled={isCreatingFirstChar}
+              disabled={isCreatingFirstChar || isSyncing}
               className="w-full flex items-center justify-center bg-purple-700 hover:bg-purple-650 text-white font-bold active:scale-95 text-xs px-3 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
             >
-              {isCreatingFirstChar ? '正在重塑肉身...' : '确定并同步唤醒'}
+              {isCreatingFirstChar ? '正在重塑肉身...' : '确定并唤醒'}
             </button>
           </form>
         </div>
@@ -298,7 +374,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 拦截分支 A：如果已登录，本地有角色列表，但是当前没有选中激活的角色
+  // 需求 2（平行分支）：已登录，本地有角色列表，但当前没有选中激活的角色
   if (accounts.length > 0 && !currentUser) {
     return (
       <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden p-6 justify-center">
@@ -351,9 +427,10 @@ const App: React.FC = () => {
             }
             setIsCreatingFirstChar(true);
             try {
-              const charId = await createAccount(newCharName.trim(), user.id);
+              // 需求 8：不传 userId，不自动同步云端
+              const charId = await createAccount(newCharName.trim());
               if (charId) {
-                showToast(`生存者【${newCharName.trim()}】已顺利唤醒并注入云端！`, "success");
+                showToast(`生存者【${newCharName.trim()}】已顺利唤醒！`, "success");
                 setNewCharName('');
               } else {
                 showToast("创建角色失败，请重试。", "error");
@@ -477,7 +554,14 @@ const App: React.FC = () => {
         style={{ mixBlendMode: 'luminosity' }}
       />
 
-      {/* 顶部状态栏 */}
+      {/* 需求 7：全局网络同步遮罩 — 当 isSyncing 为 true 时屏蔽用户额外操作 */}
+      {isSyncing && (
+        <div className="fixed inset-0 max-w-md mx-auto bg-black/75 z-[9999] flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
+          <span className="text-[11px] text-purple-300 font-black animate-pulse tracking-wider">正在与以太云层同步...</span>
+        </div>
+      )}
+
       <header className="p-4 bg-zinc-900/60 border-b border-zinc-800/40 sticky top-0 z-40 backdrop-blur-md">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">

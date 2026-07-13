@@ -288,10 +288,14 @@ interface GameContextType {
   resetGame: () => void;
   currentUser: string | null;
   accounts: string[];
+  isSyncing: boolean;
+  setIsSyncing: React.Dispatch<React.SetStateAction<boolean>>;
   switchAccount: (id: string) => void;
-  createAccount: (username: string, userId?: string) => Promise<string | false>;
+  createAccount: (username: string) => Promise<string | false>;
   deleteAccount: (id: string, deleteCloud: boolean) => Promise<void>;
   syncCloudCharacters: (userId: string) => Promise<void>;
+  fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number; hp: number }>>;
+  downloadCloudCharacter: (charId: string) => Promise<boolean>;
   useSupplyItem: (itemId: string) => boolean;
   assignSurvivorJob: (survivorId: string, jobId: string | null) => boolean;
   setFacilityRecipe: (facilityId: string, recipeId: string | null) => boolean;
@@ -377,6 +381,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return isTest ? 'Guest' : null;
   });
   const [accounts, setAccounts] = useState<string[]>(getAccountsList);
+  // 全局网络同步状态（需求 7）：任何云端 I/O 操作时置 true，App 层据此显示遮罩
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const [state, setState] = useState<GameState>(() => {
     const isTest = typeof globalThis !== 'undefined' && ((globalThis as any).process?.env?.NODE_ENV === 'test' || !!(globalThis as any).process?.env?.VITEST);
@@ -750,7 +756,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(newState);
   };
 
-  const createAccount = async (username: string, userId?: string): Promise<string | false> => {
+  // 需求 8：创建角色不自动同步云端，只写本地
+  const createAccount = async (username: string): Promise<string | false> => {
     if (!username || !username.trim()) return false;
     const name = username.trim();
 
@@ -776,28 +783,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('aether_garden_accounts_list', JSON.stringify(updatedList));
     setAccounts(updatedList);
 
-    // 如果已登录 Supabase，自动发起异步上传
-    if (userId && supabase) {
-      try {
-        await supabase.from('saves').upsert({
-          id: characterId,
-          user_id: userId,
-          username: name,
-          days: newAccountState.player.days || 1,
-          hp: newAccountState.player.hp || 100,
-          data: newAccountState,
-          updated_at: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error("Auto cloud sync on character creation failed:", err);
-      }
-    }
-
     switchAccount(characterId);
     return characterId;
   };
 
-  // 删除账号
+  // 需求 6：删除角色后自动切换到顺位第一，若无则回退到创角面板
   const deleteAccount = async (id: string, deleteCloud: boolean) => {
     localStorage.removeItem(`aether_garden_save_${id}`);
 
@@ -806,27 +796,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('aether_garden_accounts_list', JSON.stringify(updatedList));
     setAccounts(updatedList);
 
+    // 需求 7：删除云端时加载状态
     if (deleteCloud && supabase) {
+      setIsSyncing(true);
       try {
         await supabase.from('saves').delete().eq('id', id);
       } catch (err) {
         console.error("Cloud character deletion failed:", err);
+      } finally {
+        setIsSyncing(false);
       }
     }
 
     if (currentUser === id) {
-      localStorage.removeItem('aether_garden_save_current_user');
-      setCurrentUser(null);
+      if (updatedList.length > 0) {
+        // 切换到顺位第一个剩余角色
+        switchAccount(updatedList[0]);
+      } else {
+        // 本地无角色，回到创角面板
+        localStorage.removeItem('aether_garden_save_current_user');
+        setCurrentUser(null);
+      }
     }
   };
 
-  // 增量同步云端角色
+  // 需求 3：增量同步云端角色——只拉轻量摘要（id, username, days, hp），写最小占位存档
   const syncCloudCharacters = async (userId: string) => {
     if (!supabase) return;
+    setIsSyncing(true);
     try {
       const { data, error } = await supabase
         .from('saves')
-        .select('id, username, days, hp, data')
+        .select('id, username, days, hp')
         .eq('user_id', userId);
 
       if (error) {
@@ -842,31 +843,85 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         for (const cloudChar of data) {
           const charId = cloudChar.id;
           if (!localList.includes(charId)) {
-            if (cloudChar.data) {
-              // 确保 data 携带了 username 属性（做一层保底）
-              const saveObj = typeof cloudChar.data === 'string' ? JSON.parse(cloudChar.data) : cloudChar.data;
-              if (!saveObj.username) {
-                saveObj.username = cloudChar.username;
+            // 写最小占位存档（不含完整 data），标记为云端空壳
+            const placeholder = {
+              username: cloudChar.username || '未命名生存者',
+              _isCloudShell: true, // 标记为云端空壳，进入游戏时提示需拉取
+              player: {
+                days: cloudChar.days || 1,
+                hp: cloudChar.hp || 100
               }
-              localStorage.setItem(`aether_garden_save_${charId}`, JSON.stringify(saveObj));
-              newLocalList.push(charId);
-              hasNew = true;
-            }
+            };
+            localStorage.setItem(`aether_garden_save_${charId}`, JSON.stringify(placeholder));
+            newLocalList.push(charId);
+            hasNew = true;
           }
         }
 
         if (hasNew) {
           localStorage.setItem('aether_garden_accounts_list', JSON.stringify(newLocalList));
           setAccounts(newLocalList);
-          
-          // 如果当前没有激活角色，同步后自动切换到第一个新拉取下来的角色
-          if (!currentUser && newLocalList.length > 0) {
-            switchAccount(newLocalList[0]);
-          }
         }
       }
     } catch (err) {
       console.error("syncCloudCharacters exception:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // 需求 2：从云端获取角色摘要列表（仅 id, username, days, hp），不写本地
+  const fetchCloudCharacterSummaries = async (userId: string): Promise<Array<{ id: string; username: string; days: number; hp: number }>> => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('saves')
+        .select('id, username, days, hp')
+        .eq('user_id', userId);
+      if (error || !data) return [];
+      return data as Array<{ id: string; username: string; days: number; hp: number }>;
+    } catch {
+      return [];
+    }
+  };
+
+  // 需求 2a：从云端完整拉取某个角色并写入本地，然后 switchAccount
+  const downloadCloudCharacter = async (charId: string): Promise<boolean> => {
+    if (!supabase) return false;
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase
+        .from('saves')
+        .select('data, username')
+        .eq('id', charId)
+        .single();
+
+      if (error || !data || !data.data) return false;
+
+      const saveObj = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      if (!saveObj.username) {
+        saveObj.username = data.username;
+      }
+      // 清除云端空壳标记
+      delete saveObj._isCloudShell;
+
+      localStorage.setItem(`aether_garden_save_${charId}`, JSON.stringify(saveObj));
+
+      // 如果本地列表没有该角色，加入
+      const list = getAccountsList();
+      if (!list.includes(charId)) {
+        const updatedList = [...list, charId];
+        localStorage.setItem('aether_garden_accounts_list', JSON.stringify(updatedList));
+        setAccounts(updatedList);
+      }
+
+      switchAccount(charId);
+      return true;
+    } catch (err) {
+      console.error("downloadCloudCharacter exception:", err);
+      return false;
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -1597,10 +1652,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetGame,
       currentUser,
       accounts,
+      isSyncing,
+      setIsSyncing,
       switchAccount,
       createAccount,
       deleteAccount,
       syncCloudCharacters,
+      fetchCloudCharacterSummaries,
+      downloadCloudCharacter,
       useSupplyItem,
       batchWater,
       assignSurvivorJob,

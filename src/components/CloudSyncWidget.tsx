@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Cloud, UploadCloud, DownloadCloud, Lock, User, LogOut, RefreshCw } from 'lucide-react';
 
 const CloudSyncWidget: React.FC = () => {
-  const { setState, currentUser, syncCloudCharacters } = useGame();
+  const { setState, currentUser, syncCloudCharacters, isSyncing, setIsSyncing } = useGame();
   const { showToast, showConfirm } = useToast();
   const { user, loading, signUp, signIn, signOut } = useAuth();
 
@@ -15,14 +15,7 @@ const CloudSyncWidget: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [isAuthOperating, setIsAuthOperating] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  // 监听登录态，一旦登录立即自动触发增量同步 (仅同步云端有而本地没有的角色，不覆写本地已有角色)
-  useEffect(() => {
-    if (user) {
-      syncCloudCharacters(user.id);
-    }
-  }, [user, syncCloudCharacters]);
+  // isSyncing 已提升至 GameContext，这里直接使用 Context 中的状态（需求 7）
 
   const client = supabase;
   if (!client) {
@@ -80,17 +73,14 @@ const CloudSyncWidget: React.FC = () => {
     }
   };
 
-  // 手动触发角色同步
+  // 手动触发角色同步（需求 8：仅在用户主动点击时触发）
   const handleManualSync = async () => {
     if (!user) return;
-    setIsSyncing(true);
     try {
       await syncCloudCharacters(user.id);
       showToast("增量同步云端冷冻舱角色完成！", "success");
     } catch (err: any) {
       showToast(`同步异常: ${err.message}`, "error");
-    } finally {
-      setIsSyncing(false);
     }
   };
 
