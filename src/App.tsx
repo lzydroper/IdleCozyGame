@@ -7,6 +7,8 @@ import LogTab from './components/LogTab';
 import ShelterTab from './components/ShelterTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
+import { useAuth } from './hooks/useAuth';
+import { supabase } from './lib/supabase';
 import GameIcon from './components/GameIcon';
 import { ITEMS_CONFIG } from './data/items';
 import {
@@ -41,6 +43,12 @@ const App: React.FC = () => {
   } = useGame();
 
   const { showToast, showConfirm } = useToast();
+  const { user, loading: authLoading } = useAuth();
+
+  const [newCharName, setNewCharName] = useState('');
+  const [isCreatingFirstChar, setIsCreatingFirstChar] = useState(false);
+  const [deletingCharId, setDeletingCharId] = useState<string | null>(null);
+  const [deleteCloudChecked, setDeleteCloudChecked] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter'>('wilderness');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -77,15 +85,14 @@ const App: React.FC = () => {
     }
   }, [state.greenhouse.slots, isExploring, hasRemindedCropsMature, showToast]);
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     if (!newUsername.trim()) {
       showToast("请输入生存者代号！", "warning");
       return;
     }
-    const success = createAccount(newUsername);
+    const success = await createAccount(newUsername.trim(), user?.id);
     if (success) {
       showToast(`生存者 ${newUsername} 唤醒成功！已自动切换。`, "success");
-      switchAccount(newUsername.trim());
       setNewUsername('');
       setIsTerminalOpen(false);
     } else {
@@ -93,21 +100,14 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = (name: string, e: React.MouseEvent) => {
+  const handleDeleteAccount = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (name === 'Guest') {
-      showToast("无法删除 Guest 账户！", "warning");
+    if (isExploring) {
+      showToast("探险中已锁定生存者切换！", "warning");
       return;
     }
-    showConfirm({
-      title: "删除生存者存档",
-      message: `确定要永久擦除生存者 ${name} 的冷冻舱数据吗？此操作不可逆！`,
-      confirmText: "确认擦除",
-      onConfirm: () => {
-        deleteAccount(name);
-        showToast(`已删除生存者 ${name} 的全部数据。`, "info");
-      }
-    });
+    setDeletingCharId(id);
+    setDeleteCloudChecked(false);
   };
 
   const handleResetGame = () => {
@@ -174,20 +174,21 @@ const App: React.FC = () => {
     addLog("从集体无意识梦境深处主动苏醒，返回现实。", "system");
   };
 
-  const getSurvivorPreview = (name: string) => {
-    const saved = localStorage.getItem(`aether_garden_save_${name}`);
+  const getSurvivorPreview = (id: string) => {
+    const saved = localStorage.getItem(`aether_garden_save_${id}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         return {
+          username: parsed.username || '未命名生存者',
           days: parsed.player?.days || 1,
           hp: parsed.player?.hp || 100
         };
       } catch (e) {
-        return { days: 1, hp: 100 };
+        return { username: '未命名生存者', days: 1, hp: 100 };
       }
     }
-    return { days: 1, hp: 100 };
+    return { username: '未命名生存者', days: 1, hp: 100 };
   };
 
   const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter') => {
@@ -197,6 +198,273 @@ const App: React.FC = () => {
     }
     setActiveTab(tab);
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto border-x border-zinc-900 shadow-2xl">
+        <span className="text-[10px] text-purple-400 font-black animate-pulse">正在核对以太存活信号...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden p-6 justify-center">
+        <img
+          src={shelterBg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.08] pointer-events-none select-none z-0"
+          style={{ mixBlendMode: 'luminosity' }}
+        />
+        <div className="relative z-10 text-center mb-6">
+          <h1 className="text-3xl font-black bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
+            AetherGarden
+          </h1>
+          <p className="text-xs text-zinc-400">避难所离线数据库已与以太云层联接</p>
+          <p className="text-[10px] text-zinc-600 mt-1">请登入您的以太身份令牌以唤醒冷冻舱角色</p>
+        </div>
+        <div className="relative z-10">
+          <CloudSyncWidget />
+        </div>
+      </div>
+    );
+  }
+
+  if (accounts.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden p-6 justify-center">
+        <img
+          src={shelterBg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.08] pointer-events-none select-none z-0"
+          style={{ mixBlendMode: 'luminosity' }}
+        />
+        <div className="relative z-10 bg-zinc-900/80 border border-purple-500/30 p-5 rounded-2xl backdrop-blur-md">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xs font-black text-purple-400 flex items-center gap-1">● 检测到以太冷冻舱空置</h2>
+            <button 
+              onClick={async () => {
+                if (supabase) await supabase.auth.signOut();
+              }}
+              className="text-[8px] text-zinc-500 hover:text-red-400 font-bold cursor-pointer"
+            >
+              退出登录
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-400 mb-4 leading-relaxed">
+            当前云端和本地均无您的生存数据。请在避难所数据库中输入首位角色的代号以同步激活唤醒程序。
+          </p>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!newCharName.trim()) {
+              showToast("名字不能为空", "warning");
+              return;
+            }
+            setIsCreatingFirstChar(true);
+            try {
+              const charId = await createAccount(newCharName.trim(), user.id);
+              if (charId) {
+                showToast(`生存者【${newCharName.trim()}】已顺利唤醒并注入云端！`, "success");
+                setNewCharName('');
+              } else {
+                showToast("创建角色失败，请重试。", "error");
+              }
+            } catch(err: any) {
+              showToast(`激活异常: ${err.message}`, "error");
+            } finally {
+              setIsCreatingFirstChar(false);
+            }
+          }} className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="输入新角色代号 (例如: 赛罗)"
+              value={newCharName}
+              onChange={(e) => setNewCharName(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 rounded-xl text-zinc-100 focus:outline-none focus:border-purple-500"
+              maxLength={12}
+            />
+            <button
+              type="submit"
+              disabled={isCreatingFirstChar}
+              className="w-full flex items-center justify-center bg-purple-700 hover:bg-purple-650 text-white font-bold active:scale-95 text-xs px-3 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isCreatingFirstChar ? '正在重塑肉身...' : '确定并同步唤醒'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 拦截分支 A：如果已登录，本地有角色列表，但是当前没有选中激活的角色
+  if (accounts.length > 0 && !currentUser) {
+    return (
+      <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden p-6 justify-center">
+        <img
+          src={shelterBg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.08] pointer-events-none select-none z-0"
+          style={{ mixBlendMode: 'luminosity' }}
+        />
+        <div className="relative z-10 bg-zinc-900/80 border border-purple-500/30 p-5 rounded-2xl backdrop-blur-md flex flex-col gap-4">
+          <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
+            <h2 className="text-xs font-black text-purple-400 flex items-center gap-1">● 请选择生存者以唤醒</h2>
+            <button 
+              onClick={async () => {
+                if (supabase) await supabase.auth.signOut();
+              }}
+              className="text-[8px] text-zinc-500 hover:text-red-400 font-bold cursor-pointer"
+            >
+              退出登录
+            </button>
+          </div>
+          
+          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+            {accounts.map((id) => {
+              const preview = getSurvivorPreview(id);
+              return (
+                <div
+                  key={id}
+                  onClick={() => switchAccount(id)}
+                  className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-850 hover:border-purple-500/30 text-zinc-350 hover:text-zinc-200 cursor-pointer transition-all active:scale-98"
+                >
+                  <span className="text-xs font-black">{preview.username}</span>
+                  <div className="flex items-center gap-2 text-[9px] text-zinc-500">
+                    <span>存活 {preview.days} 天</span>
+                    <span>HP {preview.hp}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-center text-[9px] text-zinc-500 mt-1 border-t border-zinc-850 pt-3">或在下方输入新角色代号直接唤醒</div>
+          
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!newCharName.trim()) {
+              showToast("名字不能为空", "warning");
+              return;
+            }
+            setIsCreatingFirstChar(true);
+            try {
+              const charId = await createAccount(newCharName.trim(), user.id);
+              if (charId) {
+                showToast(`生存者【${newCharName.trim()}】已顺利唤醒并注入云端！`, "success");
+                setNewCharName('');
+              } else {
+                showToast("创建角色失败，请重试。", "error");
+              }
+            } catch(err: any) {
+              showToast(`激活异常: ${err.message}`, "error");
+            } finally {
+              setIsCreatingFirstChar(false);
+            }
+          }} className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="输入新角色代号"
+              value={newCharName}
+              onChange={(e) => setNewCharName(e.target.value)}
+              className="bg-zinc-950 border border-zinc-850 text-xs px-3 py-2 rounded-xl text-zinc-100 focus:outline-none focus:border-purple-500"
+              maxLength={12}
+            />
+            <button
+              type="submit"
+              disabled={isCreatingFirstChar}
+              className="w-full flex items-center justify-center bg-purple-700 hover:bg-purple-650 text-white font-bold active:scale-95 text-xs px-3 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isCreatingFirstChar ? '正在唤醒...' : '唤醒新生存者'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 拦截分支 B：如果选中了角色，但名字为未命名或 Guest (用于处理本地历史数据迁移)
+  const currentPreview = currentUser ? getSurvivorPreview(currentUser) : null;
+  const hasUnnamedChar = currentPreview && (!currentPreview.username || currentPreview.username === '未命名生存者' || currentPreview.username === 'Guest');
+
+  if (hasUnnamedChar) {
+    return (
+      <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden p-6 justify-center">
+        <img
+          src={shelterBg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.08] pointer-events-none select-none z-0"
+          style={{ mixBlendMode: 'luminosity' }}
+        />
+        <div className="relative z-10 bg-zinc-900/80 border border-purple-500/30 p-5 rounded-2xl backdrop-blur-md">
+          <h2 className="text-xs font-black text-purple-400 mb-2">● 完善生存者代号</h2>
+          <p className="text-[10px] text-zinc-400 mb-4 leading-relaxed">
+            检测到该冷冻舱数据尚未命名（或为本地遗留数据），为了同步并绑定您的以太云端账户，请为其重命名。
+          </p>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!newCharName.trim()) {
+              showToast("名字不能为空", "warning");
+              return;
+            }
+            setIsCreatingFirstChar(true);
+            try {
+              // 1. 更新内存状态中的 username
+              setState(prev => {
+                const updated = { ...prev, username: newCharName.trim() };
+                // 2. 写入本地
+                localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(updated));
+                return updated;
+              });
+              
+              // 3. 异步 upsert 至云端
+              if (user && supabase) {
+                const savedData = localStorage.getItem(`aether_garden_save_${currentUser}`);
+                if (savedData) {
+                  const parsed = JSON.parse(savedData);
+                  await supabase.from('saves').upsert({
+                    id: currentUser,
+                    user_id: user.id,
+                    username: newCharName.trim(),
+                    days: parsed.player?.days || 1,
+                    hp: parsed.player?.hp || 100,
+                    data: parsed,
+                    updated_at: new Date().toISOString()
+                  });
+                }
+              }
+              
+              showToast(`代号同步成功！生存者已命名为【${newCharName.trim()}】。`, "success");
+              setNewCharName('');
+            } catch(err: any) {
+              showToast(`绑定异常: ${err.message}`, "error");
+            } finally {
+              setIsCreatingFirstChar(false);
+            }
+          }} className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="输入生存者代号 (例如: 至尊肥仔)"
+              value={newCharName}
+              onChange={(e) => setNewCharName(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 rounded-xl text-zinc-100 focus:outline-none focus:border-purple-500"
+              maxLength={12}
+            />
+            <button
+              type="submit"
+              disabled={isCreatingFirstChar}
+              className="w-full flex items-center justify-center bg-purple-700 hover:bg-purple-650 text-white font-bold active:scale-95 text-xs px-3 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isCreatingFirstChar ? '正在同步并命名...' : '确认绑定代号'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 max-w-md mx-auto relative border-x border-zinc-900 shadow-2xl overflow-hidden">
@@ -271,15 +539,15 @@ const App: React.FC = () => {
           <div className="mb-3 p-3 bg-zinc-950 border border-zinc-850 rounded-2xl transition-all animate-fade-in">
             {/* 当前生存者与重置按钮 */}
             <div className="text-xs text-zinc-500 font-bold mb-3 flex items-center justify-between border-b border-zinc-900 pb-2.5">
-              <span className="flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-                当前生存者：<span className="text-zinc-100 font-black">{currentUser}</span>
+              <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                <Terminal className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="truncate">当前生存者：<span className="text-zinc-100 font-black">{currentUser ? getSurvivorPreview(currentUser).username : '无'}</span></span>
               </span>
               <button
                 onClick={handleResetGame}
-                className="text-[10px] text-zinc-500 hover:text-rose-450 flex items-center gap-1 px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 transition-colors cursor-pointer"
+                className="text-[10px] text-zinc-350 hover:text-rose-400 hover:bg-rose-950/10 flex items-center gap-1 px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 transition-all cursor-pointer shrink-0"
               >
-                <RefreshCw className="w-3 h-3" /> 重置游戏
+                <RefreshCw className="w-3 h-3" /> 重置避难所
               </button>
             </div>
             {isExploring && (
@@ -318,12 +586,12 @@ const App: React.FC = () => {
               <div className="text-[9px] uppercase tracking-widest text-zinc-600 font-black mb-1 px-1">
                 生存者冷冻舱列表 ({accounts.length})
               </div>
-              {accounts.map((name) => {
-                const preview = getSurvivorPreview(name);
-                const isCurrent = name === currentUser;
+              {accounts.map((id) => {
+                const preview = getSurvivorPreview(id);
+                const isCurrent = id === currentUser;
                 return (
                   <div
-                    key={name}
+                    key={id}
                     className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
                       isCurrent
                         ? 'bg-purple-950/20 border-purple-500/40 text-purple-200'
@@ -337,27 +605,25 @@ const App: React.FC = () => {
                         return;
                       }
                       if (!isCurrent) {
-                        switchAccount(name);
-                        showToast(`已成功切换生存者：${name}`, "info");
+                        switchAccount(id);
+                        showToast(`已成功切换生存者：${preview.username}`, "info");
                         setIsTerminalOpen(false);
                       }
                     }}
                   >
-                    <span className="text-xs font-bold">{name} {isCurrent && '●'}</span>
+                    <span className="text-xs font-bold">{preview.username} {isCurrent && '●'}</span>
                     <div className="flex items-center gap-2 text-[10px]">
                       <span className="text-zinc-500">存活 {preview.days} 天</span>
                       <span className="text-zinc-500">HP {preview.hp}</span>
-                      {name !== 'Guest' && (
-                        <button
-                          disabled={isExploring}
-                          onClick={(e) => !isExploring && handleDeleteAccount(name, e)}
-                          className={`p-1 hover:text-red-400 text-zinc-600 rounded transition-colors cursor-pointer ${
-                            isExploring ? 'opacity-30 cursor-not-allowed hover:text-zinc-600' : ''
-                          }`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        disabled={isExploring}
+                        onClick={(e) => !isExploring && handleDeleteAccount(id, e)}
+                        className={`p-1 hover:text-red-400 text-zinc-450 rounded transition-colors cursor-pointer ${
+                          isExploring ? 'opacity-30 cursor-not-allowed hover:text-zinc-600' : ''
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -571,6 +837,55 @@ const App: React.FC = () => {
               收下物资，开始生存
             </button>
 
+          </div>
+        </div>
+      )}
+
+      {/* 4. ✅ 自定义删除生存者弹窗 */}
+      {deletingCharId && (
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-6 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl w-full max-w-xs shadow-2xl relative">
+            <h3 className="text-sm font-black text-rose-400 mb-2">⚠ 抹除生存者冷冻数据</h3>
+            <p className="text-[10px] text-zinc-400 leading-relaxed mb-4">
+              确定要擦除生存者 <strong className="text-zinc-200 font-bold">【{getSurvivorPreview(deletingCharId).username}】</strong> 的避难所数据吗？此操作无法撤消！
+            </p>
+            
+            <label className="flex items-center gap-2 mb-4 p-2 bg-zinc-950/60 rounded-xl border border-zinc-850 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={deleteCloudChecked}
+                onChange={(e) => setDeleteCloudChecked(e.target.checked)}
+                className="w-3.5 h-3.5 accent-rose-600 rounded bg-zinc-900 border-zinc-850 cursor-pointer"
+              />
+              <span className="text-[9px] text-rose-350/80 font-bold">同时永久擦除以太云端同步的数据</span>
+            </label>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  setDeletingCharId(null);
+                  setDeleteCloudChecked(false);
+                }}
+                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-450 active:scale-95 text-[10px] font-bold py-1.5 rounded-lg transition-all cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  const preview = getSurvivorPreview(deletingCharId);
+                  await deleteAccount(deletingCharId, deleteCloudChecked);
+                  showToast(
+                    `已从冷冻舱抹除生存者【${preview.username}】${deleteCloudChecked ? '(云端已同步清除)' : ''}。`,
+                    "info"
+                  );
+                  setDeletingCharId(null);
+                  setDeleteCloudChecked(false);
+                }}
+                className="bg-rose-900 hover:bg-rose-800 text-rose-100 active:scale-95 text-[10px] font-bold py-1.5 rounded-lg transition-all cursor-pointer"
+              >
+                确认抹除
+              </button>
+            </div>
           </div>
         </div>
       )}
