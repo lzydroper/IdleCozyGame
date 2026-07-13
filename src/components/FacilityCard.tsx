@@ -91,8 +91,8 @@ function SurvivorSelect({
             : s.assignedJobId
             ? `(忙于 ${s.assignedJobId})`
             : '(空闲)';
-        const roleLabel =
-          s.role === 'farmer' ? '农' : s.role === 'engineer' ? '工程★' : s.role === 'scout' ? '探索' : s.role === 'guard' ? '卫兵' : s.role === 'chemist' ? '药剂师' : '拾荒者';
+        // 需求 2：使用 config.roleLabel 而非硬编码 ternary
+        const roleLabel = cfg?.roleLabel || s.role;
         return (
           <option key={s.id} value={s.id}>
             {cfg?.emoji || '👤'} {s.name} [{roleLabel}] {statusStr}

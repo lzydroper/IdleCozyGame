@@ -29,27 +29,30 @@ const LogTab: React.FC = () => {
       return { qty, ...meta };
     });
 
-  // Survivor list mapping both state and config
-  const survivorsList = SURVIVORS_CONFIG.map(config => {
-    const activeData = survivors[config.id]; // Exists in state if resonance reached 100
-    const resonance = exploration.survivorResonance?.[config.id] || (activeData ? 100 : 0);
+  // 需求 1：只展示已产生联系（共鸣 > 0）或已获取的幸存者，过滤掉完全未接触过的
+  const survivorsList = SURVIVORS_CONFIG
+    .map(config => {
+      const activeData = survivors[config.id];
+      const resonance = exploration.survivorResonance?.[config.id] || (activeData ? 100 : 0);
 
-    let status: 'unknown' | 'locked' | 'rescued' = 'unknown';
-    if (activeData) {
-      if (activeData.realityLocationId) {
-        status = 'locked'; // Known location, not rescued
-      } else {
-        status = 'rescued'; // Rescued!
+      let status: 'unknown' | 'locked' | 'rescued' = 'unknown';
+      if (activeData) {
+        if (activeData.realityLocationId) {
+          status = 'locked'; // Known location, not rescued
+        } else {
+          status = 'rescued'; // Rescued!
+        }
       }
-    }
 
-    return {
-      ...config,
-      resonance,
-      status,
-      isAssigned: activeData?.isAssigned || false,
-    };
-  });
+      return {
+        ...config,
+        resonance,
+        status,
+        isAssigned: activeData?.isAssigned || false,
+      };
+    })
+    // 需求 1：过滤掉 resonance=0 且 status='unknown' 的（完全没有接触过的）
+    .filter(s => s.resonance > 0 || s.status !== 'unknown');
 
   return (
     <div className="w-full pb-20 space-y-4">
@@ -92,7 +95,7 @@ const LogTab: React.FC = () => {
             subTab === 'survivors' ? 'text-purple-400 border-purple-500' : 'text-zinc-500 border-transparent hover:text-zinc-400'
           }`}
         >
-          <Users className="w-4 h-4" /> 幸存同伴 ({survivorsList.filter(s => s.status === 'rescued').length})
+          <Users className="w-4 h-4" /> 幸存同伴 ({survivorsList.filter(s => s.status === 'rescued').length}/{survivorsList.length} 已联系)
         </button>
       </div>
 
@@ -156,73 +159,82 @@ const LogTab: React.FC = () => {
       ) : (
         /* Survivors SubTab */
         <div className="space-y-3.5">
-          {survivorsList.map(surv => {
-            let statusBadge = (
-              <span className="text-[9px] bg-zinc-950 border border-zinc-900 text-zinc-600 px-2 py-0.5 rounded-full font-bold">
-                未感知 (共鸣 {surv.resonance}%)
-              </span>
-            );
-            let borderStyle = 'border-zinc-900/60 bg-zinc-950/30 opacity-60';
-
-            if (surv.status === 'locked') {
-              borderStyle = 'border-amber-500/20 bg-zinc-900/40';
-              statusBadge = (
-                <span className="text-[9px] bg-amber-950/60 border border-amber-800 text-amber-400 px-2 py-0.5 rounded-full font-black">
-                  现实坐标锁定 (待营救：{
-                    (() => { const l2 = EXPEDITION_LOCATIONS[surv.realityLocationId || '']; return l2?.shortName || l2?.displayName || '信号塔'; })()
-                  })
+          {survivorsList.length === 0 ? (
+            <div className="text-center py-10 text-zinc-600 text-xs italic space-y-2">
+              <div className="text-2xl mb-3">📡</div>
+              <p>尚未感知到任何幸存者信号</p>
+              <p className="text-[10px] text-zinc-700">前往「梦境」或「荒野探索」以建立共鸣联系</p>
+            </div>
+          ) : (
+            survivorsList.map(surv => {
+              let statusBadge = (
+                <span className="text-[9px] bg-zinc-950 border border-zinc-900 text-zinc-600 px-2 py-0.5 rounded-full font-bold">
+                  感知中 (共鸣 {surv.resonance}%)
                 </span>
               );
-            } else if (surv.status === 'rescued') {
-              borderStyle = 'border-purple-500/30 bg-purple-950/5';
-              statusBadge = (
-                <span className="text-[9px] bg-purple-950 border border-purple-800 text-purple-300 px-2 py-0.5 rounded-full font-black animate-pulse">
-                  已加入避难所 ({surv.isAssigned ? '协助工作中' : '待命'})
-                </span>
-              );
-            }
+              let borderStyle = 'border-zinc-900/60 bg-zinc-950/30 opacity-60';
 
-            const isUnknown = surv.status === 'unknown';
-            const displayName = isUnknown ? '未知幸存者信号' : surv.name;
-            const displayRole = isUnknown ? '职位不明' : (surv.role === 'farmer' ? '农学者' : surv.role === 'engineer' ? '工程师' : surv.role === 'scout' ? '侦察兵' : surv.role === 'guard' ? '卫兵' : surv.role === 'chemist' ? '药剂师' : '拾荒者');
-            const displayBackstory = isUnknown ? '（正接收到废土中微弱的共鸣频率...当共鸣达到 100% 时即可精确定位此人的方位）' : surv.backstory;
+              if (surv.status === 'locked') {
+                borderStyle = 'border-amber-500/20 bg-zinc-900/40';
+                statusBadge = (
+                  <span className="text-[9px] bg-amber-950/60 border border-amber-800 text-amber-400 px-2 py-0.5 rounded-full font-black">
+                    现实坐标锁定 (待营救：{
+                      (() => { const l2 = EXPEDITION_LOCATIONS[surv.realityLocationId || '']; return l2?.shortName || l2?.displayName || '信号塔'; })()
+                    })
+                  </span>
+                );
+              } else if (surv.status === 'rescued') {
+                borderStyle = 'border-purple-500/30 bg-purple-950/5';
+                statusBadge = (
+                  <span className="text-[9px] bg-purple-950 border border-purple-800 text-purple-300 px-2 py-0.5 rounded-full font-black animate-pulse">
+                    已加入避难所 ({surv.isAssigned ? '协助工作中' : '待命'})
+                  </span>
+                );
+              }
 
-            return (
-              <div key={surv.id} className={`p-4 rounded-3xl border flex gap-4 transition-all duration-300 ${borderStyle}`}>
-                <div className="w-14 h-14 shrink-0 overflow-hidden rounded-2xl flex items-center justify-center bg-zinc-900/50 border border-zinc-800/40 opacity-90">
-                  {isUnknown ? (
-                    <span className="text-2xl select-none">❓</span>
-                  ) : (
-                    <GameIcon type="survivor" id={surv.id} className="w-full h-full" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                      {displayName}
-                      <span className="text-[9px] uppercase tracking-wider bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800 text-zinc-500 font-bold">
-                        {displayRole}
-                      </span>
-                    </h4>
-                    {statusBadge}
+              const isUnknown = surv.status === 'unknown';
+              const displayName = isUnknown ? '未知幸存者信号' : surv.name;
+              // 需求 2：使用数据配置中的 roleLabel 而非硬编码 ternary
+              const displayRole = isUnknown ? '职位不明' : surv.roleLabel;
+              const displayBackstory = isUnknown ? '（正接收到废土中微弱的共鸣频率...当共鸣达到 100% 时即可精确定位此人的方位）' : surv.backstory;
+
+              return (
+                <div key={surv.id} className={`p-4 rounded-3xl border flex gap-4 transition-all duration-300 ${borderStyle}`}>
+                  <div className="w-14 h-14 shrink-0 overflow-hidden rounded-2xl flex items-center justify-center bg-zinc-900/50 border border-zinc-800/40 opacity-90">
+                    {isUnknown ? (
+                      <span className="text-2xl select-none">❓</span>
+                    ) : (
+                      <GameIcon type="survivor" id={surv.id} className="w-full h-full" />
+                    )}
                   </div>
-                  <p className={`text-[10px] leading-relaxed ${isUnknown ? 'text-zinc-600 italic font-medium' : 'text-zinc-500'}`}>{displayBackstory}</p>
-                  
-                  {surv.status === 'rescued' && (
-                    <div className="text-[10px] text-purple-400 font-extrabold bg-purple-950/20 border border-purple-900/30 px-2.5 py-1 rounded-xl">
-                      ⚙️ 同伴加成: {surv.bonusDescription}
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-black text-white flex items-center gap-1.5">
+                        {displayName}
+                        <span className="text-[9px] uppercase tracking-wider bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800 text-zinc-500 font-bold">
+                          {displayRole}
+                        </span>
+                      </h4>
+                      {statusBadge}
                     </div>
-                  )}
+                    <p className={`text-[10px] leading-relaxed ${isUnknown ? 'text-zinc-600 italic font-medium' : 'text-zinc-500'}`}>{displayBackstory}</p>
 
-                  {surv.status === 'locked' && (
-                    <p className="text-[10px] text-amber-500 font-bold">
-                      💡 前往「地表探索」页，即可选择开启前往该地点的救援行动！
-                    </p>
-                  )}
+                    {surv.status === 'rescued' && (
+                      <div className="text-[10px] text-purple-400 font-extrabold bg-purple-950/20 border border-purple-900/30 px-2.5 py-1 rounded-xl">
+                        ⚙️ 同伴加成: {surv.bonusDescription}
+                      </div>
+                    )}
+
+                    {surv.status === 'locked' && (
+                      <p className="text-[10px] text-amber-500 font-bold">
+                        💡 前往「地表探索」页，即可选择开启前往该地点的救援行动！
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       )}
     </div>

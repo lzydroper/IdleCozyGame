@@ -103,13 +103,17 @@ const CloudSyncWidget: React.FC = () => {
       const charName = getCharacterName(currentUser);
       const parsedData = JSON.parse(serializedData);
 
+      // 需求 3：上传时剥离 logs —— 日志仅本地保存，不上传云端（节省存档体积）
+      const uploadData = { ...parsedData };
+      delete uploadData.logs;
+
       const { error } = await client.from('saves').upsert({
         id: currentUser,
         user_id: user.id,
         username: charName,
         days: parsedData.player?.days || 1,
         hp: parsedData.player?.hp || 100,
-        data: parsedData,
+        data: uploadData,
         updated_at: new Date().toISOString()
       });
 
