@@ -25,6 +25,12 @@ import {
 } from '../state/shelter';
 import { applyTick } from '../state/tick';
 import { summonUpdate, type SummonOutcome } from '../state/summon';
+import {
+  startCombatUpdate,
+  setPartyUpdate,
+  healWoundedHeroUpdate,
+  type CombatOutcome
+} from '../state/combat';
 
 interface GameContextType {
   state: GameState;
@@ -57,6 +63,9 @@ interface GameContextType {
   startExpedition: (survivorId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
   summonHero: () => SummonOutcome;
+  startCombat: (zoneId: string) => CombatOutcome;
+  setParty: (heroIds: string[]) => boolean;
+  healWoundedHero: (heroId: string) => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -469,6 +478,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // === 战斗核心（ticket 05） ===
+  const startCombat = (zoneId: string): CombatOutcome => {
+    const r = startCombatUpdate(stateRef.current, zoneId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const setParty = (heroIds: string[]): boolean => {
+    const r = setPartyUpdate(stateRef.current, heroIds);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const healWoundedHero = (heroId: string): boolean => {
+    const r = healWoundedHeroUpdate(stateRef.current, heroId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   const resetGame = () => {
     const now = Date.now();
     const freshState = createFreshState(INITIAL_STATE, now);
@@ -523,7 +557,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       upgradeShelterStat,
       startExpedition,
       stopExpedition,
-      summonHero
+      summonHero,
+      startCombat,
+      setParty,
+      healWoundedHero
     }}>
 
       {children}

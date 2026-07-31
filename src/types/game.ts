@@ -67,6 +67,42 @@ export interface SummonState {
   pityCount: number;        // 连续未出英雄的累计次数（用于软保底）
 }
 
+// === 战斗核心（ticket 05）：三人轮询回合制 ===
+
+// 单次攻击动作（战斗日志的一行）
+export interface BattleAction {
+  round: number;
+  actorSide: 'hero' | 'enemy';
+  actorId: string;
+  actorName: string;
+  actorEmoji: string;
+  targetName: string;
+  damage: number;
+}
+
+// 一场战斗的模拟结果（纯战斗，不含经济结算）
+export interface BattleResult {
+  victory: boolean;      // 敌人全灭 → 胜利
+  partyWiped: boolean;   // 英雄全灭 → 战败（重伤触发条件）
+  rounds: number;
+  actions: BattleAction[];
+}
+
+// 战斗结算：掉落/经验/重伤入账
+export interface CombatSettlement {
+  battle: BattleResult;
+  drops: Record<string, number>;   // 胜利掉落（材料），已入账
+  soulEchoes: number;              // 胜利灵魂残响掉落，已入账
+  expPerHero: number;              // 每位上阵英雄获得的经验（战败为 0）
+  woundedHeroIds: string[];        // 战败后进入重伤的英雄
+}
+
+// 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）
+export interface CombatState {
+  zoneId: string | null;
+  lastSettlement: CombatSettlement | null;
+}
+
 export interface GameState {
   player: PlayerStats;
   inventory: Record<string, number>; // 物品ID -> 数量
@@ -80,6 +116,10 @@ export interface GameState {
   resonanceShards: number;             // 共鸣碎片：通用灵魂碎片
   soulShards: Record<string, number>;  // 灵魂碎片：英雄专属碎片（重复召唤转化，用于升星）
   summon: SummonState;                 // 召唤进度（软保底）
+  stamina: number;                     // 体力：自动战斗消耗的独立资源，随时间恢复
+  maxStamina: number;                  // 体力上限
+  party: string[];                     // 上阵队伍：最多 3 名英雄 id（无阵型，固定顺序）
+  combat: CombatState;                 // 战斗状态（最近战斗区域与结算）
   exploration: {
     // 现实探索
     inRealityExploration: boolean;
@@ -154,6 +194,7 @@ export interface ShelterStats {
 export interface OfflineReport {
   elapsedSeconds: number;
   recoveredEnergy: number;
+  recoveredStamina: number;            // 离线期间恢复的体力
   recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
   logs: string[];
 }

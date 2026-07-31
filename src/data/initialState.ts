@@ -1,5 +1,6 @@
 import type { GameState, HeroState, PlayerStats } from '../types/game';
 import { HEROES_CONFIG, STARTER_HERO_ID } from './heroes';
+import { COMBAT_CONFIG } from './combatConfig';
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {
   hp: 100,
@@ -57,6 +58,14 @@ export const INITIAL_STATE: GameState = {
   resonanceShards: 0,
   soulShards: {},
   summon: { pityCount: 0 },
+  // 战斗核心：开局满体力，初始小队 = 初始英雄诺娃
+  stamina: COMBAT_CONFIG.maxStamina,
+  maxStamina: COMBAT_CONFIG.maxStamina,
+  party: [STARTER_HERO_ID],
+  combat: {
+    zoneId: null,
+    lastSettlement: null
+  },
   exploration: {
     inRealityExploration: false,
     realitySteps: 0,

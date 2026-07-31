@@ -3,6 +3,8 @@ import { AUTO_RECIPES } from '../data/autoRecipes';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
+import { COMBAT_CONFIG } from '../data/combatConfig';
+import { recoverStamina } from './combat';
 
 // 纯函数：计算离线或Tick生长时间扣减
 export function calculateOfflineProgress(
@@ -39,6 +41,14 @@ export function calculateDetailedOfflineProgress(
 
   let currentInventory = { ...state.inventory };
   let currentEnergy = state.player.energy;
+
+  // 1. 体力离线恢复（随时间恢复，封顶体力上限）
+  const currentStamina = state.stamina || 0;
+  const nextStamina = recoverStamina(currentStamina, state.maxStamina || COMBAT_CONFIG.maxStamina, actualSeconds);
+  const recoveredStamina = Math.max(0, Math.floor(nextStamina - currentStamina));
+  if (recoveredStamina > 0) {
+    reportLogs.push(`⚡ 战斗体力在挂机期间恢复了 ${recoveredStamina} 点。`);
+  }
 
   // 2. 发电机与回收站自动产出
   let energyGained = 0;
@@ -235,6 +245,7 @@ export function calculateDetailedOfflineProgress(
   const updatedState: GameState = {
     ...state,
     player: { ...state.player, energy: currentEnergy },
+    stamina: nextStamina,
     inventory: currentInventory,
     greenhouse: { ...state.greenhouse, slots: updatedSlots },
     shelter: {
@@ -254,6 +265,7 @@ export function calculateDetailedOfflineProgress(
     report: {
       elapsedSeconds,
       recoveredEnergy: energyGained,
+      recoveredStamina,
       recoveredItems,
       logs: reportLogs
     }

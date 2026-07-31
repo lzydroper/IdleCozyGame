@@ -7,10 +7,14 @@ import { CATEGORY_WEIGHTS } from '../data/realityEvents';
 import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ShieldAlert, ChevronRight } from 'lucide-react';
+import { Compass, ShieldAlert, ChevronRight, Swords } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
+import { COMBAT_ZONE_LIST, COMBAT_ZONES } from '../data/combatZones';
+import { COMBAT_CONFIG } from '../data/combatConfig';
+import { HEROES_CONFIG } from '../data/heroes';
+import type { CombatSettlement } from '../types/game';
 
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -18,6 +22,7 @@ const WildernessTab: React.FC = () => {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [deathOccurred, setDeathOccurred] = useState(false);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
+  const [mode, setMode] = useState<'explore' | 'combat'>('explore');
 
   const exploration = state.exploration;
   const player = state.player;
@@ -270,7 +275,35 @@ const WildernessTab: React.FC = () => {
 
   return (
     <div className="w-full pb-20">
+      {/* 探索 / 战斗 模式切换（探索中锁定） */}
+      {!exploration.inRealityExploration && (
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={() => setMode('explore')}
+            className={`flex-1 py-2 rounded-xl text-[11px] font-black transition-all border cursor-pointer ${
+              mode === 'explore'
+                ? 'bg-gradient-to-r from-cyan-700 to-blue-700 border-cyan-400/30 text-white shadow-lg shadow-cyan-950/30'
+                : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            🗺️ 探索荒野
+          </button>
+          <button
+            onClick={() => setMode('combat')}
+            className={`flex-1 py-2 rounded-xl text-[11px] font-black transition-all border cursor-pointer ${
+              mode === 'combat'
+                ? 'bg-gradient-to-r from-rose-700 to-red-700 border-rose-400/30 text-white shadow-lg shadow-rose-950/30'
+                : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            ⚔️ 战斗挂机
+          </button>
+        </div>
+      )}
       {!exploration.inRealityExploration ? (
+        mode === 'combat' ? (
+          <CombatPanel />
+        ) : (
         <div className="space-y-4">
           {/* 未在探索中：显示探索选项 */}
           <div className="flex flex-col items-center justify-center p-6 bg-zinc-900/40 border border-zinc-800 rounded-3xl text-center">
@@ -333,6 +366,7 @@ const WildernessTab: React.FC = () => {
             })}
           </div>
         </div>
+        )
       ) : (
         /* In exploration display */
         <div className="space-y-2.5 pt-0.5">
@@ -408,6 +442,185 @@ const WildernessTab: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// === 战斗挂机面板（ticket 05）：选区 → 三人小队轮询回合制自动战斗 ===
+const CombatPanel: React.FC = () => {
+  const { state, startCombat } = useGame();
+  const { showToast } = useToast();
+
+  const stamina = Math.floor(state.stamina || 0);
+  const maxStamina = state.maxStamina || COMBAT_CONFIG.maxStamina;
+  const staminaPct = Math.min(100, Math.round((stamina / (maxStamina || 1)) * 100));
+  const party = (state.party || []).filter(id => !!state.heroes[id]);
+  const anyWounded = party.some(id => state.heroes[id].wounded);
+  const settlement = state.combat?.lastSettlement || null;
+
+  const handleStart = (zoneId: string) => {
+    const outcome = startCombat(zoneId);
+    if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
+    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
+    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
+    else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
+    else if (outcome.settlement?.battle.victory) showToast('⚔️ 战斗胜利！战利品与经验已入账。', 'success');
+    else if (outcome.settlement) showToast('💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
+  };
+
+  const renderSettlement = (s: CombatSettlement) => {
+    const victory = s.battle.victory;
+    const recentActions = s.battle.actions.slice(-6);
+    return (
+      <div className={`rounded-2xl border p-3 flex flex-col gap-2 ${
+        victory ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-red-950/40 border-red-500/30'
+      }`}>
+        <div className={`text-xs font-black ${victory ? 'text-emerald-300' : 'text-red-300'}`}>
+          {victory ? '✅ 战斗胜利' : '💥 战斗失败'} —— {COMBAT_ZONES[state.combat?.zoneId || '']?.name || '未知区域'}（{s.battle.rounds} 回合）
+        </div>
+        {victory ? (
+          <div className="flex flex-wrap gap-1.5 text-[9px] font-bold">
+            {Object.entries(s.drops).map(([itemId, qty]) => (
+              <span key={itemId} className="px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300">
+                {ITEMS_CONFIG[itemId]?.emoji} {ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}
+              </span>
+            ))}
+            {s.soulEchoes > 0 && (
+              <span className="px-1.5 py-0.5 rounded-md border border-purple-500/40 bg-purple-950/40 text-purple-300">
+                🔮 灵魂残响 ×{s.soulEchoes}
+              </span>
+            )}
+            <span className="px-1.5 py-0.5 rounded-md border border-cyan-500/40 bg-cyan-950/40 text-cyan-300">
+              ✦ 经验 ×{s.expPerHero} / 英雄
+            </span>
+          </div>
+        ) : (
+          <div className="text-[9px] text-red-300 font-bold">
+            {s.woundedHeroIds.map(id => HEROES_CONFIG[id]?.name || id).join('、')} 进入重伤状态，
+            需在英雄页使用纳米修复剂治愈。
+          </div>
+        )}
+        {recentActions.length > 0 && (
+          <div className="bg-zinc-950/60 rounded-xl p-2 flex flex-col gap-0.5 max-h-28 overflow-y-auto">
+            {recentActions.map((a, i) => (
+              <div key={i} className="text-[8px] text-zinc-400 font-mono leading-relaxed">
+                <span className="text-zinc-600">R{a.round}</span>{' '}
+                <span className={a.actorSide === 'hero' ? 'text-cyan-400' : 'text-rose-400'}>
+                  {a.actorEmoji} {a.actorName}
+                </span>{' '}
+                → <span className="text-zinc-300">{a.targetName}</span>{' '}
+                <span className="text-amber-400">-{a.damage}</span>
+              </div>
+            ))}
+            {s.battle.actions.length > recentActions.length && (
+              <div className="text-[8px] text-zinc-600 text-center font-bold">…… 共 {s.battle.actions.length} 次行动</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* 体力条 */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1">
+            <Swords className="w-3.5 h-3.5 text-rose-400" /> 战斗体力
+          </span>
+          <span className="text-[10px] font-bold text-emerald-400">{stamina}/{maxStamina}</span>
+        </div>
+        <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-900">
+          <div
+            className={`h-full transition-all duration-300 ${staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500'}`}
+            style={{ width: `${staminaPct}%` }}
+          />
+        </div>
+        <span className="text-[8px] text-zinc-600 font-bold">每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点，战斗消耗后随时间自动回满。</span>
+      </div>
+
+      {/* 当前上阵小队 */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
+        <span className="text-[10px] font-black text-zinc-200">⚔️ 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
+        {party.length === 0 ? (
+          <span className="text-[9px] text-zinc-600 font-bold">小队为空 —— 请前往英雄页编队（至少上阵 1 名英雄）。</span>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {party.map(id => {
+              const cfg = HEROES_CONFIG[id];
+              const hero = state.heroes[id];
+              if (!cfg || !hero) return null;
+              return (
+                <span key={id} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
+                  hero.wounded
+                    ? 'border-red-500/40 bg-red-950/40 text-red-400'
+                    : `border-zinc-700 bg-zinc-950/60 text-zinc-300`
+                }`}>
+                  {cfg.emoji} {cfg.name} Lv.{hero.level}
+                  {hero.wounded && '（重伤）'}
+                </span>
+              );
+            })}
+            {anyWounded && (
+              <span className="text-[8px] text-red-400 font-bold w-full">⚠ 小队有重伤英雄，战斗被禁止，请先在英雄页治愈。</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 最近一次战斗结算 */}
+      {settlement && renderSettlement(settlement)}
+
+      {/* 战斗区域列表 */}
+      <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（自动轮询战斗）:</h3>
+      <div className="flex flex-col gap-3">
+        {COMBAT_ZONE_LIST.map(zone => {
+          const insufficient = stamina < zone.staminaCost || party.length === 0 || anyWounded;
+          return (
+            <div
+              key={zone.id}
+              className={`p-4 rounded-3xl border transition-all flex flex-col gap-2 ${
+                insufficient
+                  ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
+                  : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
+              }`}
+              onClick={() => !insufficient && handleStart(zone.id)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-black text-white flex items-center gap-1.5">
+                    <span>{zone.emoji}</span> {zone.name}
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-400">
+                      推荐 Lv.{zone.recommendedLevel}
+                    </span>
+                  </h4>
+                  <p className="text-[10px] text-zinc-500 mt-1 leading-normal">{zone.description}</p>
+                </div>
+                <button
+                  disabled={insufficient}
+                  className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
+                    insufficient
+                      ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer'
+                  }`}
+                >
+                  开战（体力 -{zone.staminaCost}）
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
+                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
+                  敌人：{zone.enemies.map(e => `${e.emoji}${e.name}`).join('、')}
+                </span>
+                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
+                  掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} 🔮{zone.soulEchoMin}-{zone.soulEchoMax}
+                </span>
+                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{zone.expReward}/英雄</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

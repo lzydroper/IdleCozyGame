@@ -5,6 +5,8 @@ import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
+import { COMBAT_CONFIG } from '../data/combatConfig';
+import { recoverStamina } from './combat';
 
 interface TickLogEntry {
   text: string;
@@ -24,6 +26,14 @@ export const applyTick = (prev: GameState, now: number): GameState => {
 
   let nextAccumulatedEnergy = prev.shelter.accumulatedEnergy ?? 0;
   let nextAccumulatedScrap = prev.shelter.accumulatedScrap ?? 0;
+
+  // 0. 体力随时间恢复（战斗资源，独立于魔能/食物）
+  const elapsedSeconds = Math.max(0, Math.floor((now - prev.lastTick) / 1000));
+  const nextStamina = recoverStamina(
+    prev.stamina ?? 0,
+    prev.maxStamina || COMBAT_CONFIG.maxStamina,
+    elapsedSeconds
+  );
 
   // 1. 发电机与回收站自动产出
   if (prev.shelter.generatorLevel > 0) {
@@ -196,6 +206,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   return {
     ...prev,
     player: { ...prev.player, energy: currentEnergy, days: newDays },
+    stamina: nextStamina,
     inventory: currentInventory,
     greenhouse: { ...prev.greenhouse, slots: updatedSlots },
     shelter: {

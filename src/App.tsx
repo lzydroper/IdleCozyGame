@@ -882,7 +882,13 @@ const App: React.FC = () => {
                     <span>魔能: +{state.lastOfflineReport.recoveredEnergy}</span>
                   </div>
                 )}
-                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 ? (
+                {state.lastOfflineReport.recoveredStamina > 0 && (
+                  <div className="flex items-center gap-1.5 text-emerald-500">
+                    <span className="text-xs">💪</span>
+                    <span>体力: +{state.lastOfflineReport.recoveredStamina}</span>
+                  </div>
+                )}
+                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 && state.lastOfflineReport.recoveredStamina === 0 ? (
                   <div className="col-span-2 text-center text-zinc-600 py-2 text-[10px]">
                     本次无资源挂机产出 (升级设施或指派幸存者以启动自动产出)
                   </div>

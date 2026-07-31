@@ -202,4 +202,52 @@ describe('WildernessTab Component', () => {
 
     spy.mockRestore();
   });
+
+  it('switches to combat mode and starts an auto battle in the first zone', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 切换到战斗挂机模式
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    expect(screen.getByText(/废土边缘/)).toBeDefined();
+    expect(screen.getByText(/战斗体力/)).toBeDefined();
+
+    // 初始队伍 = 诺娃，满体力 100 → 可开战（体力 -10）
+    fireEvent.click(screen.getByText(/开战（体力 -10）/));
+
+    // 胜利结算展示 + 体力扣减 + 结算写入存档
+    expect(screen.getByText(/✅ 战斗胜利/)).toBeDefined();
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.stamina).toBe(90);
+    expect(savedState.combat.zoneId).toBe('wasteland_entrance');
+    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
+  });
+
+  it('blocks battle when stamina is insufficient', () => {
+    const save = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    save.stamina = 0;
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    const button = screen.getByText(/开战（体力 -10）/);
+    expect(button.hasAttribute('disabled')).toBe(true);
+
+    fireEvent.click(button);
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.combat?.lastSettlement).toBeNull(); // 体力不足未开战
+    expect(savedState.stamina).toBe(0);
+  });
 });

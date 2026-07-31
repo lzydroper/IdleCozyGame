@@ -7,16 +7,41 @@ import {
   HERO_CLASS_COLORS
 } from '../data/heroes';
 import { SUMMON_CONFIG } from '../data/summonConfig';
+import { COMBAT_CONFIG } from '../data/combatConfig';
+import { useToast } from './ToastSystem';
 import type { SummonOutcome } from '../state/summon';
 
 const HeroTab: React.FC = () => {
-  const { state, summonHero } = useGame();
+  const { state, summonHero, setParty, healWoundedHero } = useGame();
+  const { showToast } = useToast();
   const heroIds = Object.keys(state.heroes);
   const [lastSummon, setLastSummon] = useState<SummonOutcome | null>(null);
+
+  const party = state.party || [];
+  const partySize = COMBAT_CONFIG.partySize;
+  const naniteCount = state.inventory.nanite_injector || 0;
 
   const handleSummon = () => {
     const outcome = summonHero();
     setLastSummon(outcome);
+  };
+
+  const handleToggleParty = (id: string) => {
+    if (party.includes(id)) {
+      setParty(party.filter(p => p !== id));
+    } else {
+      const ok = setParty([...party, id]);
+      if (!ok) showToast('上阵失败：队伍已满或英雄状态异常。', 'warning');
+    }
+  };
+
+  const handleHeal = (id: string) => {
+    const ok = healWoundedHero(id);
+    if (ok) {
+      showToast(`💉 ${HEROES_CONFIG[id]?.name || id} 已治愈，恢复上阵！`, 'success');
+    } else {
+      showToast('治愈失败：需要 1 支纳米修复注射针（工坊制造）。', 'error');
+    }
   };
 
   const soulShardEntries = Object.entries(state.soulShards || {}).filter(([, n]) => n > 0);
@@ -86,10 +111,46 @@ const HeroTab: React.FC = () => {
       </div>
 
       <header className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-black text-zinc-100">⚔️ 英雄编队</h2>
+        <h2 className="text-sm font-black text-zinc-100">⚔️ 上阵队伍</h2>
         <span className="text-[9px] text-zinc-500 font-bold">
           已解锁 {heroIds.length} 位英雄
         </span>
+      </header>
+
+      {/* 三人小队槽位 */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-2">
+        <div className="flex gap-2">
+          {Array.from({ length: partySize }).map((_, i) => {
+            const heroId = party[i];
+            const config = heroId ? HEROES_CONFIG[heroId] : null;
+            const hero = heroId ? state.heroes[heroId] : null;
+            return (
+              <div
+                key={i}
+                className={`flex-1 rounded-xl border flex flex-col items-center justify-center gap-0.5 py-2 ${
+                  config
+                    ? hero?.wounded
+                      ? 'bg-red-950/40 border-red-500/40'
+                      : 'bg-zinc-950/80 border-purple-500/30'
+                    : 'bg-zinc-950/40 border-zinc-800 border-dashed'
+                }`}
+              >
+                <span className="text-xl">{config?.emoji || '＋'}</span>
+                <span className="text-[8px] font-bold text-zinc-400">
+                  {hero?.wounded ? '重伤' : (config?.name || `槽位 ${i + 1}`)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[8px] text-zinc-600 font-bold">
+          {party.length < 1 ? '请先在下方选择英雄上阵，再前往荒野页签开始战斗。' : `小队 ${party.length}/${partySize} 人，按上阵顺序轮询行动（英雄页与战斗区可随时调整）。`}
+        </p>
+      </div>
+
+      <header className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-black text-zinc-100">英雄列表</h2>
+        <span className="text-[9px] text-zinc-500 font-bold">💉 纳米修复剂 ×{naniteCount}</span>
       </header>
 
       {heroIds.length === 0 ? (
@@ -108,6 +169,8 @@ const HeroTab: React.FC = () => {
           const classLabel = HERO_CLASS_LABELS[config.heroClass];
           const factionLabel = HERO_FACTION_LABELS[config.faction];
           const classColor = HERO_CLASS_COLORS[config.heroClass];
+          const isInParty = party.includes(id);
+          const partyFull = party.length >= partySize;
 
           return (
             <div
@@ -157,6 +220,40 @@ const HeroTab: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* 上阵/下阵 与 重伤治愈 */}
+              {hero.wounded ? (
+                <button
+                  onClick={() => handleHeal(id)}
+                  disabled={naniteCount < 1}
+                  className={`w-full py-1.5 rounded-lg text-[10px] font-black transition-all border ${
+                    naniteCount >= 1
+                      ? 'bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 border-emerald-500/30 text-emerald-100 cursor-pointer active:scale-98'
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                  }`}
+                >
+                  💉 治愈重伤（纳米修复剂 {naniteCount >= 1 ? `×${naniteCount}` : '不足'}）
+                </button>
+              ) : isInParty ? (
+                <button
+                  onClick={() => handleToggleParty(id)}
+                  className="w-full py-1.5 rounded-lg text-[10px] font-black transition-all border border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-950/60 cursor-pointer active:scale-98"
+                >
+                  ⬇ 下阵
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleToggleParty(id)}
+                  disabled={partyFull}
+                  className={`w-full py-1.5 rounded-lg text-[10px] font-black transition-all border ${
+                    partyFull
+                      ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      : 'border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-950/60 cursor-pointer active:scale-98'
+                  }`}
+                >
+                  ⬆ 上阵（{party.length}/{partySize}）
+                </button>
+              )}
 
               <p className="text-[9px] text-zinc-600 leading-relaxed">{config.backstory}</p>
             </div>

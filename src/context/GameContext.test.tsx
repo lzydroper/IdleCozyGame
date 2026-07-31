@@ -166,6 +166,10 @@ describe('GameContext Integration', () => {
         resonanceShards: 0,
         soulShards: {},
         summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
@@ -212,6 +216,10 @@ describe('GameContext Integration', () => {
         resonanceShards: 0,
         soulShards: {},
         summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
@@ -269,6 +277,10 @@ describe('GameContext Integration', () => {
         resonanceShards: 0,
         soulShards: {},
         summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
@@ -333,6 +345,10 @@ describe('GameContext Integration', () => {
         resonanceShards: 0,
         soulShards: {},
         summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
