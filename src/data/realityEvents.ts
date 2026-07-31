@@ -1,4 +1,6 @@
-export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly';
+import type { CombatEnemyConfig, CombatDropConfig } from './combatZones';
+
+export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly' | 'encounter';
 
 export interface EventChoice {
   text: string;
@@ -15,15 +17,23 @@ export interface EventChoice {
   };
 }
 
+// 战斗遭遇配置（ticket 06）：事件进入与自动战斗同一战斗场景
+export interface EncounterBattleConfig {
+  enemies: CombatEnemyConfig[];      // 遭遇的敌人组
+  expReward: number;                 // 胜利后每位上阵英雄获得的经验
+  drops: CombatDropConfig[];         // 胜利后掉入探索临时背囊
+}
+
 export interface RealityEvent {
   id: string;
   title: string;
   description: string;
   type: RealityEventType;
-  choices: {
+  choices?: {
     A: EventChoice;
     B: EventChoice;
   };
+  battle?: EncounterBattleConfig; // 战斗遭遇事件：触发后进入战斗场景而非选择卡
   weight?: number; // 出现权重，不填默认为 100
 }
 
@@ -740,6 +750,65 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       }
     }
+  },
+
+  // --- 4. 战斗遭遇 (Encounter, ticket 06)：触发后进入与自动战斗同一战斗场景 ---
+  encounter_wasteland_pack: {
+    id: "encounter_wasteland_pack",
+    title: "废土掠食者群",
+    description: "前方的瓦砾堆中突然窜出几条瘦骨嶙峋的废土鬣狗，身后跟着密密麻麻的变异鼠群。它们围成半圆，低吼着朝你的小队步步逼近——上阵小队，迎战！",
+    type: "encounter",
+    weight: 70,
+    battle: {
+      enemies: [
+        { id: 'wasteland_hound', name: '废土鬣狗', emoji: '🐺', hp: 45, attack: 9, defense: 3 },
+        { id: 'mutant_rat', name: '变异鼠群', emoji: '🐀', hp: 30, attack: 7, defense: 1 }
+      ],
+      expReward: 15,
+      drops: [
+        { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
+        { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 }
+      ]
+    }
+  },
+  encounter_ruin_raiders: {
+    id: "encounter_ruin_raiders",
+    title: "废墟劫掠者伏击",
+    description: "两名手持铁管的废墟劫掠者带着一头驯养的变异巨鼠拦住了去路，为首者狞笑着敲打铁管：'把值钱的东西留下，否则别怪我们不客气！'",
+    type: "encounter",
+    weight: 55,
+    battle: {
+      enemies: [
+        { id: 'ruin_scavenger', name: '废墟拾荒者', emoji: '🧟', hp: 80, attack: 16, defense: 4 },
+        { id: 'mutant_rat', name: '变异鼠群', emoji: '🐀', hp: 35, attack: 8, defense: 1 }
+      ],
+      expReward: 25,
+      drops: [
+        { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
+        { itemId: 'alloy_plate', chance: 0.35, minQty: 1, maxQty: 1 },
+        { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
+      ]
+    }
+  },
+  encounter_workshop_horror: {
+    id: "encounter_workshop_horror",
+    title: "车间畸变体群",
+    description: "废弃车间深处，一个巨大的辐射变异体拖着一条失控的机器仆从与畸变实验体缓缓走出。它们的嘶吼声在厂房里回荡——这是探索中最危险的遭遇！",
+    type: "encounter",
+    weight: 40,
+    battle: {
+      enemies: [
+        { id: 'radiation_mutant', name: '辐射变异体', emoji: '👹', hp: 130, attack: 20, defense: 6 },
+        { id: 'rogue_machine', name: '失控机器仆从', emoji: '🤖', hp: 90, attack: 15, defense: 8 },
+        { id: 'aberrant_subject', name: '畸变实验体', emoji: '🧬', hp: 70, attack: 18, defense: 5 }
+      ],
+      expReward: 40,
+      drops: [
+        { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
+        { itemId: 'nanite_slurry', chance: 0.3, minQty: 1, maxQty: 1 },
+        { itemId: 'plasma_cell', chance: 0.25, minQty: 1, maxQty: 1 }
+      ]
+    }
   }
 };
 
@@ -749,5 +818,6 @@ export const CATEGORY_WEIGHTS: Record<string, number> = {
   combat: 60,
   welfare: 40,
   relic: 30,
-  anomaly: 20
+  anomaly: 20,
+  encounter: 40
 };

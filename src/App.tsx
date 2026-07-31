@@ -152,7 +152,8 @@ const App: React.FC = () => {
               inRealityExploration: false,
               realitySteps: 0,
               realityBag: {},
-              realityEventId: null
+              realityEventId: null,
+              realityEncounterId: null
             }
           };
         });

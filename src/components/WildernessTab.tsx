@@ -31,6 +31,8 @@ const WildernessTab: React.FC = () => {
   const currentEvent = currentEventId
     ? (RESCUE_EVENTS[currentEventId] || REALITY_EVENTS[currentEventId] || null)
     : null;
+  // 战斗遭遇事件无选项卡；仅非遭遇事件走 SwipeCard（choices 可空，见 realityEvents.ts）
+  const currentChoices = currentEvent && !exploration.realityEncounterId ? currentEvent.choices : undefined;
 
   // 随机抽取一张事件卡牌，或者是救援目的地的特殊事件
   const drawEvent = () => {
@@ -82,7 +84,9 @@ const WildernessTab: React.FC = () => {
       ...prev,
       exploration: {
         ...prev.exploration,
-        realityEventId: selectedEvent.id
+        // 战斗遭遇事件：进入战斗场景而非选择卡
+        realityEventId: selectedEvent.battle ? null : selectedEvent.id,
+        realityEncounterId: selectedEvent.battle ? selectedEvent.id : null
       }
     }));
   };
@@ -110,7 +114,8 @@ const WildernessTab: React.FC = () => {
         realitySteps: 0,
         realityLocationId: locationId,
         realityBag: {},
-        realityEventId: null
+        realityEventId: null,
+        realityEncounterId: null
       }
     }));
 
@@ -121,10 +126,11 @@ const WildernessTab: React.FC = () => {
   };
 
   useEffect(() => {
-    if (exploration.inRealityExploration && !exploration.realityEventId) {
+    // 有战斗遭遇待处理时不抽卡
+    if (exploration.inRealityExploration && !exploration.realityEventId && !exploration.realityEncounterId) {
       drawEvent();
     }
-  }, [exploration.inRealityExploration, exploration.realityEventId]);
+  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId]);
 
   const handleMakeChoice = (choice: EventChoice) => {
     // 检查前提条件
@@ -370,20 +376,25 @@ const WildernessTab: React.FC = () => {
       ) : (
         /* In exploration display */
         <div className="space-y-2.5 pt-0.5">
+          {/* 战斗遭遇场景（ticket 06：与自动战斗同一战斗场景） */}
+          {exploration.realityEncounterId && (
+            <EncounterPanel encounterId={exploration.realityEncounterId} />
+          )}
+
           {/* 遭遇卡牌 - 使用左右滑动交互组件 */}
-          {currentEvent && (
+          {currentEvent && currentChoices && (
             <div className="w-full pt-0">
               <SwipeCard
                 title={currentEvent.title}
                 description={currentEvent.description}
                 imageSrc={wildernessCard}
-                choiceA={currentEvent.choices.A}
-                choiceB={currentEvent.choices.B}
+                choiceA={currentChoices.A}
+                choiceB={currentChoices.B}
                 playerStats={state.player}
                 playerInventory={state.inventory}
                 eventType={currentEvent.type}
-                onSwipeLeft={() => handleMakeChoice(currentEvent.choices.A)}
-                onSwipeRight={() => handleMakeChoice(currentEvent.choices.B)}
+                onSwipeLeft={() => handleMakeChoice(currentChoices.A)}
+                onSwipeRight={() => handleMakeChoice(currentChoices.B)}
               />
             </div>
           )}
@@ -446,6 +457,96 @@ const WildernessTab: React.FC = () => {
   );
 };
 
+// === 战斗遭遇场景（ticket 06）：探索中遭遇战斗事件，进入与自动战斗同一战斗场景 ===
+const EncounterPanel: React.FC<{ encounterId: string }> = ({ encounterId }) => {
+  const { state, resolveEncounterBattle, fleeEncounter } = useGame();
+  const { showToast } = useToast();
+
+  const event = REALITY_EVENTS[encounterId];
+  if (!event?.battle) return null;
+  const battleConfig = event.battle;
+
+  const party = (state.party || []).filter(id => !!state.heroes[id]);
+  const anyWounded = party.some(id => state.heroes[id].wounded);
+  const stamina = Math.floor(state.stamina || 0);
+  const staminaCost = COMBAT_CONFIG.encounterStaminaCost;
+  const canFight = party.length > 0 && !anyWounded && stamina >= staminaCost;
+
+  const handleStart = () => {
+    const outcome = resolveEncounterBattle(encounterId);
+    if (outcome.failure === 'no_stamina') showToast(`体力不足（需要 ${staminaCost}），等待恢复或撤离。`, 'error');
+    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
+    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
+    else if (outcome.settlement?.battle.victory) showToast('⚔️ 遭遇战胜利！继续探索。', 'success');
+    else if (outcome.settlement?.battle.partyWiped) showToast('💥 遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
+    else if (outcome.settlement) showToast('⚔️ 遭遇战平局，继续探索。', 'info');
+  };
+
+  const handleFlee = () => {
+    const ok = fleeEncounter();
+    if (ok) showToast('🏃 已撤离遭遇，绕行继续探索。', 'info');
+  };
+
+  return (
+    <div className="rounded-2xl border border-rose-500/30 bg-gradient-to-b from-rose-950/50 to-zinc-900/60 p-3 flex flex-col gap-2">
+      <div className="text-xs font-black text-rose-300">⚔️ 战斗遭遇 —— {event.title}</div>
+      <p className="text-[9px] text-zinc-400 leading-relaxed">{event.description}</p>
+      <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
+        <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
+          敌人：{battleConfig.enemies.map(e => `${e.emoji}${e.name}`).join('、')}
+        </span>
+        <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
+          掉落：{battleConfig.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')}
+        </span>
+        <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{battleConfig.expReward}/英雄</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {party.length === 0 ? (
+          <span className="text-[9px] text-zinc-500 font-bold">小队为空 —— 请先在英雄页编队上阵。</span>
+        ) : (
+          party.map(id => {
+            const cfg = HEROES_CONFIG[id];
+            const hero = state.heroes[id];
+            if (!cfg || !hero) return null;
+            return (
+              <span key={id} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
+                hero.wounded
+                  ? 'border-red-500/40 bg-red-950/40 text-red-400'
+                  : 'border-zinc-700 bg-zinc-950/60 text-zinc-300'
+              }`}>
+                {cfg.emoji} {cfg.name} Lv.{hero.level}
+                {hero.wounded && '（重伤）'}
+              </span>
+            );
+          })
+        )}
+      </div>
+      {stamina < staminaCost && (
+        <span className="text-[8px] text-zinc-500 font-bold">体力不足（{stamina}/{staminaCost}，每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点）—— 可等待恢复或撤离。</span>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={handleStart}
+          disabled={!canFight}
+          className={`flex-1 py-2 rounded-xl text-[11px] font-black transition-all border ${
+            canFight
+              ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer active:scale-98'
+              : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+          }`}
+        >
+          ⚔️ 迎战！（体力 -{staminaCost}）
+        </button>
+        <button
+          onClick={handleFlee}
+          className="px-3 py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 cursor-pointer active:scale-98"
+        >
+          🚩 撤离
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // === 战斗挂机面板（ticket 05）：选区 → 三人小队轮询回合制自动战斗 ===
 const CombatPanel: React.FC = () => {
   const { state, startCombat } = useGame();
@@ -476,7 +577,7 @@ const CombatPanel: React.FC = () => {
         victory ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-red-950/40 border-red-500/30'
       }`}>
         <div className={`text-xs font-black ${victory ? 'text-emerald-300' : 'text-red-300'}`}>
-          {victory ? '✅ 战斗胜利' : '💥 战斗失败'} —— {COMBAT_ZONES[state.combat?.zoneId || '']?.name || '未知区域'}（{s.battle.rounds} 回合）
+          {victory ? '✅ 战斗胜利' : '💥 战斗失败'} —— {COMBAT_ZONES[state.combat?.zoneId || '']?.name || REALITY_EVENTS[state.combat?.zoneId || '']?.title || '未知区域'}（{s.battle.rounds} 回合）
         </div>
         {victory ? (
           <div className="flex flex-wrap gap-1.5 text-[9px] font-bold">

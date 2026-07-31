@@ -250,4 +250,137 @@ describe('WildernessTab Component', () => {
     expect(savedState.combat?.lastSettlement).toBeNull(); // 体力不足未开战
     expect(savedState.stamina).toBe(0);
   });
+
+  it('resolves a combat encounter victory: exploration continues with loot and exp', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05); // 掉落命中 + 下一抽为 common 首卡
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
+      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      inventory: {},
+      greenhouse: { slots: [], unlockedSlotsCount: 4 },
+      heroes: {
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false },
+        soldier: { level: 1, exp: 0, hp: 160, maxHp: 160, star: 1, wounded: false }
+      },
+      party: ['nova', 'soldier'],
+      exploration: {
+        inRealityExploration: true,
+        realitySteps: 1,
+        realityBag: { scrap_metal: 2 },
+        realityEventId: null,
+        realityEncounterId: 'encounter_wasteland_pack'
+      }
+    }));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 遭遇场景（与自动战斗同一战斗场景）
+    expect(screen.getByText(/⚔️ 战斗遭遇 —— 废土掠食者群/)).toBeDefined();
+    fireEvent.click(screen.getByText(/⚔️ 迎战！/));
+
+    // 胜利 → 继续探索：下一张卡牌出现、步数 +1、遭遇清除
+    expect(screen.getByText(/废弃的魔导卡车/)).toBeDefined();
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.exploration.realitySteps).toBe(2);
+    expect(savedState.exploration.realityEncounterId).toBeNull();
+    expect(savedState.exploration.inRealityExploration).toBe(true);
+    // 掉落入探索背囊（与已获战利品合并：scrap 2 + 1）
+    expect(savedState.exploration.realityBag.scrap_metal).toBe(3);
+    expect(savedState.exploration.realityBag.glow_fiber).toBe(1);
+    // 经验入账；探索遭遇消耗独立体力（100 - 5）
+    expect(savedState.heroes.nova.exp).toBe(15);
+    expect(savedState.stamina).toBe(95);
+    // 同一战斗场景：结算记录
+    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
+
+    randomSpy.mockRestore();
+  });
+
+  it('resolves a combat encounter defeat: exploration ends, loot merged into inventory, party wounded', () => {
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
+      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      inventory: {},
+      greenhouse: { slots: [], unlockedSlotsCount: 4 },
+      heroes: {
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false }
+      },
+      party: ['nova'],
+      exploration: {
+        inRealityExploration: true,
+        realitySteps: 2,
+        realityBag: { scrap_metal: 5, glow_fiber: 1 },
+        realityEventId: null,
+        realityEncounterId: 'encounter_workshop_horror'
+      }
+    }));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    expect(screen.getByText(/⚔️ 战斗遭遇 —— 车间畸变体群/)).toBeDefined();
+    fireEvent.click(screen.getByText(/⚔️ 迎战！/));
+
+    // 战败 → 探索终止回到荒野入口，战利品并入库存，小队重伤
+    expect(screen.getByText(/踏入废土荒野/)).toBeDefined();
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.exploration.inRealityExploration).toBe(false);
+    expect(savedState.exploration.realitySteps).toBe(0);
+    expect(savedState.exploration.realityEncounterId).toBeNull();
+    expect(savedState.exploration.realityBag).toEqual({});
+    expect(savedState.inventory.scrap_metal).toBe(5);
+    expect(savedState.inventory.glow_fiber).toBe(1);
+    expect(savedState.heroes.nova.wounded).toBe(true);
+    expect(savedState.combat.lastSettlement.battle.victory).toBe(false);
+  });
+
+  it('blocks encounter battle without stamina but allows fleeing (不卡死探索)', () => {
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
+      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      inventory: {},
+      greenhouse: { slots: [], unlockedSlotsCount: 4 },
+      heroes: {
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false }
+      },
+      party: ['nova'],
+      stamina: 0,
+      exploration: {
+        inRealityExploration: true,
+        realitySteps: 1,
+        realityBag: { scrap_metal: 1 },
+        realityEventId: null,
+        realityEncounterId: 'encounter_wasteland_pack'
+      }
+    }));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const fightButton = screen.getByText(/⚔️ 迎战！/);
+    expect(fightButton.hasAttribute('disabled')).toBe(true); // 体力不足
+    expect(screen.getByText(/体力不足/)).toBeDefined();
+
+    // 撤离：不战而退，探索继续
+    fireEvent.click(screen.getByText(/🚩 撤离/));
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.exploration.realityEncounterId).toBeNull();
+    expect(savedState.exploration.realitySteps).toBe(2);
+    expect(savedState.exploration.inRealityExploration).toBe(true);
+    expect(savedState.exploration.realityBag.scrap_metal).toBe(1);
+    expect(savedState.heroes.nova.wounded).toBe(false);
+  });
 });

@@ -7,6 +7,7 @@ export interface CombatConfig {
   expPerLevel: number;       // 升到下一级所需经验 = 当前等级 * expPerLevel
   hpPerLevel: number;        // 每升一级生命成长
   attackPerLevel: number;    // 每升一级攻击成长
+  encounterStaminaCost: number; // 探索战斗遭遇的体力消耗（ticket 06，ADR-0002 战斗耗体力）
 }
 
 export const COMBAT_CONFIG: CombatConfig = {
@@ -16,5 +17,6 @@ export const COMBAT_CONFIG: CombatConfig = {
   maxBattleRounds: 60,
   expPerLevel: 100,
   hpPerLevel: 8,
-  attackPerLevel: 3
+  attackPerLevel: 3,
+  encounterStaminaCost: 5
 };

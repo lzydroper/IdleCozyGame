@@ -127,6 +127,7 @@ export interface GameState {
     realityLocationId: string | null;
     realityBag: Record<string, number>; // 探索中临时背包
     realityEventId?: string | null;     // 当前激活的现实事件ID
+    realityEncounterId: string | null;  // 待战斗的战斗遭遇事件ID（ticket 06 探索战斗汇合）
     // 梦境探索
     inDreamExploration: boolean;
     dreamSteps: number;

@@ -72,6 +72,7 @@ export const INITIAL_STATE: GameState = {
     realityLocationId: null,
     realityBag: {},
     realityEventId: null,
+    realityEncounterId: null,
     inDreamExploration: false,
     dreamSteps: 0,
     dreamPollution: 0,

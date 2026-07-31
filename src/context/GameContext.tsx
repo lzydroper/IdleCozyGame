@@ -29,7 +29,10 @@ import {
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
-  type CombatOutcome
+  resolveEncounterBattleUpdate,
+  fleeEncounterUpdate,
+  type CombatOutcome,
+  type EncounterBattleOutcome
 } from '../state/combat';
 
 interface GameContextType {
@@ -66,6 +69,8 @@ interface GameContextType {
   startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
+  resolveEncounterBattle: (encounterId: string) => EncounterBattleOutcome;
+  fleeEncounter: () => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -503,6 +508,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  const resolveEncounterBattle = (encounterId: string): EncounterBattleOutcome => {
+    const r = resolveEncounterBattleUpdate(stateRef.current, encounterId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const fleeEncounter = (): boolean => {
+    const r = fleeEncounterUpdate(stateRef.current);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   const resetGame = () => {
     const now = Date.now();
     const freshState = createFreshState(INITIAL_STATE, now);
@@ -560,7 +581,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       summonHero,
       startCombat,
       setParty,
-      healWoundedHero
+      healWoundedHero,
+      resolveEncounterBattle,
+      fleeEncounter
     }}>
 
       {children}

@@ -172,6 +172,7 @@ describe('GameContext Integration', () => {
         combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, survivorResonance: {}
         },
@@ -222,6 +223,7 @@ describe('GameContext Integration', () => {
         combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, survivorResonance: {}
         },
@@ -283,6 +285,7 @@ describe('GameContext Integration', () => {
         combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, survivorResonance: {}
         },
@@ -351,6 +354,7 @@ describe('GameContext Integration', () => {
         combat: { zoneId: null, lastSettlement: null },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, survivorResonance: {}
         },
@@ -380,4 +384,5 @@ describe('GameContext Integration', () => {
     });
   });
 });
+
 
