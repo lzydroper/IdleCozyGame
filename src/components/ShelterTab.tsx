@@ -245,14 +245,10 @@ const ShelterTab: React.FC = () => {
     ? EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS] 
     : null;
 
-  // 远征速度与间隔计算
-  let expSpeedBonus = 1;
+  // 远征速度与间隔计算（角色效率加成已随被动系统退役，仅由地点配置决定）
   let expInterval = 300;
-  if (currentExplorer) {
-    expSpeedBonus = 1 + (currentExplorer.role === 'scout' ? currentExplorer.bonus : 0);
-  }
   if (expLocation) {
-    expInterval = Math.max(30, Math.floor(expLocation.scavengeInterval / expSpeedBonus));
+    expInterval = Math.max(30, Math.floor(expLocation.scavengeInterval));
   }
 
   // 挂机远征实时计算
@@ -286,7 +282,8 @@ const ShelterTab: React.FC = () => {
       return;
     }
     if (loc.requiredRole && explorer.role !== loc.requiredRole) {
-      showToast(`派遣失败！该地点需要【${loc.requiredRole === 'scout' ? '侦察兵' : '工程师'}】职业。`, 'error');
+      const roleLabel = SURVIVORS_CONFIG.find(c => c.role === loc.requiredRole)?.roleLabel || loc.requiredRole;
+      showToast(`派遣失败！该地点需要【${roleLabel}】职业。`, 'error');
       return;
     }
 
@@ -721,7 +718,7 @@ const ShelterTab: React.FC = () => {
                   </h3>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
                     带队幸存者: {SURVIVORS_CONFIG.find(c => c.id === currentExplorer.id)?.emoji || '👤'} <strong className="text-zinc-200 font-bold">{currentExplorer.name}</strong> 
-                    <span className="text-cyan-400/90 ml-1">({currentExplorer.role === 'scout' ? '侦察兵 +速' : '无加速'})</span>
+                    <span className="text-zinc-500 ml-1">[{SURVIVORS_CONFIG.find(c => c.id === currentExplorer.id)?.roleLabel || currentExplorer.role}]</span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -813,7 +810,7 @@ const ShelterTab: React.FC = () => {
                 })}
               </select>
               <p className="text-[9px] text-zinc-500">
-                💡 侦察兵（如赛罗、巴斯特）擅长荒野行走，指派其探索可提供额外的拾荒频率加成。
+                💡 部分地点需要特定职业的幸存者才能派遣（如侦察兵、工程师、卫兵）。
               </p>
             </div>
 
@@ -848,7 +845,7 @@ const ShelterTab: React.FC = () => {
                               ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20' 
                               : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                           }`}>
-                            需【{loc.requiredRole === 'scout' ? '侦察兵' : '工程师'}】
+                            需【{SURVIVORS_CONFIG.find(c => c.role === loc.requiredRole)?.roleLabel || loc.requiredRole}】
                           </span>
                         )}
                       </div>

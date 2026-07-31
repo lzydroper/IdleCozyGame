@@ -75,7 +75,6 @@ const TestConsumer = ({
             id: 'nova',
             name: '诺娃',
             role: 'engineer',
-            bonus: 0.3,
             isAssigned: false
           }
         }
@@ -96,8 +95,8 @@ const TestConsumer = ({
   return <div>Test</div>;
 };
 
-describe('GameContext Integration & Survivor Passive Bonuses', () => {
-  it('should toggle maxEnergy between 100 and 130 depending on nova companion presence', () => {
+describe('GameContext Integration', () => {
+  it('should keep maxEnergy at 100 regardless of nova presence (passive system retired)', () => {
     const actionRef = { current: null as any };
     let capturedState: any = null;
 
@@ -116,8 +115,8 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
       actionRef.current.addNova();
     });
 
-    // 应该更新为 130 且 hasNova 为 true
-    expect(capturedState.player.maxEnergy).toBe(130);
+    // 被动系统退役后 maxEnergy 不再有 +30 加成，但 hasNova 派生状态仍生效
+    expect(capturedState.player.maxEnergy).toBe(100);
     expect(capturedState.hasNova).toBe(true);
 
     // 触发移除 nova
@@ -236,7 +235,6 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
               activeRecipeId: 'smelt_alloy',
               currentProgress: 0,
               timeLeft: 0,
-              assignedSurvivorId: null,
               active: true
             }
           },
@@ -253,8 +251,8 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
       expect(report.recoveredItems.alloy_plate).toBe(3);
       
       const smelter = updatedState.shelter.facilities.smelter;
-      expect(smelter.timeLeft).toBe(20);
-      expect(smelter.currentProgress).toBe(33);
+      expect(smelter.timeLeft).toBe(8);      // 3 轮完整 + 第 4 轮进行中（等级 1 效率 +10%，单轮 27s）
+      expect(smelter.currentProgress).toBe(70);
     });
 
     it('should stop factory processing early when raw materials run out', () => {
@@ -294,7 +292,6 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
               activeRecipeId: 'smelt_alloy',
               currentProgress: 0,
               timeLeft: 0,
-              assignedSurvivorId: null,
               active: true
             }
           },

@@ -106,8 +106,7 @@ export const INITIAL_STATE: GameState = {
         level: 1,
         activeRecipeId: null,
         currentProgress: 0,
-        timeLeft: 0,
-        assignedSurvivorId: null
+        timeLeft: 0
       },
       assembler: {
         id: 'assembler',
@@ -115,8 +114,7 @@ export const INITIAL_STATE: GameState = {
         level: 1,
         activeRecipeId: null,
         currentProgress: 0,
-        timeLeft: 0,
-        assignedSurvivorId: null
+        timeLeft: 0
       }
     },
     assignedWatererId: null,

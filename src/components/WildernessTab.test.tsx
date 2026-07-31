@@ -43,7 +43,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
-        catherine: { id: 'catherine', name: '凯瑟琳', role: 'farmer', bonus: 0.15, isAssigned: false, realityLocationId: 'bio_lab' }
+        catherine: { id: 'catherine', name: '凯瑟琳', role: 'farmer', isAssigned: false, realityLocationId: 'bio_lab' }
       },
       exploration: {
         inRealityExploration: true,
@@ -70,7 +70,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
-        buster: { id: 'buster', name: '巴斯特', role: 'scout', bonus: 0.3, isAssigned: false, realityLocationId: 'collapsed_subway' }
+        buster: { id: 'buster', name: '巴斯特', role: 'scout', isAssigned: false, realityLocationId: 'collapsed_subway' }
       },
       exploration: {
         inRealityExploration: true,
@@ -97,7 +97,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
-        nova: { id: 'nova', name: '诺娃', role: 'engineer', bonus: 0.3, isAssigned: false, realityLocationId: 'military_depot' }
+        nova: { id: 'nova', name: '诺娃', role: 'engineer', isAssigned: false, realityLocationId: 'military_depot' }
       },
       exploration: {
         inRealityExploration: true,
@@ -118,14 +118,14 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/军火库：营救诺娃/i)).toBeDefined();
   });
 
-  it('should apply Catherine cost reduction passive on events HP and food penalty', async () => {
+  it('should apply raw event HP penalty without survivor passives (retired)', async () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
       player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: { defensive_turret: 1 },
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
-        roy: { id: 'roy', name: '罗伊', role: 'engineer', bonus: 0.2, isAssigned: false, realityLocationId: 'radar_station' },
-        catherine: { id: 'catherine', name: '凯瑟琳', role: 'farmer', bonus: 0.15, isAssigned: false }
+        roy: { id: 'roy', name: '罗伊', role: 'engineer', isAssigned: false, realityLocationId: 'radar_station' },
+        catherine: { id: 'catherine', name: '凯瑟琳', role: 'farmer', isAssigned: false }
       },
       exploration: {
         inRealityExploration: true,
@@ -155,10 +155,10 @@ describe('WildernessTab Component', () => {
     });
 
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.player.hp).toBe(92); // HP 扣除从原本的 10 折算为 8 (Math.round(-10 * 0.85) = -8)
+    expect(savedState.player.hp).toBe(90); // 被动退役后无减免，HP 原样扣除 10
   });
 
-  it('should apply Buster scrap metal bonus when rescuing and gathering scrap', async () => {
+  it('should gather raw scrap metal without Buster bonus (retired)', async () => {
     const spy = vi.spyOn(Math, 'random').mockReturnValue(0); // 强制选择第一个事件 ruined_truck
 
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
@@ -166,7 +166,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
-        buster: { id: 'buster', name: '巴斯特', role: 'scout', bonus: 0.3, isAssigned: false }
+        buster: { id: 'buster', name: '巴斯特', role: 'scout', isAssigned: false }
       },
       exploration: {
         inRealityExploration: true,
@@ -195,10 +195,10 @@ describe('WildernessTab Component', () => {
       await new Promise(r => setTimeout(r, 350));
     });
 
-    expect(screen.getByText(/废旧金属x4/i)).toBeDefined();
+    expect(screen.getByText(/废旧金属x3/i)).toBeDefined();
 
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.exploration.realityBag.scrap_metal).toBe(4); // 废金属产出从原本的 3 折算为 4 (Math.round(3 * 1.3) = 4)
+    expect(savedState.exploration.realityBag.scrap_metal).toBe(3); // 被动退役后无 +30% 加成，废金属原样 3
 
     spy.mockRestore();
   });

@@ -5,7 +5,6 @@ import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
 import GameIcon from './GameIcon';
 import ItemGridItem from './ItemGridItem';
-import { getAdjustment } from '../systems/passiveModifiers';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
@@ -24,8 +23,7 @@ const WorkshopTab: React.FC = () => {
   const inventory = state.inventory;
   const player = state.player;
   const activeAlert = state.activeAlert;
-  const defEnergyAdj = getAdjustment(state, 'defense_energy_cost');
-  const overloadEnergyCost = Math.round(20 * (1 + defEnergyAdj));
+  const overloadEnergyCost = 20;
 
   const supplyConfigs = [
     {

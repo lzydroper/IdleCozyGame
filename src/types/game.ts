@@ -38,7 +38,6 @@ export interface Survivor {
   id: string;
   name: string;
   role: "farmer" | "engineer" | "scout" | "guard" | "chemist" | "scavenger";
-  bonus: number;            // 效率提升比例（例如 0.15 表示提升15%）
   isAssigned: boolean;      // 是否已指派工作
   assignedSlotId?: number;  // 指派的温室槽位或工坊槽位
   realityLocationId?: string; // 该幸存者在现实中的救援地点 ID
@@ -128,7 +127,6 @@ export interface AutomationFacility {
   activeRecipeId: string | null;  // 当前启用的加工配方，null表示未启用
   currentProgress: number;        // 单次加工进度 (0 - 100)
   timeLeft: number;               // 当前单次加工剩余时间 (秒)
-  assignedSurvivorId: string | null; // 派驻的幸存者ID（提供效率加成）
   active?: boolean;               // 控制启用状态，默认为 true
 }
 

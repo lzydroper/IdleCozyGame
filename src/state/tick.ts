@@ -5,7 +5,6 @@ import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
-import { getAdjustment } from '../systems/passiveModifiers';
 
 interface TickLogEntry {
   text: string;
@@ -21,19 +20,16 @@ export const applyTick = (prev: GameState, now: number): GameState => {
 
   let currentInventory = { ...prev.inventory };
   let currentEnergy = prev.player.energy;
-  const maxEnergyAdjustment = getAdjustment(prev, 'max_energy');
-  const currentMaxEnergy = (prev.player.maxEnergy || 100) + maxEnergyAdjustment;
+  const currentMaxEnergy = prev.player.maxEnergy || 100;
 
   let nextAccumulatedEnergy = prev.shelter.accumulatedEnergy ?? 0;
   let nextAccumulatedScrap = prev.shelter.accumulatedScrap ?? 0;
 
   // 1. 发电机与回收站自动产出
   if (prev.shelter.generatorLevel > 0) {
-    // 由于发电机没有独立排班，此处借用“魔导冶炼炉”中派驻的工程师作为调校员提供发电机增益
-    const speedBonus = 1 + (prev.survivors[prev.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
     const genConfig = SHELTER_UPGRADES.generator.levels.find(l => l.level === prev.shelter.generatorLevel);
     const generatorRate = genConfig ? genConfig.effectValue : 0;
-    const energyGained = generatorRate * speedBonus;
+    const energyGained = generatorRate;
     nextAccumulatedEnergy += energyGained;
   }
 
@@ -64,9 +60,6 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     if (!config) return slot;
 
     let speedMultiplier = (slot.isWatered || isWateredOnline) ? 2 : 1;
-    // 幸存者被动：指派在温室岗位时生长速度加成
-    const growthAdj = getAdjustment(prev, 'growth_speed', prev.shelter.assignedWatererId ?? undefined);
-    speedMultiplier *= (1 + growthAdj);
     const timeReduced = 1 * speedMultiplier;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
@@ -88,8 +81,8 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     const recipe = AUTO_RECIPES[fac.activeRecipeId];
     if (!recipe) return;
 
-    const operator = prev.survivors[fac.assignedSurvivorId || ''];
-    const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (fac.level - 1) * 0.1;
+    // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
+    const speedBonus = 1 + fac.level * 0.1;
     const actualDuration = Math.max(1, Math.floor(recipe.duration / speedBonus));
 
     let facTimeLeft = fac.timeLeft;
@@ -148,8 +141,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
       const explorer = prev.survivors[prev.shelter.assignedExplorerId];
-      const speedBonus = 1 + (explorer?.role === 'scout' ? explorer.bonus : 0);
-      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval / speedBonus));
+      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval));
 
       const timeDiff = now - (exp.lastScavengeTime || exp.startTime || now);
       const ticks = Math.floor(timeDiff / (actualInterval * 1000));

@@ -10,7 +10,6 @@ import SwipeCard from './SwipeCard';
 import { Compass, ShieldAlert, ChevronRight } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
-import { getAdjustment } from '../systems/passiveModifiers';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 
 const WildernessTab: React.FC = () => {
@@ -85,13 +84,8 @@ const WildernessTab: React.FC = () => {
 
   const handleStartExploration = (locationId: string | null) => {
     const isRescue = locationId !== null;
-    let foodCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST : GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST;
-    let energyCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST : GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST;
-
-    const foodAdj = getAdjustment(state, 'exploration_food_cost');
-    const energyAdj = getAdjustment(state, 'exploration_energy_cost');
-    foodCost = Math.round(foodCost * (1 + foodAdj));
-    energyCost = Math.round(energyCost * (1 + energyAdj));
+    const foodCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST : GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST;
+    const energyCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST : GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST;
 
     if (player.food < foodCost || player.energy < energyCost) {
       showToast(`生存指标过低（饱食度需 >= ${foodCost}，魔能需 >= ${energyCost}），请先补充！`, "error");
@@ -143,16 +137,6 @@ const WildernessTab: React.FC = () => {
     }
 
     let adjustedStats = choice.results.stats ? { ...choice.results.stats } : undefined;
-    if (adjustedStats) {
-      const statHpAdj = getAdjustment(state, 'stat_cost_hp');
-      const statFoodAdj = getAdjustment(state, 'stat_cost_food');
-      if (adjustedStats.hp !== undefined && adjustedStats.hp < 0) {
-        adjustedStats.hp = Math.round(adjustedStats.hp * (1 + statHpAdj));
-      }
-      if (adjustedStats.food !== undefined && adjustedStats.food < 0) {
-        adjustedStats.food = Math.round(adjustedStats.food * (1 + statFoodAdj));
-      }
-    }
 
     // 检查属性是否足够 (饱食度和魔能)
     if (adjustedStats) {
@@ -199,13 +183,7 @@ const WildernessTab: React.FC = () => {
       const newRealityBag = { ...prev.exploration.realityBag };
       if (choice.results.items) {
         Object.entries(choice.results.items).forEach(([item, qty]) => {
-          let adjustedQty = qty;
-          if (qty > 0) {
-            const itemAdj = getAdjustment(prev, `item_yield:${item}` as any);
-            if (itemAdj) {
-              adjustedQty = Math.round(qty * (1 + itemAdj));
-            }
-          }
+          const adjustedQty = qty;
           // 限制扣除数量，不能超过玩家在避难所库存和当前临时背包拥有的总和
           const currentTotal = (prev.inventory[item] || 0) + (prev.exploration.realityBag[item] || 0);
           const maxDeductible = -currentTotal;
@@ -278,7 +256,7 @@ const WildernessTab: React.FC = () => {
       addLog(choice.results.logText, 'event');
 
       if (isRescueComplete) {
-        const congr = `🎉 营救成功！同伴【${rescuedName}】已安全护送回避难所！他已安顿，可在日志页面查看并为您提供强大的永久加成！`;
+        const congr = `🎉 营救成功！同伴【${rescuedName}】已安全护送回避难所！`;
         showToast(`成功营救同伴 ${rescuedName}！`, "success");
         addLog(congr, 'system');
       }
@@ -369,8 +347,6 @@ const WildernessTab: React.FC = () => {
                 choiceB={currentEvent.choices.B}
                 playerStats={state.player}
                 playerInventory={state.inventory}
-                statCostAdjustment={getAdjustment(state, 'stat_cost_hp')}
-                itemYieldAdjustments={{ scrap_metal: getAdjustment(state, 'item_yield:scrap_metal') }}
                 eventType={currentEvent.type}
                 onSwipeLeft={() => handleMakeChoice(currentEvent.choices.A)}
                 onSwipeRight={() => handleMakeChoice(currentEvent.choices.B)}

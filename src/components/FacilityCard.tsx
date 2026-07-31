@@ -4,7 +4,6 @@ import { useToast } from './ToastSystem';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { SURVIVORS_CONFIG } from '../data/survivors';
 import GameIcon from './GameIcon';
 import { Flame, Wrench, Play, Square, ChevronRight, Zap, TrendingUp } from 'lucide-react';
 
@@ -56,61 +55,12 @@ function RecipeRow({
 }
 
 // ─────────────────────────────────────────────
-// 共用子组件：幸存者选择下拉
-// ─────────────────────────────────────────────
-function SurvivorSelect({
-  value,
-  onChange,
-  facilityId,
-  survivors,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  facilityId: string;
-  survivors: Array<{
-    id: string;
-    name: string;
-    role: string;
-    bonus: number;
-    assignedJobId?: string | null;
-    realityLocationId?: string | null;
-  }>;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-zinc-900 border border-zinc-700/60 text-zinc-300 px-2 py-1.5 rounded-lg outline-none text-[10px] focus:border-zinc-500 transition-colors"
-    >
-      <option value="">— 无人值守</option>
-      {survivors.map((s) => {
-        const cfg = SURVIVORS_CONFIG.find((c) => c.id === s.id);
-        const statusStr =
-          s.assignedJobId === facilityId
-            ? '(当前岗位)'
-            : s.assignedJobId
-            ? `(忙于 ${s.assignedJobId})`
-            : '(空闲)';
-        // 需求 2：使用 config.roleLabel 而非硬编码 ternary
-        const roleLabel = cfg?.roleLabel || s.role;
-        return (
-          <option key={s.id} value={s.id}>
-            {cfg?.emoji || '👤'} {s.name} [{roleLabel}] {statusStr}
-          </option>
-        );
-      })}
-    </select>
-  );
-}
-
-// ─────────────────────────────────────────────
 // 魔导冶炼炉
 // ─────────────────────────────────────────────
 export const SmelterCard: React.FC = () => {
   const {
     state,
     upgradeShelterStat,
-    assignSurvivorJob,
     setFacilityRecipe,
     setFacilityActive,
     addLog,
@@ -125,9 +75,8 @@ export const SmelterCard: React.FC = () => {
   const isMax = level >= upgrade.maxLevel;
   const nextConfig = upgrade.levels.find(l => l.level === level + 1);
   const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
-  const operator = fac.assignedSurvivorId ? state.survivors[fac.assignedSurvivorId] : null;
-  const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (level - 1) * 0.1;
-  const survivorsList = Object.values(state.survivors).filter((s) => !s.realityLocationId);
+  // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
+  const speedBonus = 1 + level * 0.1;
   const smelterRecipes = Object.values(AUTO_RECIPES).filter((r) => r.facilityId === 'smelter');
   const getInvQty = (id: string) => state.inventory[id] || 0;
   const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
@@ -210,48 +159,8 @@ export const SmelterCard: React.FC = () => {
           </button>
         </div>
 
-        {/* ── 主体：三列 ── */}
-        <div className="grid grid-cols-[1fr_1px_1fr_1px_1fr] gap-3 items-start">
-          {/* 操作员 */}
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-              <span>操作员</span>
-            </div>
-            <SurvivorSelect
-              value={fac.assignedSurvivorId || ''}
-              facilityId="smelter"
-              survivors={survivorsList}
-              onChange={(val) => {
-                if (val === '') {
-                  if (fac.assignedSurvivorId) {
-                    assignSurvivorJob(fac.assignedSurvivorId, null);
-                    showToast('冶炼炉已无人值守。', 'info');
-                  }
-                } else {
-                  assignSurvivorJob(val, 'smelter');
-                  const name = state.survivors[val]?.name || '幸存者';
-                  addLog(`🔩 指派 ${name} 负责 ${fac.name}`, 'logistics');
-                  showToast(`指派 ${name} 负责冶炼炉。`, 'success');
-                }
-              }}
-            />
-            {operator ? (
-              <div className="text-[9px] rounded-md px-1.5 py-1 bg-zinc-800/50 border border-zinc-700/30">
-                <div className="text-zinc-300 font-medium">{operator.name}</div>
-                {operator.role === 'engineer' ? (
-                  <div className="text-amber-400">工程师 +{Math.round(operator.bonus * 100)}%</div>
-                ) : (
-                  <div className="text-zinc-600">非工程（无加成）</div>
-                )}
-              </div>
-            ) : (
-              <div className="text-[9px] text-zinc-700 italic">暂无派驻</div>
-            )}
-          </div>
-
-          {/* 分隔线 */}
-          <div className="h-full bg-zinc-800/60" />
-
+        {/* ── 主体：两列（配方 + 状态） ── */}
+        <div className="grid grid-cols-[1fr_1px_1fr] gap-3 items-start">
           {/* 配方 */}
           <div className="space-y-1.5">
             <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">配方</div>
@@ -386,7 +295,6 @@ export const AssemblerCard: React.FC = () => {
   const {
     state,
     upgradeShelterStat,
-    assignSurvivorJob,
     setFacilityRecipe,
     setFacilityActive,
     addLog,
@@ -401,9 +309,8 @@ export const AssemblerCard: React.FC = () => {
   const isMax = level >= upgrade.maxLevel;
   const nextConfig = upgrade.levels.find(l => l.level === level + 1);
   const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
-  const operator = fac.assignedSurvivorId ? state.survivors[fac.assignedSurvivorId] : null;
-  const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (level - 1) * 0.1;
-  const survivorsList = Object.values(state.survivors).filter((s) => !s.realityLocationId);
+  // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
+  const speedBonus = 1 + level * 0.1;
   const assemblerRecipes = Object.values(AUTO_RECIPES).filter((r) => r.facilityId === 'assembler');
   const getInvQty = (id: string) => state.inventory[id] || 0;
   const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
@@ -486,46 +393,8 @@ export const AssemblerCard: React.FC = () => {
           </button>
         </div>
 
-        {/* ── 主体：三列 ── */}
-        <div className="grid grid-cols-[1fr_1px_1fr_1px_1fr] gap-3 items-start">
-          {/* 操作员 */}
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">操作员</div>
-            <SurvivorSelect
-              value={fac.assignedSurvivorId || ''}
-              facilityId="assembler"
-              survivors={survivorsList}
-              onChange={(val) => {
-                if (val === '') {
-                  if (fac.assignedSurvivorId) {
-                    assignSurvivorJob(fac.assignedSurvivorId, null);
-                    showToast('组装台已无人值守。', 'info');
-                  }
-                } else {
-                  assignSurvivorJob(val, 'assembler');
-                  const name = state.survivors[val]?.name || '幸存者';
-                  addLog(`🔩 指派 ${name} 负责 ${fac.name}`, 'logistics');
-                  showToast(`指派 ${name} 负责组装台。`, 'success');
-                }
-              }}
-            />
-            {operator ? (
-              <div className="text-[9px] rounded-md px-1.5 py-1 bg-zinc-800/50 border border-zinc-700/30">
-                <div className="text-zinc-300 font-medium">{operator.name}</div>
-                {operator.role === 'engineer' ? (
-                  <div className="text-purple-400">工程师 +{Math.round(operator.bonus * 100)}%</div>
-                ) : (
-                  <div className="text-zinc-600">非工程（无加成）</div>
-                )}
-              </div>
-            ) : (
-              <div className="text-[9px] text-zinc-700 italic">暂无派驻</div>
-            )}
-          </div>
-
-          {/* 分隔线 */}
-          <div className="h-full bg-zinc-800/60" />
-
+        {/* ── 主体：两列（配方 + 状态） ── */}
+        <div className="grid grid-cols-[1fr_1px_1fr] gap-3 items-start">
           {/* 配方 */}
           <div className="space-y-1.5">
             <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">配方</div>

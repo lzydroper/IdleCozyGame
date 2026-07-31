@@ -137,7 +137,6 @@ const DreamscapeTab: React.FC = () => {
             id: survivorId,
             name: config.name,
             role: config.role,
-            bonus: config.bonus,
             isAssigned: false,
             realityLocationId: config.realityLocationId
           };

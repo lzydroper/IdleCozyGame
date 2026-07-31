@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
-import { getAdjustment } from '../systems/passiveModifiers';
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
 import { getAccountsList, saveState, loadOrCreateState, createFreshState, createNewAccountState } from '../state/persistence';
@@ -15,7 +14,7 @@ import {
   batchPlantUpdate,
   batchHarvestAndReplantUpdate
 } from '../state/greenhouse';
-import { craftItemUpdate, useSupplyItemUpdate } from '../state/workshop';
+import { craftItemUpdate, applySupplyItemUpdate } from '../state/workshop';
 import {
   assignSurvivorJobUpdate,
   setFacilityRecipeUpdate,
@@ -51,7 +50,7 @@ interface GameContextType {
   fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number; hp: number }>>;
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
   useSupplyItem: (itemId: string) => boolean;
-  assignSurvivorJob: (survivorId: string, jobId: string | null) => boolean;
+  assignSurvivorJob: (survivorId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
   setFacilityRecipe: (facilityId: string, recipeId: string | null) => boolean;
   setFacilityActive: (facilityId: string, active: boolean) => boolean;
   upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler') => boolean;
@@ -388,7 +387,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const useSupplyItem = (itemId: string): boolean => {
     let ok = false;
     setState(prev => {
-      const r = useSupplyItemUpdate(prev, itemId);
+      const r = applySupplyItemUpdate(prev, itemId);
       ok = r.result;
       return r.state;
     });
@@ -401,7 +400,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // === 避难所 ===
-  const assignSurvivorJob = (survivorId: string, jobId: string | null): boolean => {
+  const assignSurvivorJob = (survivorId: string, jobId: 'waterer' | 'explorer' | null): boolean => {
     let ok = false;
     setState(prev => {
       const r = assignSurvivorJobUpdate(prev, survivorId, jobId);
@@ -480,7 +479,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasNova = !!state.survivors.nova;
   const hasCatherine = !!state.survivors.catherine;
   const hasBuster = !!state.survivors.buster;
-  const maxEnergy = (state.player.maxEnergy || 100) + getAdjustment(state, 'max_energy');
+  const maxEnergy = state.player.maxEnergy || 100;
 
   const adjustedState = {
     ...state,

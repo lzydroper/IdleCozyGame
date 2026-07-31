@@ -54,7 +54,7 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
 };
 
 // 使用生存补给品：应用其 useEffect（恢复属性/调整污染度）
-export const useSupplyItemUpdate = (state: GameState, itemId: string): UpdateResult<boolean> => {
+export const applySupplyItemUpdate = (state: GameState, itemId: string): UpdateResult<boolean> => {
   const currentQty = state.inventory[itemId] || 0;
   if (currentQty <= 0) return NO_OP(state);
 

@@ -1,5 +1,3 @@
-import type { ModifierKey } from '../systems/passiveModifiers';
-
 export interface CropConfig {
   id: string;
   name: string;
@@ -8,13 +6,6 @@ export interface CropConfig {
   seedCost: Record<string, number>;
   description: string;
   image?: string;
-}
-
-export interface PassiveEffect {
-  modifier: ModifierKey;
-  adjustment: number;
-  operator: 'add' | 'mul';
-  condition?: 'rescued' | 'assigned';
 }
 
 export interface UpgradeLevel {

@@ -3,7 +3,6 @@ import { AUTO_RECIPES } from '../data/autoRecipes';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { getAdjustment } from '../systems/passiveModifiers';
 
 // 纯函数：计算离线或Tick生长时间扣减
 export function calculateOfflineProgress(
@@ -43,16 +42,13 @@ export function calculateDetailedOfflineProgress(
 
   // 2. 发电机与回收站自动产出
   let energyGained = 0;
-  const maxEnergyAdjustment = getAdjustment(state, 'max_energy');
-  const currentMaxEnergy = (state.player.maxEnergy || 100) + maxEnergyAdjustment;
+  const currentMaxEnergy = state.player.maxEnergy || 100;
 
   let finalAccumulatedEnergy = state.shelter.accumulatedEnergy || 0;
   if (state.shelter.generatorLevel > 0) {
-    // 由于发电机没有独立岗位，此处理论上借用“魔导冶炼炉”中派驻的幸存者（需为工程师）作为魔力发电机调校员提供 50% 额外发电效率
-    const speedBonus = 1 + (state.survivors[state.shelter.facilities.smelter?.assignedSurvivorId || '']?.role === 'engineer' ? 0.5 : 0);
     const genConfig = SHELTER_UPGRADES.generator.levels.find(l => l.level === state.shelter.generatorLevel);
     const generatorRate = genConfig ? genConfig.effectValue : 0;
-    const totalOfflineEnergy = actualSeconds * generatorRate * speedBonus;
+    const totalOfflineEnergy = actualSeconds * generatorRate;
     energyGained = Math.floor(totalOfflineEnergy);
 
     // 合并离线与下线前的魔能累加器，避免极微小的精度损失
@@ -99,8 +95,7 @@ export function calculateDetailedOfflineProgress(
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
       const explorer = state.survivors[state.shelter.assignedExplorerId];
-      const speedBonus = 1 + (explorer?.role === 'scout' ? explorer.bonus : 0);
-      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval / speedBonus));
+      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval));
       const scavengeTicks = Math.floor(actualSeconds / actualInterval);
 
       if (scavengeTicks > 0) {
@@ -138,8 +133,8 @@ export function calculateDetailedOfflineProgress(
     const recipe = AUTO_RECIPES[fac.activeRecipeId];
     if (!recipe) return;
 
-    const operator = state.survivors[fac.assignedSurvivorId || ''];
-    const speedBonus = 1 + (operator?.role === 'engineer' ? operator.bonus : 0) + (fac.level - 1) * 0.1;
+    // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
+    const speedBonus = 1 + fac.level * 0.1;
     const actualDuration = Math.max(1, Math.floor(recipe.duration / speedBonus));
 
     let facilityGained = 0;
@@ -225,9 +220,6 @@ export function calculateDetailedOfflineProgress(
     if (!config) return slot;
 
     let speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
-    // 幸存者被动：指派在温室岗位时生长速度加成
-    const growthAdj = getAdjustment(state, 'growth_speed', state.shelter.assignedWatererId ?? undefined);
-    speedMultiplier *= (1 + growthAdj);
     const timeReduced = actualSeconds * speedMultiplier;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));

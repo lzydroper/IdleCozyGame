@@ -7,8 +7,8 @@ import { NO_OP } from './types';
 
 type UpgradeStatType = 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler';
 
-// 指派/取消幸存者岗位（浇水、探索、设施）
-export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jobId: string | null): UpdateResult<boolean> => {
+// 指派/取消幸存者岗位（自动浇水、挂机探索）——产线设施纯自动、不再派驻人员
+export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jobId: 'waterer' | 'explorer' | null): UpdateResult<boolean> => {
   if (!survivorId || survivorId.trim() === '') return NO_OP(state);
   const survivor = state.survivors[survivorId];
   if (!survivor) return NO_OP(state);
@@ -22,11 +22,6 @@ export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jo
   if (!jobId) {
     if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
     if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
-    Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
-      if (fac.assignedSurvivorId === survivorId) {
-        updatedShelter.facilities[facId] = { ...fac, assignedSurvivorId: null };
-      }
-    });
     if (updatedSurvivors[survivorId]) {
       updatedSurvivors[survivorId] = {
         ...updatedSurvivors[survivorId],
@@ -45,19 +40,12 @@ export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jo
     prevOccupantId = updatedShelter.assignedWatererId;
   } else if (jobId === 'explorer') {
     prevOccupantId = updatedShelter.assignedExplorerId;
-  } else if (updatedShelter.facilities[jobId]) {
-    prevOccupantId = updatedShelter.facilities[jobId].assignedSurvivorId;
   } else {
     return NO_OP(state);
   }
 
   if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
   if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
-  Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
-    if (fac.assignedSurvivorId === survivorId) {
-      updatedShelter.facilities[facId] = { ...fac, assignedSurvivorId: null };
-    }
-  });
 
   if (jobId === 'waterer') {
     updatedShelter.assignedWatererId = survivorId;
@@ -68,11 +56,6 @@ export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jo
       ...updatedShelter.expedition,
       startTime: updatedShelter.expedition.startTime || now,
       lastScavengeTime: updatedShelter.expedition.lastScavengeTime || now
-    };
-  } else {
-    updatedShelter.facilities[jobId] = {
-      ...updatedShelter.facilities[jobId],
-      assignedSurvivorId: survivorId
     };
   }
 
@@ -229,11 +212,6 @@ export const startExpeditionUpdate = (state: GameState, survivorId: string, loca
 
   if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
   if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
-  Object.entries(updatedShelter.facilities).forEach(([facId, fac]) => {
-    if (fac.assignedSurvivorId === survivorId) {
-      updatedShelter.facilities[facId] = { ...fac, assignedSurvivorId: null };
-    }
-  });
 
   const prevOccupantId = updatedShelter.assignedExplorerId;
   if (prevOccupantId && updatedSurvivors[prevOccupantId]) {

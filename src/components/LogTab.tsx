@@ -219,12 +219,6 @@ const LogTab: React.FC = () => {
                     </div>
                     <p className={`text-[10px] leading-relaxed ${isUnknown ? 'text-zinc-600 italic font-medium' : 'text-zinc-500'}`}>{displayBackstory}</p>
 
-                    {surv.status === 'rescued' && (
-                      <div className="text-[10px] text-purple-400 font-extrabold bg-purple-950/20 border border-purple-900/30 px-2.5 py-1 rounded-xl">
-                        ⚙️ 同伴加成: {surv.bonusDescription}
-                      </div>
-                    )}
-
                     {surv.status === 'locked' && (
                       <p className="text-[10px] text-amber-500 font-bold">
                         💡 前往「地表探索」页，即可选择开启前往该地点的救援行动！
