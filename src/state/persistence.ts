@@ -107,6 +107,14 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   heroes: {
     ...initialState.heroes,
     ...(parsed.heroes || {})
+  },
+  soulShards: {
+    ...(initialState.soulShards || {}),
+    ...(parsed.soulShards || {})
+  },
+  summon: {
+    ...(initialState.summon || { pityCount: 0 }),
+    ...(parsed.summon || {})
   }
 });
 

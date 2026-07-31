@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import {
   HEROES_CONFIG,
@@ -6,13 +6,85 @@ import {
   HERO_FACTION_LABELS,
   HERO_CLASS_COLORS
 } from '../data/heroes';
+import { SUMMON_CONFIG } from '../data/summonConfig';
+import type { SummonOutcome } from '../state/summon';
 
 const HeroTab: React.FC = () => {
-  const { state } = useGame();
+  const { state, summonHero } = useGame();
   const heroIds = Object.keys(state.heroes);
+  const [lastSummon, setLastSummon] = useState<SummonOutcome | null>(null);
+
+  const handleSummon = () => {
+    const outcome = summonHero();
+    setLastSummon(outcome);
+  };
+
+  const soulShardEntries = Object.entries(state.soulShards || {}).filter(([, n]) => n > 0);
+  const canSummon = (state.soulEchoes || 0) >= SUMMON_CONFIG.costPerSummon;
 
   return (
     <div className="flex flex-col gap-3">
+      {/* 英雄召唤 */}
+      <div className="bg-gradient-to-b from-purple-950/60 to-zinc-900/60 border border-purple-500/25 rounded-2xl p-3 flex flex-col gap-2">
+        <header className="flex items-center justify-between">
+          <h2 className="text-sm font-black text-purple-300">🔮 英雄召唤</h2>
+          <span className="text-[10px] text-purple-300 font-bold">灵魂残响 ×{state.soulEchoes || 0}</span>
+        </header>
+
+        <button
+          onClick={handleSummon}
+          disabled={!canSummon}
+          className={`w-full py-2.5 rounded-xl text-xs font-black transition-all border ${
+            canSummon
+              ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 border-purple-400/30 text-white shadow-lg shadow-purple-950/30 cursor-pointer active:scale-98'
+              : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+          }`}
+        >
+          召唤一次（{SUMMON_CONFIG.costPerSummon} 灵魂残响）
+        </button>
+
+        <div className="text-[9px] text-zinc-500 font-bold flex items-center justify-between">
+          <span>软保底进度：连续 {state.summon?.pityCount ?? 0} 抽未出英雄</span>
+          <span>{state.summon?.pityCount ?? 0}/{SUMMON_CONFIG.guaranteedAt} 必出</span>
+        </div>
+
+        {lastSummon && (
+          <div className={`text-[10px] font-bold rounded-xl px-2.5 py-2 border ${
+            lastSummon.heroId
+              ? 'bg-purple-950/40 border-purple-500/30 text-purple-200'
+              : 'bg-zinc-900/60 border-zinc-800 text-zinc-400'
+          }`}>
+            {lastSummon.heroId ? (
+              <>
+                ✨ 召唤出英雄【{HEROES_CONFIG[lastSummon.heroId]?.name || lastSummon.heroId}】！
+                {!lastSummon.isNew && `（重复，转化为灵魂碎片 ×${lastSummon.shardsGained}）`}
+              </>
+            ) : lastSummon.shardsGained > 0 ? (
+              <>💤 共鸣游荡，获得共鸣碎片 ×{lastSummon.shardsGained}</>
+            ) : (
+              <>灵魂残响不足，无法召唤。</>
+            )}
+          </div>
+        )}
+
+        {/* 碎片库存 */}
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {(state.resonanceShards || 0) > 0 && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-purple-500/40 bg-purple-950/40 text-purple-300">
+              ✨ 共鸣碎片 ×{state.resonanceShards}
+            </span>
+          )}
+          {soulShardEntries.map(([heroId, n]) => (
+            <span key={heroId} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300">
+              {HEROES_CONFIG[heroId]?.emoji} {HEROES_CONFIG[heroId]?.name}碎片 ×{n}
+            </span>
+          ))}
+          {soulShardEntries.length === 0 && (state.resonanceShards || 0) === 0 && (
+            <span className="text-[8px] text-zinc-600">尚无碎片（重复英雄或未出英雄时获得）</span>
+          )}
+        </div>
+      </div>
+
       <header className="flex items-center justify-between px-1">
         <h2 className="text-sm font-black text-zinc-100">⚔️ 英雄编队</h2>
         <span className="text-[9px] text-zinc-500 font-bold">

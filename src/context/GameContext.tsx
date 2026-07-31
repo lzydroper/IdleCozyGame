@@ -25,6 +25,7 @@ import {
   stopExpeditionUpdate
 } from '../state/shelter';
 import { applyTick } from '../state/tick';
+import { summonUpdate, type SummonOutcome } from '../state/summon';
 
 interface GameContextType {
   state: GameState;
@@ -56,6 +57,7 @@ interface GameContextType {
   upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler') => boolean;
   startExpedition: (survivorId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
+  summonHero: () => SummonOutcome;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -459,6 +461,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
+  const summonHero = (): SummonOutcome => {
+    // 基于 stateRef 同步计算（绕开 setState 异步/批量更新下返回值不可靠的问题）
+    const r = summonUpdate(stateRef.current);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   const resetGame = () => {
     const now = Date.now();
     const freshState = createFreshState(INITIAL_STATE, now);
@@ -512,7 +523,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFacilityActive,
       upgradeShelterStat,
       startExpedition,
-      stopExpedition
+      stopExpedition,
+      summonHero
     }}>
 
       {children}

@@ -26,6 +26,10 @@ function createMockState(survivorIds: string[]): GameState {
     greenhouse: { slots: [], unlockedSlotsCount: 4 },
     survivors,
     heroes: {},
+    soulEchoes: 0,
+    resonanceShards: 0,
+    soulShards: {},
+    summon: { pityCount: 0 },
     exploration: {
       inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
       inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},

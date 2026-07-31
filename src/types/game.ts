@@ -63,6 +63,11 @@ export interface HeroState {
   wounded: boolean;         // 重伤标记：战斗失败（小队全灭）后禁止上阵
 }
 
+// 召唤进度状态（软保底计数）
+export interface SummonState {
+  pityCount: number;        // 连续未出英雄的累计次数（用于软保底）
+}
+
 export interface GameState {
   player: PlayerStats;
   inventory: Record<string, number>; // 物品ID -> 数量
@@ -72,6 +77,10 @@ export interface GameState {
   };
   survivors: Record<string, Survivor>;
   heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
+  soulEchoes: number;                  // 灵魂残响：英雄召唤货币（战斗掉落/日常/特殊途径获取）
+  resonanceShards: number;             // 共鸣碎片：通用灵魂碎片
+  soulShards: Record<string, number>;  // 灵魂碎片：英雄专属碎片（重复召唤转化，用于升星）
+  summon: SummonState;                 // 召唤进度（软保底）
   exploration: {
     // 现实探索
     inRealityExploration: boolean;

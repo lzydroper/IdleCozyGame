@@ -73,4 +73,18 @@ describe('Save compatibility', () => {
     const merged = mergeSavedState(newSave, INITIAL_STATE);
     expect(Object.keys(merged.heroes)).toEqual(['nova', 'roy']);
   });
+
+  it('merges old saves without summon economy fields (falls back to defaults)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as GameState;
+    delete (save as Partial<GameState>).soulEchoes;
+    delete (save as Partial<GameState>).resonanceShards;
+    delete (save as Partial<GameState>).soulShards;
+    delete (save as Partial<GameState>).summon;
+
+    const merged = mergeSavedState(save, INITIAL_STATE);
+    expect(merged.soulEchoes).toBe(INITIAL_STATE.soulEchoes);
+    expect(merged.resonanceShards).toBe(0);
+    expect(merged.soulShards).toEqual({});
+    expect(merged.summon).toEqual({ pityCount: 0 });
+  });
 });
