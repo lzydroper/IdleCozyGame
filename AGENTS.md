@@ -59,3 +59,13 @@
 - On Windows, if Bun fails to resolve the `git+https` spec, fallback: install manually via `npm install superpowers@git+https://github.com/obra/superpowers.git --prefix "$HOME\.config\opencode"` then change plugin to `"~/.config/opencode/node_modules/superpowers"`
 - Config changes require restarting opencode to take effect
 - To disable: remove the plugin line from `opencode.json` and restart
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs for this repo live as markdown files under `.scratch/<feature-slug>/` (local-markdown tracker). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
