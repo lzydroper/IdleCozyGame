@@ -1,4 +1,5 @@
-import type { GameState, PlayerStats } from '../types/game';
+import type { GameState, HeroState, PlayerStats } from '../types/game';
+import { HEROES_CONFIG, STARTER_HERO_ID } from './heroes';
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {
   hp: 100,
@@ -10,6 +11,25 @@ export const INITIAL_PLAYER_STATS: PlayerStats = {
   sanity: 100,
   maxSanity: 100,
   days: 1
+};
+
+// 依据配置创建 1 级初始英雄状态
+export const createInitialHero = (configId: string): HeroState => {
+  const config = HEROES_CONFIG[configId];
+  if (!config) throw new Error(`Unknown hero config: ${configId}`);
+  return {
+    level: 1,
+    exp: 0,
+    hp: config.baseHp,
+    maxHp: config.baseHp,
+    star: 1,
+    wounded: false
+  };
+};
+
+// 开局固定赠送的初始英雄（诺娃，第一位同伴）
+export const INITIAL_HEROES: Record<string, HeroState> = {
+  [STARTER_HERO_ID]: createInitialHero(STARTER_HERO_ID)
 };
 
 export const INITIAL_STATE: GameState = {
@@ -31,6 +51,7 @@ export const INITIAL_STATE: GameState = {
     unlockedSlotsCount: 4
   },
   survivors: {},
+  heroes: INITIAL_HEROES,
   exploration: {
     inRealityExploration: false,
     realitySteps: 0,

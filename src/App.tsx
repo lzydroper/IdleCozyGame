@@ -5,6 +5,7 @@ import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/WorkshopTab';
 import LogTab from './components/LogTab';
 import ShelterTab from './components/ShelterTab';
+import HeroTab from './components/HeroTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import { useAuth } from './hooks/useAuth';
@@ -25,7 +26,8 @@ import {
   UserPlus,
   Trash2,
   Lock,
-  Cpu
+  Cpu,
+  Users
 } from 'lucide-react';
 import shelterBg from './assets/shelter_bg.jpg';
 
@@ -58,7 +60,7 @@ const App: React.FC = () => {
   // 记录已经展示过云端摘要的 userId，避免重复请求
   const [cloudSummaryFetchedForUser, setCloudSummaryFetchedForUser] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter'>('wilderness');
+  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter' | 'heroes'>('wilderness');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [newUsername, setNewUsername] = useState('');
 
@@ -200,7 +202,7 @@ const App: React.FC = () => {
     return { username: '未命名生存者', days: 1, hp: 100 };
   };
 
-  const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter') => {
+  const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter' | 'heroes') => {
     if (isExploring && activeTab !== tab) {
       showToast("正在废土地表或梦境探险中！请撤退或完成后再返回避难所。", "warning");
       return;
@@ -811,14 +813,18 @@ const App: React.FC = () => {
         <div className={activeTab === 'shelter' ? 'block animate-tab-enter' : 'hidden'}>
           <ShelterTab />
         </div>
+        <div className={activeTab === 'heroes' ? 'block animate-tab-enter' : 'hidden'}>
+          <HeroTab />
+        </div>
       </main>
 
       {/* 底部导航栏 */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-5 py-2 z-40">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-6 py-2 z-40">
         {[
           { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' },
           { tab: 'workshop', label: '工坊', icon: Hammer, color: 'text-amber-500' },
           { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
+          { tab: 'heroes', label: '英雄', icon: Users, color: 'text-rose-400' },
           { tab: 'shelter', label: '后勤', icon: Cpu, color: 'text-cyan-300' },
           { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' }
         ].map(({ tab, label, icon: Icon, color }) => {

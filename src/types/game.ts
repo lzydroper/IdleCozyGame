@@ -45,6 +45,24 @@ export interface Survivor {
   assignedJobId?: string | null;
 }
 
+// === 英雄（Hero）系统：Melvor 式改造新增 ===
+
+// 英雄职阶：守护者（坦克）/ 进攻者（输出）/ 协奏者（辅助）
+export type HeroClass = 'guardian' | 'attacker' | 'conductor';
+
+// 英雄阵营：奥术 / 机械 / 梦魇 / 英灵 / 星界 / 魂印
+export type HeroFaction = 'arcane' | 'mechanical' | 'nightmare' | 'spirit' | 'astral' | 'soulseal';
+
+// 英雄运行时状态（Record 的 key = 英雄配置 id，英雄为唯一实例）
+export interface HeroState {
+  level: number;
+  exp: number;
+  hp: number;
+  maxHp: number;
+  star: number;
+  wounded: boolean;         // 重伤标记：战斗失败（小队全灭）后禁止上阵
+}
+
 export interface GameState {
   player: PlayerStats;
   inventory: Record<string, number>; // 物品ID -> 数量
@@ -53,6 +71,7 @@ export interface GameState {
     unlockedSlotsCount: number;
   };
   survivors: Record<string, Survivor>;
+  heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
   exploration: {
     // 现实探索
     inRealityExploration: boolean;

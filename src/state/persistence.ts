@@ -103,6 +103,10 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
       ...initialState.exploration.survivorResonance,
       ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
     }
+  },
+  heroes: {
+    ...initialState.heroes,
+    ...(parsed.heroes || {})
   }
 });
 

@@ -162,6 +162,7 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
         inventory: { scrap_metal: 5 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
         survivors: {},
+        heroes: {},
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
@@ -203,6 +204,7 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
         inventory: { scrap_metal: 10 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
         survivors: {},
+        heroes: {},
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
@@ -256,6 +258,7 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
         inventory: { scrap_metal: 2 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
         survivors: {},
+        heroes: {},
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
@@ -316,6 +319,7 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
           unlockedSlotsCount: 4
         },
         survivors: {},
+        heroes: {},
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
