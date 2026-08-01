@@ -15,6 +15,7 @@ import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';
 import HeroEquipmentPanel from './HeroEquipmentPanel';
 import HeroTalentPanel from './HeroTalentPanel';
+import PartySlotModal from './PartySlotModal';
 import type { SummonOutcome } from '../state/summon';
 
 const HeroTab: React.FC = () => {
@@ -22,6 +23,9 @@ const HeroTab: React.FC = () => {
   const { showToast } = useToast();
   const heroIds = Object.keys(state.heroes);
   const [lastSummon, setLastSummon] = useState<SummonOutcome | null>(null);
+
+  // 3 人小队上阵 Modal 打开的目标槽位索引 (0, 1, 2)
+  const [modalSlotIndex, setModalSlotIndex] = useState<number | null>(null);
 
   const party = state.party || [];
   const partySize = COMBAT_CONFIG.partySize;
@@ -41,6 +45,11 @@ const HeroTab: React.FC = () => {
       const ok = setParty([...party, id]);
       if (!ok) showToast('上阵失败：队伍已满或英雄状态异常。', 'warning');
     }
+  };
+
+  const handleConfirmPartyModal = (newParty: string[]) => {
+    setParty(newParty);
+    showToast('小队上阵阵容调整已保存！', 'success');
   };
 
   const handleHeal = (id: string) => {
@@ -66,7 +75,6 @@ const HeroTab: React.FC = () => {
   const handleAwaken = (id: string) => {
     const result = awakenHero(id);
     if (result === true) {
-      // 注意：state 为渲染闭包快照，觉醒后此处仍为旧值 → 直接从配置取觉醒名
       const awakenName = AWAKEN_CONFIG[id]?.awakenedName || `${HEROES_CONFIG[id]?.name || id}（觉醒）`;
       const skill = AWAKEN_CONFIG[id]?.skill;
       showToast(`🌟 觉醒成功！【${awakenName}】解锁专属技能【${skill?.name || ''}】！`, 'success');
@@ -134,7 +142,7 @@ const HeroTab: React.FC = () => {
           )}
           {soulShardEntries.map(([heroId, n]) => (
             <span key={heroId} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300">
-              {HEROES_CONFIG[heroId]?.emoji} {HEROES_CONFIG[heroId]?.name}碎片 ×{n}
+              {HEROES_CONFIG[heroId]?.name}碎片 ×{n}
             </span>
           ))}
           {soulShardEntries.length === 0 && (state.resonanceShards || 0) === 0 && (
@@ -150,7 +158,7 @@ const HeroTab: React.FC = () => {
         </span>
       </header>
 
-      {/* 三人小队槽位 */}
+      {/* 三人小队槽位 (点击可打开上阵选择小窗) */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-2">
         <div className="flex gap-2">
           {Array.from({ length: partySize }).map((_, i) => {
@@ -160,15 +168,16 @@ const HeroTab: React.FC = () => {
             return (
               <div
                 key={i}
-                className={`flex-1 rounded-xl border flex flex-col items-center justify-center gap-0.5 py-2 ${
+                onClick={() => setModalSlotIndex(i)}
+                className={`flex-1 rounded-xl border flex flex-col items-center justify-center gap-0.5 py-2.5 cursor-pointer transition-all hover:scale-102 ${
                   config
                     ? hero?.wounded
                       ? 'bg-red-950/40 border-red-500/40'
-                      : 'bg-zinc-950/80 border-purple-500/30'
-                    : 'bg-zinc-950/40 border-zinc-800 border-dashed'
+                      : 'bg-zinc-950/80 border-amber-500/40 shadow-sm shadow-amber-950/20'
+                    : 'bg-zinc-950/40 border-zinc-800 border-dashed hover:border-zinc-700'
                 }`}
               >
-                <span className="text-xl">{config?.emoji || '＋'}</span>
+                <span className="text-sm font-black text-amber-300">{config?.name ? config.name[0] : '＋'}</span>
                 <span className="text-[8px] font-bold text-zinc-400">
                   {hero?.wounded ? '重伤' : (config?.name || `槽位 ${i + 1}`)}
                 </span>
@@ -177,7 +186,7 @@ const HeroTab: React.FC = () => {
           })}
         </div>
         <p className="text-[8px] text-zinc-600 font-bold">
-          {party.length < 1 ? '请先在下方选择英雄上阵，再前往荒野页签开始战斗。' : `小队 ${party.length}/${partySize} 人，按上阵顺序轮询行动（英雄页与战斗区可随时调整）。`}
+          {party.length < 1 ? '点击上方槽位选择英雄上阵。' : `点击上阵槽位可跳出小窗调整人员（小队 ${party.length}/${partySize} 人）。`}
         </p>
 
         {/* 羁绊状态（ticket 09）：队伍满足组合/阵营条件即触发，战斗数值生效 */}
@@ -204,7 +213,6 @@ const HeroTab: React.FC = () => {
 
       {heroIds.length === 0 ? (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 text-center">
-          <div className="text-2xl mb-2">🫥</div>
           <p className="text-[11px] text-zinc-500 leading-relaxed">
             暂无英雄。开局赠送的第一位英雄诺娃将在这里集结，
             后续可通过英雄召唤与梦境救援获得更多同伴。
@@ -227,8 +235,8 @@ const HeroTab: React.FC = () => {
               className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-2"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-center text-2xl shrink-0">
-                  {config.emoji}
+                <div className="w-12 h-12 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-center text-lg font-black text-amber-300 shrink-0">
+                  {config.name ? config.name[0] : '英'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -242,6 +250,11 @@ const HeroTab: React.FC = () => {
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-purple-500/40 bg-purple-950/40 text-purple-300">
                       {factionLabel}
                     </span>
+                    {hero.logisticsFacilityId && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-sky-500/40 bg-sky-950/40 text-sky-300">
+                        后勤中
+                      </span>
+                    )}
                     {hero.wounded && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-red-500/40 bg-red-950/40 text-red-400 animate-pulse">
                         重伤
@@ -299,7 +312,7 @@ const HeroTab: React.FC = () => {
                           ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-950/60'
                           : 'border-zinc-800 bg-zinc-900 text-zinc-600'
                       }`}
-                      title="消耗该英雄灵魂碎片或通用共鸣碎片提升星级（每星提供攻击/防御/生命百分比加成）"
+                      title="消耗该英雄灵魂碎片或通用共鸣碎片提升星级（每星提供属性百分比加成）"
                     >
                       {hero.star >= STAR_MAX ? '已满星' : `⭐ 升星（碎片 ×${starUpShardCost(hero.star)}）`}
                     </button>
@@ -348,14 +361,14 @@ const HeroTab: React.FC = () => {
               ) : (
                 <button
                   onClick={() => handleToggleParty(id)}
-                  disabled={partyFull}
+                  disabled={partyFull || Boolean(hero.logisticsFacilityId)}
                   className={`w-full py-1.5 rounded-lg text-[10px] font-black transition-all border ${
-                    partyFull
+                    partyFull || Boolean(hero.logisticsFacilityId)
                       ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
                       : 'border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-950/60 cursor-pointer active:scale-98'
                   }`}
                 >
-                  ⬆ 上阵（{party.length}/{partySize}）
+                  {hero.logisticsFacilityId ? '后勤中（无法上阵）' : `⬆ 上阵（${party.length}/${partySize}）`}
                 </button>
               )}
 
@@ -363,6 +376,18 @@ const HeroTab: React.FC = () => {
             </div>
           );
         })
+      )}
+
+      {/* 3 人小队上阵 Modal */}
+      {modalSlotIndex !== null && (
+        <PartySlotModal
+          isOpen={modalSlotIndex !== null}
+          targetSlotIndex={modalSlotIndex}
+          currentParty={party}
+          heroes={state.heroes}
+          onConfirm={handleConfirmPartyModal}
+          onClose={() => setModalSlotIndex(null)}
+        />
       )}
     </div>
   );

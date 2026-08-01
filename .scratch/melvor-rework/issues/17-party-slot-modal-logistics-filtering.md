@@ -5,9 +5,10 @@
 
 **Blocked by:** 16 — 废除 Survivor 并支持英雄设施后勤驻守与 Supabase SQL 留档.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `HeroTab.tsx` 恒定 3 人槽位与“获取英雄”按钮布局
-- [ ] 开发 `PartySlotModal.tsx` 组件，实现后勤/已上阵英雄灰色头像、最末端排序与点击屏蔽
-- [ ] 实现勾选/取消勾选与【确认】/【取消】保存及关闭逻辑
-- [ ] 编写上阵过滤与状态响应单元测试
+- [x] `HeroTab.tsx` 恒定 3 人槽位与“获取英雄”按钮布局
+- [x] 开发 `PartySlotModal.tsx` 组件，实现后勤/已上阵英雄灰色头像、最末端排序与点击屏蔽
+- [x] 实现勾选/取消勾选与【确认】/【取消】保存及关闭逻辑
+- [x] 编写上阵过滤与状态响应单元测试
+
