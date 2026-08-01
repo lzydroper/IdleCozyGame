@@ -26,12 +26,13 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
       onClick={onClose}
       className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
     >
+      {/* 必须复用 PartySlotModal 的固定宽高尺寸标准: h-[460px] max-h-[68vh] w-[92%] max-w-[380px] */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[75vh] p-4 flex flex-col gap-3.5 shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col gap-3 shadow-2xl overflow-hidden"
       >
         {/* 顶部 Header */}
-        <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0">
+        <header className="flex items-center justify-between pb-2.5 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-amber-400" />
             <h3 className="text-sm font-black text-zinc-100">
@@ -46,8 +47,8 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
           </button>
         </header>
 
-        {/* 多列正方形 Hero Card 列表 (类似上阵选择 Modal 布局) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[55vh] p-1">
+        {/* 内部可滑动区域: flex-1 overflow-y-auto 多列 3 槽 Hero Card 网格 */}
+        <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-2.5 p-1 align-content-start">
           {heroIds.map((id) => {
             const config = HEROES_CONFIG[id];
             const hero = heroes[id];
@@ -58,13 +59,11 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
             return (
               <div
                 key={id}
-                onClick={() => {
-                  onSelectHero(id);
-                }}
-                className="flex flex-col items-center gap-1.5 cursor-pointer group transition-transform active:scale-95"
+                onClick={() => onSelectHero(id)}
+                className="flex flex-col items-center gap-1 cursor-pointer group transition-transform active:scale-95"
               >
                 {/* 必须为正方形 1:1 头像框 */}
-                <div className="w-20 h-20 aspect-square rounded-2xl bg-zinc-950 border border-zinc-800 group-hover:border-amber-500/60 flex items-center justify-center relative overflow-hidden transition-all shadow-md">
+                <div className="w-18 h-18 aspect-square rounded-2xl bg-zinc-950 border border-zinc-800 group-hover:border-amber-500/60 flex items-center justify-center relative overflow-hidden transition-all shadow-md">
                   {config.avatar ? (
                     <img
                       src={config.avatar}
@@ -72,29 +71,29 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-3xl font-black text-amber-300">
+                    <span className="text-2xl font-black text-amber-300">
                       {firstChar}
                     </span>
                   )}
 
                   {hero.wounded && (
                     <div className="absolute inset-0 bg-red-950/75 flex items-center justify-center">
-                      <span className="text-[10px] font-black text-red-300">重伤</span>
+                      <span className="text-[9px] font-black text-red-300">重伤</span>
                     </div>
                   )}
 
                   {hero.logisticsFacilityId && !hero.wounded && (
-                    <div className="absolute top-1 left-1 bg-sky-950/90 text-sky-300 text-[8px] font-black px-1 rounded border border-sky-500/40">
+                    <div className="absolute top-1 left-1 bg-sky-950/90 text-sky-300 text-[7px] font-black px-1 rounded border border-sky-500/40">
                       后勤
                     </div>
                   )}
                 </div>
 
                 <div className="flex flex-col items-center text-center">
-                  <span className="text-xs font-black text-zinc-200 group-hover:text-amber-300 transition-colors truncate max-w-[80px]">
+                  <span className="text-[11px] font-black text-zinc-200 group-hover:text-amber-300 transition-colors truncate max-w-[70px]">
                     {config.name}
                   </span>
-                  <div className="flex items-center gap-1 text-[9px] text-amber-400 font-bold">
+                  <div className="flex items-center gap-1 text-[8px] text-amber-400 font-bold">
                     <span>Lv.{hero.level}</span>
                     <span>★{hero.star}</span>
                   </div>
