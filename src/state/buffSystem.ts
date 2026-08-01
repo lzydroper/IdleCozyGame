@@ -1,8 +1,10 @@
 /**
  * 废土魔导 Buff/Debuff 状态机与增益计算引擎 (Buff/Debuff Engine)
+ * 数据配置文件见 `src/data/statConfig.ts`。
  */
 
 import type { CalculatedEntityStats, PrimaryAttributes } from './statSystem';
+import { BUFF_LIMIT_CONFIG } from '../data/statConfig';
 
 export type ModifiableStat = 
   | 'attack' 
@@ -46,8 +48,11 @@ export function applyBuffsToStats(
     return baseCalculatedStats;
   }
 
-  // 获取意志带来的负面效果数值减免比例
-  const effectReductionRatio = Math.min(0.8, Math.max(0, baseCalculatedStats.effectReduction || 0));
+  // 获取意志带来的负面效果数值减免比例 (从 statConfig.ts 读取限制)
+  const effectReductionRatio = Math.min(
+    BUFF_LIMIT_CONFIG.MAX_DEBUFF_EFFECT_REDUCTION,
+    Math.max(BUFF_LIMIT_CONFIG.MIN_DEBUFF_EFFECT_REDUCTION, baseCalculatedStats.effectReduction || 0)
+  );
 
   // 整理各类属性的 Flat 与 Percent 增幅
   const flatBonuses: Partial<Record<ModifiableStat, number>> = {};
@@ -82,8 +87,14 @@ export function applyBuffsToStats(
   const finalMaxHp = Math.max(1, calcBaseStat(baseCalculatedStats.maxHp, 'maxHp'));
   const finalMaxMp = Math.max(0, calcBaseStat(baseCalculatedStats.maxMp, 'maxMp'));
 
-  const finalCritRate = Math.min(1.0, Math.max(0, calcBaseStat(baseCalculatedStats.critRate, 'critRate')));
-  const finalCritDmg = Math.max(1.0, calcBaseStat(baseCalculatedStats.critDmg, 'critDmg'));
+  const finalCritRate = Math.min(
+    BUFF_LIMIT_CONFIG.MAX_CRIT_RATE,
+    Math.max(BUFF_LIMIT_CONFIG.MIN_CRIT_RATE, calcBaseStat(baseCalculatedStats.critRate, 'critRate'))
+  );
+  const finalCritDmg = Math.max(
+    BUFF_LIMIT_CONFIG.MIN_CRIT_DMG,
+    calcBaseStat(baseCalculatedStats.critDmg, 'critDmg')
+  );
 
   // 重新计算百分比减伤: DEF / (100 + DEF)
   const damageReduction = finalDefense / (100 + finalDefense);
