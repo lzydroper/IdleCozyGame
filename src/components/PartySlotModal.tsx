@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { HeroState } from '../types/game';
 import { Shield, Check, X, Lock, Wrench } from 'lucide-react';
@@ -100,36 +101,37 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
     onClose();
   };
 
-  return (
-    /* 背景全屏遮罩：阻挡底层点击，点击遮罩非窗口区域自动关闭窗口 */
+  const modalContent = (
+    /* 使用 createPortal 渲染在 document.body 最顶层
+       z-[9999] 全屏遮罩：100% 盖住顶部状态栏、底部 Tab 栏与整个视区 */
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-3 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
     >
-      {/* 矩形主容器：限制最大宽度 max-w-[360px] 适配竖屏 mobile 视域，不溢出也不被顶部遮挡 */}
+      {/* 矩形主容器：尺寸放大 h-[460px] max-h-[68vh] w-[92%] max-w-[380px]，居中展示 */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-full max-w-[360px] max-h-[55vh] p-3.5 flex flex-col shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col shadow-2xl overflow-hidden"
       >
         {/* Modal 头部 */}
-        <header className="flex items-center justify-between pb-2.5 border-b border-zinc-800 shrink-0">
+        <header className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-black text-zinc-100">
+            <Shield className="w-4.5 h-4.5 text-amber-400" />
+            <h3 className="text-base font-black text-zinc-100">
               选择槽位 {targetSlotIndex + 1} 上阵英雄
             </h3>
           </div>
           <button
             onClick={handleCancel}
-            className="p-1 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4.5 h-4.5" />
           </button>
         </header>
 
-        {/* 英雄网格内容区 (上下可滑动，文字放大) */}
+        {/* 英雄网格内容区 (上下可滑动，清晰大卡片) */}
         <div className="flex-1 overflow-y-auto py-3 pr-0.5">
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-3">
             {heroItems.map((item) => {
               const firstChar = item.name ? item.name[0] : '?';
 
@@ -162,13 +164,13 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                     {/* 选中遮罩与大号勾选图标 */}
                     {item.isSelected && (
                       <div className="absolute inset-0 bg-amber-500/30 border-2 border-amber-400 flex items-center justify-center animate-in fade-in duration-100">
-                        <div className="w-9 h-9 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg">
-                          <Check className="w-6 h-6 stroke-[3.5]" />
+                        <div className="w-10 h-10 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg">
+                          <Check className="w-6.5 h-6.5 stroke-[3.5]" />
                         </div>
                       </div>
                     )}
 
-                    {/* 禁用/锁定遮罩与状态说明（清晰大字） */}
+                    {/* 禁用/锁定遮罩与状态说明 */}
                     {item.isDisabled && (
                       <div className="absolute inset-0 bg-black/80 backdrop-blur-[1px] flex flex-col items-center justify-center p-1 text-center">
                         <Lock className="w-5 h-5 text-zinc-400 mb-1" />
@@ -185,7 +187,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                     )}
                   </div>
 
-                  {/* 底部必要信息区域 (加大字号) */}
+                  {/* 底部必要信息区域 */}
                   <div className="p-2 flex flex-col items-center justify-center gap-0.5 bg-zinc-900/90">
                     <span className="text-sm font-black text-zinc-100 truncate max-w-full">
                       {item.name}
@@ -215,7 +217,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
       {/* 确认与取消按钮组：居中放大，在矩形主容器外部下方 */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex items-center justify-center gap-4 pt-3.5 w-full max-w-[360px]"
+        className="flex items-center justify-center gap-4 pt-4 w-[92%] max-w-[380px]"
       >
         <button
           onClick={handleCancel}
@@ -232,6 +234,8 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default PartySlotModal;

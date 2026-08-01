@@ -94,7 +94,7 @@ describe('PartySlotModal Component', () => {
     const onConfirm = vi.fn();
     const onClose = vi.fn();
 
-    const { container } = render(
+    render(
       <PartySlotModal
         isOpen={true}
         targetSlotIndex={0}
@@ -105,8 +105,9 @@ describe('PartySlotModal Component', () => {
       />
     );
 
-    // Backdrop mask is the outermost div
-    const backdrop = container.firstChild as HTMLElement;
+    // createPortal 会将元素直接挂载在 document.body 下
+    const backdrop = document.querySelector('.fixed.inset-0') as HTMLElement;
+    expect(backdrop).not.toBeNull();
     fireEvent.click(backdrop);
 
     expect(onClose).toHaveBeenCalledTimes(1);
