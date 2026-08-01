@@ -103,12 +103,10 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
 
   const handleToggleEquipAll = () => {
     if (hasAnyEquip) {
-      let unequippedCount = 0;
       const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
       slots.forEach(slot => {
         if (heroEquip[slot]) {
           unequipItem(heroId, slot);
-          unequippedCount++;
         }
       });
       showToast(`已卸下【${config.name}】的全部装备！`, 'success');
@@ -281,28 +279,28 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               </button>
             </div>
 
-            {/* 中间列：放大大头像 w-22 h-22、名称、标签 + 底部【升级】 */}
-            <div className="flex flex-col items-center justify-between text-center">
-              <div className="flex flex-col items-center gap-1">
-                {/* 放大正方形大头像 (w-22 h-22) */}
-                <div className="w-22 h-22 aspect-square rounded-2xl bg-zinc-950 border-2 border-amber-500/40 flex items-center justify-center relative overflow-hidden shadow-lg shadow-amber-950/20">
+            {/* 中间列：放大大头像 w-22 h-22、名称、标签、经验条、后勤/简述 + 底部【升级】 */}
+            <div className="flex flex-col items-center justify-between text-center gap-1 min-h-0">
+              <div className="flex flex-col items-center gap-0.5 w-full">
+                {/* 正方形大头像 (w-18 h-18) */}
+                <div className="w-18 h-18 aspect-square rounded-2xl bg-zinc-950 border-2 border-amber-500/40 flex items-center justify-center relative overflow-hidden shadow-lg shadow-amber-950/20">
                   {config.avatar ? (
                     <img src={config.avatar} alt={config.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-3xl font-black text-amber-300">{firstChar}</span>
+                    <span className="text-2xl font-black text-amber-300">{firstChar}</span>
                   )}
                   {hero.awakened && (
-                    <div className="absolute top-0.5 left-0.5 bg-amber-500 text-zinc-950 text-[7.5px] font-black px-1 rounded shadow">
+                    <div className="absolute top-0.5 left-0.5 bg-amber-500 text-zinc-950 text-[7px] font-black px-1 rounded shadow">
                       觉醒
                     </div>
                   )}
                 </div>
 
                 {/* 名称与等级 */}
-                <span className="text-xs font-black text-zinc-100 truncate max-w-[96px]">
+                <span className="text-xs font-black text-zinc-100 truncate max-w-[96px] leading-tight">
                   {awakenedName}
                 </span>
-                <span className="text-[9.5px] text-amber-400 font-bold">
+                <span className="text-[9px] text-amber-400 font-bold leading-tight">
                   Lv.{hero.level} {'★'.repeat(hero.star)}
                 </span>
 
@@ -317,10 +315,58 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
               </div>
 
+              {/* 中间新增：经验进度条 & 后勤驻守/传记卡片 */}
+              <div className="w-full flex flex-col gap-1 px-0.5 my-auto">
+                {/* 经验进度条 */}
+                <div className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 flex flex-col gap-0.5 text-left shadow-inner">
+                  <div className="flex items-center justify-between text-[7.5px] font-bold text-zinc-400 px-0.5">
+                    <span className="text-amber-400/90 font-medium">经验值</span>
+                    <span className="text-amber-300 font-mono">
+                      {hero.exp}/{hero.level * COMBAT_CONFIG.expPerLevel}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-850">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (hero.exp / (hero.level * COMBAT_CONFIG.expPerLevel)) * 100))}%`
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 后勤驻守特长 / 英雄背景 */}
+                <div className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 text-left flex flex-col gap-0.5 shadow-sm">
+                  {config.dutyMeta ? (
+                    <>
+                      <div className="text-[7.5px] font-black text-amber-400/90 flex items-center gap-1">
+                        <Award className="w-2.5 h-2.5 text-amber-400" />
+                        后勤驻守特长
+                      </div>
+                      <div className="text-[7.5px] font-semibold text-zinc-300 leading-tight">
+                        {config.dutyMeta.facilitySpeedMultiplier && `⚡ 生产速度 +${Math.round(config.dutyMeta.facilitySpeedMultiplier * 100)}%`}
+                        {config.dutyMeta.facilityYieldMultiplier && `🌾 额外产出 +${Math.round(config.dutyMeta.facilityYieldMultiplier * 100)}%`}
+                        {config.dutyMeta.facilityCostReduction && `📦 配方消耗 -${Math.round(config.dutyMeta.facilityCostReduction * 100)}%`}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[7.5px] font-black text-zinc-400 flex items-center gap-1">
+                        <Award className="w-2.5 h-2.5 text-zinc-400" />
+                        英雄简述
+                      </div>
+                      <p className="text-[7.5px] text-zinc-400 leading-tight italic line-clamp-2">
+                        "{config.backstory}"
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
               {/* 中列底部按钮: 升级 */}
               <button
                 onClick={handleLevelUp}
-                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-1"
+                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-0.5"
               >
                 升级
               </button>
@@ -385,9 +431,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               </span>
             </div>
 
-            {/* 右侧：基础属性显示 (紧凑均分) */}
-            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col justify-between h-full">
-              <div className="flex items-center justify-between text-[9.5px] font-black text-amber-300 border-b border-zinc-850 pb-1 shrink-0">
+            {/* 右侧：基础属性显示 */}
+            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between text-[9.5px] font-black text-amber-300 border-b border-zinc-800/80 pb-1 px-1 shrink-0">
                 <span className="flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-amber-400" /> 基础属性
                 </span>
@@ -399,43 +445,43 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[8.5px] py-0.5">
+              <div className="grid grid-cols-2 gap-1.5 pt-1 flex-1 items-center">
                 {/* 1. 生命 */}
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="text-zinc-500 font-bold flex items-center gap-0.5">
-                    <Heart className="w-2.5 h-2.5 text-rose-400" /> 生命
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/70 text-[8.5px]">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1">
+                    <Heart className="w-3 h-3 text-rose-400" /> 生命
                   </span>
                   <span className="font-black text-rose-300">{calculatedStats.maxHp}</span>
                 </div>
 
                 {/* 2. 攻击 */}
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="text-zinc-500 font-bold flex items-center gap-0.5">
-                    <Sword className="w-2.5 h-2.5 text-amber-400" /> 攻击
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/70 text-[8.5px]">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1">
+                    <Sword className="w-3 h-3 text-amber-400" /> 攻击
                   </span>
                   <span className="font-black text-amber-300">{calculatedStats.attack}</span>
                 </div>
 
                 {/* 3. 防御 */}
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="text-zinc-500 font-bold flex items-center gap-0.5">
-                    <Shield className="w-2.5 h-2.5 text-sky-400" /> 防御
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/70 text-[8.5px]">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-sky-400" /> 防御
                   </span>
                   <span className="font-black text-sky-300">{calculatedStats.defense}</span>
                 </div>
 
                 {/* 4. 魔力 */}
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="text-zinc-500 font-bold flex items-center gap-0.5">
-                    <Wand2 className="w-2.5 h-2.5 text-cyan-400" /> 魔力
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/70 text-[8.5px]">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1">
+                    <Wand2 className="w-3 h-3 text-cyan-400" /> 魔力
                   </span>
                   <span className="font-black text-cyan-300">{calculatedStats.maxMp}</span>
                 </div>
 
                 {/* 5. 暴击 */}
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="text-zinc-500 font-bold flex items-center gap-0.5">
-                    <Sparkles className="w-2.5 h-2.5 text-purple-400" /> 暴击
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/70 text-[8.5px]">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-purple-400" /> 暴击
                   </span>
                   <span className="font-black text-purple-300">
                     {(calculatedStats.critRate * 100).toFixed(0)}%
@@ -443,9 +489,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 6. 暴伤 */}
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="text-zinc-500 font-bold flex items-center gap-0.5">
-                    <Flame className="w-2.5 h-2.5 text-amber-500" /> 暴伤
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/70 text-[8.5px]">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-500" /> 暴伤
                   </span>
                   <span className="font-black text-amber-200">
                     {(calculatedStats.critDmg * 100).toFixed(0)}%
