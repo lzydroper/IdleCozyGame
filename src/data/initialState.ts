@@ -3,8 +3,6 @@ import { HEROES_CONFIG, STARTER_HERO_ID } from './heroes';
 import { COMBAT_CONFIG } from './combatConfig';
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {
-  hp: 100,
-  maxHp: 100,
   food: 100,
   maxFood: 100,
   energy: 100,
@@ -91,7 +89,8 @@ export const INITIAL_STATE: GameState = {
       sanity_capsule: 3,
       warp_capsule: 0
     },
-    survivorResonance: {}
+    survivorResonance: {},
+    dreamLockdownUntil: null
   },
   discoveredBlueprints: [
     'filter_refill',

@@ -45,7 +45,7 @@ describe('WildernessTab Component', () => {
 
   it('should trigger special rescue event for Catherine at step 5', () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
@@ -72,7 +72,7 @@ describe('WildernessTab Component', () => {
 
   it('should trigger special rescue event for Buster at step 5', () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
@@ -99,7 +99,7 @@ describe('WildernessTab Component', () => {
 
   it('should trigger special rescue event for Nova at step 5', () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
@@ -124,9 +124,9 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/军火库：营救诺娃/i)).toBeDefined();
   });
 
-  it('should apply raw event HP penalty without survivor passives (retired)', async () => {
+  it('探索事件不再产生 HP 惩罚，战利品永不丢失（ticket 14）', async () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: { defensive_turret: 1 },
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
@@ -161,14 +161,18 @@ describe('WildernessTab Component', () => {
     });
 
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.player.hp).toBe(90); // 被动退役后无减免，HP 原样扣除 10
+    // 全局 HP 已废除：存档中不存在 hp，事件只消耗物品/资源
+    expect('hp' in savedState.player).toBe(false);
+    expect(savedState.inventory.defensive_turret).toBe(0); // 选项 A 消耗 1 台炮塔
+    expect(savedState.player.food).toBe(100);
+    expect(savedState.player.energy).toBe(100);
   });
 
   it('should gather raw scrap metal without Buster bonus (retired)', async () => {
     const spy = vi.spyOn(Math, 'random').mockReturnValue(0); // 强制选择第一个事件 ruined_truck
 
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       survivors: {
@@ -260,7 +264,7 @@ describe('WildernessTab Component', () => {
   it('resolves a combat encounter victory: exploration continues with loot and exp', () => {
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05); // 掉落命中 + 下一抽为 common 首卡
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
@@ -309,7 +313,7 @@ describe('WildernessTab Component', () => {
 
   it('resolves a combat encounter defeat: exploration ends, loot merged into inventory, party wounded', () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
@@ -352,7 +356,7 @@ describe('WildernessTab Component', () => {
   it('blocks encounter battle without stamina but allows fleeing (不卡死探索)', () => {
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05); // 撤离后下一抽强制为 common 卡，避免再抽到遭遇
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
@@ -496,7 +500,7 @@ describe('WildernessTab Component', () => {
   it('renders a draw settlement as 平局 rather than defeat (三态结算展示)', () => {
     // 水合一个平局结算（victory=false 且 partyWiped=false），当前数据下无法自然产生
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false } },
@@ -532,7 +536,7 @@ describe('WildernessTab Component', () => {
   it('renders awakened skill actions in the battle log (strike shows target, heal shows +N)', () => {
     // 水合一场含觉醒技能结算：strike 有目标名、heal 为自身治疗
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: true } },

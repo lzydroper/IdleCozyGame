@@ -7,7 +7,7 @@ import { CATEGORY_WEIGHTS } from '../data/realityEvents';
 import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ShieldAlert, ChevronRight, Swords } from 'lucide-react';
+import { Compass, ChevronRight, Swords } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
@@ -23,7 +23,6 @@ const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
   const { showToast } = useToast();
   const [logMessages, setLogMessages] = useState<string[]>([]);
-  const [deathOccurred, setDeathOccurred] = useState(false);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
 
@@ -125,7 +124,6 @@ const WildernessTab: React.FC = () => {
     const text = isRescue ? `你全副武装前往目标救援点，防护服发出嗡嗡低鸣...` : `你打开防化避难门，踏入了风沙肆虐的现实废土。`;
     setLogMessages([text]);
     addLog(text, 'event');
-    setDeathOccurred(false);
   };
 
   useEffect(() => {
@@ -220,10 +218,8 @@ const WildernessTab: React.FC = () => {
         }
       }
 
-      const isDead = newPlayer.hp <= 0;
-
-      // 如果救援成功，结束探险将临时背包合并
-      if (isRescueComplete && !isDead) {
+      // 救援成功：结束探险并将临时背包并入避难所库存（战利品永不因失败丢失，ticket 14）
+      if (isRescueComplete) {
         Object.entries(newRealityBag).forEach(([item, qty]) => {
           newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
         });
@@ -244,36 +240,28 @@ const WildernessTab: React.FC = () => {
         };
       }
 
+      // 未完成救援：探索继续（无 HP 死亡惩罚，临时背囊永不清空）
       return {
         ...prev,
         player: newPlayer,
         inventory: newInventory,
         exploration: {
           ...prev.exploration,
-          realitySteps: prev.exploration.realitySteps + (isDead ? 0 : 1),
-          realityBag: isDead ? {} : newRealityBag,
-          inRealityExploration: !isDead,
+          realitySteps: prev.exploration.realitySteps + 1,
+          realityBag: newRealityBag,
+          inRealityExploration: true,
           realityEventId: null
         }
       };
     });
 
-    const nextHp = state.player.hp + (adjustedStats?.hp || 0);
+    setLogMessages(prev => [...prev, choice.results.logText]);
+    addLog(choice.results.logText, 'event');
 
-    if (nextHp <= 0) {
-      setDeathOccurred(true);
-      const dieMsg = "🔴 警告：防化服严重破损！你重伤失去意识，避难所机械臂将你强行拖回。丢失了全部地表战利品...";
-      setLogMessages(prev => [...prev, choice.results.logText, dieMsg]);
-      addLog(dieMsg, 'combat');
-    } else {
-      setLogMessages(prev => [...prev, choice.results.logText]);
-      addLog(choice.results.logText, 'event');
-
-      if (isRescueComplete) {
-        const congr = `🎉 营救成功！同伴【${rescuedName}】已安全护送回避难所！`;
-        showToast(`成功营救同伴 ${rescuedName}！`, "success");
-        addLog(congr, 'system');
-      }
+    if (isRescueComplete) {
+      const congr = `🎉 营救成功！同伴【${rescuedName}】已安全护送回避难所！`;
+      showToast(`成功营救同伴 ${rescuedName}！`, "success");
+      addLog(congr, 'system');
     }
   };
 
@@ -321,13 +309,6 @@ const WildernessTab: React.FC = () => {
             <p className="text-xs text-zinc-400 max-w-[280px] leading-relaxed mb-1">
               地表辐射凶狠、风沙蔽日。在此搜集金属废料、异能碎块和作物种子以支撑温室和工坊的运作。
             </p>
-
-            {deathOccurred && (
-              <div className="mt-3 p-3 bg-red-950/40 border border-red-500/20 text-xs text-red-400 rounded-2xl max-w-sm">
-                <ShieldAlert className="w-5 h-5 text-red-400 mx-auto mb-1 animate-bounce" />
-                你刚刚在探索中不幸重伤晕倒。建议先更换魔能过滤罐或使用物资补给生命值。
-              </div>
-            )}
           </div>
 
           <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">请选择探索目的地:</h3>

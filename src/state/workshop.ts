@@ -74,7 +74,7 @@ export const applySupplyItemUpdate = (state: GameState, itemId: string): UpdateR
 
   const isNovaPresent = !!state.survivors.nova;
   const currentMaxEnergy = isNovaPresent ? 130 : 100;
-  const STAT_MAX: Record<string, number> = { hp: 100, food: 100, energy: currentMaxEnergy, sanity: 100 };
+  const STAT_MAX: Record<string, number> = { food: 100, energy: currentMaxEnergy, sanity: 100 };
 
   if (meta.useEffect.stats) {
     Object.entries(meta.useEffect.stats).forEach(([stat, val]) => {

@@ -1,6 +1,4 @@
 export interface PlayerStats {
-  hp: number;         // 现实生命值
-  maxHp: number;
   food: number;       // 现实饱食度
   maxFood: number;
   energy: number;     // 现实魔能 (用于过滤辐射/温室供能)
@@ -170,6 +168,7 @@ export interface GameState {
     dreamEventId?: string | null;      // 当前激活的梦境事件ID
     capsulesCharge: Record<string, number>; // 梦胶囊ID -> 剩余可用次数
     survivorResonance: Record<string, number>; // 幸存者ID -> 共鸣度
+    dreamLockdownUntil: number | null; // 梦境封锁截止时间戳（泄露防御失败触发，ticket 14）
   };
   discoveredBlueprints: string[];
   activeAlert: {

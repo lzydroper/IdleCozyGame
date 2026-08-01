@@ -64,6 +64,11 @@ import {
   type BossBattleOutcome,
   type IdleStartOutcome
 } from '../state/combat';
+import {
+  defendDreamLeakUpdate,
+  type DreamLeakDefenseMethod,
+  type DreamLeakDefenseOutcome
+} from '../state/nightmare';
 
 interface GameContextType {
   state: GameState;
@@ -86,7 +91,7 @@ interface GameContextType {
   createAccount: (username: string) => Promise<string | false>;
   deleteAccount: (id: string, deleteCloud: boolean) => Promise<void>;
   syncCloudCharacters: (userId: string) => Promise<void>;
-  fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number; hp: number }>>;
+  fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number }>>;
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
   useSupplyItem: (itemId: string) => boolean;
   assignSurvivorJob: (survivorId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
@@ -113,6 +118,7 @@ interface GameContextType {
   resolveEncounterBattle: (encounterId: string) => EncounterBattleOutcome;
   fleeEncounter: () => boolean;
   startBossBattle: (zoneId: string) => BossBattleOutcome;
+  defendDreamLeak: (method: DreamLeakDefenseMethod) => DreamLeakDefenseOutcome;
   startIdle: (zoneId: string) => IdleStartOutcome;
   stopIdle: () => boolean;
 }
@@ -283,8 +289,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               username: cloudChar.username || '未命名生存者',
               _isCloudShell: true, // 标记为云端空壳，进入游戏时提示需拉取
               player: {
-                days: cloudChar.days || 1,
-                hp: cloudChar.hp || 100
+                days: cloudChar.days || 1
               }
             };
             localStorage.setItem(`aether_garden_save_${charId}`, JSON.stringify(placeholder));
@@ -305,16 +310,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 需求 2：从云端获取角色摘要列表（仅 id, username, days, hp），不写本地
-  const fetchCloudCharacterSummaries = async (userId: string): Promise<Array<{ id: string; username: string; days: number; hp: number }>> => {
+  // 需求 2：从云端获取角色摘要列表（仅 id, username, days），不写本地
+  const fetchCloudCharacterSummaries = async (userId: string): Promise<Array<{ id: string; username: string; days: number }>> => {
     if (!supabase) return [];
     try {
       const { data, error } = await supabase
         .from('saves')
-        .select('id, username, days, hp')
+        .select('id, username, days')
         .eq('user_id', userId);
       if (error || !data) return [];
-      return data as Array<{ id: string; username: string; days: number; hp: number }>;
+      return data as Array<{ id: string; username: string; days: number }>;
     } catch {
       return [];
     }
@@ -672,6 +677,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // === 梦魇泄露防御（ticket 14）：出战小队，炮塔可选辅助输出一轮 ===
+  const defendDreamLeak = (method: DreamLeakDefenseMethod): DreamLeakDefenseOutcome => {
+    const r = defendDreamLeakUpdate(stateRef.current, method);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   // === 确认式离线挂机（ticket 08） ===
   const startIdle = (zoneId: string): IdleStartOutcome => {
     const r = startIdleUpdate(stateRef.current, zoneId);
@@ -761,6 +775,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resolveEncounterBattle,
       fleeEncounter,
       startBossBattle,
+      defendDreamLeak,
       startIdle,
       stopIdle
     }}>

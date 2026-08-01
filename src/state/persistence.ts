@@ -161,9 +161,16 @@ const normalizeFacilities = (
 };
 
 // 将旧存档与初始状态深度合并，保证新字段有默认值
-export const mergeSavedState = (parsed: GameState, initialState: GameState): GameState => ({
+export const mergeSavedState = (parsed: GameState, initialState: GameState): GameState => {
+  // 玩家属性（ticket 14）：全局 HP 体系废除，旧存档残留的 hp/maxHp 一并剥离
+  const mergedPlayer = { ...initialState.player, ...(parsed.player || {}) };
+  delete (mergedPlayer as Record<string, unknown>).hp;
+  delete (mergedPlayer as Record<string, unknown>).maxHp;
+
+  return {
   ...initialState,
   ...parsed,
+  player: mergedPlayer,
   greenhouse: {
     ...initialState.greenhouse,
     ...(parsed.greenhouse || {})
@@ -179,6 +186,11 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   exploration: {
     ...initialState.exploration,
     ...(parsed.exploration || {}),
+    // 梦境封锁（ticket 14）：旧存档缺失时回退未封锁
+    dreamLockdownUntil:
+      parsed.exploration && typeof parsed.exploration.dreamLockdownUntil === 'number'
+        ? parsed.exploration.dreamLockdownUntil
+        : null,
     capsulesCharge: {
       ...initialState.exploration.capsulesCharge,
       ...((parsed.exploration && parsed.exploration.capsulesCharge) || {})
@@ -230,7 +242,8 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
       ...((parsed.combat && parsed.combat.idle) || {})
     }
   }
-});
+  };
+};
 
 // 加载存档（含离线结算）；无存档/损坏时返回全新状态
 export const loadOrCreateState = (

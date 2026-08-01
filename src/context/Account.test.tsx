@@ -36,11 +36,11 @@ const TestComponent = () => {
   return (
     <div>
       <div data-testid="current-user">{getUsername(currentUser)}</div>
-      <div data-testid="hp">{state.player.hp}</div>
+      <div data-testid="food">{state.player.food}</div>
       <div data-testid="last-tick">{state.lastTick}</div>
       <button data-testid="damage-btn" onClick={() => setState(prev => ({
         ...prev,
-        player: { ...prev.player, hp: prev.player.hp - 20 }
+        player: { ...prev.player, food: prev.player.food - 20 }
       }))}>Damage</button>
       <button data-testid="create-alice" onClick={async () => { await createAccount('Alice'); }}>Create Alice</button>
       <button data-testid="create-bob" onClick={async () => { await createAccount('Bob'); }}>Create Bob</button>
@@ -97,7 +97,7 @@ describe('Player Account and Multi-Character Save Management System', () => {
     if (aliceSave) {
       const parsed = JSON.parse(aliceSave);
       expect(parsed.username).toBe('Alice');
-      expect(parsed.player.hp).toBe(100);
+      expect(parsed.player.food).toBe(100);
     }
   });
 
@@ -108,7 +108,7 @@ describe('Player Account and Multi-Character Save Management System', () => {
       </GameProvider>
     );
 
-    // 1. 创建 Alice 并扣除 20 点生命值
+    // 1. 创建 Alice 并扣除 20 点饱食度
     await act(async () => {
       screen.getByTestId('create-alice').click();
     });
@@ -116,12 +116,12 @@ describe('Player Account and Multi-Character Save Management System', () => {
     act(() => {
       screen.getByTestId('damage-btn').click();
     });
-    expect(screen.getByTestId('hp').textContent).toBe('80');
+    expect(screen.getByTestId('food').textContent).toBe('80');
 
-    // 检查 Alice 存档中生命值确实被更新为 80
+    // 检查 Alice 存档中饱食度确实被更新为 80
     const aliceSavedId = localStorage.getItem('aether_garden_save_current_user');
     const aliceSave = JSON.parse(localStorage.getItem(`aether_garden_save_${aliceSavedId}`) || '{}');
-    expect(aliceSave.player.hp).toBe(80);
+    expect(aliceSave.player.food).toBe(80);
 
     // 2. 创建 Bob 并自动切换到 Bob
     await act(async () => {
@@ -130,32 +130,32 @@ describe('Player Account and Multi-Character Save Management System', () => {
 
     // 切换后当前玩家应该为 "Bob"
     expect(screen.getByTestId('current-user').textContent).toBe('Bob');
-    // Bob 生命值应该为初始的 100，不影响 Alice 的数据
-    expect(screen.getByTestId('hp').textContent).toBe('100');
+    // Bob 饱食度应该为初始的 100，不影响 Alice 的数据
+    expect(screen.getByTestId('food').textContent).toBe('100');
 
-    // 3. 在 Bob 账号下也扣除 20 点生命值，再扣 20 让生命值到 60
+    // 3. 在 Bob 账号下也扣除 20 点饱食度，再扣 20 让饱食度到 60
     act(() => {
       screen.getByTestId('damage-btn').click();
     });
     act(() => {
       screen.getByTestId('damage-btn').click();
     });
-    expect(screen.getByTestId('hp').textContent).toBe('60');
+    expect(screen.getByTestId('food').textContent).toBe('60');
 
     // 4. 切换回 Alice 账号
     act(() => {
       screen.getByTestId('switch-alice').click();
     });
     expect(screen.getByTestId('current-user').textContent).toBe('Alice');
-    // Alice 生命值应当仍是之前的 80
-    expect(screen.getByTestId('hp').textContent).toBe('80');
+    // Alice 饱食度应当仍是之前的 80
+    expect(screen.getByTestId('food').textContent).toBe('80');
 
     // 5. 再次切换到 Bob
     act(() => {
       screen.getByTestId('switch-bob').click();
     });
-    // Bob 生命值仍然应当是 60
-    expect(screen.getByTestId('hp').textContent).toBe('60');
+    // Bob 饱食度仍然应当是 60
+    expect(screen.getByTestId('food').textContent).toBe('60');
   });
 
   it('should reset lastTick to current time when switching/creating accounts to prevent wrong offline progress', async () => {

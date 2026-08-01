@@ -17,13 +17,11 @@ const getRecipeIconId = (recipe: any) => {
 };
 
 const WorkshopTab: React.FC = () => {
-  const { state, setState, craftItem, useSupplyItem } = useGame();
+  const { state, craftItem, useSupplyItem, defendDreamLeak } = useGame();
   const { showToast } = useToast();
 
   const inventory = state.inventory;
-  const player = state.player;
   const activeAlert = state.activeAlert;
-  const overloadEnergyCost = 20;
 
   const supplyConfigs = [
     {
@@ -39,12 +37,7 @@ const WorkshopTab: React.FC = () => {
     {
       id: 'hot_stew' as const,
       colorClass: 'text-rose-500 border-rose-500/40 bg-rose-600/20 hover:bg-rose-600/40 text-rose-400',
-      effectText: '食用 (饱食+60, 生命+20)',
-    },
-    {
-      id: 'nanite_injector' as const,
-      colorClass: 'text-emerald-500 border-emerald-500/40 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400',
-      effectText: '注射 (生命+60, 饱食+10)',
+      effectText: '食用 (饱食+60)',
     },
     {
       id: 'purifying_serum' as const,
@@ -54,7 +47,7 @@ const WorkshopTab: React.FC = () => {
   ];
 
   // 使用背包物品补给
-  const handleUseItem = (itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'nanite_injector' | 'purifying_serum') => {
+  const handleUseItem = (itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum') => {
     const success = useSupplyItem(itemId);
     if (!success) {
       showToast("储备不足！请先在工坊合成制造该物品。", "error");
@@ -64,8 +57,7 @@ const WorkshopTab: React.FC = () => {
     const toastMsgMap: Record<typeof itemId, string> = {
       ration: "进食成功 (饱食度 +30)",
       energy_refill: "更换净化罐成功 (魔能 +30)",
-      hot_stew: "食用热烩成功 (饱食度 +60, 生命值 +20)",
-      nanite_injector: "注射纳米针成功 (生命值 +60, 饱食度 +10)",
+      hot_stew: "食用热烩成功 (饱食度 +60)",
       purifying_serum: "使用净化血清成功 (污染度 -30, 理智值 +30)"
     };
 
@@ -81,79 +73,28 @@ const WorkshopTab: React.FC = () => {
     }
   };
 
-  // 抵御梦魇入侵
-  const handleDefendNightmare = (method: 'turret' | 'overload') => {
+  // 抵御梦魇入侵（ticket 14）：出战当前小队防御，炮塔可选开战前辅助输出一轮
+  const handleDefendNightmare = (method: 'turret' | 'direct') => {
     if (activeAlert.type !== 'dream_leak') return;
 
-    if (method === 'turret') {
-      const turretQty = inventory.defensive_turret || 0;
-      if (turretQty <= 0) {
-        showToast("没有制造好的防御电磁塔！", "error");
-        return;
-      }
+    const outcome = defendDreamLeak(method);
+    if (outcome.failure) {
+      const failureMsg: Record<string, string> = {
+        no_alert: '当前没有梦魇入侵。',
+        no_party: '请先在英雄面板上阵小队，才能出战防御！',
+        wounded: '小队全员重伤，请先用纳米修复剂治愈英雄！',
+        no_turret: '没有可部署的防御炮塔！'
+      };
+      showToast(failureMsg[outcome.failure], "error");
+      return;
+    }
 
-      setState(prev => {
-        const newInventory = { ...prev.inventory };
-        newInventory.defensive_turret = turretQty - 1;
-
-        const newHp = Math.max(0, prev.activeAlert.hp - NIGHTMARE_CONFIG.turretDamage);
-        const isDead = newHp <= 0;
-
-        if (isDead) {
-          newInventory.void_core = (newInventory.void_core || 0) + NIGHTMARE_CONFIG.turretReward.void_core;
-        }
-
-        return {
-          ...prev,
-          inventory: newInventory,
-          activeAlert: {
-            type: isDead ? null : prev.activeAlert.type,
-            hp: newHp
-          },
-          exploration: {
-            ...prev.exploration,
-            dreamPollution: isDead ? 0 : prev.exploration.dreamPollution // 击杀后污染归零
-          }
-        };
-      });
-      showToast("电磁塔已启动，重创梦魇 (HP -35)", "success");
-    } else if (method === 'overload') {
-      const hasNova = !!state.hasNova || !!state.survivors.nova;
-      const energyCost = overloadEnergyCost;
-      const damage = hasNova ? 20 : 15;
-
-      if (player.energy < energyCost) {
-        showToast(`避难所魔能低于 ${energyCost}，核心无法超频过载！`, "error");
-        return;
-      }
-
-      setState(prev => {
-        const newPlayer = { ...prev.player };
-        newPlayer.energy = Math.max(0, newPlayer.energy - energyCost);
-
-        const newHp = Math.max(0, prev.activeAlert.hp - damage);
-        const isDead = newHp <= 0;
-
-        const newInventory = { ...prev.inventory };
-        if (isDead) {
-          newInventory.void_core = (newInventory.void_core || 0) + 1;
-        }
-
-        return {
-          ...prev,
-          player: newPlayer,
-          inventory: newInventory,
-          activeAlert: {
-            type: isDead ? null : prev.activeAlert.type,
-            hp: newHp
-          },
-          exploration: {
-            ...prev.exploration,
-            dreamPollution: isDead ? 0 : prev.exploration.dreamPollution
-          }
-        };
-      });
-      showToast(`核心超频过载，强光逼退梦魇 (HP -${damage})`, "warning");
+    if (outcome.victory) {
+      showToast("🛡️ 防御成功！梦魇被击退，获得虚空核心！", "success");
+    } else if (outcome.partyWiped) {
+      showToast(`💥 防御失败！小队全员重伤，梦境被封锁 ${Math.round(NIGHTMARE_CONFIG.dreamLockdownDuration / 60)} 分钟。`, "error");
+    } else {
+      showToast("⚔️ 梦魇退回阴影深处，可稍后再次迎战。", "info");
     }
   };
 
@@ -180,45 +121,76 @@ const WorkshopTab: React.FC = () => {
 
   return (
     <div className="w-full pb-20 space-y-5">
-      {/* 梦魇侵入紧急警报控制台 */}
+      {/* 梦魇侵入紧急警报控制台（ticket 14：出战小队防御，炮塔辅助） */}
       {activeAlert.type === 'dream_leak' && (
         <div className="p-5 rounded-3xl bg-red-950/30 border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-pulse flex flex-col gap-4">
           <div className="text-center">
             <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-2" />
             <h3 className="text-lg font-black text-red-400">🚨 警告：心灵梦魇入侵！</h3>
             <p className="text-xs text-zinc-300 mt-2.5 leading-relaxed">
-              虚空缝隙已被撕裂！一只梦魇怪物降临避难所。温室农田已被污染，植物已**停止生长**！请立即启动工坊防御机制歼灭怪兽。
+              虚空缝隙已被撕裂！梦魇怪物顺着精神印记降临避难所，温室农田已被污染，植物已**停止生长**！请出战当前小队歼灭怪兽；防御失败将导致全员重伤并封锁梦境入口。
             </p>
           </div>
 
           {/* 怪物血量条 */}
           <div className="p-3 bg-zinc-950 rounded-2xl border border-red-500/20 text-xs">
             <div className="flex justify-between font-bold text-red-400 mb-1">
-              <span>侵入体：梦魔触手</span>
+              <span>侵入体：梦魇侵入体 👹</span>
               <span>HP: {activeAlert.hp}</span>
             </div>
             <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden">
               <div
                 className="bg-red-600 h-full transition-all duration-300"
-                style={{ width: `${(activeAlert.hp / 60) * 100}%` }}
+                style={{ width: `${Math.min(100, (activeAlert.hp / NIGHTMARE_CONFIG.dreamLeakDamage) * 100)}%` }}
               />
+            </div>
+          </div>
+
+          {/* 出战小队 */}
+          <div className="p-3 bg-zinc-950 rounded-2xl border border-red-500/20 text-xs">
+            <div className="flex justify-between font-bold text-zinc-300 mb-1">
+              <span>🛡️ 当前出战小队</span>
+              <span className="text-zinc-500">{state.party.length}/3</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {state.party.length === 0 && <span className="text-zinc-600">尚未上阵英雄，无法防御！</span>}
+              {state.party.map(id => {
+                const hero = state.heroes[id];
+                if (!hero) return null;
+                return (
+                  <span
+                    key={id}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${
+                      hero.wounded
+                        ? 'bg-red-950/40 border-red-700/40 text-red-400'
+                        : 'bg-emerald-950/40 border-emerald-700/40 text-emerald-300'
+                    }`}
+                  >
+                    {hero.wounded ? '💔 重伤' : '💚 可战'} {id}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => handleDefendNightmare('turret')}
-              className="py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold text-xs rounded-xl shadow-lg transition-all active:scale-95 text-center cursor-pointer"
+              disabled={(inventory.defensive_turret || 0) < 1}
+              className="py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold text-xs rounded-xl shadow-lg transition-all active:scale-95 text-center cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
             >
-              启动电磁塔 (扣1塔)
+              部署炮塔 + 出战 (先输出一轮, 扣1塔)
             </button>
             <button
-              onClick={() => handleDefendNightmare('overload')}
+              onClick={() => handleDefendNightmare('direct')}
               className="py-2.5 bg-zinc-900 border border-red-500/30 text-red-400 font-extrabold text-xs rounded-xl transition-all active:scale-95 text-center cursor-pointer"
             >
-              核心超频 (耗{overloadEnergyCost}魔能)
+              直接出战防御
             </button>
           </div>
+          <p className="text-[9px] text-zinc-500 text-center -mt-1">
+            炮塔开战前造成 {NIGHTMARE_CONFIG.turretDamage} 点伤害；防御胜利掉落虚空核心 ×1，失败则全员重伤 + 梦境封锁 {Math.round(NIGHTMARE_CONFIG.dreamLockdownDuration / 60)} 分钟
+          </p>
         </div>
       )}
 

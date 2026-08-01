@@ -9,6 +9,7 @@ import SwipeCard from './SwipeCard';
 import { Sparkles, Brain, AlertOctagon } from 'lucide-react';
 import { ITEMS_CONFIG } from '../data/items';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { isDreamLockdownActive, getDreamLockdownRemaining } from '../state/nightmare';
 
 const DreamscapeTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -73,6 +74,13 @@ const DreamscapeTab: React.FC = () => {
   };
 
   const handleStartDream = () => {
+    // 梦境封锁（ticket 14）：泄露防御失败后，封锁期间不可进入梦境
+    if (isDreamLockdownActive(state)) {
+      const remainMin = Math.ceil(getDreamLockdownRemaining(state) / 60);
+      showToast(`梦境入口被封锁！剩余约 ${remainMin} 分钟，请等待封锁解除。`, "error");
+      return;
+    }
+
     if (player.sanity < 15) {
       showToast("精神状态衰弱（理智需 >= 15），无法潜入梦境！", "error");
       return;
@@ -305,11 +313,22 @@ const DreamscapeTab: React.FC = () => {
             </div>
           )}
 
+          {isDreamLockdownActive(state) && (
+            <div className="mb-6 w-full p-3 bg-red-950/30 border border-red-500/30 rounded-2xl flex justify-between items-center text-xs">
+              <span className="text-red-300 font-semibold flex items-center gap-1">
+                <AlertOctagon className="w-4 h-4 text-red-400" />
+                梦境封锁中：泄露防御失败后心灵通道被梦魇撕裂
+              </span>
+              <span className="text-white font-black">剩余 {Math.ceil(getDreamLockdownRemaining(state) / 60)} 分</span>
+            </div>
+          )}
+
           <button
             onClick={handleStartDream}
-            className="w-full py-3 bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-extrabold rounded-2xl shadow-lg transition-all active:scale-95 text-center cursor-pointer"
+            disabled={isDreamLockdownActive(state)}
+            className="w-full py-3 bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-extrabold rounded-2xl shadow-lg transition-all active:scale-95 text-center cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
           >
-            开始共鸣入梦
+            {isDreamLockdownActive(state) ? '梦境封锁中 · 无法入梦' : '开始共鸣入梦'}
           </button>
         </div>
       ) : (

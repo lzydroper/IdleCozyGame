@@ -17,7 +17,6 @@ import {
   Moon,
   Hammer,
   BookOpen,
-  Heart,
   Battery,
   Flame,
   RefreshCw,
@@ -55,7 +54,7 @@ const App: React.FC = () => {
   const [deletingCharId, setDeletingCharId] = useState<string | null>(null);
   const [deleteCloudChecked, setDeleteCloudChecked] = useState(false);
   // 创角面板：云端角色摘要列表（需求 2）
-  const [cloudSummaries, setCloudSummaries] = useState<Array<{ id: string; username: string; days: number; hp: number }>>([]);
+  const [cloudSummaries, setCloudSummaries] = useState<Array<{ id: string; username: string; days: number }>>([]);
   const [isFetchingCloud, setIsFetchingCloud] = useState(false);
   // 记录已经展示过云端摘要的 userId，避免重复请求
   const [cloudSummaryFetchedForUser, setCloudSummaryFetchedForUser] = useState<string | null>(null);
@@ -193,14 +192,13 @@ const App: React.FC = () => {
         const parsed = JSON.parse(saved);
         return {
           username: parsed.username || '未命名生存者',
-          days: parsed.player?.days || 1,
-          hp: parsed.player?.hp || 100
+          days: parsed.player?.days || 1
         };
       } catch (e) {
-        return { username: '未命名生存者', days: 1, hp: 100 };
+        return { username: '未命名生存者', days: 1 };
       }
     }
-    return { username: '未命名生存者', days: 1, hp: 100 };
+    return { username: '未命名生存者', days: 1 };
   };
 
   const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter' | 'heroes') => {
@@ -313,7 +311,6 @@ const App: React.FC = () => {
                       <span className="text-xs font-black">{char.username}</span>
                       <div className="flex items-center gap-2 text-[9px] text-zinc-400">
                         <span>存活 {char.days} 天</span>
-                        <span>HP {char.hp}</span>
                         <span className="text-purple-400 text-[8px]">[点击拉取]</span>
                       </div>
                     </button>
@@ -413,7 +410,6 @@ const App: React.FC = () => {
                   <span className="text-xs font-black">{preview.username}</span>
                   <div className="flex items-center gap-2 text-[9px] text-zinc-500">
                     <span>存活 {preview.days} 天</span>
-                    <span>HP {preview.hp}</span>
                   </div>
                 </div>
               );
@@ -701,7 +697,6 @@ const App: React.FC = () => {
                     <span className="text-xs font-bold">{preview.username} {isCurrent && '●'}</span>
                     <div className="flex items-center gap-2 text-[10px]">
                       <span className="text-zinc-500">存活 {preview.days} 天</span>
-                      <span className="text-zinc-500">HP {preview.hp}</span>
                       <button
                         disabled={isExploring}
                         onClick={(e) => !isExploring && handleDeleteAccount(id, e)}
@@ -722,22 +717,8 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* 基础属性进度条 */}
-        <div className="grid grid-cols-4 gap-3 bg-zinc-950/40 p-2.5 rounded-2xl border border-zinc-900">
-          {/* 生命值 */}
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-[10px] font-bold text-rose-500">
-              <span className="flex items-center gap-0.5"><Heart className="w-3 h-3" /> HP</span>
-              <span>{player.hp}/{player.maxHp}</span>
-            </div>
-            <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-900">
-              <div
-                className="bg-rose-500 h-full transition-all duration-300"
-                style={{ width: `${(player.hp / player.maxHp) * 100}%` }}
-              />
-            </div>
-          </div>
-
+        {/* 基础属性进度条（ticket 14：全局 HP 已废除，仅保留饱食/魔能/理智） */}
+        <div className="grid grid-cols-3 gap-3 bg-zinc-950/40 p-2.5 rounded-2xl border border-zinc-900">
           {/* 饱食度 */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-[10px] font-bold text-amber-500">

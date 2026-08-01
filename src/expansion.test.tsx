@@ -10,8 +10,6 @@ import type { GameState } from './types/game';
 // 基础的空存档，确保其他属性合法
 const BASE_SAVE = {
   player: {
-    hp: 100,
-    maxHp: 100,
     food: 100,
     maxFood: 100,
     energy: 100,
@@ -39,7 +37,8 @@ const BASE_SAVE = {
       sanity_capsule: 3,
       warp_capsule: 0
     },
-    survivorResonance: {}
+    survivorResonance: {},
+    dreamLockdownUntil: null
   },
   discoveredBlueprints: [],
   activeAlert: {
@@ -53,7 +52,7 @@ const BASE_SAVE = {
 
 // 辅助组件，调用真实 useSupplyItem (单元测试)
 const TestUsageComponent: React.FC<{
-  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'nanite_injector' | 'purifying_serum';
+  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum';
   onState: (state: GameState) => void;
 }> = ({ itemId, onState }) => {
   const { state, useSupplyItem } = useGame();
@@ -89,8 +88,7 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        food: 20,
-        hp: 50
+        food: 20
       },
       inventory: {
         hot_stew: 2
@@ -119,15 +117,13 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     expect(currentState).not.toBeNull();
     expect(currentState!.inventory.hot_stew).toBe(1);
     expect(currentState!.player.food).toBe(80);
-    expect(currentState!.player.hp).toBe(70);
   });
 
-  it('should correctly update stats when using nanite_injector (Unit)', async () => {
+  it('nanite_injector 不再是生存补给（仅用于治愈重伤，ticket 14）', async () => {
     const initialSave = {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        hp: 30,
         food: 80
       },
       inventory: {
@@ -141,7 +137,7 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     render(
       <GameProvider>
         <TestUsageComponent
-          itemId="nanite_injector"
+          itemId="purifying_serum"
           onState={(s) => {
             currentState = s;
           }}
@@ -149,15 +145,13 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       </GameProvider>
     );
 
-    const button = screen.getByTestId('use-nanite_injector');
+    // 直接调用底层 useSupplyItem 也无法消耗纳米修复剂（已无 useEffect 补给效果）
     await act(async () => {
-      fireEvent.click(button);
+      fireEvent.click(screen.getByTestId('use-purifying_serum'));
     });
 
-    expect(currentState).not.toBeNull();
-    expect(currentState!.inventory.nanite_injector).toBe(0);
-    expect(currentState!.player.hp).toBe(90);
-    expect(currentState!.player.food).toBe(90);
+    expect(currentState!.inventory.nanite_injector).toBe(1);
+    expect(currentState!.player.food).toBe(80);
   });
 
   it('should correctly update stats when using purifying_serum (Unit)', async () => {
@@ -218,8 +212,7 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        food: 20,
-        hp: 50
+        food: 20
       },
       inventory: {
         hot_stew: 2
@@ -239,8 +232,8 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
     const header = screen.getByText('避难所生存补给发放');
     fireEvent.click(header);
 
-    // 找到 "食用 (饱食+60, 生命+20)" 按钮并点击
-    const button = screen.getByText('食用 (饱食+60, 生命+20)');
+    // 找到 "食用 (饱食+60)" 按钮并点击
+    const button = screen.getByText('食用 (饱食+60)');
     await act(async () => {
       fireEvent.click(button);
     });
@@ -249,15 +242,13 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.inventory.hot_stew).toBe(1);
     expect(savedState.player.food).toBe(80);
-    expect(savedState.player.hp).toBe(70);
   });
 
-  it('should process nanite_injector usage correctly from WorkshopTab UI', async () => {
+  it('纳米修复剂不再出现在补给面板（仅用于治愈重伤，ticket 14）', async () => {
     const initialSave = {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        hp: 30,
         food: 80
       },
       inventory: {
@@ -278,17 +269,12 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
     const header = screen.getByText('避难所生存补给发放');
     fireEvent.click(header);
 
-    // 找到 "注射 (生命+60, 饱食+10)" 按钮并点击
-    const button = screen.getByText('注射 (生命+60, 饱食+10)');
-    await act(async () => {
-      fireEvent.click(button);
-    });
+    // 原 "注射 (生命+60, 饱食+10)" 入口已移除
+    expect(screen.queryByText(/注射 \(生命/)).toBeNull();
 
-    // 从 localStorage 中读取更新后的状态
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.inventory.nanite_injector).toBe(0);
-    expect(savedState.player.hp).toBe(90);
-    expect(savedState.player.food).toBe(90);
+    expect(savedState.inventory.nanite_injector).toBe(1); // 未被消耗
+    expect(savedState.player.food).toBe(80);
   });
 
   it('should process purifying_serum usage correctly from WorkshopTab UI', async () => {

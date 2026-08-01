@@ -155,7 +155,7 @@ describe('GameContext Integration', () => {
     it('should calculate correct offline gains for generator and recycler', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 10, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 5 },
@@ -175,7 +175,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -207,7 +207,7 @@ describe('GameContext Integration', () => {
     it('should execute the FIFO recipe queue during offline (one batch per entry)', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 6 },
@@ -227,7 +227,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -276,7 +276,7 @@ describe('GameContext Integration', () => {
     it('should pause the queue when raw materials run out (head entry kept)', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 2 },
@@ -296,7 +296,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -346,7 +346,7 @@ describe('GameContext Integration', () => {
     it('should double growth speed and maintain watering status when a waterer is assigned', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: {},
@@ -371,7 +371,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },

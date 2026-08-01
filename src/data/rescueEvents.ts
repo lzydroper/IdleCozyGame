@@ -6,8 +6,8 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     description: "在破碎的雷达阵列控制舱中，你发现了饥寒交迫的工程师罗伊。然而，废墟的阴暗处有一只高能辐射蝎挡在门口嘶吼！你可以部署防御电磁塔击杀它，或者超频护盾顶着攻击冲过去。",
     type: "combat",
     choices: {
-      A: { text: "部署防御炮塔消灭怪兽 (需炮塔x1, 生命-10)", requirements: { defensive_turret: 1 }, results: { stats: { hp: -10 }, items: { defensive_turret: -1 }, logText: "你快速部署了防御炮塔，激发的电磁炮击碎了蝎子的外壳，但余波也震裂了你的防化服。你成功背起罗伊！" } },
-      B: { text: "使用能量补充剂强突 (需补充剂x2, 生命-20)", requirements: { energy_refill: 2 }, results: { stats: { hp: -20 }, items: { energy_refill: -2 }, logText: "你启动双份能量补充剂强开电荷屏障，硬扛着蝎毒的腐蚀将罗伊抱走，乘升降机成功脱险！" } }
+      A: { text: "部署防御炮塔消灭怪兽 (需炮塔x1)", requirements: { defensive_turret: 1 }, results: { items: { defensive_turret: -1 }, logText: "你快速部署了防御炮塔，激发的电磁炮击碎了蝎子的外壳，但余波也震裂了你的防化服。你成功背起罗伊！" } },
+      B: { text: "使用能量补充剂强突 (需补充剂x2)", requirements: { energy_refill: 2 }, results: { items: { energy_refill: -2 }, logText: "你启动双份能量补充剂强开电荷屏障，硬扛着蝎毒的腐蚀将罗伊抱走，乘升降机成功脱险！" } }
     }
   },
   rescue_mei: {
@@ -25,7 +25,7 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     type: "combat",
     choices: {
       A: { text: "部署电磁防御塔掩护 (需炮塔x1)", requirements: { defensive_turret: 1 }, results: { items: { defensive_turret: -1 }, logText: "你掷出炮塔形成诱饵雷区，引走了疯狂的金属黄蜂，成功滑索将 Zero 救下！" } },
-      B: { text: "硬扛静电防护网强冲 (生命-25, 魔能-20)", results: { stats: { hp: -25, energy: -20 }, logText: "你强开防护盾，顶着万伏高压电弧的撕咬，强行撕开黄蜂群背起 Zero 滑降！" } }
+      B: { text: "硬扛静电防护网强冲 (魔能-20)", results: { stats: { energy: -20 }, logText: "你强开防护盾，顶着万伏高压电弧的撕咬，强行撕开黄蜂群背起 Zero 滑降！" } }
     }
   },
   rescue_catherine: {
@@ -33,8 +33,8 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     description: "实验室里弥漫着毒气，凯瑟琳医生被一群魔化辐射老鼠包围在配药舱内。你可以使用纳米修复针强攻，或者用魔能超频强熔溶解锁。",
     type: "danger",
     choices: {
-      A: { text: "使用纳米修复针破除大门 (需纳米针x1, 生命-10)", requirements: { nanite_injector: 1 }, results: { stats: { hp: -10 }, logText: "你快速使用纳米修复针打破封锁并保护凯瑟琳，虽然防化服被毒气微量腐蚀，但成功救出！" } },
-      B: { text: "魔能超频强熔溶解锁 (生命-20, 魔能-35)", results: { stats: { hp: -20, energy: -35 }, logText: "你强开魔能高热熔断锁孔，在变异鼠群合围前破门而入，成功救出凯瑟琳！" } }
+      A: { text: "使用纳米修复针破除大门 (需纳米针x1)", requirements: { nanite_injector: 1 }, results: { logText: "你快速使用纳米修复针打破封锁并保护凯瑟琳，虽然防化服被毒气微量腐蚀，但成功救出！" } },
+      B: { text: "魔能超频强熔溶解锁 (魔能-35)", results: { stats: { energy: -35 }, logText: "你强开魔能高热熔断锁孔，在变异鼠群合围前破门而入，成功救出凯瑟琳！" } }
     }
   },
   rescue_buster: {
@@ -43,7 +43,7 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     type: "combat",
     choices: {
       A: { text: "部署防御炮塔压制怪物 (需防御炮塔x1)", requirements: { defensive_turret: 1 }, results: { logText: "你迅速部署炮塔建立防线。强烈的电磁火花在隧道中爆发，你趁机用铁锹撬开碎石，救出巴斯特！" } },
-      B: { text: "肉搏变异体强行拉人 (生命-35, 魔能-15)", results: { stats: { hp: -35, energy: -15 }, logText: "你丢开武器徒手推开巨石。狂暴的怪兽撕咬伤了你的侧腹，但你强忍重伤背起巴斯特脱离了地铁站！" } }
+      B: { text: "肉搏变异体强行拉人 (魔能-15)", results: { stats: { energy: -15 }, logText: "你丢开武器徒手推开巨石。狂暴的怪兽撕咬伤了你的侧腹，但你强忍重伤背起巴斯特脱离了地铁站！" } }
     }
   },
   rescue_nova: {
@@ -52,7 +52,7 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     type: "danger",
     choices: {
       A: { text: "使用重载护盾电池稳定磁场 (需护盾电池x1)", requirements: { shield_battery: 1 }, results: { logText: "你抛出重载护盾电池。柔和的能量磁场稳定了机甲核心，驾驶舱盖自动弹开，你成功扶出诺娃！" } },
-      B: { text: "超频砸开驾驶舱 (生命-25, 魔能-30)", results: { stats: { hp: -25, energy: -30 }, logText: "你魔能超频，一拳一拳强行砸烂了防爆座舱玻璃，抢在机甲核心殉爆前将诺娃拖出！" } }
+      B: { text: "超频砸开驾驶舱 (魔能-30)", results: { stats: { energy: -30 }, logText: "你魔能超频，一拳一拳强行砸烂了防爆座舱玻璃，抢在机甲核心殉爆前将诺娃拖出！" } }
     }
   },
   rescue_soldier: {
@@ -60,8 +60,8 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     description: "制药厂的废墟深处，一名身披重甲的高大守卫者被压在一根钢筋横梁下，四周弥漫着生化毒雾，变异鼠群正在逼近。你要部署防御炮塔击杀鼠群，或者硬扛毒雾救人。",
     type: "combat",
     choices: {
-      A: { text: "部署防御炮塔清场 (需炮塔x1, 生命-10)", requirements: { defensive_turret: 1 }, results: { stats: { hp: -10 }, items: { defensive_turret: -1 }, logText: "你迅速部署炮塔形成电磁屏障，击退了鼠群。你撬开横梁救出了铁卫，他沉默但坚定地加入了你的队伍！" } },
-      B: { text: "硬扛毒雾强攻救人 (生命-25, 魔能-20)", results: { stats: { hp: -25, energy: -20 }, logText: "你启动护盾冲入毒雾，双臂发力将横梁扛起。铁卫脱困后撕下衣角为你包扎伤口，眼中满是感激。" } }
+      A: { text: "部署防御炮塔清场 (需炮塔x1)", requirements: { defensive_turret: 1 }, results: { items: { defensive_turret: -1 }, logText: "你迅速部署炮塔形成电磁屏障，击退了鼠群。你撬开横梁救出了铁卫，他沉默但坚定地加入了你的队伍！" } },
+      B: { text: "硬扛毒雾强攻救人 (魔能-20)", results: { stats: { energy: -20 }, logText: "你启动护盾冲入毒雾，双臂发力将横梁扛起。铁卫脱困后撕下衣角为你包扎伤口，眼中满是感激。" } }
     }
   },
   rescue_healer: {
@@ -70,7 +70,7 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     type: "danger",
     choices: {
       A: { text: "使用纳米修复针稳定伤势 (需纳米针x1)", requirements: { nanite_injector: 1 }, results: { items: { nanite_injector: -1 }, logText: "你用纳米修复针为艾拉止血。她恢复行动力后与你配合撬开了压住她的柱子，你搀扶着她离开了军械库。" } },
-      B: { text: "魔能超频举起柱子 (生命-15, 魔能-25)", results: { stats: { hp: -15, energy: -25 }, logText: "你咬牙催动魔能，双掌爆发出炽热的光芒将柱子硬生生抬起。艾拉在最后一刻滚了出来，你们两人都筋疲力尽。" } }
+      B: { text: "魔能超频举起柱子 (魔能-25)", results: { stats: { energy: -25 }, logText: "你咬牙催动魔能，双掌爆发出炽热的光芒将柱子硬生生抬起。艾拉在最后一刻滚了出来，你们两人都筋疲力尽。" } }
     }
   },
   rescue_apprentice: {

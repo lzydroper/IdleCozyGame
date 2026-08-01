@@ -5,7 +5,7 @@ export interface ItemMeta {
   description: string;
   category: 'seed' | 'material' | 'food' | 'equipment' | 'special';
   useEffect?: {
-    stats?: Partial<Record<'hp' | 'food' | 'energy' | 'sanity', number>>;
+    stats?: Partial<Record<'food' | 'energy' | 'sanity', number>>;
     pollution?: number;
   };
 }
@@ -34,8 +34,8 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
   frost_crystal: { id: 'frost_crystal', name: '冰晶结晶', emoji: '❄️', description: '常年吸收冰川辐射变异的浅蓝色花卉提取的冰霜冷气结晶。', category: 'material' },
   plasma_cell: { id: 'plasma_cell', name: '等离子电芯', emoji: '🔋', description: '外皮流淌金色电弧的巨型南瓜提炼的应急电芯。', category: 'material' },
   void_essence: { id: 'void_essence', name: '虚空精华', emoji: '🔮', description: '心灵裂隙边缘虚空魔莲提取的精华，能调和脑电波。', category: 'material' },
-  hot_stew: { id: 'hot_stew', name: '魔能熔岩热烩', emoji: '🍲', description: '大范围恢复饱食度与生命值的魔力食物。', category: 'food', useEffect: { stats: { food: 60, hp: 20 } } },
-  nanite_injector: { id: 'nanite_injector', name: '纳米修复注射针', emoji: '💉', description: '快速修复身体损伤，恢复大量生命值的药剂。', category: 'equipment', useEffect: { stats: { hp: 60, food: 10 } } },
+  hot_stew: { id: 'hot_stew', name: '魔能熔岩热烩', emoji: '🍲', description: '大范围恢复饱食度的魔力食物。', category: 'food', useEffect: { stats: { food: 60 } } },
+  nanite_injector: { id: 'nanite_injector', name: '纳米修复注射针', emoji: '💉', description: '纳米修复剂：治愈战斗中重伤的英雄（在英雄面板使用）。', category: 'special' },
   purifying_serum: { id: 'purifying_serum', name: '心灵净化血清', emoji: '🧪', description: '清除大量心灵污染度，稳定理智的净化血清。', category: 'special', useEffect: { stats: { sanity: 30 }, pollution: -30 } },
   shield_battery: { id: 'shield_battery', name: '重载护盾电池', emoji: '⚡', description: '用于部分高难地表救援任务的能量护盾电池。', category: 'equipment' },
 
@@ -59,8 +59,8 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
   plasma_arc: { id: 'plasma_arc', name: '等离子弧能核心', emoji: '⚡', description: '带有金色线圈包裹和亮色球形电能的弧光核心', category: 'material' },
 
   // === 补给: spritesheet_supplies.png 索引 10-15 ===
-  ration_deluxe: { id: 'ration_deluxe', name: '高级生存罐头', emoji: '🥫', description: '印有红色爱心徽标和铁皮密封扣的废土罐头', category: 'food', useEffect: { stats: { food: 45, hp: 10 } } },
-  stimpack: { id: 'stimpack', name: '废土肾上腺素', emoji: '💉', description: '橙色瞬时急救药剂针管，代表红血时的极限求生', category: 'equipment', useEffect: { stats: { hp: 35, energy: 15 } } },
+  ration_deluxe: { id: 'ration_deluxe', name: '高级生存罐头', emoji: '🥫', description: '印有红色爱心徽标和铁皮密封扣的废土罐头', category: 'food', useEffect: { stats: { food: 45 } } },
+  stimpack: { id: 'stimpack', name: '废土肾上腺素', emoji: '💉', description: '橙色瞬时急救药剂针管，代表红血时的极限求生', category: 'equipment', useEffect: { stats: { energy: 15 } } },
   geiger_counter: { id: 'geiger_counter', name: '盖革探测仪', emoji: '📡', description: '黄色外壳、带有科幻刻度表盘和雷达扫描的手持探测仪', category: 'equipment' },
   canteen: { id: 'canteen', name: '军用水壶', emoji: '🧴', description: '带迷彩保温护套和电子屏显示的科技感军用大水壶', category: 'equipment', useEffect: { stats: { food: 15 } } },
   deflective_lens: { id: 'deflective_lens', name: '偏光魔导镜片', emoji: '🔍', description: '折射七彩极光的六角形魔导透镜', category: 'special' },
