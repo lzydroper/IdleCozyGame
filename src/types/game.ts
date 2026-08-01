@@ -60,6 +60,8 @@ export interface HeroState {
   maxHp: number;
   star: number;
   wounded: boolean;         // 重伤标记：战斗失败（小队全灭）后禁止上阵
+  talentPoints: number;     // 未分配天赋点（升级获得，ticket 11）
+  talents: Record<string, number>; // 天赋树投入：节点 id -> 已投入点数（ticket 11）
 }
 
 // 召唤进度状态（软保底计数）

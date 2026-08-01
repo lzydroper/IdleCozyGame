@@ -264,8 +264,8 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false },
-        soldier: { level: 1, exp: 0, hp: 160, maxHp: 160, star: 1, wounded: false }
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} },
+        soldier: { level: 1, exp: 0, hp: 160, maxHp: 160, star: 1, wounded: false, talentPoints: 0, talents: {} }
       },
       party: ['nova', 'soldier'],
       exploration: {
@@ -313,7 +313,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false }
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} }
       },
       party: ['nova'],
       exploration: {
@@ -356,7 +356,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false }
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} }
       },
       party: ['nova'],
       stamina: 0,
@@ -499,7 +499,7 @@ describe('WildernessTab Component', () => {
       player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false } },
+      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} } },
       party: ['nova'],
       stamina: 100,
       combat: {

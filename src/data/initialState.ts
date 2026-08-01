@@ -24,7 +24,9 @@ export const createInitialHero = (configId: string): HeroState => {
     hp: config.baseHp,
     maxHp: config.baseHp,
     star: 1,
-    wounded: false
+    wounded: false,
+    talentPoints: 0,   // 升级获得天赋点（ticket 11）
+    talents: {}
   };
 };
 

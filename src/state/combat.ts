@@ -9,6 +9,7 @@ import type { CombatBonus } from '../data/bonds';
 import { aggregateBonus } from './bonds';
 import type { EquipmentStats } from '../data/equipment';
 import { getHeroEquipmentBonus } from './equipment';
+import { getTalentBonus } from './talents';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -38,7 +39,8 @@ export const heroMaxHp = (config: HeroConfig, level: number): number =>
 export const heroAttack = (config: HeroConfig, level: number): number =>
   config.baseAttack + (level - 1) * COMBAT_CONFIG.attackPerLevel;
 
-// 经验入账：累计经验并升级（升到下一级所需经验 = 当前等级 * expPerLevel）
+// 经验入账：累计经验并升级（升到下一级所需经验 = 当前等级 * expPerLevel）；
+// 每次升级获得 1 天赋点（ticket 11：天赋点仅来自战斗经验）
 export const applyHeroExp = (hero: HeroState, config: HeroConfig, exp: number): HeroState => {
   let level = hero.level;
   let curExp = hero.exp + exp;
@@ -47,8 +49,16 @@ export const applyHeroExp = (hero: HeroState, config: HeroConfig, exp: number): 
     level += 1;
   }
   const maxHp = heroMaxHp(config, level);
+  const levelGained = level - hero.level;
   // 升级带来的生命上限成长同步补回当前血量
-  return { ...hero, level, exp: curExp, maxHp, hp: hero.hp + (maxHp - hero.maxHp) };
+  return {
+    ...hero,
+    level,
+    exp: curExp,
+    maxHp,
+    hp: hero.hp + (maxHp - hero.maxHp),
+    talentPoints: (hero.talentPoints || 0) + levelGained
+  };
 };
 
 // 伤害公式：至少造成 1 点伤害
@@ -125,15 +135,16 @@ export const simulateBattle = (
   };
 };
 
-// 英雄 → 战斗单位（羁绊加成与装备加成在战斗场景内生效：攻击/防御/生命按百分比放大，
-// 装备提供平值属性；退出战斗即复原。装备系统见 ticket 10）
+// 英雄 → 战斗单位（羁绊/装备/天赋加成在战斗场景内生效：攻击/防御/生命按百分比放大，
+// 装备提供平值属性；退出战斗即复原。装备系统见 ticket 10，天赋树见 ticket 11）
 export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBonus = {}, gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
   const { flat, percent } = gear ? getHeroEquipmentBonus(gear) : { flat: {} as EquipmentStats, percent: {} as CombatBonus };
-  const attackFactor = 1 + ((bonus.attackPercent || 0) + (percent.attackPercent || 0)) / 100;
-  const defenseFactor = 1 + ((bonus.defensePercent || 0) + (percent.defensePercent || 0)) / 100;
-  const hpFactor = 1 + ((bonus.maxHpPercent || 0) + (percent.maxHpPercent || 0)) / 100;
+  const talentPercent = getTalentBonus(heroId, hero);
+  const attackFactor = 1 + ((bonus.attackPercent || 0) + (percent.attackPercent || 0) + (talentPercent.attackPercent || 0)) / 100;
+  const defenseFactor = 1 + ((bonus.defensePercent || 0) + (percent.defensePercent || 0) + (talentPercent.defensePercent || 0)) / 100;
+  const hpFactor = 1 + ((bonus.maxHpPercent || 0) + (percent.maxHpPercent || 0) + (talentPercent.maxHpPercent || 0)) / 100;
   const baseMaxHp = heroMaxHp(config, hero.level) + (flat.maxHp || 0);
   const maxHp = Math.round(baseMaxHp * hpFactor);
   return {

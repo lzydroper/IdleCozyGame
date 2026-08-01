@@ -25,7 +25,7 @@ describe('HeroTab Component', () => {
 
     // 诺娃同时出现在上阵队伍槽位与英雄列表中
     expect(screen.getAllByText(/诺娃/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/进攻者/)).toBeDefined();
+    expect(screen.getAllByText(/进攻者/).length).toBeGreaterThan(0); // 职阶徽章 + 天赋主干分组
     expect(screen.getByText(/机械/)).toBeDefined();
     expect(screen.getByText(/Lv\.1/)).toBeDefined();
     expect(screen.getByText(/已解锁 1 位英雄/)).toBeDefined();
@@ -191,5 +191,49 @@ describe('HeroTab Component', () => {
     saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.equipment.nova.weapon).toBeNull();
     expect(saved.inventory.wasteland_weapon).toBe(1);
+  });
+
+  it('allocates a talent point into the class trunk via the panel (ticket 11)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.heroes.nova.talentPoints = 3;
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 职阶主干与英雄专属分组可见；第一个 + 属于主干首节点「锋芒毕露」
+    expect(screen.getByText(/【进攻者 · 职阶主干】/)).toBeDefined();
+    expect(screen.getByText(/【英雄专属】/)).toBeDefined();
+    fireEvent.click(screen.getAllByText('+')[0]);
+
+    const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
+    expect(saved.heroes.nova.talentPoints).toBe(2);
+    expect(saved.heroes.nova.talents.trunk_attacker_edge).toBe(1);
+    expect(screen.getByText(/当前加成：攻击 \+3%/)).toBeDefined();
+  });
+
+  it('resets all invested talent points (ticket 11)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.heroes.nova.talentPoints = 1;
+    save.heroes.nova.talents = { trunk_attacker_edge: 2 };
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText('重置'));
+    const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
+    expect(saved.heroes.nova.talentPoints).toBe(3);
+    expect(saved.heroes.nova.talents).toEqual({});
   });
 });

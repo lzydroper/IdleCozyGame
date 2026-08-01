@@ -34,6 +34,13 @@ import {
   type ForgeFailure
 } from '../state/equipment';
 import {
+  allocateTalentUpdate,
+  unallocateTalentUpdate,
+  resetTalentsUpdate,
+  type TalentAllocateFailure,
+  type TalentUnallocateFailure
+} from '../state/talents';
+import {
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
@@ -83,6 +90,9 @@ interface GameContextType {
   unequipItem: (heroId: string, slot: EquipmentSlot) => boolean;
   enhanceItem: (heroId: string, slot: EquipmentSlot) => EnhanceFailure | true;
   forgeMythic: (heroId: string, slot: EquipmentSlot) => ForgeFailure | true;
+  allocateTalent: (heroId: string, nodeId: string) => TalentAllocateFailure | true;
+  unallocateTalent: (heroId: string, nodeId: string) => TalentUnallocateFailure | true;
+  resetTalents: (heroId: string) => boolean;
   startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
@@ -536,6 +546,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // === 职阶天赋树（ticket 11） ===
+  const allocateTalent = (heroId: string, nodeId: string): TalentAllocateFailure | true => {
+    const r = allocateTalentUpdate(stateRef.current, heroId, nodeId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const unallocateTalent = (heroId: string, nodeId: string): TalentUnallocateFailure | true => {
+    const r = unallocateTalentUpdate(stateRef.current, heroId, nodeId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const resetTalents = (heroId: string): boolean => {
+    const r = resetTalentsUpdate(stateRef.current, heroId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   // === 战斗核心（ticket 05） ===
   const startCombat = (zoneId: string): CombatOutcome => {
     const r = startCombatUpdate(stateRef.current, zoneId);
@@ -661,6 +696,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unequipItem,
       enhanceItem,
       forgeMythic,
+      allocateTalent,
+      unallocateTalent,
+      resetTalents,
       startCombat,
       setParty,
       healWoundedHero,

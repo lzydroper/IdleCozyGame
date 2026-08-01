@@ -1,12 +1,27 @@
 import type { GameState, HeroEquipment, EquippedItem } from '../types/game';
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
+import { getTalentNodes } from './talents';
 
 // 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值
 const normalizeSlot = (item: EquippedItem | null | undefined): EquippedItem | null => {
   if (!item || typeof item !== 'object') return null;
   const enhance = Number.isFinite(item.enhance) ? Math.min(Math.max(item.enhance, 0), 30) : 0;
   return { itemId: item.itemId, enhance, mythic: !!item.mythic };
+};
+
+// 天赋投入归一化（ticket 11）：仅保留该英雄树中的已知节点，等级钳制 0..maxLevel，防损坏存档
+const normalizeTalents = (heroId: string, talents: Record<string, number> | undefined): Record<string, number> => {
+  const known = new Map(getTalentNodes(heroId).map(node => [node.id, node.maxLevel]));
+  const out: Record<string, number> = {};
+  Object.entries(talents || {}).forEach(([nodeId, level]) => {
+    const max = known.get(nodeId);
+    if (max === undefined) return; // 未知/过期节点丢弃
+    if (Number.isFinite(level) && level > 0) {
+      out[nodeId] = Math.min(Math.max(Math.floor(level), 0), max);
+    }
+  });
+  return out;
 };
 
 const isUuid = (str: string) => {
@@ -111,10 +126,17 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
       ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
     }
   },
-  heroes: {
-    ...initialState.heroes,
-    ...(parsed.heroes || {})
-  },
+  heroes: Object.fromEntries(
+    Object.entries({ ...initialState.heroes, ...(parsed.heroes || {}) }).map(([heroId, h]) => [
+      heroId,
+      // 天赋字段（ticket 11）：旧存档缺失时补默认值，逐节点钳制等级并丢弃未知节点
+      {
+        ...h,
+        talentPoints: Number.isFinite(h.talentPoints) ? Math.max(0, h.talentPoints) : 0,
+        talents: normalizeTalents(heroId, h.talents)
+      }
+    ])
+  ),
   // 装备栏（ticket 10）：旧存档缺失时回退空表；逐槽归一化并钳制字段，防御损坏/半写入存档
   equipment: Object.fromEntries(
     Object.entries((parsed.equipment || {}) as Record<string, HeroEquipment>).map(([heroId, eq]) => [
