@@ -68,4 +68,12 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
 
   // === 虚空核心 (nightmareConfig 引用, 但之前缺失 item 定义) ===
   void_core: { id: 'void_core', name: '虚空核心', emoji: '💜', description: '击败梦魇入侵后掉落的能量核心', category: 'special' },
+
+  // === 系列装备占位（ticket 07：仅由区域 BOSS 掉落，装备系统 ticket 10 落地） ===
+  ember_weapon: { id: 'ember_weapon', name: '余烬长刃', emoji: '🗡️', description: '【余烬系列·武器】旧城废墟 BOSS 专属掉落的占位装备，属性在装备系统（ticket 10）落地。', category: 'equipment' },
+  ember_armor: { id: 'ember_armor', name: '余烬重铠', emoji: '🛡️', description: '【余烬系列·防具】旧城废墟 BOSS 专属掉落的占位装备，属性在装备系统（ticket 10）落地。', category: 'equipment' },
+  ember_trinket: { id: 'ember_trinket', name: '余烬徽记', emoji: '💍', description: '【余烬系列·饰品】旧城废墟 BOSS 专属掉落的占位装备，属性在装备系统（ticket 10）落地。', category: 'equipment' },
+  starcore_weapon: { id: 'starcore_weapon', name: '星核神兵', emoji: '⚔️', description: '【星核系列·武器】辐射车间 BOSS 专属掉落的占位装备（最强系列之一），属性在装备系统（ticket 10）落地。', category: 'equipment' },
+  starcore_armor: { id: 'starcore_armor', name: '星核甲胄', emoji: '🛡️', description: '【星核系列·防具】辐射车间 BOSS 专属掉落的占位装备（最强系列之一），属性在装备系统（ticket 10）落地。', category: 'equipment' },
+  starcore_trinket: { id: 'starcore_trinket', name: '星核圣印', emoji: '💠', description: '【星核系列·饰品】辐射车间 BOSS 专属掉落的占位装备（最强系列之一），属性在装备系统（ticket 10）落地。', category: 'equipment' },
 };

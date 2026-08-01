@@ -115,6 +115,12 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   summon: {
     ...(initialState.summon || { pityCount: 0 }),
     ...(parsed.summon || {})
+  },
+  combat: {
+    ...initialState.combat,
+    ...(parsed.combat || {}),
+    // 区域链通关记录：旧存档缺失时回退空列表
+    zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared
   }
 });
 

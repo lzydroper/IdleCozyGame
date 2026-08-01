@@ -1,8 +1,8 @@
 import type { GameState, HeroState, LogEntry, BattleResult, CombatSettlement } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
-import type { CombatEnemyConfig } from '../data/combatZones';
-import { COMBAT_ZONES } from '../data/combatZones';
+import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
+import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { UpdateResult } from './types';
@@ -21,10 +21,9 @@ export interface CombatantState {
   defense: number;
 }
 
-export type CombatFailure = 'no_stamina' | 'no_party' | 'wounded' | 'unknown_zone';
+export type CombatFailure = 'no_stamina' | 'no_party' | 'wounded' | 'unknown_zone' | 'locked';
 
-export interface CombatOutcome {
-  settlement: CombatSettlement | null;
+export interface CombatOutcome {  settlement: CombatSettlement | null;
   failure?: CombatFailure;
 }
 
@@ -152,6 +151,78 @@ const makeCombatLog = (text: string): LogEntry => ({
   type: 'combat'
 });
 
+// === 战斗结算核心（自动战斗/探索遭遇/BOSS 战共用，消除三处重复） ===
+// 胜利 → 掉落掷骰（入库存或探索临时背囊）+ 灵魂残响 + 经验 + 战后修整满血；
+// 战败（小队全灭）→ 全员重伤；平局 → 无奖励无重伤。体力照常消耗。
+interface BattleSettleConfig {
+  staminaCost: number;
+  drops: CombatDropConfig[];
+  soulEchoMin: number;
+  soulEchoMax: number;
+  expReward: number;
+  lootTo: 'inventory' | 'bag';  // 自动战斗/BOSS 入库存；探索遭遇入临时背囊
+}
+
+interface BattleSettlement {
+  nextStamina: number;
+  nextInventory: Record<string, number>;
+  nextBag: Record<string, number>;
+  nextHeroes: Record<string, HeroState>;
+  nextSoulEchoes: number;
+  soulEchoesGained: number;
+  drops: Record<string, number>;
+  woundedHeroIds: string[];
+}
+
+const settleBattle = (
+  state: GameState,
+  battle: BattleResult,
+  party: string[],
+  cfg: BattleSettleConfig,
+  rng: () => number
+): BattleSettlement => {
+  const nextStamina = state.stamina - cfg.staminaCost;
+  const nextInventory = { ...state.inventory };
+  const nextBag = { ...(state.exploration.realityBag || {}) };
+  const nextHeroes = { ...state.heroes };
+  let nextSoulEchoes = state.soulEchoes;
+  const drops: Record<string, number> = {};
+  const woundedHeroIds: string[] = [];
+  let soulEchoesGained = 0;
+
+  if (battle.victory) {
+    // 胜利掉落：逐条掷骰（概率 + 数量）
+    cfg.drops.forEach(drop => {
+      if (rng() <= drop.chance) {
+        const qty = drop.minQty + Math.floor(rng() * (drop.maxQty - drop.minQty + 1));
+        drops[drop.itemId] = (drops[drop.itemId] || 0) + qty;
+        const target = cfg.lootTo === 'bag' ? nextBag : nextInventory;
+        target[drop.itemId] = (target[drop.itemId] || 0) + qty;
+      }
+    });
+    // 灵魂残响掉落
+    if (cfg.soulEchoMax > cfg.soulEchoMin) {
+      const seRoll = cfg.soulEchoMin + Math.floor(rng() * (cfg.soulEchoMax - cfg.soulEchoMin + 1));
+      soulEchoesGained = seRoll;
+      nextSoulEchoes += seRoll;
+    }
+    // 经验入账 + 战后修整恢复满血（设计决策：战斗为独立"场景"，失败才承担重伤代价）
+    party.forEach(id => {
+      const leveled = applyHeroExp(nextHeroes[id], HEROES_CONFIG[id], cfg.expReward);
+      nextHeroes[id] = { ...leveled, hp: leveled.maxHp };
+    });
+  } else if (battle.partyWiped) {
+    // 战败（小队全灭）→ 全员重伤（hp 清零，禁止上阵）
+    party.forEach(id => {
+      nextHeroes[id] = { ...nextHeroes[id], hp: 0, wounded: true };
+      woundedHeroIds.push(id);
+    });
+  }
+  // 平局（回合上限双方均未全灭）：无掉落、无经验、无重伤，仅消耗体力
+
+  return { nextStamina, nextInventory, nextBag, nextHeroes, nextSoulEchoes, soulEchoesGained, drops, woundedHeroIds };
+};
+
 /**
  * 开始战斗：校验体力/队伍/重伤后整场模拟并一次性入账。
  * 胜利 → 掉落材料 + 灵魂残响 + 经验入账，小队战后修整恢复满血；
@@ -165,6 +236,7 @@ export const startCombatUpdate = (
 ): UpdateResult<CombatOutcome> => {
   const zone = COMBAT_ZONES[zoneId];
   if (!zone) return { state, result: { settlement: null, failure: 'unknown_zone' } };
+  if (!isZoneUnlocked(state, zoneId)) return { state, result: { settlement: null, failure: 'locked' } };
 
   const party = (state.party || []).filter(id => isKnownHero(state, id));
   if (party.length === 0) return { state, result: { settlement: null, failure: 'no_party' } };
@@ -176,54 +248,26 @@ export const startCombatUpdate = (
     enemiesToCombatants(zone.enemies)
   );
 
-  const nextStamina = state.stamina - zone.staminaCost;
-  const nextInventory = { ...state.inventory };
-  const nextHeroes = { ...state.heroes };
-  let nextSoulEchoes = state.soulEchoes;
-  const drops: Record<string, number> = {};
-  const woundedHeroIds: string[] = [];
-  let soulEchoesGained = 0;
-
-  if (battle.victory) {
-    // 胜利掉落：逐条掷骰（概率 + 数量）
-    zone.drops.forEach(drop => {
-      if (rng() <= drop.chance) {
-        const qty = drop.minQty + Math.floor(rng() * (drop.maxQty - drop.minQty + 1));
-        drops[drop.itemId] = (drops[drop.itemId] || 0) + qty;
-        nextInventory[drop.itemId] = (nextInventory[drop.itemId] || 0) + qty;
-      }
-    });
-    // 灵魂残响掉落
-    const seRoll = zone.soulEchoMin + Math.floor(rng() * (zone.soulEchoMax - zone.soulEchoMin + 1));
-    soulEchoesGained = seRoll;
-    nextSoulEchoes += seRoll;
-    // 经验入账 + 战后修整恢复满血
-    // 设计决策（ticket 05）：战斗为独立"场景"，胜利后小队整备回满血——
-    // 失败才承担重伤代价；后续装备/治疗系统（ticket 10+）可改为跨场持续 HP
-    party.forEach(id => {
-      const leveled = applyHeroExp(nextHeroes[id], HEROES_CONFIG[id], zone.expReward);
-      nextHeroes[id] = { ...leveled, hp: leveled.maxHp };
-    });
-  } else if (battle.partyWiped) {
-    // 战败（小队全灭）→ 全员重伤（hp 清零，禁止上阵）
-    party.forEach(id => {
-      nextHeroes[id] = { ...nextHeroes[id], hp: 0, wounded: true };
-      woundedHeroIds.push(id);
-    });
-  }
-  // 平局（回合上限双方均未全灭）：无掉落、无经验、无重伤，仅消耗体力
+  const settled = settleBattle(state, battle, party, {
+    staminaCost: zone.staminaCost,
+    drops: zone.drops,
+    soulEchoMin: zone.soulEchoMin,
+    soulEchoMax: zone.soulEchoMax,
+    expReward: zone.expReward,
+    lootTo: 'inventory'
+  }, rng);
 
   const settlement: CombatSettlement = {
     battle,
-    drops,
-    soulEchoes: soulEchoesGained,
+    drops: settled.drops,
+    soulEchoes: settled.soulEchoesGained,
     expPerHero: battle.victory ? zone.expReward : 0,
-    woundedHeroIds
+    woundedHeroIds: settled.woundedHeroIds
   };
 
   // 战斗日志入账
   const logText = battle.victory
-    ? `⚔️ 战斗胜利！小队在【${zone.name}】击退敌人，获得 ${Object.entries(drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${soulEchoesGained} 与经验 ×${zone.expReward}。`
+    ? `⚔️ 战斗胜利！小队在【${zone.name}】击退敌人，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${settled.soulEchoesGained} 与经验 ×${zone.expReward}。`
     : battle.partyWiped
       ? `💥 战斗失败！小队在【${zone.name}】全员倒下，进入重伤状态，需使用纳米修复剂治愈。`
       : `⚔️ 战斗平局！小队在【${zone.name}】鏖战至回合上限未分胜负，无战利品，亦无人重伤。`;
@@ -232,11 +276,11 @@ export const startCombatUpdate = (
   return {
     state: {
       ...state,
-      stamina: nextStamina,
-      inventory: nextInventory,
-      heroes: nextHeroes,
-      soulEchoes: nextSoulEchoes,
-      combat: { zoneId, lastSettlement: settlement },
+      stamina: settled.nextStamina,
+      inventory: settled.nextInventory,
+      heroes: settled.nextHeroes,
+      soulEchoes: settled.nextSoulEchoes,
+      combat: { zoneId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [] },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
     result: { settlement }
@@ -275,35 +319,22 @@ export const resolveEncounterBattleUpdate = (
     enemiesToCombatants(battleConfig.enemies)
   );
 
-  const nextStamina = state.stamina - COMBAT_CONFIG.encounterStaminaCost;
-  const nextHeroes = { ...state.heroes };
-  const nextInventory = { ...state.inventory };
-  const nextBag = { ...(state.exploration.realityBag || {}) };
-  const drops: Record<string, number> = {};
-  const woundedHeroIds: string[] = [];
-  let expPerHero = 0;
+  // 遭遇战掉落入探索临时背囊；体力按探索遭遇消耗（ADR-0002）
+  const settled = settleBattle(state, battle, party, {
+    staminaCost: COMBAT_CONFIG.encounterStaminaCost,
+    drops: battleConfig.drops,
+    soulEchoMin: 0,
+    soulEchoMax: 0,
+    expReward: battleConfig.expReward,
+    lootTo: 'bag'
+  }, rng);
 
-  if (battle.victory) {
-    expPerHero = battleConfig.expReward;
-    // 遭遇战掉落入探索临时背囊（探索战利品）
-    battleConfig.drops.forEach(drop => {
-      if (rng() <= drop.chance) {
-        const qty = drop.minQty + Math.floor(rng() * (drop.maxQty - drop.minQty + 1));
-        drops[drop.itemId] = (drops[drop.itemId] || 0) + qty;
-        nextBag[drop.itemId] = (nextBag[drop.itemId] || 0) + qty;
-      }
-    });
-    // 经验入账 + 战后修整回满血（与自动战斗同一设计决策，见 startCombatUpdate）
-    party.forEach(id => {
-      const leveled = applyHeroExp(nextHeroes[id], HEROES_CONFIG[id], expPerHero);
-      nextHeroes[id] = { ...leveled, hp: leveled.maxHp };
-    });
-  } else if (battle.partyWiped) {
-    // 战败（小队全灭）→ 全员重伤
-    party.forEach(id => {
-      nextHeroes[id] = { ...nextHeroes[id], hp: 0, wounded: true };
-      woundedHeroIds.push(id);
-    });
+  const nextHeroes = settled.nextHeroes;
+  const nextInventory = { ...settled.nextInventory };
+  const nextBag = settled.nextBag;
+  const expPerHero = battle.victory ? battleConfig.expReward : 0;
+
+  if (battle.partyWiped) {
     // 战利品保留：临时背囊并入避难所库存（探索终止但掉落不丢失，ADR-0006）
     Object.entries(nextBag).forEach(([item, qty]) => {
       if (qty > 0) nextInventory[item] = (nextInventory[item] || 0) + qty;
@@ -313,10 +344,10 @@ export const resolveEncounterBattleUpdate = (
 
   const settlement: CombatSettlement = {
     battle,
-    drops,
+    drops: settled.drops,
     soulEchoes: 0,
     expPerHero,
-    woundedHeroIds
+    woundedHeroIds: settled.woundedHeroIds
   };
 
   // 探索状态迁移：胜利/平局 → 继续探索（步数 +1）；战败 → 终止（战利品已入库）
@@ -340,7 +371,7 @@ export const resolveEncounterBattleUpdate = (
 
   const eventTitle = REALITY_EVENTS[encounterId]?.title || '遭遇战';
   const logText = battle.victory
-    ? `⚔️ 遭遇战胜利！小队击退【${eventTitle}】，获得 ${Object.entries(drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'} 与经验 ×${expPerHero}，继续探索。`
+    ? `⚔️ 遭遇战胜利！小队击退【${eventTitle}】，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'} 与经验 ×${expPerHero}，继续探索。`
     : battle.partyWiped
       ? `💥 探索遭遇战失败！小队全灭于【${eventTitle}】，探索终止，已获战利品并入库存，小队进入重伤状态。`
       : `⚔️ 遭遇战平局！小队与【${eventTitle}】鏖战未分胜负，继续探索。`;
@@ -349,11 +380,11 @@ export const resolveEncounterBattleUpdate = (
   return {
     state: {
       ...state,
-      stamina: nextStamina,
+      stamina: settled.nextStamina,
       heroes: nextHeroes,
       inventory: nextInventory,
       exploration: nextExploration,
-      combat: { zoneId: encounterId, lastSettlement: settlement },
+      combat: { zoneId: encounterId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [] },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
     result: { settlement }
@@ -376,6 +407,95 @@ export const fleeEncounterUpdate = (state: GameState): UpdateResult<boolean> => 
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
     result: true
+  };
+};
+
+// 区域链解锁（ticket 07）：首区默认解锁，其余区域需通关上一区（按推荐等级升序线性链）；
+// 已通关区域永久解锁（防止后续新增/插入区域时把老玩家的通关记录反向锁死）
+export const isZoneUnlocked = (state: GameState, zoneId: string): boolean => {
+  const cleared = state.combat?.zonesCleared || [];
+  if (cleared.includes(zoneId)) return true;
+  const idx = COMBAT_ZONE_LIST.findIndex(z => z.id === zoneId);
+  if (idx === -1) return false;
+  if (idx === 0) return true;
+  return cleared.includes(COMBAT_ZONE_LIST[idx - 1].id);
+};
+
+export type BossBattleFailure = 'no_stamina' | 'no_party' | 'wounded' | 'unknown_zone' | 'no_boss' | 'locked';
+
+export interface BossBattleOutcome {
+  settlement: CombatSettlement | null;
+  failure?: BossBattleFailure;
+}
+
+/**
+ * 关底 BOSS 战（ticket 07）：与普通战斗同一战斗场景（复用 simulateBattle/结算）。
+ * 胜利 → BOSS 专属掉落 + 灵魂残响 + 经验入账、战后修整满血，并通关本区（解锁下一区）；
+ * 战败 → 小队全员重伤（不损已得战利品）；可重复挑战已通关 BOSS 刷专属掉落。
+ */
+export const startBossBattleUpdate = (
+  state: GameState,
+  zoneId: string,
+  rng: () => number = Math.random
+): UpdateResult<BossBattleOutcome> => {
+  const zone = COMBAT_ZONES[zoneId];
+  if (!zone) return { state, result: { settlement: null, failure: 'unknown_zone' } };
+  if (!zone.boss) return { state, result: { settlement: null, failure: 'no_boss' } };
+  if (!isZoneUnlocked(state, zoneId)) return { state, result: { settlement: null, failure: 'locked' } };
+
+  const party = (state.party || []).filter(id => isKnownHero(state, id));
+  if (party.length === 0) return { state, result: { settlement: null, failure: 'no_party' } };
+  if (party.some(id => state.heroes[id].wounded)) return { state, result: { settlement: null, failure: 'wounded' } };
+  if ((state.stamina || 0) < zone.boss.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
+
+  const boss = zone.boss;
+  const battle = simulateBattle(
+    party.map(id => heroToCombatant(id, state.heroes[id])),
+    enemiesToCombatants(boss.enemies)
+  );
+
+  const settled = settleBattle(state, battle, party, {
+    staminaCost: boss.staminaCost,
+    drops: boss.drops,
+    soulEchoMin: boss.soulEchoMin,
+    soulEchoMax: boss.soulEchoMax,
+    expReward: boss.expReward,
+    lootTo: 'inventory'
+  }, rng);
+
+  const settlement: CombatSettlement = {
+    battle,
+    drops: settled.drops,
+    soulEchoes: settled.soulEchoesGained,
+    expPerHero: battle.victory ? boss.expReward : 0,
+    woundedHeroIds: settled.woundedHeroIds
+  };
+
+  // 通关记录：胜利即标记本区已通关（可重复挑战，记录不重复）
+  const wasCleared = (state.combat?.zonesCleared || []).includes(zoneId);
+  const zonesCleared = battle.victory && !wasCleared
+    ? [...(state.combat?.zonesCleared || []), zoneId]
+    : (state.combat?.zonesCleared || []);
+  const nextZone = COMBAT_ZONE_LIST[COMBAT_ZONE_LIST.findIndex(z => z.id === zoneId) + 1];
+
+  const logText = battle.victory
+    ? `🏆 ${wasCleared ? '再战' : '首通'}！小队击败【${boss.name}】${wasCleared ? '' : '，通关【' + zone.name + '】' + (nextZone ? `，解锁【${nextZone.name}】` : '')}，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${settled.soulEchoesGained} 与经验 ×${boss.expReward}。`
+    : battle.partyWiped
+      ? `💥 BOSS 战失败！小队在【${zone.name}】被【${boss.name}】全灭，进入重伤状态，需使用纳米修复剂治愈。`
+      : `⚔️ BOSS 战平局！小队与【${boss.name}】鏖战未分胜负。`;
+  const logEntry = makeCombatLog(logText);
+
+  return {
+    state: {
+      ...state,
+      stamina: settled.nextStamina,
+      inventory: settled.nextInventory,
+      heroes: settled.nextHeroes,
+      soulEchoes: settled.nextSoulEchoes,
+      combat: { zoneId, lastSettlement: settlement, zonesCleared },
+      logs: [logEntry, ...state.logs].slice(0, 100)
+    },
+    result: { settlement }
   };
 };
 

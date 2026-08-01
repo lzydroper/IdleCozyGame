@@ -101,6 +101,7 @@ export interface CombatSettlement {
 export interface CombatState {
   zoneId: string | null;
   lastSettlement: CombatSettlement | null;
+  zonesCleared: string[];  // 已通关区域（ticket 07 线性区域链：通关当前区解锁下一区）
 }
 
 export interface GameState {

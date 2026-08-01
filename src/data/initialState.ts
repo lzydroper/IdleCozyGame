@@ -64,7 +64,8 @@ export const INITIAL_STATE: GameState = {
   party: [STARTER_HERO_ID],
   combat: {
     zoneId: null,
-    lastSettlement: null
+    lastSettlement: null,
+    zonesCleared: []
   },
   exploration: {
     inRealityExploration: false,

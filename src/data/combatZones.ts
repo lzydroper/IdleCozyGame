@@ -1,4 +1,4 @@
-// 战斗区域配置（ticket 05）：线性递进的自动战斗场所（区域进阶/BOSS 见 ticket 07）
+// 战斗区域配置（ticket 05）：线性递进的自动战斗场所；区域链与 BOSS 见 ticket 07
 export interface CombatEnemyConfig {
   id: string;
   name: string;
@@ -15,18 +15,31 @@ export interface CombatDropConfig {
   maxQty: number;
 }
 
+// 关底 BOSS 配置（ticket 07）：每区一个，击败后通关区域、解锁下一区；复用同一战斗场景
+export interface CombatZoneBossConfig {
+  name: string;
+  emoji: string;
+  enemies: CombatEnemyConfig[];   // BOSS 战敌人组（含护卫）
+  staminaCost: number;            // BOSS 战体力消耗
+  expReward: number;              // BOSS 战胜利每位英雄经验
+  drops: CombatDropConfig[];      // BOSS 专属掉落（含最强系列装备占位，ticket 10 落地）
+  soulEchoMin: number;            // BOSS 战胜利灵魂残响范围
+  soulEchoMax: number;
+}
+
 export interface CombatZoneConfig {
   id: string;
   name: string;
   emoji: string;
   description: string;
-  recommendedLevel: number;   // 推荐队伍平均等级
+  recommendedLevel: number;   // 推荐队伍平均等级（同时决定线性链顺序）
   staminaCost: number;        // 每场战斗消耗的体力
   expReward: number;          // 胜利后每位上阵英雄获得的经验
   enemies: CombatEnemyConfig[];   // 一场战斗遭遇的全部敌人
   drops: CombatDropConfig[];      // 胜利掉落表（材料）
   soulEchoMin: number;            // 胜利灵魂残响掉落范围
   soulEchoMax: number;
+  boss: CombatZoneBossConfig;     // 关底 BOSS：击败 = 通关本区，解锁下一区
 }
 
 export type CombatZonesMap = Record<string, CombatZoneConfig>;
@@ -49,7 +62,23 @@ export const COMBAT_ZONES: CombatZonesMap = {
       { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 }
     ],
     soulEchoMin: 2,
-    soulEchoMax: 4
+    soulEchoMax: 4,
+    boss: {
+      name: '废土鬣狗王',
+      emoji: '🦁',
+      enemies: [
+        { id: 'wasteland_hound_king', name: '废土鬣狗王', emoji: '🦁', hp: 90, attack: 13, defense: 5 }
+      ],
+      staminaCost: 12,
+      expReward: 30,
+      drops: [
+        { itemId: 'scrap_metal', chance: 0.8, minQty: 2, maxQty: 4 },
+        { itemId: 'glow_fiber', chance: 0.5, minQty: 1, maxQty: 3 },
+        { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
+      ],
+      soulEchoMin: 5,
+      soulEchoMax: 8
+    }
   },
   old_town_ruins: {
     id: 'old_town_ruins',
@@ -69,7 +98,25 @@ export const COMBAT_ZONES: CombatZonesMap = {
       { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
     ],
     soulEchoMin: 4,
-    soulEchoMax: 7
+    soulEchoMax: 7,
+    boss: {
+      name: '废墟霸主',
+      emoji: '💀',
+      enemies: [
+        { id: 'ruin_overlord', name: '废墟霸主', emoji: '💀', hp: 150, attack: 20, defense: 8 },
+        { id: 'mutant_rat', name: '变异鼠群', emoji: '🐀', hp: 35, attack: 8, defense: 1 }
+      ],
+      staminaCost: 18,
+      expReward: 50,
+      drops: [
+        { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
+        { itemId: 'ember_weapon', chance: 0.15, minQty: 1, maxQty: 1 },
+        { itemId: 'ember_armor', chance: 0.1, minQty: 1, maxQty: 1 },
+        { itemId: 'ember_trinket', chance: 0.1, minQty: 1, maxQty: 1 }
+      ],
+      soulEchoMin: 10,
+      soulEchoMax: 15
+    }
   },
   radiated_workshop: {
     id: 'radiated_workshop',
@@ -91,7 +138,26 @@ export const COMBAT_ZONES: CombatZonesMap = {
       { itemId: 'nanite_slurry', chance: 0.2, minQty: 1, maxQty: 1 }
     ],
     soulEchoMin: 8,
-    soulEchoMax: 12
+    soulEchoMax: 12,
+    boss: {
+      name: '车间之主·畸变聚合体',
+      emoji: '👾',
+      enemies: [
+        { id: 'workshop_abomination', name: '车间之主·畸变聚合体', emoji: '👾', hp: 260, attack: 26, defense: 10 },
+        { id: 'rogue_machine', name: '失控机器仆从', emoji: '🤖', hp: 90, attack: 15, defense: 8 }
+      ],
+      staminaCost: 25,
+      expReward: 80,
+      drops: [
+        { itemId: 'plasma_cell', chance: 0.5, minQty: 1, maxQty: 2 },
+        { itemId: 'nanite_slurry', chance: 0.4, minQty: 1, maxQty: 2 },
+        { itemId: 'starcore_weapon', chance: 0.15, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_armor', chance: 0.1, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_trinket', chance: 0.1, minQty: 1, maxQty: 1 }
+      ],
+      soulEchoMin: 18,
+      soulEchoMax: 25
+    }
   }
 };
 

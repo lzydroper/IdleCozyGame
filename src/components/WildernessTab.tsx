@@ -14,6 +14,7 @@ import { GAME_CONSTANTS } from '../data/gameConstants';
 import { COMBAT_ZONE_LIST, COMBAT_ZONES } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
+import { isZoneUnlocked } from '../state/combat';
 import type { CombatSettlement } from '../types/game';
 
 const WildernessTab: React.FC = () => {
@@ -549,7 +550,7 @@ const EncounterPanel: React.FC<{ encounterId: string }> = ({ encounterId }) => {
 
 // === 战斗挂机面板（ticket 05）：选区 → 三人小队轮询回合制自动战斗 ===
 const CombatPanel: React.FC = () => {
-  const { state, startCombat } = useGame();
+  const { state, startCombat, startBossBattle } = useGame();
   const { showToast } = useToast();
 
   const stamina = Math.floor(state.stamina || 0);
@@ -558,26 +559,48 @@ const CombatPanel: React.FC = () => {
   const party = (state.party || []).filter(id => !!state.heroes[id]);
   const anyWounded = party.some(id => state.heroes[id].wounded);
   const settlement = state.combat?.lastSettlement || null;
+  const clearedZones = state.combat?.zonesCleared || [];
 
   const handleStart = (zoneId: string) => {
     const outcome = startCombat(zoneId);
-    if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
+    if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
+    else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
     else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
     else if (outcome.settlement?.battle.victory) showToast('⚔️ 战斗胜利！战利品与经验已入账。', 'success');
-    else if (outcome.settlement) showToast('💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
+    else if (outcome.settlement?.battle.partyWiped) showToast('💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
+    else if (outcome.settlement) showToast('⚔️ 战斗平局，未分胜负。', 'info');
+  };
+
+  const handleBoss = (zoneId: string) => {
+    const outcome = startBossBattle(zoneId);
+    if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
+    else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
+    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
+    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
+    else if (outcome.settlement?.battle.victory) {
+      const wasCleared = clearedZones.includes(zoneId);
+      showToast(wasCleared ? '🏆 BOSS 再战胜利！专属掉落已入账。' : '🏆 首通 BOSS！区域已通关，解锁下一区域。', 'success');
+    }
+    else if (outcome.settlement?.battle.partyWiped) showToast('💥 BOSS 战失败，小队全员重伤，需纳米修复剂治愈！', 'error');
+    else if (outcome.settlement) showToast('⚔️ BOSS 战平局，未分胜负。', 'info');
   };
 
   const renderSettlement = (s: CombatSettlement) => {
     const victory = s.battle.victory;
+    const wiped = s.battle.partyWiped;
     const recentActions = s.battle.actions.slice(-6);
     return (
       <div className={`rounded-2xl border p-3 flex flex-col gap-2 ${
-        victory ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-red-950/40 border-red-500/30'
+        victory
+          ? 'bg-emerald-950/40 border-emerald-500/30'
+          : wiped
+            ? 'bg-red-950/40 border-red-500/30'
+            : 'bg-zinc-900/60 border-zinc-700/50'
       }`}>
-        <div className={`text-xs font-black ${victory ? 'text-emerald-300' : 'text-red-300'}`}>
-          {victory ? '✅ 战斗胜利' : '💥 战斗失败'} —— {COMBAT_ZONES[state.combat?.zoneId || '']?.name || REALITY_EVENTS[state.combat?.zoneId || '']?.title || '未知区域'}（{s.battle.rounds} 回合）
+        <div className={`text-xs font-black ${victory ? 'text-emerald-300' : wiped ? 'text-red-300' : 'text-zinc-400'}`}>
+          {victory ? '✅ 战斗胜利' : wiped ? '💥 战斗失败' : '⚔️ 战斗平局'} —— {COMBAT_ZONES[state.combat?.zoneId || '']?.name || REALITY_EVENTS[state.combat?.zoneId || '']?.title || '未知区域'}（{s.battle.rounds} 回合）
         </div>
         {victory ? (
           <div className="flex flex-wrap gap-1.5 text-[9px] font-bold">
@@ -595,11 +618,13 @@ const CombatPanel: React.FC = () => {
               ✦ 经验 ×{s.expPerHero} / 英雄
             </span>
           </div>
-        ) : (
+        ) : wiped ? (
           <div className="text-[9px] text-red-300 font-bold">
             {s.woundedHeroIds.map(id => HEROES_CONFIG[id]?.name || id).join('、')} 进入重伤状态，
             需在英雄页使用纳米修复剂治愈。
           </div>
+        ) : (
+          <div className="text-[9px] text-zinc-500 font-bold">鏖战至回合上限未分胜负，无战利品，亦无人重伤。</div>
         )}
         {recentActions.length > 0 && (
           <div className="bg-zinc-950/60 rounded-xl p-2 flex flex-col gap-0.5 max-h-28 overflow-y-auto">
@@ -674,17 +699,24 @@ const CombatPanel: React.FC = () => {
       {settlement && renderSettlement(settlement)}
 
       {/* 战斗区域列表 */}
-      <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（自动轮询战斗）:</h3>
+      <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（线性递进，通关当前区解锁下一区）:</h3>
       <div className="flex flex-col gap-3">
         {COMBAT_ZONE_LIST.map(zone => {
-          const insufficient = stamina < zone.staminaCost || party.length === 0 || anyWounded;
+          const unlocked = isZoneUnlocked(state, zone.id);
+          const cleared = clearedZones.includes(zone.id);
+          const zoneIdx = COMBAT_ZONE_LIST.findIndex(z => z.id === zone.id);
+          const prevZone = zoneIdx > 0 ? COMBAT_ZONE_LIST[zoneIdx - 1] : null;
+          const insufficient = !unlocked || stamina < zone.staminaCost || party.length === 0 || anyWounded;
+          const bossReady = unlocked && party.length > 0 && !anyWounded && stamina >= zone.boss.staminaCost;
           return (
             <div
               key={zone.id}
               className={`p-4 rounded-3xl border transition-all flex flex-col gap-2 ${
-                insufficient
-                  ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
-                  : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
+                !unlocked
+                  ? 'bg-zinc-950/30 border-zinc-800/50 opacity-60'
+                  : insufficient
+                    ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
+                    : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
               }`}
               onClick={() => !insufficient && handleStart(zone.id)}
             >
@@ -695,6 +727,16 @@ const CombatPanel: React.FC = () => {
                     <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-400">
                       推荐 Lv.{zone.recommendedLevel}
                     </span>
+                    {cleared && (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-400">
+                        ✓ 已通关
+                      </span>
+                    )}
+                    {!unlocked && (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-500">
+                        🔒 未解锁
+                      </span>
+                    )}
                   </h4>
                   <p className="text-[10px] text-zinc-500 mt-1 leading-normal">{zone.description}</p>
                 </div>
@@ -709,6 +751,9 @@ const CombatPanel: React.FC = () => {
                   开战（体力 -{zone.staminaCost}）
                 </button>
               </div>
+              {!unlocked && prevZone && (
+                <span className="text-[8px] text-zinc-600 font-bold">🔒 通关【{prevZone.name}】后解锁</span>
+              )}
               <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
                   敌人：{zone.enemies.map(e => `${e.emoji}${e.name}`).join('、')}
@@ -717,6 +762,31 @@ const CombatPanel: React.FC = () => {
                   掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} 🔮{zone.soulEchoMin}-{zone.soulEchoMax}
                 </span>
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{zone.expReward}/英雄</span>
+              </div>
+
+              {/* 关底 BOSS（ticket 07：击败 = 通关本区，复用同一战斗场景） */}
+              <div className={`flex items-center justify-between gap-2 rounded-xl border p-2 ${
+                !unlocked ? 'border-zinc-800/60 bg-zinc-950/40' : 'border-purple-500/25 bg-purple-950/25'
+              }`}>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-[9px] font-black text-purple-300 truncate">
+                    👑 关底 BOSS：{zone.boss.emoji} {zone.boss.name}
+                  </span>
+                  <span className="text-[8px] text-zinc-500 font-bold truncate">
+                    专属掉落：{zone.boss.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} 🔮{zone.boss.soulEchoMin}-{zone.boss.soulEchoMax} · 经验 ×{zone.boss.expReward}
+                  </span>
+                </div>
+                <button
+                  disabled={!bossReady}
+                  onClick={(e) => { e.stopPropagation(); handleBoss(zone.id); }}
+                  className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
+                    bossReady
+                      ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 border-purple-400/30 text-white cursor-pointer'
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                  }`}
+                >
+                  ⚔️ 挑战 BOSS（体力 -{zone.boss.staminaCost}）
+                </button>
               </div>
             </div>
           );

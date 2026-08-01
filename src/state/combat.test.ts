@@ -158,7 +158,8 @@ describe('startCombatUpdate (开战校验与结算)', () => {
       inventory: { scrap_metal: 5 },
       soulEchoes: 5,
       party: ['nova'],
-      heroes: { nova: createInitialHero('nova') }
+      heroes: { nova: createInitialHero('nova') },
+      combat: { ...INITIAL_STATE.combat, zonesCleared: ['wasteland_entrance', 'old_town_ruins'] }
     });
     // 让诺娃打辐射车间（三人敌人）必然战败
     const { state: next, result } = startCombatUpdate(state, 'radiated_workshop');

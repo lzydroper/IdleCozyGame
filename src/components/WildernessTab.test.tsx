@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
@@ -7,6 +7,10 @@ import WildernessTab from './WildernessTab';
 describe('WildernessTab Component', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks(); // 防止个别用例的 Math.random mock 泄漏到后续用例
   });
 
   it('should render the start exploration view initially', () => {
@@ -214,7 +218,7 @@ describe('WildernessTab Component', () => {
 
     // 切换到战斗挂机模式
     fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
-    expect(screen.getByText(/废土边缘/)).toBeDefined();
+    expect(screen.getAllByText(/废土边缘/).length).toBeGreaterThan(0); // 区域卡标题 + 下一区解锁提示
     expect(screen.getByText(/战斗体力/)).toBeDefined();
 
     // 初始队伍 = 诺娃，满体力 100 → 可开战（体力 -10）
@@ -344,6 +348,7 @@ describe('WildernessTab Component', () => {
   });
 
   it('blocks encounter battle without stamina but allows fleeing (不卡死探索)', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05); // 撤离后下一抽强制为 common 卡，避免再抽到遭遇
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
       player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
@@ -382,5 +387,69 @@ describe('WildernessTab Component', () => {
     expect(savedState.exploration.inRealityExploration).toBe(true);
     expect(savedState.exploration.realityBag.scrap_metal).toBe(1);
     expect(savedState.heroes.nova.wounded).toBe(false);
+
+    randomSpy.mockRestore();
+  });
+
+  it('boss victory clears the zone and unlocks the next zone (线性区域链)', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    // 初始仅首区解锁：区2、区3 显示未解锁
+    expect(screen.getAllByText(/🔒 未解锁/).length).toBe(2);
+    expect(screen.getByText(/👑 关底 BOSS：🦁 废土鬣狗王/)).toBeDefined();
+
+    // 单诺娃挑战区1 BOSS → 胜利通关
+    fireEvent.click(screen.getByText(/⚔️ 挑战 BOSS（体力 -12）/));
+
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
+    expect(savedState.combat.zonesCleared).toEqual(['wasteland_entrance']);
+    expect(savedState.stamina).toBe(100 - 12); // BOSS 战消耗体力
+    // 区2 解锁：未解锁徽章从 2 减到 1，且出现"已通关"徽章
+    expect(screen.getAllByText(/🔒 未解锁/).length).toBe(1);
+    expect(screen.getByText(/✓ 已通关/)).toBeDefined();
+  });
+
+  it('renders a draw settlement as 平局 rather than defeat (三态结算展示)', () => {
+    // 水合一个平局结算（victory=false 且 partyWiped=false），当前数据下无法自然产生
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
+      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      inventory: {},
+      greenhouse: { slots: [], unlockedSlotsCount: 4 },
+      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false } },
+      party: ['nova'],
+      stamina: 100,
+      combat: {
+        zoneId: 'wasteland_entrance',
+        lastSettlement: {
+          battle: { victory: false, partyWiped: false, rounds: 60, actions: [] },
+          drops: {},
+          soulEchoes: 0,
+          expPerHero: 0,
+          woundedHeroIds: []
+        },
+        zonesCleared: []
+      }
+    }));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    expect(screen.getByText(/⚔️ 战斗平局/)).toBeDefined();
+    expect(screen.queryByText(/💥 战斗失败/)).toBeNull();
+    expect(screen.getByText(/鏖战至回合上限未分胜负/)).toBeDefined();
   });
 });
