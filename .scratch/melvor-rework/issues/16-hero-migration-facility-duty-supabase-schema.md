@@ -5,8 +5,9 @@
 
 **Blocked by:** 15a — 三层属性基础数据模型与元属性加成映射引擎.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 从 `GameState` 与组件中移除 `survivors` 结构，增加 `HeroState.logisticsFacilityId`
-- [ ] 为 HeroConfig 增加后勤 Meta 属性定义，在设施生产循环中应用速度与产出加成
-- [ ] 新建并归档 `supabase/schema.sql` Supabase 建表文件
+- [x] 从 `GameState` 与组件中移除 `survivors` 结构，增加 `HeroState.logisticsFacilityId`
+- [x] 为 HeroConfig 增加后勤 Meta 属性定义，在设施生产循环中应用速度与产出加成
+- [x] 新建并归档 `supabase/schema.sql` Supabase 建表文件
+

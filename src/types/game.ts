@@ -61,6 +61,7 @@ export interface HeroState {
   talentPoints: number;     // 未分配天赋点（升级获得，ticket 11）
   talents: Record<string, number>; // 天赋树投入：节点 id -> 已投入点数（ticket 11）
   awakened: boolean;        // 觉醒标记：满星后消耗奥术星体觉醒（ticket 12）
+  logisticsFacilityId: string | null; // 设施后勤驻守 ID（null 表示未驻守后勤，非 null 时无法上阵战斗）
 }
 
 // 召唤进度状态（软保底计数）

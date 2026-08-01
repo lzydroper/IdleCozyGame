@@ -1,15 +1,23 @@
 import type { HeroClass, HeroFaction } from '../types/game';
 
-// 英雄配置：静态档案（职阶/阵营/基础属性），运行时状态见 GameState.heroes
+// 英雄后勤 Meta 属性定义：英雄驻守设施时提供的产能/速度加成
+export interface HeroDutyMeta {
+  facilitySpeedMultiplier?: number; // 加速设施运行 (如 0.20 = +20% 生产速度)
+  facilityYieldMultiplier?: number; // 额外增加产出数量 (如 0.15 = +15% 产量)
+  facilityCostReduction?: number;   // 降低配方原料消耗 (如 0.10 = -10% 原料)
+}
+
+// 英雄配置：静态档案（职阶/阵营/基础属性/后勤Meta），运行时状态见 GameState.heroes
 export interface HeroConfig {
   id: string;
   name: string;
   emoji: string;
   heroClass: HeroClass;
   faction: HeroFaction;
-  baseHp: number;      // 初始占位数值，战斗系统（ticket 05）落地时调整
+  baseHp: number;
   baseAttack: number;
   baseDefense: number;
+  dutyMeta?: HeroDutyMeta; // 后勤驻守 Meta 属性
   backstory: string;
 }
 
@@ -35,9 +43,7 @@ export const HERO_CLASS_COLORS: Record<HeroClass, string> = {
 };
 
 /**
- * 英雄配置表：现有 9 位幸存者按职阶映射纳入英雄系统（ADR-0005）。
- * 职阶映射：守护者 = 铁卫/凯瑟琳；进攻者 = 巴斯特/诺娃；协奏者 = 罗伊/阿梅/赛罗/艾拉/小米。
- * 阵营为内容分配（可调），后续羁绊/阵营系统（ticket 09）将读取本字段。
+ * 英雄配置表：9 位英雄并赋予各不相同的设施后勤 Meta 属性加成。
  */
 export const HEROES_CONFIG: Record<string, HeroConfig> = {
   nova: {
@@ -49,6 +55,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 100,
     baseAttack: 35,
     baseDefense: 8,
+    dutyMeta: { facilitySpeedMultiplier: 0.25 }, // +25% 设施运行速度
     backstory: '前联合防卫军魔导机甲的备用驾驶员，擅长让魔导设施过载运转。'
   },
   buster: {
@@ -60,6 +67,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 110,
     baseAttack: 32,
     baseDefense: 10,
+    dutyMeta: { facilityYieldMultiplier: 0.20 }, // +20% 产出数量
     backstory: '在废土中行走了二十年的清道夫硬汉，能从垃圾堆里淘出核心部件。'
   },
   soldier: {
@@ -71,6 +79,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 160,
     baseAttack: 15,
     baseDefense: 16,
+    dutyMeta: { facilityCostReduction: 0.15 }, // -15% 原料消耗
     backstory: '避难所防御队长，擅长防御部署与阵地战。'
   },
   catherine: {
@@ -82,6 +91,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 150,
     baseAttack: 15,
     baseDefense: 15,
+    dutyMeta: { facilitySpeedMultiplier: 0.15, facilityYieldMultiplier: 0.10 },
     backstory: '前辐射防治所主任，常年镇守边陲、熟悉梦魇的侵蚀手段。'
   },
   roy: {
@@ -93,6 +103,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 115,
     baseAttack: 20,
     baseDefense: 12,
+    dutyMeta: { facilitySpeedMultiplier: 0.30 }, // +30% 设施运行速度
     backstory: '前废土矿山工程师，擅长修理各种机械设备。'
   },
   mei: {
@@ -104,6 +115,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 120,
     baseAttack: 18,
     baseDefense: 10,
+    dutyMeta: { facilityYieldMultiplier: 0.25 }, // +25% 作物/温室产出
     backstory: '对变异植物了如指掌的农学家，以魔法作物滋养队伍。'
   },
   zero: {
@@ -115,6 +127,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 110,
     baseAttack: 22,
     baseDefense: 9,
+    dutyMeta: { facilitySpeedMultiplier: 0.20 },
     backstory: '废土信使，沿途留下魂印标记，熟悉所有地形与危险区域。'
   },
   healer: {
@@ -126,6 +139,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 115,
     baseAttack: 16,
     baseDefense: 11,
+    dutyMeta: { facilityCostReduction: 0.20 }, // -20% 药剂/配方消耗
     backstory: '精通净化药剂调配的药剂师，以奥术药剂维系队伍续航。'
   },
   apprentice: {
@@ -137,6 +151,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseHp: 108,
     baseAttack: 19,
     baseDefense: 10,
+    dutyMeta: { facilityYieldMultiplier: 0.15, facilityCostReduction: 0.10 },
     backstory: '在废土中长大的拾荒学徒，星野之间练就了一双巧手。'
   }
 };
