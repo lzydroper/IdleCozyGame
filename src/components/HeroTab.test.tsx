@@ -206,6 +206,9 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
+    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('天赋树入口'));
+
     // 职阶主干与英雄专属分组可见；第一个 + 属于主干首节点「锋芒毕露」
     expect(screen.getByText(/【进攻者 · 职阶主干】/)).toBeDefined();
     expect(screen.getByText(/【英雄专属】/)).toBeDefined();
@@ -230,6 +233,9 @@ describe('HeroTab Component', () => {
         </ToastProvider>
       </GameProvider>
     );
+
+    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('天赋树入口'));
 
     fireEvent.click(screen.getByText('重置'));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
