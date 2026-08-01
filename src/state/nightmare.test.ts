@@ -20,7 +20,7 @@ const withLeak = (state: GameState, hp: number = NIGHTMARE_CONFIG.dreamLeakDamag
 
 describe('梦魇泄露防御（ticket 14）', () => {
   it('直接出战：胜利 → 警报清除、虚空核心入账、污染归零、小队战后回满血', () => {
-    const state = withLeak(baseState()); // 诺娃 Lv1：攻击 35 / 防御 8，梦魇 60 HP 必败
+    const state = withLeak(baseState()); // 诺娃 Lv1：攻击 35 / 防御 8，60 HP 的梦魇必败于诺娃
     const r = defendDreamLeakUpdate(state, 'direct');
 
     expect(r.result.failure).toBeUndefined();
