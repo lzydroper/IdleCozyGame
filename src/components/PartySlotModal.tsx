@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   HEROES_CONFIG,
   HERO_CLASS_LABELS,
-  HERO_FACTION_LABELS,
   HERO_CLASS_COLORS
 } from '../data/heroes';
 import type { HeroState } from '../types/game';
-import { Shield, User, Check, X, Lock, Wrench } from 'lucide-react';
+import { Shield, Check, X, Lock, Wrench } from 'lucide-react';
 
 export interface PartySlotModalProps {
   isOpen: boolean;
@@ -48,15 +47,16 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
     return {
       id,
       name: config?.name || id,
+      avatar: config?.avatar,
+      emoji: config?.emoji,
       heroClass: config?.heroClass || 'guardian',
-      faction: config?.faction || 'arcane',
       level: heroState?.level || 1,
       star: heroState?.star || 1,
       isCurrentSlotHero,
       isInLogistics,
       isInOtherSlot,
       isDisabled,
-      isSelected: draftParty[targetSlotIndex] === id
+      isSelected: isCurrentSlotHero
     };
   });
 
@@ -89,21 +89,20 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
       nextParty[targetSlotIndex] = id;
     }
 
-    // 过滤零散字符串
     setDraftParty(nextParty);
   };
 
   const handleConfirmSave = () => {
-    // 自动清洗空元素并返回
     const cleaned = draftParty.filter(Boolean);
     onConfirm(cleaned);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-zinc-900 border border-zinc-750 rounded-2xl max-w-md w-full p-4 flex flex-col gap-3 shadow-2xl">
-        <header className="flex items-center justify-between pb-2 border-b border-zinc-800">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div className="bg-zinc-900 border border-zinc-750 rounded-2xl max-w-lg w-full h-[520px] max-h-[85vh] p-4 flex flex-col shadow-2xl">
+        {/* Modal 头部 */}
+        <header className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-amber-400" />
             <h3 className="text-sm font-black text-zinc-100">
@@ -118,93 +117,95 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
           </button>
         </header>
 
-        {/* 英雄列表区 */}
-        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
-          {heroItems.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => handleToggleSelect(item.id, item.isDisabled)}
-              className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
-                item.isDisabled
-                  ? 'bg-zinc-950/60 border-zinc-850 opacity-40 cursor-not-allowed'
-                  : item.isSelected
-                  ? 'bg-amber-950/40 border-amber-500/60 cursor-pointer shadow-sm shadow-amber-950/30'
-                  : 'bg-zinc-850/60 border-zinc-800 hover:border-zinc-700 cursor-pointer'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="relative w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700">
-                  <User className={`w-5 h-5 ${item.isDisabled ? 'text-zinc-600' : 'text-amber-300'}`} />
-                  {item.isDisabled && (
-                    <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
-                      <Lock className="w-3 h-3 text-zinc-400" />
-                    </div>
-                  )}
-                </div>
+        {/* 英雄网格内容区 (固定高度，支持上下滚动) */}
+        <div className="flex-1 overflow-y-auto py-3 pr-1">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+            {heroItems.map((item) => {
+              const firstChar = item.name ? item.name[0] : '?';
 
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-xs font-black ${item.isDisabled ? 'text-zinc-500' : 'text-zinc-200'}`}>
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleToggleSelect(item.id, item.isDisabled)}
+                  className={`relative flex flex-col rounded-xl overflow-hidden border transition-all select-none ${
+                    item.isDisabled
+                      ? 'bg-zinc-950/60 border-zinc-850 opacity-50 cursor-not-allowed'
+                      : item.isSelected
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md shadow-amber-950/40 cursor-pointer scale-102'
+                      : 'bg-zinc-950/80 border-zinc-800 hover:border-zinc-700 cursor-pointer'
+                  }`}
+                >
+                  {/* 正方形头像区域 (Aspect Square) */}
+                  <div className="aspect-square relative w-full overflow-hidden bg-zinc-900 border-b border-zinc-800/80 flex items-center justify-center">
+                    {item.avatar ? (
+                      <img
+                        src={item.avatar}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl font-black text-amber-300">
+                        {firstChar}
+                      </span>
+                    )}
+
+                    {/* 选中遮罩与勾选图标 */}
+                    {item.isSelected && (
+                      <div className="absolute inset-0 bg-amber-500/25 border-2 border-amber-400 flex items-center justify-center animate-in fade-in duration-100">
+                        <div className="w-8 h-8 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg">
+                          <Check className="w-5 h-5 stroke-[3]" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 禁用/锁定遮罩与状态说明 */}
+                    {item.isDisabled && (
+                      <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] flex flex-col items-center justify-center p-1 text-center">
+                        <Lock className="w-5 h-5 text-zinc-400 mb-0.5" />
+                        <span className="text-[9px] font-black text-zinc-300 bg-zinc-900/90 px-1.5 py-0.5 rounded border border-zinc-700 flex items-center gap-0.5">
+                          {item.isInLogistics ? (
+                            <>
+                              <Wrench className="w-2.5 h-2.5 text-sky-400" /> 后勤中
+                            </>
+                          ) : (
+                            '已上阵'
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 底部必要信息区域 */}
+                  <div className="p-1.5 flex flex-col items-center justify-center gap-0.5 bg-zinc-900/90">
+                    <span className="text-xs font-black text-zinc-100 truncate max-w-full">
                       {item.name}
                     </span>
-                    <span className="text-[9px] text-zinc-500 font-bold">
-                      Lv.{item.level}
-                    </span>
-                    <span className="text-[9px] text-amber-400 font-bold">
-                      ★{item.star}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[8px] font-bold px-1 rounded border ${HERO_CLASS_COLORS[item.heroClass]}`}>
-                      {HERO_CLASS_LABELS[item.heroClass]}
-                    </span>
-                    <span className="text-[8px] font-bold px-1 rounded border border-zinc-700 bg-zinc-800 text-zinc-300">
-                      {HERO_FACTION_LABELS[item.faction]}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-amber-400 font-bold">
+                        Lv.{item.level}
+                      </span>
+                      <span className="text-[9px] text-amber-300 font-bold">
+                        ★{item.star}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* 右侧勾选或禁用标记 */}
-              <div className="flex items-center gap-2">
-                {item.isInLogistics && (
-                  <span className="text-[9px] font-bold text-sky-400 bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-500/30 flex items-center gap-1">
-                    <Wrench className="w-2.5 h-2.5" /> 后勤中
-                  </span>
-                )}
-                {item.isInOtherSlot && (
-                  <span className="text-[9px] font-bold text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-                    已上阵
-                  </span>
-                )}
-                {!item.isDisabled && (
-                  <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                      item.isSelected
-                        ? 'bg-amber-500 border-amber-400 text-zinc-950 font-black'
-                        : 'border-zinc-700 bg-zinc-900'
-                    }`}
-                  >
-                    {item.isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
 
           {heroItems.length === 0 && (
-            <div className="py-8 text-center text-xs text-zinc-500">
+            <div className="py-12 text-center text-xs text-zinc-500">
               尚无可用英雄
             </div>
           )}
         </div>
 
         {/* 底部确认 / 取消按钮 */}
-        <footer className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+        <footer className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800 shrink-0">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-400 bg-zinc-800 hover:bg-zinc-750 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-zinc-400 bg-zinc-800 hover:bg-zinc-750 transition-colors cursor-pointer"
           >
             取消
           </button>

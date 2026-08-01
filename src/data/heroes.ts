@@ -12,6 +12,7 @@ export interface HeroConfig {
   id: string;
   name: string;
   emoji: string;
+  avatar?: string; // 英雄头像图片路径/URL（若无则备选显示首字）
   heroClass: HeroClass;
   faction: HeroFaction;
   baseHp: number;

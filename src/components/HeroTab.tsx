@@ -158,34 +158,57 @@ const HeroTab: React.FC = () => {
         </span>
       </header>
 
-      {/* 三人小队槽位 (点击可打开上阵选择小窗) */}
+      {/* 三人小队槽位 (正方形头像框 + 必要信息) */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-2">
-        <div className="flex gap-2">
+        <div className="flex gap-3 justify-center">
           {Array.from({ length: partySize }).map((_, i) => {
             const heroId = party[i];
             const config = heroId ? HEROES_CONFIG[heroId] : null;
             const hero = heroId ? state.heroes[heroId] : null;
+            const firstChar = config?.name ? config.name[0] : '＋';
+
             return (
               <div
                 key={i}
                 onClick={() => setModalSlotIndex(i)}
-                className={`flex-1 rounded-xl border flex flex-col items-center justify-center gap-0.5 py-2.5 cursor-pointer transition-all hover:scale-102 ${
-                  config
-                    ? hero?.wounded
-                      ? 'bg-red-950/40 border-red-500/40'
-                      : 'bg-zinc-950/80 border-amber-500/40 shadow-sm shadow-amber-950/20'
-                    : 'bg-zinc-950/40 border-zinc-800 border-dashed hover:border-zinc-700'
-                }`}
+                className="flex flex-col items-center gap-1 cursor-pointer transition-all hover:scale-105"
               >
-                <span className="text-sm font-black text-amber-300">{config?.name ? config.name[0] : '＋'}</span>
-                <span className="text-[8px] font-bold text-zinc-400">
-                  {hero?.wounded ? '重伤' : (config?.name || `槽位 ${i + 1}`)}
+                {/* 必须为正方形头像框 */}
+                <div
+                  className={`w-16 h-16 aspect-square rounded-xl border flex items-center justify-center relative overflow-hidden transition-all ${
+                    config
+                      ? hero?.wounded
+                        ? 'bg-red-950/50 border-red-500/50'
+                        : 'bg-zinc-950/80 border-amber-500/50 shadow-md shadow-amber-950/30'
+                      : 'bg-zinc-950/40 border-zinc-800 border-dashed hover:border-zinc-700'
+                  }`}
+                >
+                  {config?.avatar ? (
+                    <img
+                      src={config.avatar}
+                      alt={config.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl font-black text-amber-300">
+                      {firstChar}
+                    </span>
+                  )}
+                  {hero?.wounded && (
+                    <div className="absolute inset-0 bg-red-950/70 flex items-center justify-center">
+                      <span className="text-[9px] font-black text-red-300">重伤</span>
+                    </div>
+                  )}
+                </div>
+
+                <span className="text-[10px] font-bold text-zinc-300 max-w-[64px] truncate text-center">
+                  {config?.name || `槽位 ${i + 1}`}
                 </span>
               </div>
             );
           })}
         </div>
-        <p className="text-[8px] text-zinc-600 font-bold">
+        <p className="text-[8px] text-zinc-600 font-bold text-center">
           {party.length < 1 ? '点击上方槽位选择英雄上阵。' : `点击上阵槽位可跳出小窗调整人员（小队 ${party.length}/${partySize} 人）。`}
         </p>
 
@@ -228,6 +251,7 @@ const HeroTab: React.FC = () => {
           const classColor = HERO_CLASS_COLORS[config.heroClass];
           const isInParty = party.includes(id);
           const partyFull = party.length >= partySize;
+          const firstChar = config.name ? config.name[0] : '英';
 
           return (
             <div
@@ -235,8 +259,17 @@ const HeroTab: React.FC = () => {
               className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-2"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-center text-lg font-black text-amber-300 shrink-0">
-                  {config.name ? config.name[0] : '英'}
+                {/* 必须为正方形头像框 */}
+                <div className="w-12 h-12 aspect-square rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-center text-xl font-black text-amber-300 shrink-0 overflow-hidden relative">
+                  {config.avatar ? (
+                    <img
+                      src={config.avatar}
+                      alt={config.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    firstChar
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
