@@ -283,6 +283,30 @@ describe('配方队列（ticket 13）', () => {
       expect(merged.shelter.facilities.smelter[0].queue).toEqual([]);
       expect(merged.shelter.facilities.smelter[0].timeLeft).toBe(0);
     });
+
+    it('防御：失效队首后的有效配方不继承失效队的在制进度（timeLeft 清零）', () => {
+      const saved = {
+        ...baseState(),
+        shelter: {
+          ...baseState().shelter,
+          facilities: {
+            smelter: {
+              id: 'smelter',
+              name: '魔导冶炼炉',
+              level: 3,
+              queue: ['ghost_recipe', 'smelt_alloy'],
+              currentProgress: 40,
+              timeLeft: 5,
+              active: true
+            }
+          }
+        }
+      } as unknown as GameState;
+
+      const merged = mergeSavedState(saved, INITIAL_STATE);
+      expect(merged.shelter.facilities.smelter[0].queue).toEqual(['smelt_alloy']);
+      expect(merged.shelter.facilities.smelter[0].timeLeft).toBe(0);
+    });
   });
 
   describe('旧存档迁移（mergeSavedState）', () => {

@@ -116,14 +116,19 @@ const normalizeFacilityUnit = (
     : typeof saved?.activeRecipeId === 'string' && saved.activeRecipeId
       ? [saved.activeRecipeId]
       : [];
+  // 队首是否有效须看过滤前的原队首：若原队首已失效（在制进度作废），
+  // 其 timeLeft 不得转嫁给后续有效配方
+  const headWasValid =
+    typeof rawQueue[0] === 'string' &&
+    !!AUTO_RECIPES[rawQueue[0]] &&
+    AUTO_RECIPES[rawQueue[0]].facilityId === type;
   const queue = rawQueue
     .filter((id: unknown) => typeof id === 'string' && AUTO_RECIPES[id]?.facilityId === type)
     .slice(0, getQueueCapacity(level));
   // 防御损坏存档：在制进度仅在队首配方仍有效时保留，并钳制到该配方单次耗时以内；
-  // 队列为空时残留的 timeLeft 会白送给下一配方进度，必须清零
-  const headId = queue[0] ?? null;
+  // 队列为空或队首失效时残留的 timeLeft 会白送给下一配方进度，必须清零
   const rawTimeLeft = Number.isFinite(saved?.timeLeft) ? Math.max(0, Math.floor(saved.timeLeft)) : 0;
-  const timeLeft = headId ? Math.min(rawTimeLeft, getActualDuration(headId, level)) : 0;
+  const timeLeft = headWasValid && queue.length > 0 ? Math.min(rawTimeLeft, getActualDuration(queue[0], level)) : 0;
   return {
     id: type,
     name: typeof saved?.name === 'string' ? saved.name : fallback.name,
