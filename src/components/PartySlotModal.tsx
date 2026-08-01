@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { HeroState } from '../types/game';
@@ -21,11 +21,18 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
   onConfirm,
   onClose
 }) => {
-  const [draftParty, setDraftParty] = useState<string[]>([]);
+  // 保持与 props 同步：避免首次渲染 1 帧的 draftParty=[] 延迟导致的“全部先未锁定而后闪烁加锁”问题
+  const [draftParty, setDraftParty] = useState<string[]>(currentParty);
+  const [prevProps, setPrevProps] = useState({ isOpen, targetSlotIndex, currentParty });
 
-  useEffect(() => {
+  if (
+    prevProps.isOpen !== isOpen ||
+    prevProps.targetSlotIndex !== targetSlotIndex ||
+    prevProps.currentParty !== currentParty
+  ) {
+    setPrevProps({ isOpen, targetSlotIndex, currentParty });
     setDraftParty([...currentParty]);
-  }, [currentParty, isOpen]);
+  }
 
   if (!isOpen) return null;
 
@@ -111,10 +118,10 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
       {/* 矩形主容器：尺寸放大 h-[460px] max-h-[68vh] w-[92%] max-w-[380px]，居中展示 */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] flex flex-col shadow-2xl overflow-hidden"
       >
         {/* Modal 头部 */}
-        <header className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
+        <header className="flex items-center justify-between p-3.5 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
             <Shield className="w-4.5 h-4.5 text-amber-400" />
             <h3 className="text-base font-black text-zinc-100">
@@ -129,8 +136,8 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
           </button>
         </header>
 
-        {/* 英雄网格内容区 (上下可滑动，清晰大卡片) */}
-        <div className="flex-1 overflow-y-auto py-3 pr-0.5">
+        {/* 英雄网格内容区 (四周保留充足 p-3.5 边距，防止左右边框被 overflow 截断) */}
+        <div className="flex-1 overflow-y-auto p-3.5">
           <div className="grid grid-cols-3 gap-3">
             {heroItems.map((item) => {
               const firstChar = item.name ? item.name[0] : '?';
@@ -139,12 +146,12 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                 <div
                   key={item.id}
                   onClick={() => handleToggleSelect(item.id, item.isDisabled)}
-                  className={`relative flex flex-col rounded-xl overflow-hidden border transition-all ${
+                  className={`relative flex flex-col rounded-xl overflow-hidden transition-all ${
                     item.isDisabled
-                      ? 'bg-zinc-950/60 border-zinc-850 opacity-50 cursor-not-allowed'
+                      ? 'bg-zinc-950/60 border border-zinc-850 opacity-50 cursor-not-allowed'
                       : item.isSelected
-                      ? 'bg-amber-950/40 border-amber-400 shadow-md shadow-amber-950/40 cursor-pointer scale-102'
-                      : 'bg-zinc-950/80 border-zinc-800 hover:border-zinc-700 cursor-pointer'
+                      ? 'bg-amber-950/40 border-2 border-amber-400 shadow-md shadow-amber-950/40 cursor-pointer'
+                      : 'bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 cursor-pointer'
                   }`}
                 >
                   {/* 正方形头像区域 (Aspect Square) */}
@@ -163,14 +170,14 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
 
                     {/* 选中遮罩与大号勾选图标 */}
                     {item.isSelected && (
-                      <div className="absolute inset-0 bg-amber-500/30 border-2 border-amber-400 flex items-center justify-center animate-in fade-in duration-100">
+                      <div className="absolute inset-0 bg-amber-500/30 border-2 border-amber-400 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg">
                           <Check className="w-6.5 h-6.5 stroke-[3.5]" />
                         </div>
                       </div>
                     )}
 
-                    {/* 禁用/锁定遮罩与状态说明 */}
+                    {/* 禁用/锁定遮罩与状态说明（无淡入动画，直接静态即时呈现） */}
                     {item.isDisabled && (
                       <div className="absolute inset-0 bg-black/80 backdrop-blur-[1px] flex flex-col items-center justify-center p-1 text-center">
                         <Lock className="w-5 h-5 text-zinc-400 mb-1" />
