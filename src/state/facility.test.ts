@@ -244,12 +244,20 @@ describe('配方队列（ticket 13）', () => {
       expect(getActualDuration('smelt_alloy', 5)).toBe(20); // 30 / 1.5
     });
 
-    it('防御：配置中不存在的队首条目被丢弃', () => {
+    it('防御：配置中不存在的队首条目被丢弃，残留进度一并清零', () => {
       const state = baseState();
-      const ghost = { ...smelter(state), queue: ['ghost_recipe'] };
+      const ghost = { ...smelter(state), queue: ['ghost_recipe'], timeLeft: 5 };
       const r = processFacility(ghost, state.inventory, 10);
       expect(r.facility.queue).toEqual([]);
       expect(r.facility.timeLeft).toBe(0);
+    });
+
+    it('防御：运行期配置变更时丢弃失效条目，但不影响有效条目（进度不白送）', () => {
+      const state = baseState();
+      const ghost = { ...smelter(state), level: 2, queue: ['smelt_alloy', 'ghost_recipe'], timeLeft: 0 };
+      const r = processFacility(ghost, state.inventory, 27);
+      expect(r.facility.queue).toEqual([]);
+      expect(state.inventory.alloy_plate).toBe(1); // 有效配方正常产出
     });
 
     it('防御：迁移时未知配方丢弃后，残留在制进度一并清零（不白送给下一配方）', () => {

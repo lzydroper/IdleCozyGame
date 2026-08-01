@@ -57,11 +57,15 @@ export function processFacility(
   }
 
   let queue = [...fac.queue];
-  // 防御：丢弃配置中已不存在的队首条目
-  while (queue.length > 0 && !AUTO_RECIPES[queue[0]]) queue.shift();
+  let timeLeft = fac.timeLeft;
+  // 防御：丢弃配置中已不存在的条目（迁移时已过滤，这里防运行期配置变更）；
+  // 若在制队首被丢弃，其已扣原料与进度一并作废，避免白送给下一配方
+  if (queue.some(id => !AUTO_RECIPES[id])) {
+    queue = queue.filter(id => AUTO_RECIPES[id]);
+    if (!AUTO_RECIPES[fac.queue[0]]) timeLeft = 0;
+  }
   let headId = queue[0] ?? null;
   let head = headId ? AUTO_RECIPES[headId] : null;
-  let timeLeft = fac.timeLeft;
   let remaining = seconds;
 
   while (remaining > 0 && head) {
@@ -265,8 +269,8 @@ export const upgradeShelterStatUpdate = (
   if (!nextLevelConfig) return NO_OP(state);
 
   // 校验所需材料
-  const canAffordCost = Object.entries(nextLevelConfig.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
-  if (!canAffordCost) return NO_OP(state);
+  const canAffordUpgradeCost = Object.entries(nextLevelConfig.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
+  if (!canAffordUpgradeCost) return NO_OP(state);
 
   // 扣材料并应用升级
   const currentInventory = { ...state.inventory };
