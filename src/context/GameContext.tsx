@@ -261,7 +261,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 需求 3：增量同步云端角色——只拉轻量摘要（id, username, days, hp），写最小占位存档
+  // 需求 3：增量同步云端角色——只拉轻量摘要（id, username, days），写最小占位存档
   const syncCloudCharacters = async (userId: string) => {
     if (!supabase) return;
     setIsSyncing(true);
