@@ -108,7 +108,7 @@ describe('HeroTab Component', () => {
     );
 
     fireEvent.click(screen.getByText('英雄列表'));
-    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText('一键装备'));
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
@@ -130,7 +130,7 @@ describe('HeroTab Component', () => {
     );
 
     fireEvent.click(screen.getByText('英雄列表'));
-    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText('一键卸下'));
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
@@ -152,7 +152,7 @@ describe('HeroTab Component', () => {
     );
 
     fireEvent.click(screen.getByText('英雄列表'));
-    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText('天赋树入口'));
 
     expect(screen.getByText(/【进攻者 · 职阶主干】/)).toBeDefined();
@@ -180,7 +180,7 @@ describe('HeroTab Component', () => {
     );
 
     fireEvent.click(screen.getByText('英雄列表'));
-    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText('天赋树入口'));
 
     fireEvent.click(screen.getByText('重置'));
@@ -203,7 +203,7 @@ describe('HeroTab Component', () => {
     );
 
     fireEvent.click(screen.getByText('英雄列表'));
-    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText(/⭐ 升星/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.star).toBe(2);
@@ -225,7 +225,7 @@ describe('HeroTab Component', () => {
     );
 
     fireEvent.click(screen.getByText('英雄列表'));
-    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText(/🌟 觉醒/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.awakened).toBe(true);

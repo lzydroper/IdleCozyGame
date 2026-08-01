@@ -73,7 +73,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       attack: config.baseAttack + (hero.level - 1) * 3 + (equipFlat.attack || 0),
       defense: config.baseDefense + (hero.level - 1) * 1 + (equipFlat.defense || 0),
       maxHp: config.baseHp + (hero.level - 1) * 10 + (equipFlat.maxHp || 0),
-      maxMp: 50 + (equipFlat.maxMp || 0),
+      maxMp: 50,
       critRate: 0.05,
       critDmg: 1.50
     }

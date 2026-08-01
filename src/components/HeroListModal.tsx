@@ -59,6 +59,7 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
             return (
               <div
                 key={id}
+                data-testid={`hero-card-${id}`}
                 onClick={() => onSelectHero(id)}
                 className="flex flex-col items-center gap-1 cursor-pointer group transition-transform active:scale-95"
               >
