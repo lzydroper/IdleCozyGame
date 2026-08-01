@@ -268,7 +268,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('saves')
-        .select('id, username, days, hp')
+        .select('id, username, days')
         .eq('user_id', userId);
 
       if (error) {

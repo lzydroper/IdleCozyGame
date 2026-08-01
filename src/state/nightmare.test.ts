@@ -75,6 +75,29 @@ describe('梦魇泄露防御（ticket 14）', () => {
     expect(isDreamLockdownActive(r.state, before + NIGHTMARE_CONFIG.dreamLockdownDuration * 1000 - 1)).toBe(true);
   });
 
+  it('非胜利时炮塔削减的血量跨次防御累积（不重复满血）', () => {
+    let state = withLeak(baseState(), 200); // 高血量梦魇，诺娃一轮打不死
+    state.heroes.nova = { ...state.heroes.nova, hp: 6 }; // 梦魇一轮 6 伤害 → 阵亡
+    state.inventory.defensive_turret = 2;
+
+    const r = defendDreamLeakUpdate(state, 'turret');
+
+    expect(r.result.partyWiped).toBe(true);
+    expect(r.state.activeAlert.type).toBe('dream_leak');
+    expect(r.state.activeAlert.hp).toBe(200 - NIGHTMARE_CONFIG.turretDamage); // 165
+    expect(r.state.inventory.defensive_turret).toBe(1);
+  });
+
+  it('防御胜利解除尚未到期的梦境封锁', () => {
+    let state = withLeak(baseState());
+    state.exploration.dreamLockdownUntil = Date.now() + 600_000;
+
+    const r = defendDreamLeakUpdate(state, 'direct');
+
+    expect(r.result.victory).toBe(true);
+    expect(r.state.exploration.dreamLockdownUntil).toBeNull();
+  });
+
   it('封锁到期后自动解除，剩余秒数计算正确', () => {
     const now = 1_000_000;
     const state = {

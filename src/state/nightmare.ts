@@ -104,13 +104,19 @@ export const defendDreamLeakUpdate = (
     ...state,
     heroes: nextHeroes,
     inventory: nextInventory,
-    activeAlert: victory ? { type: null, hp: 0 } : state.activeAlert,
+    // 非胜利时写回炮塔削减后的血量：炮塔伤害跨次防御累积，避免每轮重复满血
+    activeAlert: victory
+      ? { type: null, hp: 0 }
+      : { type: 'dream_leak', hp: Math.max(1, nightmareHp) },
     exploration: {
       ...state.exploration,
       dreamPollution: victory ? 0 : state.exploration.dreamPollution,
-      dreamLockdownUntil: partyWiped
-        ? Date.now() + NIGHTMARE_CONFIG.dreamLockdownDuration * 1000
-        : state.exploration.dreamLockdownUntil
+      // 防御成功解除封锁；防御失败（全灭）触发封锁；平局保持原状
+      dreamLockdownUntil: victory
+        ? null
+        : partyWiped
+          ? Date.now() + NIGHTMARE_CONFIG.dreamLockdownDuration * 1000
+          : state.exploration.dreamLockdownUntil
     }
   };
 
