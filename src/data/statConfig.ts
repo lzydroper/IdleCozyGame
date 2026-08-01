@@ -59,3 +59,10 @@ export const BUFF_LIMIT_CONFIG = {
   MAX_CRIT_RATE: 1.00,                 // 暴击率上限 (100%)
   MIN_CRIT_DMG: 1.00                   // 暴击倍率下限 (100%)
 };
+
+// === 4. 战斗伤害结算配置 ===
+export const COMBAT_DAMAGE_CONFIG = {
+  MIN_DAMAGE: 1,                       // 最小固定伤害底线
+  MAX_VOID_SPIRIT_EXEMPTION: 0.90,     // 虚无灵体最大豁免比例 (90%)
+  BASE_DEFENSE_CONSTANT: 100            // 防御百分比减伤基数 DEF / (100 + DEF)
+};
