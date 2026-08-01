@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  HEROES_CONFIG,
-  HERO_CLASS_LABELS,
-  HERO_CLASS_COLORS
-} from '../data/heroes';
+import { HEROES_CONFIG } from '../data/heroes';
 import type { HeroState } from '../types/game';
 import { Shield, Check, X, Lock, Wrench } from 'lucide-react';
 
