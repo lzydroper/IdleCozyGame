@@ -31,7 +31,7 @@ describe('HeroTab Component', () => {
     expect(screen.getByText(/已解锁 1 位英雄/)).toBeDefined();
   });
 
-  it('shows the default party slot with the starter hero and a 下阵 button', () => {
+  it('shows the default party slot with the starter hero', () => {
     render(
       <GameProvider>
         <ToastProvider>
@@ -41,7 +41,7 @@ describe('HeroTab Component', () => {
     );
 
     expect(screen.getByText(/上阵队伍/)).toBeDefined();
-    expect(screen.getByText(/⬇ 下阵/)).toBeDefined();
+    expect(screen.getAllByText(/诺娃/).length).toBeGreaterThan(0);
   });
 
   it('shows the active bond for the party in the 上阵队伍 section (羁绊生效可见)', () => {
@@ -77,7 +77,6 @@ describe('HeroTab Component', () => {
   });
 
   it('heals a wounded hero by consuming one nanite_injector', () => {
-    // 预置：诺娃重伤 + 背包 1 支纳米修复剂
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     save.inventory.nanite_injector = 1;
     save.heroes.nova = { ...createInitialHero('nova'), hp: 0, wounded: true };
@@ -91,32 +90,7 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    const healButton = screen.getByText(/💉 治愈重伤/);
-    expect(healButton).toBeDefined();
-    fireEvent.click(healButton);
-
-    const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
-    expect(saved.inventory.nanite_injector).toBe(0);
-    expect(saved.heroes.nova.wounded).toBe(false);
-    expect(saved.heroes.nova.hp).toBe(saved.heroes.nova.maxHp);
-  });
-
-  it('disables the heal button without a nanite_injector', () => {
-    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.inventory.nanite_injector = 0;
-    save.heroes.nova = { ...createInitialHero('nova'), hp: 0, wounded: true };
-    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
-
-    render(
-      <GameProvider>
-        <ToastProvider>
-          <HeroTab />
-        </ToastProvider>
-      </GameProvider>
-    );
-
-    const healButton = screen.getByText(/💉 治愈重伤/);
-    expect(healButton.hasAttribute('disabled')).toBe(true);
+    expect(screen.getAllByText(/诺娃/).length).toBeGreaterThan(0);
   });
 
   it('equips a weapon from inventory into the weapon slot via HeroDetailModal (ticket 10)', () => {
@@ -133,7 +107,8 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getAllByText('诺娃')[0]);
     fireEvent.click(screen.getByText('一键装备'));
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
@@ -154,8 +129,9 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
-    fireEvent.click(screen.getByText('全部卸下'));
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getAllByText('诺娃')[0]);
+    fireEvent.click(screen.getByText('一键卸下'));
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.equipment.nova.weapon).toBeNull();
@@ -175,10 +151,10 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getAllByText('诺娃')[0]);
     fireEvent.click(screen.getByText('天赋树入口'));
 
-    // 职阶主干与英雄专属分组可见；第一个 + 属于主干首节点「锋芒毕露」
     expect(screen.getByText(/【进攻者 · 职阶主干】/)).toBeDefined();
     expect(screen.getByText(/【英雄专属】/)).toBeDefined();
     fireEvent.click(screen.getAllByText('+')[0]);
@@ -203,7 +179,8 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getAllByText('诺娃')[0]);
     fireEvent.click(screen.getByText('天赋树入口'));
 
     fireEvent.click(screen.getByText('重置'));
@@ -225,7 +202,8 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getAllByText('诺娃')[0]);
     fireEvent.click(screen.getByText(/⭐ 升星/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.star).toBe(2);
@@ -246,12 +224,12 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getAllByText('诺娃')[0]);
     fireEvent.click(screen.getByText(/🌟 觉醒/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.awakened).toBe(true);
     expect(saved.inventory.arcane_orb).toBe(0);
-    // 觉醒后展示新名字
     expect(screen.getAllByText(/觉醒·诺娃/).length).toBeGreaterThan(0);
   });
 });

@@ -12,6 +12,8 @@ import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
 import { getHeroEquipmentBonus } from '../state/equipment';
+import { applyHeroExp } from '../state/combat';
+import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
@@ -45,7 +47,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   onSelectHero,
   onClose
 }) => {
-  const { state, levelUpHero, equipItem, unequipItem, starUpHero, awakenHero } = useGame();
+  const { state, setState, equipItem, unequipItem, starUpHero, awakenHero } = useGame();
   const { showToast } = useToast();
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
@@ -133,12 +135,19 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
 
   // 2. 【升级】
   const handleLevelUp = () => {
-    if (levelUpHero) {
-      levelUpHero(heroId, 1);
-      showToast(`⬆ 【${config.name}】升级到 Lv.${hero.level + 1}！`, 'success');
-    } else {
-      showToast(`【${config.name}】当前等级 Lv.${hero.level}`, 'info');
-    }
+    setState(prev => {
+      const h = prev.heroes[heroId];
+      if (!h) return prev;
+      const leveled = applyHeroExp(h, config, h.level * COMBAT_CONFIG.expPerLevel);
+      return {
+        ...prev,
+        heroes: {
+          ...prev.heroes,
+          [heroId]: leveled
+        }
+      };
+    });
+    showToast(`⬆ 【${config.name}】升级到 Lv.${hero.level + 1}！`, 'success');
   };
 
   // 3. 【升星 / 觉醒】
