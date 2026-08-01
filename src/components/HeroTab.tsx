@@ -16,6 +16,7 @@ import { useToast } from './ToastSystem';
 import HeroEquipmentPanel from './HeroEquipmentPanel';
 import HeroTalentPanel from './HeroTalentPanel';
 import PartySlotModal from './PartySlotModal';
+import HeroDetailModal from './HeroDetailModal';
 import type { SummonOutcome } from '../state/summon';
 
 const HeroTab: React.FC = () => {
@@ -26,6 +27,8 @@ const HeroTab: React.FC = () => {
 
   // 3 人小队上阵 Modal 打开的目标槽位索引 (0, 1, 2)
   const [modalSlotIndex, setModalSlotIndex] = useState<number | null>(null);
+  // 英雄详情弹窗 HeroId
+  const [detailModalHeroId, setDetailModalHeroId] = useState<string | null>(null);
 
   const party = state.party || [];
   const partySize = COMBAT_CONFIG.partySize;
@@ -259,8 +262,12 @@ const HeroTab: React.FC = () => {
               className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-2"
             >
               <div className="flex items-center gap-3">
-                {/* 必须为正方形头像框 */}
-                <div className="w-12 h-12 aspect-square rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-center text-xl font-black text-amber-300 shrink-0 overflow-hidden relative">
+                {/* 点击头像或名称区域弹出英雄详情 Modal */}
+                <div
+                  onClick={() => setDetailModalHeroId(id)}
+                  className="w-12 h-12 aspect-square rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-center text-xl font-black text-amber-300 shrink-0 overflow-hidden relative cursor-pointer hover:border-amber-500/50 transition-all"
+                  title="点击查看英雄详情面板"
+                >
                   {config.avatar ? (
                     <img
                       src={config.avatar}
@@ -271,9 +278,15 @@ const HeroTab: React.FC = () => {
                     firstChar
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div
+                  onClick={() => setDetailModalHeroId(id)}
+                  className="flex-1 min-w-0 cursor-pointer group"
+                  title="点击查看英雄详情面板"
+                >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-zinc-100 truncate">{config.name}</span>
+                    <span className="text-sm font-black text-zinc-100 group-hover:text-amber-300 transition-colors truncate">
+                      {config.name}
+                    </span>
                     <span className="text-[10px] text-amber-400 font-bold">Lv.{hero.level}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
@@ -299,7 +312,12 @@ const HeroTab: React.FC = () => {
                   <div className="text-[12px] tracking-tight text-amber-400" title={`${hero.star} 星`}>
                     {'★'.repeat(hero.star)}
                   </div>
-                  <div className="text-[8px] text-zinc-600 font-bold mt-0.5">星级</div>
+                  <button
+                    onClick={() => setDetailModalHeroId(id)}
+                    className="text-[8px] text-amber-400 font-bold hover:underline cursor-pointer mt-0.5 block"
+                  >
+                    详情面板 ›
+                  </button>
                 </div>
               </div>
 
@@ -420,6 +438,15 @@ const HeroTab: React.FC = () => {
           heroes={state.heroes}
           onConfirm={handleConfirmPartyModal}
           onClose={() => setModalSlotIndex(null)}
+        />
+      )}
+
+      {/* 英雄详情 Modal */}
+      {detailModalHeroId !== null && (
+        <HeroDetailModal
+          isOpen={detailModalHeroId !== null}
+          heroId={detailModalHeroId}
+          onClose={() => setDetailModalHeroId(null)}
         />
       )}
     </div>

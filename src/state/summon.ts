@@ -2,6 +2,7 @@ import type { GameState } from '../types/game';
 import { HEROES_CONFIG } from '../data/heroes';
 import { createInitialHero } from '../data/initialState';
 import { SUMMON_CONFIG } from '../data/summonConfig';
+import { STAR_MAX } from '../data/awakening';
 import type { UpdateResult } from './types';
 
 export interface SummonOutcome {
@@ -75,9 +76,15 @@ export const summonUpdate = (
   const nextHeroes = { ...state.heroes };
   const nextSoulShards = { ...(state.soulShards || {}) };
 
+  let nextResonance = state.resonanceShards || 0;
+
   if (alreadyOwned) {
-    // 重复英雄 → 专属灵魂碎片（软保底计数同时重置：出英雄即视为保底兑现）
-    nextSoulShards[heroId] = (nextSoulShards[heroId] || 0) + SUMMON_CONFIG.shardsPerDupe;
+    // 若英雄已达 5 星满星，重复抽出的碎片 1:1 自动转化为通用共鸣碎片
+    if (state.heroes[heroId].star >= STAR_MAX) {
+      nextResonance += SUMMON_CONFIG.shardsPerDupe;
+    } else {
+      nextSoulShards[heroId] = (nextSoulShards[heroId] || 0) + SUMMON_CONFIG.shardsPerDupe;
+    }
   } else {
     nextHeroes[heroId] = createInitialHero(heroId);
   }
@@ -88,13 +95,14 @@ export const summonUpdate = (
       soulEchoes: state.soulEchoes - SUMMON_CONFIG.costPerSummon,
       heroes: nextHeroes,
       soulShards: nextSoulShards,
+      resonanceShards: nextResonance,
       summon: { pityCount: 0 }
     },
     result: {
       heroId,
       isNew: !alreadyOwned,
       shardsGained: alreadyOwned ? SUMMON_CONFIG.shardsPerDupe : 0,
-      shardType: alreadyOwned ? 'soul' : null
+      shardType: alreadyOwned ? (state.heroes[heroId]?.star >= STAR_MAX ? 'resonance' : 'soul') : null
     }
   };
 };

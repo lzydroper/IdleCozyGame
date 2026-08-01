@@ -36,12 +36,22 @@ export const starUpUpdate = (state: GameState, heroId: string): UpdateResult<Sta
     if (nextSoulShards[heroId] <= 0) delete nextSoulShards[heroId];
   }
 
+  const nextStar = hero.star + 1;
+  let nextResonanceShards = resonance - resonanceUsed;
+
+  // 升至 5 星满星后，持有的溢出专属灵魂碎片 1:1 自动转为通用共鸣碎片
+  if (nextStar >= STAR_MAX && nextSoulShards[heroId] && nextSoulShards[heroId] > 0) {
+    const overflow = nextSoulShards[heroId];
+    delete nextSoulShards[heroId];
+    nextResonanceShards += overflow;
+  }
+
   return {
     state: {
       ...state,
       soulShards: nextSoulShards,
-      resonanceShards: resonance - resonanceUsed,
-      heroes: { ...state.heroes, [heroId]: { ...hero, star: hero.star + 1 } }
+      resonanceShards: nextResonanceShards,
+      heroes: { ...state.heroes, [heroId]: { ...hero, star: nextStar } }
     },
     result: true
   };
