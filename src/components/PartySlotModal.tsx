@@ -88,17 +88,31 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
     setDraftParty(nextParty);
   };
 
-  const handleConfirmSave = () => {
+  const handleConfirmSave = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const cleaned = draftParty.filter(Boolean);
     onConfirm(cleaned);
     onClose();
   };
 
+  const handleCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-zinc-900 border border-zinc-750 rounded-2xl max-w-lg w-full h-[520px] max-h-[85vh] p-4 flex flex-col shadow-2xl">
+    /* 背景全屏遮罩：阻挡底层点击，点击遮罩非窗口区域自动关闭窗口 */
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-3 animate-in fade-in duration-150 select-none"
+    >
+      {/* 矩形主容器：限制最大宽度 max-w-[360px] 适配竖屏 mobile 视域，不溢出也不被顶部遮挡 */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-full max-w-[360px] max-h-[55vh] p-3.5 flex flex-col shadow-2xl overflow-hidden"
+      >
         {/* Modal 头部 */}
-        <header className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
+        <header className="flex items-center justify-between pb-2.5 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-amber-400" />
             <h3 className="text-sm font-black text-zinc-100">
@@ -106,16 +120,16 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
             </h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             className="p-1 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </header>
 
-        {/* 英雄网格内容区 (固定高度，支持上下滚动) */}
-        <div className="flex-1 overflow-y-auto py-3 pr-1">
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+        {/* 英雄网格内容区 (上下可滑动，文字放大) */}
+        <div className="flex-1 overflow-y-auto py-3 pr-0.5">
+          <div className="grid grid-cols-3 gap-2.5">
             {heroItems.map((item) => {
               const firstChar = item.name ? item.name[0] : '?';
 
@@ -123,7 +137,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                 <div
                   key={item.id}
                   onClick={() => handleToggleSelect(item.id, item.isDisabled)}
-                  className={`relative flex flex-col rounded-xl overflow-hidden border transition-all select-none ${
+                  className={`relative flex flex-col rounded-xl overflow-hidden border transition-all ${
                     item.isDisabled
                       ? 'bg-zinc-950/60 border-zinc-850 opacity-50 cursor-not-allowed'
                       : item.isSelected
@@ -132,7 +146,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                   }`}
                 >
                   {/* 正方形头像区域 (Aspect Square) */}
-                  <div className="aspect-square relative w-full overflow-hidden bg-zinc-900 border-b border-zinc-800/80 flex items-center justify-center">
+                  <div className="aspect-square relative w-full overflow-hidden bg-zinc-950 border-b border-zinc-800/80 flex items-center justify-center">
                     {item.avatar ? (
                       <img
                         src={item.avatar}
@@ -140,28 +154,28 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-2xl font-black text-amber-300">
+                      <span className="text-3xl font-black text-amber-300">
                         {firstChar}
                       </span>
                     )}
 
-                    {/* 选中遮罩与勾选图标 */}
+                    {/* 选中遮罩与大号勾选图标 */}
                     {item.isSelected && (
-                      <div className="absolute inset-0 bg-amber-500/25 border-2 border-amber-400 flex items-center justify-center animate-in fade-in duration-100">
-                        <div className="w-8 h-8 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg">
-                          <Check className="w-5 h-5 stroke-[3]" />
+                      <div className="absolute inset-0 bg-amber-500/30 border-2 border-amber-400 flex items-center justify-center animate-in fade-in duration-100">
+                        <div className="w-9 h-9 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shadow-lg">
+                          <Check className="w-6 h-6 stroke-[3.5]" />
                         </div>
                       </div>
                     )}
 
-                    {/* 禁用/锁定遮罩与状态说明 */}
+                    {/* 禁用/锁定遮罩与状态说明（清晰大字） */}
                     {item.isDisabled && (
-                      <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] flex flex-col items-center justify-center p-1 text-center">
-                        <Lock className="w-5 h-5 text-zinc-400 mb-0.5" />
-                        <span className="text-[9px] font-black text-zinc-300 bg-zinc-900/90 px-1.5 py-0.5 rounded border border-zinc-700 flex items-center gap-0.5">
+                      <div className="absolute inset-0 bg-black/80 backdrop-blur-[1px] flex flex-col items-center justify-center p-1 text-center">
+                        <Lock className="w-5 h-5 text-zinc-400 mb-1" />
+                        <span className="text-xs font-black text-zinc-200 bg-zinc-900/90 px-2 py-0.5 rounded border border-zinc-700 flex items-center gap-1">
                           {item.isInLogistics ? (
                             <>
-                              <Wrench className="w-2.5 h-2.5 text-sky-400" /> 后勤中
+                              <Wrench className="w-3 h-3 text-sky-400" /> 后勤中
                             </>
                           ) : (
                             '已上阵'
@@ -171,16 +185,16 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                     )}
                   </div>
 
-                  {/* 底部必要信息区域 */}
-                  <div className="p-1.5 flex flex-col items-center justify-center gap-0.5 bg-zinc-900/90">
-                    <span className="text-xs font-black text-zinc-100 truncate max-w-full">
+                  {/* 底部必要信息区域 (加大字号) */}
+                  <div className="p-2 flex flex-col items-center justify-center gap-0.5 bg-zinc-900/90">
+                    <span className="text-sm font-black text-zinc-100 truncate max-w-full">
                       {item.name}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-amber-400 font-bold">
+                      <span className="text-xs text-amber-400 font-bold">
                         Lv.{item.level}
                       </span>
-                      <span className="text-[9px] text-amber-300 font-bold">
+                      <span className="text-xs text-amber-300 font-bold">
                         ★{item.star}
                       </span>
                     </div>
@@ -196,22 +210,25 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
             </div>
           )}
         </div>
+      </div>
 
-        {/* 底部确认 / 取消按钮 */}
-        <footer className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800 shrink-0">
-          <button
-            onClick={onClose}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-zinc-400 bg-zinc-800 hover:bg-zinc-750 transition-colors cursor-pointer"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleConfirmSave}
-            className="px-4 py-1.5 rounded-xl text-xs font-black text-zinc-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 transition-all cursor-pointer shadow-md shadow-amber-950/40"
-          >
-            确认上阵
-          </button>
-        </footer>
+      {/* 确认与取消按钮组：居中放大，在矩形主容器外部下方 */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex items-center justify-center gap-4 pt-3.5 w-full max-w-[360px]"
+      >
+        <button
+          onClick={handleCancel}
+          className="flex-1 py-2.5 rounded-xl text-sm font-bold text-zinc-300 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 transition-all cursor-pointer text-center active:scale-98"
+        >
+          取消
+        </button>
+        <button
+          onClick={handleConfirmSave}
+          className="flex-1 py-2.5 rounded-xl text-sm font-black text-zinc-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 transition-all cursor-pointer text-center shadow-lg shadow-amber-950/50 active:scale-98"
+        >
+          确认上阵
+        </button>
       </div>
     </div>
   );

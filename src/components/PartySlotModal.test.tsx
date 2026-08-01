@@ -89,4 +89,26 @@ describe('PartySlotModal Component', () => {
     // Duty hero Buster should not be added to party
     expect(onConfirm).toHaveBeenCalledWith(['nova', 'soldier']);
   });
+
+  it('triggers onClose when backdrop mask is clicked', () => {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+
+    const { container } = render(
+      <PartySlotModal
+        isOpen={true}
+        targetSlotIndex={0}
+        currentParty={['nova']}
+        heroes={sampleHeroes}
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />
+    );
+
+    // Backdrop mask is the outermost div
+    const backdrop = container.firstChild as HTMLElement;
+    fireEvent.click(backdrop);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
