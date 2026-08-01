@@ -113,7 +113,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
        z-[9999] 全屏遮罩：100% 盖住顶部状态栏、底部 Tab 栏与整个视区 */
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
     >
       {/* 矩形主容器：尺寸放大 h-[460px] max-h-[68vh] w-[92%] max-w-[380px]，居中展示 */}
       <div
