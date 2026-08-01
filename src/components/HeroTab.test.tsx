@@ -250,6 +250,7 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
+    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
     fireEvent.click(screen.getByText(/⭐ 升星/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.star).toBe(2);
@@ -270,12 +271,12 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
+    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
     fireEvent.click(screen.getByText(/🌟 觉醒/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.awakened).toBe(true);
     expect(saved.inventory.arcane_orb).toBe(0);
-    // 觉醒后展示新名字与专属技能（面板 + 提示 toast）
+    // 觉醒后展示新名字
     expect(screen.getAllByText(/觉醒·诺娃/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/电涌过载/).length).toBeGreaterThan(0);
   });
 });

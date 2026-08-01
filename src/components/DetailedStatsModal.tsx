@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Zap, Shield, Sparkles, Award } from 'lucide-react';
+import { X, Zap, Shield, Award } from 'lucide-react';
 import type { CalculatedEntityStats } from '../state/statSystem';
 
 export interface DetailedStatsModalProps {

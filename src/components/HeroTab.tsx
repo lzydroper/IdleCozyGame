@@ -9,21 +9,18 @@ import {
 import { SUMMON_CONFIG } from '../data/summonConfig';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { formatBonus } from '../data/bonds';
-import { STAR_MAX, starUpShardCost, AWAKEN_CONFIG } from '../data/awakening';
 import { getAwakenedName } from '../state/awakening';
 import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';
 import PartySlotModal from './PartySlotModal';
 import HeroListModal from './HeroListModal';
 import HeroDetailModal from './HeroDetailModal';
-import { Sparkles, Users, Plus, Shield, Award, Zap, Heart } from 'lucide-react';
-import type { SummonOutcome } from '../state/summon';
+import { Sparkles, Users, Plus, Shield } from 'lucide-react';
 
 const HeroTab: React.FC = () => {
-  const { state, summonHero, setParty, healWoundedHero, starUpHero, awakenHero } = useGame();
+  const { state, summonHero, setParty, healWoundedHero } = useGame();
   const { showToast } = useToast();
   const heroIds = Object.keys(state.heroes);
-  const [lastSummon, setLastSummon] = useState<SummonOutcome | null>(null);
 
   // Modal 状态
   const [modalSlotIndex, setModalSlotIndex] = useState<number | null>(null);
@@ -36,8 +33,7 @@ const HeroTab: React.FC = () => {
   const activeBonds = getActiveBonds(party);
 
   const handleSummon = () => {
-    const outcome = summonHero();
-    setLastSummon(outcome);
+    summonHero();
   };
 
   const handleConfirmPartyModal = (newParty: string[]) => {
