@@ -5,9 +5,10 @@
 
 **Blocked by:** 15a — 三层属性基础数据模型与元属性加成映射引擎.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 实现 `applyBuffEffects` 增益叠加与衰减状态更新
-- [ ] 支持固定值 (Flat) 与百分比 (Percent) 增幅混合拆算
-- [ ] 结合意志 (Willpower) 元属性计算负面效果的回合数与数值减免
-- [ ] 编写 Buff 叠加与消逝的单元测试
+- [x] 实现 `applyBuffEffects` 增益叠加与衰减状态更新
+- [x] 支持固定值 (Flat) 与百分比 (Percent) 增幅混合拆算
+- [x] 结合意志 (Willpower) 元属性计算负面效果的回合数与数值减免
+- [x] 编写 Buff 叠加与消逝的单元测试
+
