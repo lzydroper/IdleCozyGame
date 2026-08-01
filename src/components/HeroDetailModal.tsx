@@ -10,6 +10,7 @@ import {
 import { STAR_MAX, starUpShardCost } from '../data/awakening';
 import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
+import { EQUIPMENT_CONFIG } from '../data/equipment';
 import { getHeroEquipmentBonus } from '../state/equipment';
 import { calculateEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
@@ -117,7 +118,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       const inv = state.inventory || {};
       slots.forEach(slot => {
         if (!heroEquip[slot]) {
-          const matchItemId = Object.keys(inv).find(itemId => (inv[itemId] || 0) > 0 && ITEMS_CONFIG[itemId]?.slot === slot);
+          const matchItemId = Object.keys(inv).find(itemId => (inv[itemId] || 0) > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot);
           if (matchItemId) {
             equipItem(heroId, slot, matchItemId);
             equippedCount++;
