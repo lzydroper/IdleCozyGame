@@ -7,13 +7,13 @@ import {
   HERO_FACTION_LABELS,
   HERO_CLASS_COLORS
 } from '../data/heroes';
-import { STAR_MAX, starUpShardCost, AWAKEN_CONFIG } from '../data/awakening';
-import { getAwakenedName, getStarBonus, getAwakenedPassive } from '../state/awakening';
-import { ITEMS_CONFIG } from '../data/equipment';
+import { STAR_MAX, starUpShardCost } from '../data/awakening';
+import { getAwakenedName } from '../state/awakening';
+import { ITEMS_CONFIG } from '../data/items';
 import { getHeroEquipmentBonus } from '../state/equipment';
 import { calculateEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
-import { X, Shield, Sword, ShieldAlert, Sparkles, Heart, Zap, Award } from 'lucide-react';
+import { X, Shield, Sword, Sparkles, Heart, Zap, Award } from 'lucide-react';
 import type { EquipmentSlot } from '../types/game';
 
 export interface HeroDetailModalProps {
@@ -36,22 +36,20 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const hero = state.heroes[heroId];
   if (!config || !hero) return null;
 
-  const heroEquip = state.heroEquipment?.[heroId] || { weapon: null, armor: null, trinket: null };
+  const heroEquip = state.equipment?.[heroId] || { weapon: null, armor: null, trinket: null };
   const firstChar = config.name ? config.name[0] : '?';
   const awakenedName = getAwakenedName(heroId, hero) || config.name;
 
   // 装备加成属性
-  const { flat: equipFlat, percent: equipPercent } = getHeroEquipmentBonus(heroEquip);
-  const starBonus = getStarBonus(hero);
-  const awakenPassive = getAwakenedPassive(heroId, hero);
+  const { flat: equipFlat } = getHeroEquipmentBonus(heroEquip);
 
   // 核心基础面板属性计算
   const calculatedStats = calculateEntityStats({
     baseAttributes: {
       attack: config.baseAttack + (hero.level - 1) * 3 + (equipFlat.attack || 0),
       defense: config.baseDefense + (hero.level - 1) * 1 + (equipFlat.defense || 0),
-      maxHp: config.baseHp + (hero.level - 1) * 10 + (equipFlat.hp || 0),
-      maxMp: 50 + (equipFlat.mp || 0),
+      maxHp: config.baseHp + (hero.level - 1) * 10 + (equipFlat.maxHp || 0),
+      maxMp: 50,
       critRate: 0.05,
       critDmg: 1.50
     }
@@ -124,9 +122,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             {itemConfig?.name || slotLabel}
           </span>
 
-          {item && item.enhanceLevel > 0 && (
+          {item && item.enhance > 0 && (
             <span className="absolute top-0.5 right-0.5 text-[8px] font-black text-amber-300 bg-black/80 px-1 rounded border border-amber-500/30">
-              +{item.enhanceLevel}
+              +{item.enhance}
             </span>
           )}
         </div>
