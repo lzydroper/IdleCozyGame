@@ -4,6 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import HeroDetailModal from './HeroDetailModal';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
+import { INITIAL_STATE } from '../data/initialState';
+
+const HERO_SAVE_KEY = 'aether_garden_save_Guest';
 
 describe('HeroDetailModal Component', () => {
   it('renders hero detail modal with 3 equipment slots and stats panel', () => {
@@ -23,11 +26,14 @@ describe('HeroDetailModal Component', () => {
     expect(screen.getByText('武器')).toBeDefined();
     expect(screen.getByText('防具')).toBeDefined();
     expect(screen.getByText('饰品')).toBeDefined();
-    expect(screen.getByText('核心基础属性')).toBeDefined();
-    expect(screen.getByText('全部卸下')).toBeDefined();
+    expect(screen.getByText('基础属性')).toBeDefined();
+    expect(screen.getByText('一键装备')).toBeDefined();
   });
 
   it('triggers unequip all action when clicking 全部卸下', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.equipment = { nova: { weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false }, armor: null, trinket: null } };
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
     const onClose = vi.fn();
 
     render(
