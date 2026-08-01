@@ -223,10 +223,10 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       onClick={onClose}
       className="fixed inset-0 z-[10000] bg-transparent flex flex-col items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
     >
-      {/* 统一 Modal 容器尺寸: w-[92%] max-w-[380px] h-[460px] max-h-[68vh] flex flex-col justify-between overflow-hidden */}
+      {/* 自适应紧凑 Modal 容器尺寸: w-[92%] max-w-[380px] h-auto max-h-[85vh] */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-3.5 flex flex-col justify-between shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-auto max-h-[85vh] p-3.5 flex flex-col gap-3 shadow-2xl overflow-y-auto"
       >
         {/* 顶部 Header: 标题与切换箭头居中 (< 🏅 英雄详情 >) */}
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0 relative">
@@ -262,10 +262,10 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           </button>
         </header>
 
-        {/* 满框饱满的主体区域 */}
-        <div className="flex-1 flex flex-col justify-between gap-2 min-h-0 pt-1">
-          {/* 上半部分三列布局 (放大头像 w-20 h-20，装备/技能框 w-13 h-13，自然占满 ~270px 高度) */}
-          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800/80 flex-1 min-h-0">
+        {/* 紧凑贴合的主体内容区域 */}
+        <div className="flex flex-col gap-3 pt-0.5">
+          {/* 上半部分三列布局 (消除中列标签至升级按钮间悬空空隙) */}
+          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800/80 shrink-0">
             {/* 左侧列：三槽装备 + 底部【一键装备/一键卸下】 */}
             <div className="flex flex-col items-center justify-between">
               <div className="flex flex-col gap-1 items-center w-full">
@@ -275,13 +275,13 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               </div>
               <button
                 onClick={handleToggleEquipAll}
-                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-1"
+                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-1.5"
               >
                 {hasAnyEquip ? '一键卸下' : '一键装备'}
               </button>
             </div>
 
-            {/* 中间列：放大大头像 w-20 h-20、名称、标签 + 底部【升级】 */}
+            {/* 中间列：放大大头像 w-20 h-20、名称、标签 + 底部【升级】(紧凑无空隙) */}
             <div className="flex flex-col items-center justify-between text-center">
               <div className="flex flex-col items-center gap-1">
                 {/* 放大正方形大头像 (w-20 h-20) */}
@@ -320,7 +320,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               {/* 中列底部按钮: 升级 */}
               <button
                 onClick={handleLevelUp}
-                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-1"
+                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-1.5"
               >
                 升级
               </button>
@@ -339,7 +339,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 <button
                   onClick={handleStarUp}
                   disabled={totalAvailableShards < shardCost}
-                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1.5 ${
                     totalAvailableShards >= shardCost
                       ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -351,7 +351,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 <button
                   onClick={handleAwaken}
                   disabled={!hasOrb}
-                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1.5 ${
                     hasOrb
                       ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 shadow-sm active:scale-95'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -362,7 +362,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               ) : (
                 <button
                   disabled
-                  className="w-full py-1.5 rounded-lg text-[8.5px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-1"
+                  className="w-full py-1.5 rounded-lg text-[8.5px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-1.5"
                 >
                   已觉醒
                 </button>
@@ -370,12 +370,12 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             </div>
           </div>
 
-          {/* 下半部分左右布局 (恢复为自然紧凑的固定高度 h-[124px]，不再非自然拉伸) */}
-          <div className="grid grid-cols-3 gap-2 h-[124px] shrink-0">
+          {/* 下半部分左右布局 (消除【基础属性】标题与【生命】第一行数据之间的悬空) */}
+          <div className="grid grid-cols-3 gap-2 shrink-0">
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
-              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-all h-full"
+              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-all"
             >
               <div className="w-8.5 h-8.5 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
                 <Sliders className="w-4 h-4" />
@@ -385,9 +385,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               </span>
             </div>
 
-            {/* 右侧：基础属性显示 */}
-            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col justify-between h-full">
-              <div className="flex items-center justify-between text-[9.5px] font-black text-amber-300 border-b border-zinc-850 pb-1 shrink-0">
+            {/* 右侧：基础属性显示 (紧凑 gap-1.5 布局，数据紧贴标题线下方) */}
+            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-[9.5px] font-black text-amber-300 border-b border-zinc-850 pb-1.5 shrink-0">
                 <span className="flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-amber-400" /> 基础属性
                 </span>
@@ -399,7 +399,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[8.5px] py-0.5">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[8.5px] pt-0.5">
                 {/* 1. 生命 */}
                 <div className="flex items-center justify-between text-zinc-300">
                   <span className="text-zinc-500 font-bold flex items-center gap-0.5">
