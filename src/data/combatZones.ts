@@ -160,6 +160,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
         { itemId: 'starcore_weapon', chance: 0.15, minQty: 1, maxQty: 1 },
         { itemId: 'starcore_armor', chance: 0.1, minQty: 1, maxQty: 1 },
         { itemId: 'starcore_trinket', chance: 0.1, minQty: 1, maxQty: 1 },
+        { itemId: 'arcane_orb', chance: 0.12, minQty: 1, maxQty: 1 },
         { itemId: 'enhance_stone', chance: 0.9, minQty: 3, maxQty: 5 }
       ],
       soulEchoMin: 18,

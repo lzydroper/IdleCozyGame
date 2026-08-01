@@ -129,11 +129,12 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   heroes: Object.fromEntries(
     Object.entries({ ...initialState.heroes, ...(parsed.heroes || {}) }).map(([heroId, h]) => [
       heroId,
-      // 天赋字段（ticket 11）：旧存档缺失时补默认值，逐节点钳制等级并丢弃未知节点
+      // 天赋/觉醒字段（ticket 11/12）：旧存档缺失时补默认值，逐节点钳制等级并丢弃未知节点
       {
         ...h,
         talentPoints: Number.isFinite(h.talentPoints) ? Math.max(0, h.talentPoints) : 0,
-        talents: normalizeTalents(heroId, h.talents)
+        talents: normalizeTalents(heroId, h.talents),
+        awakened: !!h.awakened
       }
     ])
   ),

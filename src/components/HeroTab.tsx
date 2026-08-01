@@ -9,6 +9,8 @@ import {
 import { SUMMON_CONFIG } from '../data/summonConfig';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { formatBonus } from '../data/bonds';
+import { STAR_MAX, starUpShardCost, AWAKEN_CONFIG } from '../data/awakening';
+import { getAwakenedName } from '../state/awakening';
 import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';
 import HeroEquipmentPanel from './HeroEquipmentPanel';
@@ -16,7 +18,7 @@ import HeroTalentPanel from './HeroTalentPanel';
 import type { SummonOutcome } from '../state/summon';
 
 const HeroTab: React.FC = () => {
-  const { state, summonHero, setParty, healWoundedHero } = useGame();
+  const { state, summonHero, setParty, healWoundedHero, starUpHero, awakenHero } = useGame();
   const { showToast } = useToast();
   const heroIds = Object.keys(state.heroes);
   const [lastSummon, setLastSummon] = useState<SummonOutcome | null>(null);
@@ -47,6 +49,31 @@ const HeroTab: React.FC = () => {
       showToast(`💉 ${HEROES_CONFIG[id]?.name || id} 已治愈，恢复上阵！`, 'success');
     } else {
       showToast('治愈失败：需要 1 支纳米修复注射针（工坊制造）。', 'error');
+    }
+  };
+
+  const handleStarUp = (id: string) => {
+    const result = starUpHero(id);
+    if (result === true) {
+      showToast(`⭐ ${HEROES_CONFIG[id]?.name || id} 升星成功！`, 'success');
+    } else if (result === 'no_shards') {
+      showToast('升星失败：灵魂碎片或共鸣碎片不足（重复召唤/未出英雄时获得）。', 'error');
+    } else if (result === 'max_star') {
+      showToast('已满星，可消耗奥术星体觉醒！', 'warning');
+    }
+  };
+
+  const handleAwaken = (id: string) => {
+    const result = awakenHero(id);
+    if (result === true) {
+      // 注意：state 为渲染闭包快照，觉醒后此处仍为旧值 → 直接从配置取觉醒名
+      const awakenName = AWAKEN_CONFIG[id]?.awakenedName || `${HEROES_CONFIG[id]?.name || id}（觉醒）`;
+      const skill = AWAKEN_CONFIG[id]?.skill;
+      showToast(`🌟 觉醒成功！【${awakenName}】解锁专属技能【${skill?.name || ''}】！`, 'success');
+    } else if (result === 'no_orb') {
+      showToast('觉醒失败：需要 1 个奥术星体（辐射车间 BOSS 掉落）。', 'error');
+    } else if (result === 'not_max_star') {
+      showToast('觉醒需先升至满星。', 'warning');
     }
   };
 
@@ -241,6 +268,55 @@ const HeroTab: React.FC = () => {
                     style={{ width: `${(hero.hp / (hero.maxHp || 1)) * 100}%` }}
                   />
                 </div>
+              </div>
+
+              {/* 升星与觉醒（ticket 12）：碎片升星 → 满星消耗奥术星体觉醒 */}
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-2 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-amber-300/90 tracking-wide">🌟 升星 · 觉醒</span>
+                  <span className="text-[8px] text-zinc-600 font-bold">
+                    专属碎片 ×{state.soulShards?.[id] || 0} · 共鸣碎片 ×{state.resonanceShards || 0}
+                  </span>
+                </div>
+                {hero.awakened ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] font-black text-amber-300">
+                      🌟 {getAwakenedName(id, hero) || `${config.name}（觉醒）`}
+                    </span>
+                    {(() => { const skill = AWAKEN_CONFIG[id]?.skill; return skill ? (
+                      <span className="text-[8px] text-amber-500/80 font-bold" title={skill.description}>
+                        ⚡ 专属技能【{skill.name}】· {skill.description}
+                      </span>
+                    ) : null; })()}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleStarUp(id)}
+                      disabled={hero.star >= STAR_MAX || (state.soulShards?.[id] || 0) + (state.resonanceShards || 0) < starUpShardCost(hero.star)}
+                      className={`flex-1 py-1 rounded-lg text-[9px] font-black transition-all border cursor-pointer disabled:cursor-not-allowed ${
+                        hero.star < STAR_MAX && (state.soulShards?.[id] || 0) + (state.resonanceShards || 0) >= starUpShardCost(hero.star)
+                          ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-950/60'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-600'
+                      }`}
+                      title="消耗该英雄灵魂碎片或通用共鸣碎片提升星级（每星提供攻击/防御/生命百分比加成）"
+                    >
+                      {hero.star >= STAR_MAX ? '已满星' : `⭐ 升星（碎片 ×${starUpShardCost(hero.star)}）`}
+                    </button>
+                    <button
+                      onClick={() => handleAwaken(id)}
+                      disabled={hero.star < STAR_MAX || (state.inventory.arcane_orb || 0) < 1}
+                      className={`flex-1 py-1 rounded-lg text-[9px] font-black transition-all border cursor-pointer disabled:cursor-not-allowed ${
+                        hero.star >= STAR_MAX && (state.inventory.arcane_orb || 0) >= 1
+                          ? 'border-purple-500/50 bg-purple-600/30 text-purple-200 hover:bg-purple-600/40'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-600'
+                      }`}
+                      title="满星英雄消耗奥术星体觉醒：更名、强化被动、解锁专属战斗技能"
+                    >
+                      {hero.star < STAR_MAX ? '觉醒（满星解锁）' : '🌟 觉醒（奥术星体×1）'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 装备面板（ticket 10）：3 槽穿戴 / 强化 / 神话锻造 / 套装特效 */}

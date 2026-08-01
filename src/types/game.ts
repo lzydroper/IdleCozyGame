@@ -62,6 +62,7 @@ export interface HeroState {
   wounded: boolean;         // 重伤标记：战斗失败（小队全灭）后禁止上阵
   talentPoints: number;     // 未分配天赋点（升级获得，ticket 11）
   talents: Record<string, number>; // 天赋树投入：节点 id -> 已投入点数（ticket 11）
+  awakened: boolean;        // 觉醒标记：满星后消耗奥术星体觉醒（ticket 12）
 }
 
 // 召唤进度状态（软保底计数）
@@ -99,6 +100,8 @@ export interface BattleAction {
   actorEmoji: string;
   targetName: string;
   damage: number;
+  kind?: 'attack' | 'skill' | 'heal'; // 行动类型（ticket 12 觉醒专属技能：heal 的 damage 为治疗量）
+  skillName?: string;                  // kind === 'skill' | 'heal' 时的技能名
 }
 
 // 一场战斗的模拟结果（纯战斗，不含经济结算）

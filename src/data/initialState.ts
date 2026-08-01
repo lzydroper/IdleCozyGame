@@ -26,7 +26,8 @@ export const createInitialHero = (configId: string): HeroState => {
     star: 1,
     wounded: false,
     talentPoints: 0,   // 升级获得天赋点（ticket 11）
-    talents: {}
+    talents: {},
+    awakened: false    // 满星后消耗奥术星体觉醒（ticket 12）
   };
 };
 

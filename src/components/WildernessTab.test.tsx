@@ -264,8 +264,8 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} },
-        soldier: { level: 1, exp: 0, hp: 160, maxHp: 160, star: 1, wounded: false, talentPoints: 0, talents: {} }
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false },
+        soldier: { level: 1, exp: 0, hp: 160, maxHp: 160, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false }
       },
       party: ['nova', 'soldier'],
       exploration: {
@@ -313,7 +313,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} }
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false }
       },
       party: ['nova'],
       exploration: {
@@ -356,7 +356,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} }
+        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false }
       },
       party: ['nova'],
       stamina: 0,
@@ -499,7 +499,7 @@ describe('WildernessTab Component', () => {
       player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {} } },
+      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false } },
       party: ['nova'],
       stamina: 100,
       combat: {
@@ -527,5 +527,50 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/⚔️ 战斗平局/)).toBeDefined();
     expect(screen.queryByText(/💥 战斗失败/)).toBeNull();
     expect(screen.getByText(/鏖战至回合上限未分胜负/)).toBeDefined();
+  });
+
+  it('renders awakened skill actions in the battle log (strike shows target, heal shows +N)', () => {
+    // 水合一场含觉醒技能结算：strike 有目标名、heal 为自身治疗
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
+      player: { hp: 100, maxHp: 100, food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
+      inventory: {},
+      greenhouse: { slots: [], unlockedSlotsCount: 4 },
+      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: true } },
+      party: ['nova'],
+      stamina: 100,
+      combat: {
+        zoneId: 'wasteland_entrance',
+        lastSettlement: {
+          battle: {
+            victory: true, partyWiped: false, rounds: 2,
+            actions: [
+              { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '☄️', targetName: '废土鬣狗', damage: 28, kind: 'skill', skillName: '电涌过载' },
+              { round: 1, actorSide: 'enemy', actorId: 'e1', actorName: '废土鬣狗', actorEmoji: '🐺', targetName: '诺娃', damage: 6, kind: 'attack' },
+              { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '☄️', targetName: '诺娃', damage: 76, kind: 'heal', skillName: '净化之泉' }
+            ]
+          },
+          drops: {},
+          soulEchoes: 0,
+          expPerHero: 20,
+          woundedHeroIds: []
+        },
+        zonesCleared: []
+      }
+    }));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    // strike：发动【技能】→ 目标名（技能 span 内含目标）；heal：发动【技能】+治疗量（无目标箭头）
+    expect(screen.getByText(/发动【电涌过载】/).textContent).toContain('废土鬣狗');
+    expect(screen.getByText('-28')).toBeDefined(); // strike 伤害
+    expect(screen.getByText(/发动【净化之泉】/).textContent).not.toContain('→'); // heal 无目标箭头
+    expect(screen.getByText('+76')).toBeDefined(); // heal 治疗量
   });
 });

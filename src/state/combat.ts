@@ -6,10 +6,12 @@ import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { CombatBonus } from '../data/bonds';
+import type { AwakenSkillConfig } from '../data/awakening';
 import { aggregateBonus } from './bonds';
 import type { EquipmentStats } from '../data/equipment';
 import { getHeroEquipmentBonus } from './equipment';
 import { getTalentBonus } from './talents';
+import { getAwakenBonus, getAwakenSkill } from './awakening';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -24,6 +26,7 @@ export interface CombatantState {
   maxHp: number;
   attack: number;
   defense: number;
+  skill?: AwakenSkillConfig; // 觉醒专属战斗技能（ticket 12，仅英雄携带）
 }
 
 export type CombatFailure = 'no_stamina' | 'no_party' | 'wounded' | 'unknown_zone' | 'locked';
@@ -70,6 +73,8 @@ const dealDamage = (attack: number, defense: number): number =>
  * 每回合按固定顺序行动 —— 先按上阵顺序依次轮到英雄，再按配置顺序轮到敌人；
  * 英雄集火第一个存活敌人，敌人集火第一个存活英雄。全部敌人阵亡 → 胜利；
  * 全部英雄阵亡或达到回合上限 → 战败。rng 不参与战斗（掉落结算在调用方）。
+ * 觉醒英雄（ticket 12）携带专属技能：冷却归零时发动（strike 单体重击 / aoe 群体 / heal 自身治疗），
+ * 否则普通攻击；技能按自身行动轮计冷却。
  */
 export const simulateBattle = (
   heroes: CombatantState[],
@@ -79,6 +84,7 @@ export const simulateBattle = (
   const h = heroes.map(x => ({ ...x }));
   const e = enemies.map(x => ({ ...x }));
   const actions: BattleResult['actions'] = [];
+  const skillCooldown: Record<string, number> = {}; // 英雄 id -> 剩余冷却（按自身行动轮）
   let round = 0;
 
   while (round < maxRounds) {
@@ -89,17 +95,57 @@ export const simulateBattle = (
       if (hero.hp <= 0) continue;
       const target = e.find(en => en.hp > 0);
       if (!target) break;
-      const dmg = dealDamage(hero.attack, target.defense);
-      target.hp -= dmg;
-      actions.push({
-        round,
-        actorSide: 'hero',
-        actorId: hero.id,
-        actorName: hero.name,
-        actorEmoji: hero.emoji,
-        targetName: target.name,
-        damage: dmg
-      });
+
+      const cd = skillCooldown[hero.id] || 0;
+      const skill = hero.skill;
+
+      // 觉醒技能：冷却归零时发动
+      if (skill && cd === 0) {
+        skillCooldown[hero.id] = skill.cooldown;
+        if (skill.type === 'strike') {
+          const dmg = dealDamage(Math.round(hero.attack * skill.multiplier), target.defense);
+          target.hp -= dmg;
+          actions.push({
+            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
+            targetName: target.name, damage: dmg, kind: 'skill', skillName: skill.name
+          });
+        } else if (skill.type === 'aoe') {
+          // 对全部存活敌人造成伤害
+          for (const en of e) {
+            if (en.hp <= 0) continue;
+            const dmg = dealDamage(Math.round(hero.attack * skill.multiplier), en.defense);
+            en.hp -= dmg;
+            actions.push({
+              round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
+              targetName: en.name, damage: dmg, kind: 'skill', skillName: skill.name
+            });
+          }
+        } else if (skill.type === 'heal') {
+          // 自身治疗：不超过生命上限
+          const heal = Math.round(hero.maxHp * ((skill.healPercent || 0) / 100));
+          const actual = Math.min(hero.maxHp - hero.hp, heal);
+          hero.hp += actual;
+          actions.push({
+            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
+            targetName: hero.name, damage: actual, kind: 'heal', skillName: skill.name
+          });
+        }
+      } else {
+        // 冷却递减 + 普通攻击
+        skillCooldown[hero.id] = Math.max(0, cd - 1);
+        const dmg = dealDamage(hero.attack, target.defense);
+        target.hp -= dmg;
+        actions.push({
+          round,
+          actorSide: 'hero',
+          actorId: hero.id,
+          actorName: hero.name,
+          actorEmoji: hero.emoji,
+          targetName: target.name,
+          damage: dmg,
+          kind: 'attack'
+        });
+      }
     }
     // 全部敌人阵亡 → 本回合胜利
     if (e.every(en => en.hp <= 0)) break;
@@ -118,7 +164,8 @@ export const simulateBattle = (
         actorName: enemy.name,
         actorEmoji: enemy.emoji,
         targetName: target.name,
-        damage: dmg
+        damage: dmg,
+        kind: 'attack'
       });
     }
 
@@ -135,16 +182,17 @@ export const simulateBattle = (
   };
 };
 
-// 英雄 → 战斗单位（羁绊/装备/天赋加成在战斗场景内生效：攻击/防御/生命按百分比放大，
-// 装备提供平值属性；退出战斗即复原。装备系统见 ticket 10，天赋树见 ticket 11）
+// 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成在战斗场景内生效：攻击/防御/生命按百分比放大，
+// 装备提供平值属性；觉醒英雄附带专属技能；退出战斗即复原。ticket 10/11/12）
 export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBonus = {}, gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
   const { flat, percent } = gear ? getHeroEquipmentBonus(gear) : { flat: {} as EquipmentStats, percent: {} as CombatBonus };
   const talentPercent = getTalentBonus(heroId, hero);
-  const attackFactor = 1 + ((bonus.attackPercent || 0) + (percent.attackPercent || 0) + (talentPercent.attackPercent || 0)) / 100;
-  const defenseFactor = 1 + ((bonus.defensePercent || 0) + (percent.defensePercent || 0) + (talentPercent.defensePercent || 0)) / 100;
-  const hpFactor = 1 + ((bonus.maxHpPercent || 0) + (percent.maxHpPercent || 0) + (talentPercent.maxHpPercent || 0)) / 100;
+  const awakenPercent = getAwakenBonus(heroId, hero);
+  const attackFactor = 1 + ((bonus.attackPercent || 0) + (percent.attackPercent || 0) + (talentPercent.attackPercent || 0) + (awakenPercent.attackPercent || 0)) / 100;
+  const defenseFactor = 1 + ((bonus.defensePercent || 0) + (percent.defensePercent || 0) + (talentPercent.defensePercent || 0) + (awakenPercent.defensePercent || 0)) / 100;
+  const hpFactor = 1 + ((bonus.maxHpPercent || 0) + (percent.maxHpPercent || 0) + (talentPercent.maxHpPercent || 0) + (awakenPercent.maxHpPercent || 0)) / 100;
   const baseMaxHp = heroMaxHp(config, hero.level) + (flat.maxHp || 0);
   const maxHp = Math.round(baseMaxHp * hpFactor);
   return {
@@ -155,7 +203,8 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBo
     hp: hero.maxHp > 0 ? Math.round((hero.hp / hero.maxHp) * maxHp) : maxHp,
     maxHp,
     attack: Math.round((heroAttack(config, hero.level) + (flat.attack || 0)) * attackFactor),
-    defense: Math.round((config.baseDefense + (flat.defense || 0)) * defenseFactor)
+    defense: Math.round((config.baseDefense + (flat.defense || 0)) * defenseFactor),
+    skill: getAwakenSkill(heroId, hero)
   };
 };
 

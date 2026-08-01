@@ -74,6 +74,8 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
   enhance_stone: { id: 'enhance_stone', name: '强化魔晶', emoji: '🔶', description: '蕴含精纯魔力的晶石，用于强化装备（工坊可合成，战斗掉落）。', category: 'special' },
   // 图纸：解锁余烬系列合成配方（旧城废墟 BOSS 掉落）
   blueprint_ember_armory: { id: 'blueprint_ember_armory', name: '余烬军械图纸', emoji: '📜', description: '记载余烬系列装备锻造工艺的泛黄图纸，解锁后可于工坊合成。', category: 'special' },
+  // 觉醒素材：满星英雄觉醒消耗（ticket 12，辐射车间 BOSS 掉落）
+  arcane_orb: { id: 'arcane_orb', name: '奥术星体', emoji: '🌟', description: '蕴含星界奥术之力的天体核心，满星英雄觉醒的终局素材（仅辐射车间 BOSS 掉落）。', category: 'special' },
   // 废土系列：工坊合成（无图纸门槛）
   wasteland_weapon: { id: 'wasteland_weapon', name: '废土利刃', emoji: '🗡️', description: '【废土系列·武器】废旧金属打磨的求生刀刃，工坊可合成。', category: 'equipment' },
   wasteland_armor: { id: 'wasteland_armor', name: '废土护甲', emoji: '🛡️', description: '【废土系列·防具】合金板拼接的简易护甲，工坊可合成。', category: 'equipment' },

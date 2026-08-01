@@ -41,6 +41,12 @@ import {
   type TalentUnallocateFailure
 } from '../state/talents';
 import {
+  starUpUpdate,
+  awakenUpdate,
+  type StarUpFailure,
+  type AwakenFailure
+} from '../state/awakening';
+import {
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
@@ -93,6 +99,8 @@ interface GameContextType {
   allocateTalent: (heroId: string, nodeId: string) => TalentAllocateFailure | true;
   unallocateTalent: (heroId: string, nodeId: string) => TalentUnallocateFailure | true;
   resetTalents: (heroId: string) => boolean;
+  starUpHero: (heroId: string) => StarUpFailure | true;
+  awakenHero: (heroId: string) => AwakenFailure | true;
   startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
@@ -571,6 +579,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // === 升星与觉醒（ticket 12） ===
+  const starUpHero = (heroId: string): StarUpFailure | true => {
+    const r = starUpUpdate(stateRef.current, heroId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const awakenHero = (heroId: string): AwakenFailure | true => {
+    const r = awakenUpdate(stateRef.current, heroId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   // === 战斗核心（ticket 05） ===
   const startCombat = (zoneId: string): CombatOutcome => {
     const r = startCombatUpdate(stateRef.current, zoneId);
@@ -699,6 +724,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       allocateTalent,
       unallocateTalent,
       resetTalents,
+      starUpHero,
+      awakenHero,
       startCombat,
       setParty,
       healWoundedHero,

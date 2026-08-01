@@ -236,4 +236,46 @@ describe('HeroTab Component', () => {
     expect(saved.heroes.nova.talentPoints).toBe(3);
     expect(saved.heroes.nova.talents).toEqual({});
   });
+
+  it('star-up consumes soul shards and raises the star level (ticket 12)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.soulShards = { nova: 10 };
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⭐ 升星/));
+    const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
+    expect(saved.heroes.nova.star).toBe(2);
+    expect(saved.soulShards.nova).toBe(5); // cost(1) = 5
+  });
+
+  it('awakens a max-star hero consuming the arcane orb (ticket 12)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.heroes.nova = { ...createInitialHero('nova'), star: 5, awakened: false };
+    save.inventory.arcane_orb = 1;
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/🌟 觉醒/));
+    const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
+    expect(saved.heroes.nova.awakened).toBe(true);
+    expect(saved.inventory.arcane_orb).toBe(0);
+    // 觉醒后展示新名字与专属技能（面板 + 提示 toast）
+    expect(screen.getAllByText(/觉醒·诺娃/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/电涌过载/).length).toBeGreaterThan(0);
+  });
 });

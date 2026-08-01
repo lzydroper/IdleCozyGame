@@ -656,8 +656,19 @@ const CombatPanel: React.FC = () => {
                 <span className={a.actorSide === 'hero' ? 'text-cyan-400' : 'text-rose-400'}>
                   {a.actorEmoji} {a.actorName}
                 </span>{' '}
-                → <span className="text-zinc-300">{a.targetName}</span>{' '}
-                <span className="text-amber-400">-{a.damage}</span>
+                {a.skillName ? (
+                  <span className="text-purple-400">
+                    发动【{a.skillName}】
+                    {a.kind === 'skill' && a.actorName !== a.targetName && (
+                      <>→ <span className="text-zinc-300">{a.targetName}</span></>
+                    )}
+                  </span>
+                ) : (
+                  <>→ <span className="text-zinc-300">{a.targetName}</span></>
+                )}{' '}
+                <span className={a.kind === 'heal' ? 'text-emerald-400' : 'text-amber-400'}>
+                  {a.kind === 'heal' ? `+${a.damage}` : `-${a.damage}`}
+                </span>
               </div>
             ))}
             {s.battle.actions.length > recentActions.length && (
