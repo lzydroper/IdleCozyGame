@@ -223,10 +223,10 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       onClick={onClose}
       className="fixed inset-0 z-[10000] bg-transparent flex flex-col items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
     >
-      {/* 统一 Modal 容器尺寸: w-[92%] max-w-[380px] h-[460px] max-h-[68vh] flex flex-col overflow-hidden */}
+      {/* 统一 Modal 容器尺寸: w-[92%] max-w-[380px] h-[460px] max-h-[68vh] flex flex-col justify-between overflow-hidden */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-3.5 flex flex-col gap-3 shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-3.5 flex flex-col justify-between shadow-2xl overflow-hidden"
       >
         {/* 顶部 Header: 标题与切换箭头居中 (< 🏅 英雄详情 >) */}
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0 relative">
@@ -262,9 +262,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           </button>
         </header>
 
-        {/* 内部可滑动主体区域 */}
-        <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-0.5">
-          {/* 上半部分三列布局 (完全对齐图 4 红框设计图: 左槽|一键装备, 中信息|升级, 右技能|升星) */}
+        {/* 满框填充的主体区域 (flex-1 flex flex-col justify-between gap-2.5) */}
+        <div className="flex-1 flex flex-col justify-between gap-2.5 min-h-0 pt-1">
+          {/* 上半部分三列布局 (完全对齐图 4 红框设计图) */}
           <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800/80 shrink-0">
             {/* 左侧列：三槽装备 + 底部【一键装备/一键卸下】 */}
             <div className="flex flex-col items-center justify-between">
@@ -370,36 +370,36 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             </div>
           </div>
 
-          {/* 下半部分左右布局 (图 4: 左侧天赋树入口 | 右侧 CONTEXT.md 6 项基础属性显示) */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* 下半部分左右布局 (纵向 h-full 自动填满剩余空位，绝无底层黑块) */}
+          <div className="grid grid-cols-3 gap-2 flex-1 min-h-0">
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
-              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-all"
+              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex flex-col items-center justify-center gap-2 cursor-pointer group transition-all h-full"
             >
-              <div className="w-8 h-8 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-                <Sliders className="w-3.5 h-3.5" />
+              <div className="w-9 h-9 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                <Sliders className="w-4 h-4" />
               </div>
-              <span className="text-[9px] font-black text-zinc-200 group-hover:text-amber-300 transition-colors text-center">
+              <span className="text-[10px] font-black text-zinc-200 group-hover:text-amber-300 transition-colors text-center">
                 天赋树入口
               </span>
             </div>
 
-            {/* 右侧：基础属性显示 (6 项基础属性: 攻击、防御、生命、魔力、暴击、暴伤) */}
-            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2 flex flex-col gap-1 relative">
-              <div className="flex items-center justify-between text-[9px] font-black text-amber-300 border-b border-zinc-850 pb-1">
+            {/* 右侧：基础属性显示 */}
+            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between text-[9.5px] font-black text-amber-300 border-b border-zinc-850 pb-1 shrink-0">
                 <span className="flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-amber-400" /> 基础属性
+                  <Zap className="w-3.5 h-3.5 text-amber-400" /> 基础属性
                 </span>
                 <button
                   onClick={() => setShowDetailedStats(true)}
-                  className="text-[8px] font-bold text-amber-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                  className="text-[8.5px] font-bold text-amber-400 hover:underline cursor-pointer flex items-center gap-0.5"
                 >
                   详细属性 ›
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[8.5px]">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9px] flex-1 items-center py-1">
                 {/* 1. 生命 */}
                 <div className="flex items-center justify-between text-zinc-300">
                   <span className="text-zinc-500 font-bold flex items-center gap-0.5">
