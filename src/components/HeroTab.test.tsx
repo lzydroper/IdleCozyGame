@@ -23,12 +23,10 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    // 诺娃同时出现在上阵队伍槽位与英雄列表中
+    // 诺娃出现在上阵队伍槽位中，顶部展示【招募】与【英雄列表】按钮
     expect(screen.getAllByText(/诺娃/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/进攻者/).length).toBeGreaterThan(0); // 职阶徽章 + 天赋主干分组
-    expect(screen.getByText(/机械/)).toBeDefined();
-    expect(screen.getByText(/Lv\.1/)).toBeDefined();
-    expect(screen.getByText(/已解锁 1 位英雄/)).toBeDefined();
+    expect(screen.getByText(/招募/)).toBeDefined();
+    expect(screen.getByText(/英雄列表/)).toBeDefined();
   });
 
   it('shows the default party slot with the starter hero', () => {
