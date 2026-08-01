@@ -44,6 +44,38 @@ describe('HeroTab Component', () => {
     expect(screen.getByText(/⬇ 下阵/)).toBeDefined();
   });
 
+  it('shows the active bond for the party in the 上阵队伍 section (羁绊生效可见)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.heroes.roy = createInitialHero('roy');
+    save.party = ['nova', 'roy'];
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 机械搭档（诺娃 + 罗伊）：攻击 +10%
+    expect(screen.getByText(/机械搭档/)).toBeDefined();
+    expect(screen.getByText(/攻击 \+10%/)).toBeDefined();
+  });
+
+  it('hints that no bond is triggered for a non-matching party', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 默认队伍仅诺娃 → 未触发任何羁绊
+    expect(screen.getByText(/未触发羁绊/)).toBeDefined();
+  });
+
   it('heals a wounded hero by consuming one nanite_injector', () => {
     // 预置：诺娃重伤 + 背包 1 支纳米修复剂
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;

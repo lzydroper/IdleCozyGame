@@ -5,6 +5,8 @@ import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
 import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
+import type { CombatBonus } from '../data/bonds';
+import { aggregateBonus } from './bonds';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -121,17 +123,22 @@ export const simulateBattle = (
   };
 };
 
-const heroToCombatant = (heroId: string, hero: HeroState): CombatantState => {
+// 英雄 → 战斗单位（羁绊加成在战斗场景内生效：攻击/防御/生命按百分比放大，退出战斗即复原）
+export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBonus = {}): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
+  const attackFactor = 1 + (bonus.attackPercent || 0) / 100;
+  const defenseFactor = 1 + (bonus.defensePercent || 0) / 100;
+  const hpFactor = 1 + (bonus.maxHpPercent || 0) / 100;
   return {
     id: heroId,
     name: config.name,
     emoji: config.emoji,
-    hp: hero.hp,
-    maxHp: hero.maxHp,
-    attack: heroAttack(config, hero.level),
-    defense: config.baseDefense
+    // 当前血量按同比例缩放，保持战斗中已损比例不变
+    hp: Math.round(hero.hp * hpFactor),
+    maxHp: Math.round(hero.maxHp * hpFactor),
+    attack: Math.round(heroAttack(config, hero.level) * attackFactor),
+    defense: Math.round(config.baseDefense * defenseFactor)
   };
 };
 
@@ -244,7 +251,7 @@ export const startCombatUpdate = (
   if ((state.stamina || 0) < zone.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id])),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party))),
     enemiesToCombatants(zone.enemies)
   );
 
@@ -315,7 +322,7 @@ export const resolveEncounterBattleUpdate = (
   if ((state.stamina || 0) < COMBAT_CONFIG.encounterStaminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id])),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party))),
     enemiesToCombatants(battleConfig.enemies)
   );
 
@@ -450,7 +457,7 @@ export const startBossBattleUpdate = (
 
   const boss = zone.boss;
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id])),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party))),
     enemiesToCombatants(boss.enemies)
   );
 
@@ -617,7 +624,7 @@ export const settleIdleUpdate = (
 
   for (let i = 0; i < battleCount; i++) {
     const battle = simulateBattle(
-      party.map(id => heroToCombatant(id, next.heroes[id])),
+      party.map(id => heroToCombatant(id, next.heroes[id], aggregateBonus(party))),
       enemiesToCombatants(zone.enemies)
     );
     const settled = settleBattle(next, battle, party, {

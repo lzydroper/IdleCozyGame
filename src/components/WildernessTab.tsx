@@ -15,6 +15,8 @@ import { COMBAT_ZONE_LIST, COMBAT_ZONES } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
 import { isZoneUnlocked } from '../state/combat';
+import { getActiveBonds } from '../state/bonds';
+import { formatBonus } from '../data/bonds';
 import type { CombatSettlement } from '../types/game';
 
 const WildernessTab: React.FC = () => {
@@ -560,6 +562,8 @@ const CombatPanel: React.FC = () => {
   const anyWounded = party.some(id => state.heroes[id].wounded);
   const settlement = state.combat?.lastSettlement || null;
   const clearedZones = state.combat?.zonesCleared || [];
+  // 羁绊加成（ticket 09）：当前上阵队伍命中的羁绊
+  const activeBonds = getActiveBonds(state.party || []);
   // 确认式离线挂机（ticket 08）
   const idle = state.combat?.idle || null;
   const idleZone = idle?.zoneId ? COMBAT_ZONES[idle.zoneId] : null;
@@ -730,6 +734,28 @@ const CombatPanel: React.FC = () => {
             {anyWounded && (
               <span className="text-[8px] text-red-400 font-bold w-full">⚠ 小队有重伤英雄，战斗被禁止，请先在英雄页治愈。</span>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* 羁绊加成（ticket 09）：队伍满足组合/阵营条件即触发，战斗中数值生效 */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
+        <span className="text-[10px] font-black text-zinc-200">🫱 羁绊加成</span>
+        {party.length === 0 ? (
+          <span className="text-[9px] text-zinc-600 font-bold">上阵英雄后查看羁绊触发状态。</span>
+        ) : activeBonds.length === 0 ? (
+          <span className="text-[9px] text-zinc-600 font-bold">当前队伍未触发羁绊——凑齐特定英雄组合或同阵营英雄可激活加成。</span>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {activeBonds.map(bond => (
+              <span
+                key={bond.id}
+                title={bond.description}
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300"
+              >
+                🫱 {bond.name}：{formatBonus(bond.bonus)}
+              </span>
+            ))}
           </div>
         )}
       </div>

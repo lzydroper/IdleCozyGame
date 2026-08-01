@@ -8,6 +8,8 @@ import {
 } from '../data/heroes';
 import { SUMMON_CONFIG } from '../data/summonConfig';
 import { COMBAT_CONFIG } from '../data/combatConfig';
+import { formatBonus } from '../data/bonds';
+import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';
 import type { SummonOutcome } from '../state/summon';
 
@@ -20,6 +22,8 @@ const HeroTab: React.FC = () => {
   const party = state.party || [];
   const partySize = COMBAT_CONFIG.partySize;
   const naniteCount = state.inventory.nanite_injector || 0;
+  // 羁绊加成（ticket 09）：当前上阵队伍命中的羁绊
+  const activeBonds = getActiveBonds(party);
 
   const handleSummon = () => {
     const outcome = summonHero();
@@ -146,6 +150,22 @@ const HeroTab: React.FC = () => {
         <p className="text-[8px] text-zinc-600 font-bold">
           {party.length < 1 ? '请先在下方选择英雄上阵，再前往荒野页签开始战斗。' : `小队 ${party.length}/${partySize} 人，按上阵顺序轮询行动（英雄页与战斗区可随时调整）。`}
         </p>
+
+        {/* 羁绊状态（ticket 09）：队伍满足组合/阵营条件即触发，战斗数值生效 */}
+        {party.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {activeBonds.map(bond => (
+              <span key={bond.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300" title={bond.description}>
+                🫱 {bond.name}：{formatBonus(bond.bonus)}
+              </span>
+            ))}
+            {activeBonds.length === 0 && (
+              <span className="text-[8px] text-zinc-600 font-bold">
+                当前队伍未触发羁绊——凑齐特定英雄组合或同阵营英雄可激活加成。
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <header className="flex items-center justify-between px-1">

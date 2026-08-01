@@ -4,6 +4,7 @@ import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import WildernessTab from './WildernessTab';
 import { COMBAT_ZONE_LIST } from '../data/combatZones';
+import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 
 describe('WildernessTab Component', () => {
   beforeEach(() => {
@@ -470,6 +471,26 @@ describe('WildernessTab Component', () => {
 
     const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(saved.combat?.idle?.zoneId).toBeNull(); // 体力不足未开启挂机
+  });
+
+  it('shows the active bond in the combat panel (羁绊加成在战斗区可见)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.heroes.roy = createInitialHero('roy');
+    save.party = ['nova', 'roy'];
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    // 机械搭档（诺娃 + 罗伊）：攻击 +10%
+    expect(screen.getByText(/机械搭档/)).toBeDefined();
+    expect(screen.getByText(/攻击 \+10%/)).toBeDefined();
   });
 
   it('renders a draw settlement as 平局 rather than defeat (三态结算展示)', () => {
