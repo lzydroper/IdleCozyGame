@@ -1,7 +1,10 @@
-import type { GameState, HeroEquipment, EquippedItem } from '../types/game';
+import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, FacilityType } from '../types/game';
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
+import { getQueueCapacity, getActualDuration } from './facility';
+import { AUTO_RECIPES } from '../data/autoRecipes';
+import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 
 // 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值
 const normalizeSlot = (item: EquippedItem | null | undefined): EquippedItem | null => {
@@ -98,6 +101,60 @@ export const createFreshState = (initialState: GameState, now: number): GameStat
   dayStartTime: now
 });
 
+// 产线设施实例归一化（ticket 13）：旧存档（单设施对象 + activeRecipeId）→ 多台数组 + FIFO 队列
+const normalizeFacilityUnit = (
+  type: FacilityType,
+  saved: any,
+  fallback: AutomationFacility
+): AutomationFacility => {
+  const maxLevel = SHELTER_UPGRADES[type]?.maxLevel ?? 5;
+  const level = Number.isFinite(saved?.level)
+    ? Math.min(Math.max(Math.floor(saved.level), 1), maxLevel)
+    : 1;
+  const rawQueue = Array.isArray(saved?.queue)
+    ? saved.queue
+    : typeof saved?.activeRecipeId === 'string' && saved.activeRecipeId
+      ? [saved.activeRecipeId]
+      : [];
+  const queue = rawQueue
+    .filter((id: unknown) => typeof id === 'string' && AUTO_RECIPES[id]?.facilityId === type)
+    .slice(0, getQueueCapacity(level));
+  // 防御损坏存档：在制进度仅在队首配方仍有效时保留，并钳制到该配方单次耗时以内；
+  // 队列为空时残留的 timeLeft 会白送给下一配方进度，必须清零
+  const headId = queue[0] ?? null;
+  const rawTimeLeft = Number.isFinite(saved?.timeLeft) ? Math.max(0, Math.floor(saved.timeLeft)) : 0;
+  const timeLeft = headId ? Math.min(rawTimeLeft, getActualDuration(headId, level)) : 0;
+  return {
+    id: type,
+    name: typeof saved?.name === 'string' ? saved.name : fallback.name,
+    level,
+    queue,
+    currentProgress: 0,
+    timeLeft,
+    active: saved?.active !== false
+  };
+};
+
+const normalizeFacilities = (
+  saved: any,
+  initial: Record<FacilityType, AutomationFacility[]>
+): Record<FacilityType, AutomationFacility[]> => {
+  const out = {} as Record<FacilityType, AutomationFacility[]>;
+  (Object.keys(initial) as FacilityType[]).forEach(type => {
+    const savedVal = saved?.[type];
+    const fallback = initial[type][0];
+    if (Array.isArray(savedVal) && savedVal.length > 0) {
+      out[type] = savedVal.map(u => normalizeFacilityUnit(type, u, fallback));
+    } else if (savedVal && typeof savedVal === 'object') {
+      // 旧版单设施对象存档：迁移为单台数组，activeRecipeId → 队首
+      out[type] = [normalizeFacilityUnit(type, savedVal, fallback)];
+    } else {
+      out[type] = [fallback];
+    }
+  });
+  return out;
+};
+
 // 将旧存档与初始状态深度合并，保证新字段有默认值
 export const mergeSavedState = (parsed: GameState, initialState: GameState): GameState => ({
   ...initialState,
@@ -109,10 +166,10 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   shelter: {
     ...initialState.shelter,
     ...(parsed.shelter || {}),
-    facilities: {
-      ...initialState.shelter.facilities,
-      ...((parsed.shelter && parsed.shelter.facilities) || {})
-    }
+    facilities: normalizeFacilities(
+      (parsed.shelter && (parsed.shelter as any).facilities) as any,
+      initialState.shelter.facilities
+    )
   },
   exploration: {
     ...initialState.exploration,

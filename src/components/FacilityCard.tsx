@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { ITEMS_CONFIG } from '../data/items';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
+import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
+import { getQueueCapacity, getActualDuration } from '../state/facility';
 import GameIcon from './GameIcon';
-import { Flame, Wrench, Play, Square, ChevronRight, Zap, TrendingUp } from 'lucide-react';
+import type { AutomationFacility, FacilityType } from '../types/game';
+import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // 共用子组件：配方消耗/产出展示行
@@ -54,90 +56,119 @@ function RecipeRow({
   );
 }
 
+// 设施主题：集中配色，避免逐层透传
+interface FacilityTheme {
+  accent: string;
+  glow: string;
+  barClass: string;
+  runningBg: string;
+  iconBg: string;
+  iconBorder: string;
+}
+
 // ─────────────────────────────────────────────
-// 魔导冶炼炉
+// 单台设施卡片：FIFO 配方队列 + 等级/效率 + 启停（ticket 13）
 // ─────────────────────────────────────────────
-export const SmelterCard: React.FC = () => {
+function FacilityUnitCard({
+  type,
+  unitIndex,
+  theme,
+  icon,
+}: {
+  type: FacilityType;
+  unitIndex: number;
+  theme: FacilityTheme;
+  icon: React.ReactNode;
+}) {
   const {
     state,
     upgradeShelterStat,
-    setFacilityRecipe,
+    enqueueRecipe,
+    removeQueueEntry,
     setFacilityActive,
     addLog,
   } = useGame();
   const { showToast } = useToast();
+  const [selectedRecipe, setSelectedRecipe] = useState('');
 
-  const fac = state.shelter.facilities.smelter;
+  const { accent, glow, barClass, runningBg, iconBg, iconBorder } = theme;
+  const units = state.shelter.facilities[type];
+  const fac: AutomationFacility | undefined = units?.[unitIndex];
   if (!fac) return null;
 
   const level = fac.level || 1;
-  const upgrade = SHELTER_UPGRADES.smelter;
+  const upgrade = SHELTER_UPGRADES[type];
   const isMax = level >= upgrade.maxLevel;
   const nextConfig = upgrade.levels.find(l => l.level === level + 1);
-  const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
   // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
   const speedBonus = 1 + level * 0.1;
-  const smelterRecipes = Object.values(AUTO_RECIPES).filter((r) => r.facilityId === 'smelter');
+  const capacity = getQueueCapacity(level);
+  const recipes = Object.values(AUTO_RECIPES).filter(r => r.facilityId === type);
   const getInvQty = (id: string) => state.inventory[id] || 0;
-  const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
+  const canAffordUpgrade = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
 
-  let hasInputMaterials = true;
-  if (activeRecipe) {
-    Object.entries(activeRecipe.input).forEach(([id, qty]) => {
-      if (getInvQty(id) < qty) hasInputMaterials = false;
-    });
-  }
-
-  const isRunning = fac.active !== false && !!fac.activeRecipeId;
+  const headRecipe = fac.queue.length > 0 ? AUTO_RECIPES[fac.queue[0]] : null;
+  const isPaused = !!headRecipe && fac.timeLeft === 0 &&
+    !Object.entries(headRecipe.input).every(([itemId, qty]) => getInvQty(itemId) >= qty);
+  const isRunning = fac.active !== false && fac.queue.length > 0;
   const progress = fac.currentProgress || 0;
-  const cycleTime = activeRecipe ? Math.max(1, Math.floor(activeRecipe.duration / speedBonus)) : 0;
-  const cyclesPerMin = cycleTime > 0 ? 60 / cycleTime : 0;
+  const cycleTime = headRecipe ? getActualDuration(headRecipe.id, level) : 0;
+
+  const handleEnqueue = () => {
+    if (!selectedRecipe) return;
+    if (enqueueRecipe(type, unitIndex, selectedRecipe)) {
+      showToast('配方已入队，按顺序自动执行。', 'success');
+      setSelectedRecipe('');
+    } else {
+      showToast('入队失败：队列已满或配方无效。', 'error');
+    }
+  };
 
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-amber-900/30 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+    <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
       {/* 顶部彩色条纹 */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-amber-600 via-orange-500 to-amber-400" />
-
+      <div className={`h-0.5 w-full ${glow}`} />
       {/* 运行中脉冲指示 */}
       {isRunning && fac.timeLeft > 0 && (
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          <span className="text-[9px] text-amber-400 font-mono">运行中</span>
-          <div className="w-2 h-2 bg-amber-400 rounded-full animate-ping shadow-[0_0_6px_#f59e0b]" />
+          <span className={`text-[9px] ${accent} font-mono`}>运行中</span>
+          <div className={`w-2 h-2 ${accent} rounded-full animate-ping`} />
         </div>
       )}
 
       <div className="p-4 space-y-3">
-        {/* ── 标题栏 ── */}
+        {/* ── 标题栏：名称 + 第N台 + 等级 + 升级 ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-600/30 flex items-center justify-center">
-              <Flame className="w-4 h-4 text-amber-400" />
-            </div>
-            <div>
+            <div className={`w-7 h-7 rounded-lg ${iconBg} border ${iconBorder} flex items-center justify-center`}>
+              {icon}
+            </div>            <div>
               <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
-                {fac.name}
-                <span className="text-[9px] font-mono text-amber-500/80 bg-amber-500/10 px-1 py-0.5 rounded">Lv.{level}</span>
+                {fac.name} {units.length > 1 && <span className="text-[9px] text-zinc-500">{unitIndex + 1}号</span>}
+                <span className={`text-[9px] font-mono ${accent} bg-white/5 px-1 py-0.5 rounded`}>Lv.{level}</span>
               </div>
               <div className="text-[9px] text-zinc-500">
-                效率 <span className="text-amber-400 font-bold">{Math.round(speedBonus * 100)}%</span>
+                效率 <span className={`${accent} font-bold`}>{Math.round(speedBonus * 100)}%</span>
+                <span className="mx-1 text-zinc-700">·</span>
+                队列 <span className="text-zinc-300 font-bold">{fac.queue.length}/{capacity}</span>
               </div>
             </div>
           </div>
           <button
             onClick={() => {
               if (isMax) return;
-              if (upgradeShelterStat('smelter')) {
-                addLog(`🏭 ${fac.name} 升级至 Lv.${level + 1}`, 'logistics');
-                showToast('魔导冶炼炉升级成功！产线效率提升。', 'success');
+              if (upgradeShelterStat(type, unitIndex)) {
+                addLog(`🏭 ${fac.name} ${units.length > 1 ? `${unitIndex + 1}号 ` : ''}升级至 Lv.${level + 1}`, 'logistics');
+                showToast(`${fac.name}升级成功！效率与队列容量提升。`, 'success');
               } else {
                 showToast('所需资源不足，无法升级！', 'error');
               }
             }}
-            disabled={isMax || !canAfford}
+            disabled={isMax || !canAffordUpgrade}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
               isMax
                 ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800/60 cursor-default'
-                : canAfford
+                : canAffordUpgrade
                   ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
                   : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
             }`}
@@ -159,368 +190,281 @@ export const SmelterCard: React.FC = () => {
           </button>
         </div>
 
-        {/* ── 主体：两列（配方 + 状态） ── */}
-        <div className="grid grid-cols-[1fr_1px_1fr] gap-3 items-start">
-          {/* 配方 */}
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">配方</div>
+        {/* ── 配方入队 ── */}
+        <div className="space-y-1.5">
+          <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">加入配方队列</div>
+          <div className="flex gap-1.5">
             <select
-              value={fac.activeRecipeId || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFacilityRecipe('smelter', val || null);
-                showToast(val ? '配方已部署！' : '已清空配方。', 'info');
-              }}
-              className="w-full bg-zinc-900 border border-zinc-700/60 text-zinc-300 px-2 py-1.5 rounded-lg outline-none text-[10px] focus:border-zinc-500 transition-colors"
+              value={selectedRecipe}
+              onChange={(e) => setSelectedRecipe(e.target.value)}
+              className="flex-1 bg-zinc-900 border border-zinc-700/60 text-zinc-300 px-2 py-1.5 rounded-lg outline-none text-[10px] focus:border-zinc-500 transition-colors"
             >
-              <option value="">— 停产待机</option>
-              {smelterRecipes.map((r) => (
+              <option value="">— 选择配方 —</option>
+              {recipes.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.name} ({Math.max(1, Math.floor(r.duration / speedBonus))}s)
+                  {r.name} ({getActualDuration(r.id, level)}s)
                 </option>
               ))}
             </select>
-            {activeRecipe ? (
-              <div className="space-y-1.5">
-                <RecipeRow label="消耗" items={activeRecipe.input} getInvQty={getInvQty} accent="rose" />
-                <RecipeRow label="产出" items={activeRecipe.output} getInvQty={getInvQty} accent="emerald" />
-                <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
-                  <TrendingUp className="w-2.5 h-2.5" />
-                  {Object.entries(activeRecipe.output).map(([id, qty]) => (
-                      <span key={id} className="flex items-center gap-0.5">
-                        <GameIcon type="item" id={id} className="w-2.5 h-2.5" />
-                        {(qty * cyclesPerMin).toFixed(1)}/min
-                      </span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-[9px] text-zinc-700 italic py-1">
-                <ChevronRight className="w-3 h-3" />
-                请选择配方
-              </div>
-            )}
-          </div>
-
-          {/* 分隔线 */}
-          <div className="h-full bg-zinc-800/60" />
-
-          {/* 状态与控制 */}
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">状态</div>
-            <div className={`text-[9px] font-bold px-1.5 py-1 rounded-md text-center ${
-              fac.active === false
-                ? 'bg-zinc-800/50 text-zinc-500'
-                : !fac.activeRecipeId
-                ? 'bg-zinc-800/50 text-zinc-500'
-                : !hasInputMaterials && fac.timeLeft === 0
-                ? 'bg-rose-900/20 text-rose-400 animate-pulse'
-                : fac.timeLeft > 0
-                ? 'bg-amber-900/20 text-amber-400'
-                : 'bg-emerald-900/20 text-emerald-400'
-            }`}>
-              {fac.active === false
-                ? '产线关闭'
-                : !fac.activeRecipeId
-                ? '等待配方'
-                : !hasInputMaterials && fac.timeLeft === 0
-                ? '材料不足'
-                : fac.timeLeft > 0
-                ? `提炼中 ${fac.timeLeft}s`
-                : '自动循环'}
-            </div>
-
-            {/* 进度条 */}
-            <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
-              <div
-                className={`h-full rounded-full transition-all duration-1000 ${
-                  fac.active === false
-                    ? 'bg-zinc-700'
-                    : !hasInputMaterials && fac.timeLeft === 0
-                    ? 'bg-rose-800/50'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-400 shadow-[0_0_6px_#f59e0b]'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
             <button
-              onClick={() => {
-                const next = fac.active === false;
-                setFacilityActive('smelter', next);
-                showToast(next ? '冶炼炉已启动！' : '冶炼炉已关停。', 'info');
-              }}
-              disabled={!fac.activeRecipeId}
-              className={`w-full py-1.5 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1 transition-all ${
-                !fac.activeRecipeId
+              onClick={handleEnqueue}
+              disabled={!selectedRecipe}
+              className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold flex items-center gap-1 transition-all ${
+                !selectedRecipe
                   ? 'bg-zinc-900 text-zinc-700 border border-zinc-800 cursor-not-allowed'
-                  : fac.active === false
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-600/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-600/30 hover:bg-rose-500/20 active:scale-95 cursor-pointer'
+                  : `bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 active:scale-95 cursor-pointer ${accent}`
               }`}
             >
-              {fac.active === false ? (
-                <><Play className="w-3 h-3" />启动</>
-              ) : (
-                <><Square className="w-3 h-3" />关停</>
-              )}
+              <Plus className="w-3 h-3" />
+              入队
             </button>
           </div>
         </div>
 
-        {/* ── 底部进度条（粗） ── */}
-        {isRunning && (
-          <div className="space-y-0.5 pt-1 border-t border-zinc-800/50">
-            <div className="flex justify-between text-[8px] text-zinc-600">
-              <span>生产进度</span>
-              <span className="font-mono text-amber-500">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full h-2 bg-zinc-900/80 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-600 to-orange-400 rounded-full transition-all duration-1000 shadow-[0_0_8px_#f59e0b80]"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+        {/* ── 队列列表 ── */}
+        <div className="space-y-1">
+          <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+            <Layers className="w-2.5 h-2.5" />
+            执行队列（FIFO）
           </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────
-// 微型芯片组装台
-// ─────────────────────────────────────────────
-export const AssemblerCard: React.FC = () => {
-  const {
-    state,
-    upgradeShelterStat,
-    setFacilityRecipe,
-    setFacilityActive,
-    addLog,
-  } = useGame();
-  const { showToast } = useToast();
-
-  const fac = state.shelter.facilities.assembler;
-  if (!fac) return null;
-
-  const level = fac.level || 1;
-  const upgrade = SHELTER_UPGRADES.assembler;
-  const isMax = level >= upgrade.maxLevel;
-  const nextConfig = upgrade.levels.find(l => l.level === level + 1);
-  const activeRecipe = fac.activeRecipeId ? AUTO_RECIPES[fac.activeRecipeId] : null;
-  // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
-  const speedBonus = 1 + level * 0.1;
-  const assemblerRecipes = Object.values(AUTO_RECIPES).filter((r) => r.facilityId === 'assembler');
-  const getInvQty = (id: string) => state.inventory[id] || 0;
-  const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
-
-  let hasInputMaterials = true;
-  if (activeRecipe) {
-    Object.entries(activeRecipe.input).forEach(([id, qty]) => {
-      if (getInvQty(id) < qty) hasInputMaterials = false;
-    });
-  }
-
-  const isRunning = fac.active !== false && !!fac.activeRecipeId;
-  const progress = fac.currentProgress || 0;
-  const cycleTime = activeRecipe ? Math.max(1, Math.floor(activeRecipe.duration / speedBonus)) : 0;
-  const cyclesPerMin = cycleTime > 0 ? 60 / cycleTime : 0;
-
-  return (
-    <div className="relative rounded-2xl overflow-hidden border border-purple-900/30 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
-      {/* 顶部彩色条纹 */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-purple-600 via-violet-500 to-purple-400" />
-
-      {/* 运行中脉冲指示 */}
-      {isRunning && fac.timeLeft > 0 && (
-        <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          <span className="text-[9px] text-purple-400 font-mono">运行中</span>
-          <div className="w-2 h-2 bg-purple-400 rounded-full animate-ping shadow-[0_0_6px_#a855f7]" />
+          {fac.queue.length === 0 ? (
+            <div className="flex items-center gap-1.5 text-[9px] text-zinc-700 italic py-1">
+              <ChevronRight className="w-3 h-3" />
+              队列为空，请入队配方
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {fac.queue.map((recipeId, idx) => {
+                const r = AUTO_RECIPES[recipeId];
+                if (!r) return null;
+                const isHead = idx === 0;
+                const headPaused = isHead && isPaused;
+                return (
+                  <div
+                    key={`${recipeId}_${idx}`}
+                    className={`rounded-lg border px-2 py-1.5 flex items-center gap-2 ${
+                      isHead
+                        ? headPaused
+                          ? 'bg-rose-950/30 border-rose-700/40'
+                          : 'bg-zinc-800/60 border-zinc-700/50'
+                        : 'bg-zinc-900/40 border-zinc-800/60'
+                    }`}
+                  >
+                    <GameIcon type="item" id={Object.keys(r.output)[0] || recipeId} className="w-3.5 h-3.5 flex-shrink-0" title={r.name} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[9px] font-bold truncate ${isHead ? 'text-zinc-200' : 'text-zinc-400'}`}>
+                          {r.name}
+                        </span>
+                        {isHead ? (
+                          headPaused ? (
+                            <span className="text-[8px] font-bold text-rose-400 bg-rose-900/30 px-1 py-0.5 rounded">材料不足 · 暂停</span>
+                          ) : fac.timeLeft > 0 ? (
+                            <span className={`text-[8px] font-mono ${accent}`}>{fac.timeLeft}s</span>
+                          ) : (
+                            <span className="text-[8px] text-zinc-500">等待启动</span>
+                          )
+                        ) : (
+                          <span className="text-[8px] text-zinc-600">排队 #{idx}</span>
+                        )}
+                      </div>
+                      {isHead && fac.timeLeft > 0 && (
+                        <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden mt-1">
+                          <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (removeQueueEntry(type, unitIndex, idx)) {
+                          showToast(isHead && fac.timeLeft > 0 ? '已取消，在制原料已退还。' : '已移出队列。', 'info');
+                        }
+                      }}
+                      className="w-5 h-5 flex items-center justify-center rounded-md text-zinc-600 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer flex-shrink-0"
+                      title="移出队列"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="p-4 space-y-3">
-        {/* ── 标题栏 ── */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-600/30 flex items-center justify-center">
-              <Wrench className="w-4 h-4 text-purple-400" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
-                {fac.name}
-                <span className="text-[9px] font-mono text-purple-500/80 bg-purple-500/10 px-1 py-0.5 rounded">Lv.{level}</span>
-              </div>
-              <div className="text-[9px] text-zinc-500">
-                效率 <span className="text-purple-400 font-bold">{Math.round(speedBonus * 100)}%</span>
-              </div>
-            </div>
+        {/* ── 状态与控制 ── */}
+        <div className="flex items-center gap-2">
+          <div className={`flex-1 text-[9px] font-bold px-2 py-1.5 rounded-md text-center ${
+            fac.active === false
+              ? 'bg-zinc-800/50 text-zinc-500'
+              : fac.queue.length === 0
+              ? 'bg-zinc-800/50 text-zinc-500'
+              : isPaused
+              ? 'bg-rose-900/20 text-rose-400 animate-pulse'
+              : fac.timeLeft > 0
+              ? `${runningBg} text-zinc-200`
+              : 'bg-emerald-900/20 text-emerald-400'
+          }`}>
+            {fac.active === false
+              ? '产线关闭'
+              : fac.queue.length === 0
+              ? '待机 · 等待配方'
+              : isPaused
+              ? '材料不足 · 自动暂停'
+              : fac.timeLeft > 0
+              ? `${headRecipe?.name || '加工'}中 ${fac.timeLeft}s`
+              : '正在启动…'}
           </div>
           <button
             onClick={() => {
-              if (isMax) return;
-              if (upgradeShelterStat('assembler')) {
-                addLog(`🏭 ${fac.name} 升级至 Lv.${level + 1}`, 'logistics');
-                showToast('微型芯片组装台升级成功！', 'success');
-              } else {
-                showToast('所需资源不足，无法升级！', 'error');
-              }
+              const next = fac.active === false;
+              setFacilityActive(type, unitIndex, next);
+              showToast(next ? `${fac.name}已启动，纯自动运转。` : `${fac.name}已关停。`, 'info');
             }}
-            disabled={isMax || !canAfford}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
-              isMax
-                ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800/60 cursor-default'
-                : canAfford
-                  ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
-                  : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
+            disabled={fac.queue.length === 0}
+            className={`px-3 py-1.5 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1 transition-all ${
+              fac.queue.length === 0
+                ? 'bg-zinc-900 text-zinc-700 border border-zinc-800 cursor-not-allowed'
+                : fac.active === false
+                ? `${iconBg} ${accent} border ${iconBorder} hover:brightness-125 active:scale-95 cursor-pointer`
+                : 'bg-rose-500/10 text-rose-400 border border-rose-600/30 hover:bg-rose-500/20 active:scale-95 cursor-pointer'
             }`}
           >
-            <TrendingUp className="w-2.5 h-2.5" />
-            {isMax ? (
-              <span>已满级</span>
+            {fac.active === false ? (
+              <><Play className="w-3 h-3" />启动</>
             ) : (
-              <>
-                <span>升级</span>
-                {nextConfig && Object.entries(nextConfig.cost).map(([itemId, qty]) => (
-                  <React.Fragment key={itemId}>
-                    <GameIcon type="item" id={itemId} className="w-3 h-3" title={itemId} />
-                    <span>{qty}</span>
-                  </React.Fragment>
-                ))}
-              </>
+              <><Square className="w-3 h-3" />关停</>
             )}
           </button>
         </div>
 
-        {/* ── 主体：两列（配方 + 状态） ── */}
-        <div className="grid grid-cols-[1fr_1px_1fr] gap-3 items-start">
-          {/* 配方 */}
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">配方</div>
-            <select
-              value={fac.activeRecipeId || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFacilityRecipe('assembler', val || null);
-                showToast(val ? '配方已部署！' : '已清空配方。', 'info');
-              }}
-              className="w-full bg-zinc-900 border border-zinc-700/60 text-zinc-300 px-2 py-1.5 rounded-lg outline-none text-[10px] focus:border-zinc-500 transition-colors"
-            >
-              <option value="">— 停产待机</option>
-              {assemblerRecipes.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({Math.max(1, Math.floor(r.duration / speedBonus))}s)
-                </option>
+        {/* ── 当前队首配方详情 ── */}
+        {headRecipe && (
+          <div className="space-y-1.5 pt-1 border-t border-zinc-800/50">
+            <RecipeRow label="消耗" items={headRecipe.input} getInvQty={getInvQty} accent="rose" />
+            <RecipeRow label="产出" items={headRecipe.output} getInvQty={getInvQty} accent="emerald" />
+            <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
+              <TrendingUp className="w-2.5 h-2.5" />
+              {Object.entries(headRecipe.output).map(([id, qty]) => (
+                <span key={id} className="flex items-center gap-0.5">
+                  <GameIcon type="item" id={id} className="w-2.5 h-2.5" />
+                  {(qty * (cycleTime > 0 ? 60 / cycleTime : 0)).toFixed(1)}/min
+                </span>
               ))}
-            </select>
-            {activeRecipe ? (
-              <div className="space-y-1.5">
-                <RecipeRow label="消耗" items={activeRecipe.input} getInvQty={getInvQty} accent="rose" />
-                <RecipeRow label="产出" items={activeRecipe.output} getInvQty={getInvQty} accent="emerald" />
-                <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
-                  <Zap className="w-2.5 h-2.5" />
-                  {Object.entries(activeRecipe.output).map(([id, qty]) => {
-                    const item = ITEMS_CONFIG[id];
-                    return (
-                      <span key={id} className="flex items-center gap-0.5">
-                        <GameIcon type="item" id={id} className="w-2.5 h-2.5" />
-                        <span>{item?.name || id} {(qty * cyclesPerMin).toFixed(1)}/min</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-[9px] text-zinc-700 italic py-1">
-                <ChevronRight className="w-3 h-3" />
-                请选择配方
-              </div>
-            )}
-          </div>
-
-          {/* 分隔线 */}
-          <div className="h-full bg-zinc-800/60" />
-
-          {/* 状态与控制 */}
-          <div className="space-y-1.5">
-            <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">状态</div>
-            <div className={`text-[9px] font-bold px-1.5 py-1 rounded-md text-center ${
-              fac.active === false
-                ? 'bg-zinc-800/50 text-zinc-500'
-                : !fac.activeRecipeId
-                ? 'bg-zinc-800/50 text-zinc-500'
-                : !hasInputMaterials && fac.timeLeft === 0
-                ? 'bg-rose-900/20 text-rose-400 animate-pulse'
-                : fac.timeLeft > 0
-                ? 'bg-purple-900/20 text-purple-400'
-                : 'bg-emerald-900/20 text-emerald-400'
-            }`}>
-              {fac.active === false
-                ? '产线关闭'
-                : !fac.activeRecipeId
-                ? '等待配方'
-                : !hasInputMaterials && fac.timeLeft === 0
-                ? '材料不足'
-                : fac.timeLeft > 0
-                ? `组装中 ${fac.timeLeft}s`
-                : '自动循环'}
-            </div>
-
-            {/* 进度条 */}
-            <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
-              <div
-                className={`h-full rounded-full transition-all duration-1000 ${
-                  fac.active === false
-                    ? 'bg-zinc-700'
-                    : !hasInputMaterials && fac.timeLeft === 0
-                    ? 'bg-rose-800/50'
-                    : 'bg-gradient-to-r from-purple-500 to-violet-400 shadow-[0_0_6px_#a855f780]'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
-            <button
-              onClick={() => {
-                const next = fac.active === false;
-                setFacilityActive('assembler', next);
-                showToast(next ? '组装台已启动！' : '组装台已关停。', 'info');
-              }}
-              disabled={!fac.activeRecipeId}
-              className={`w-full py-1.5 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1 transition-all ${
-                !fac.activeRecipeId
-                  ? 'bg-zinc-900 text-zinc-700 border border-zinc-800 cursor-not-allowed'
-                  : fac.active === false
-                  ? 'bg-purple-500/10 text-purple-400 border border-purple-600/30 hover:bg-purple-500/20 active:scale-95 cursor-pointer'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-600/30 hover:bg-rose-500/20 active:scale-95 cursor-pointer'
-              }`}
-            >
-              {fac.active === false ? (
-                <><Play className="w-3 h-3" />启动</>
-              ) : (
-                <><Square className="w-3 h-3" />关停</>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* ── 底部进度条（粗） ── */}
-        {isRunning && (
-          <div className="space-y-0.5 pt-1 border-t border-zinc-800/50">
-            <div className="flex justify-between text-[8px] text-zinc-600">
-              <span>生产进度</span>
-              <span className="font-mono text-purple-400">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full h-2 bg-zinc-900/80 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-purple-600 to-violet-400 rounded-full transition-all duration-1000 shadow-[0_0_8px_#a855f780]"
-                style={{ width: `${progress}%` }}
-              />
             </div>
           </div>
         )}
       </div>
     </div>
   );
-};
+}
+
+// ─────────────────────────────────────────────
+// 设施类型区块：多台并行 + 扩建入口
+// ─────────────────────────────────────────────
+function FacilityTypeSection({
+  type,
+  theme,
+  icon,
+}: {
+  type: FacilityType;
+  theme: FacilityTheme;
+  icon: React.ReactNode;
+}) {
+  const { state, expandFacility, addLog } = useGame();
+  const { showToast } = useToast();
+  const { accent, iconBg } = theme;
+  const units = state.shelter.facilities[type] || [];
+  const cfg = FACILITY_EXPANSION[type];
+  const getInvQty = (id: string) => state.inventory[id] || 0;
+
+  const canExpand = units.length < cfg.maxUnits;
+  const cost = canExpand ? cfg.costs[units.length - 1] : null;
+  const canAfford = cost ? Object.entries(cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
+
+  return (
+    <div className="space-y-3">
+      {units.map((_, unitIndex) => (
+        <FacilityUnitCard
+          key={unitIndex}
+          type={type}
+          unitIndex={unitIndex}
+          theme={theme}
+          icon={icon}
+        />
+      ))}
+
+      {/* 扩建：新增一台并行设施 */}
+      <button
+        onClick={() => {
+          if (!canExpand) return;
+          if (expandFacility(type)) {
+            addLog(`🏗️ ${units[0]?.name || type} 扩建完成，新增 ${units.length + 1} 号设施。`, 'logistics');
+            showToast('扩建成功！新增一台并行设施。', 'success');
+          } else {
+            showToast('扩建失败：资源不足。', 'error');
+          }
+        }}
+        disabled={!canExpand || !canAfford}
+        className={`w-full py-2 rounded-xl border border-dashed text-[9px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+          !canExpand
+            ? 'border-zinc-800 text-zinc-700 cursor-default'
+            : canAfford
+              ? `${iconBg} ${accent} border-zinc-700 hover:brightness-125 active:scale-[0.99] cursor-pointer`
+              : 'border-zinc-800 text-zinc-600 cursor-not-allowed'
+        }`}
+      >
+        <Plus className="w-3 h-3" />
+        {canExpand ? (
+          <>
+            扩建 {units.length + 1} 号设施（并行运转）
+            {cost && Object.entries(cost).map(([itemId, qty]) => (
+              <React.Fragment key={itemId}>
+                <GameIcon type="item" id={itemId} className="w-3 h-3" title={itemId} />
+                <span>{qty}</span>
+              </React.Fragment>
+            ))}
+          </>
+        ) : (
+          '已达扩建上限'
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// 魔导冶炼炉（类型区块）
+// ─────────────────────────────────────────────
+export const SmelterCard: React.FC = () => (
+  <FacilityTypeSection
+    type="smelter"
+    icon={<Flame className="w-4 h-4 text-amber-400" />}
+    theme={{
+      accent: 'text-amber-400',
+      glow: 'bg-gradient-to-r from-amber-600 via-orange-500 to-amber-400',
+      barClass: 'bg-gradient-to-r from-amber-500 to-orange-400',
+      runningBg: 'bg-amber-900/20',
+      iconBg: 'bg-amber-500/10',
+      iconBorder: 'border-amber-600/30'
+    }}
+  />
+);
+
+// ─────────────────────────────────────────────
+// 微型芯片组装台（类型区块）
+// ─────────────────────────────────────────────
+export const AssemblerCard: React.FC = () => (
+  <FacilityTypeSection
+    type="assembler"
+    icon={<Wrench className="w-4 h-4 text-purple-400" />}
+    theme={{
+      accent: 'text-purple-400',
+      glow: 'bg-gradient-to-r from-purple-600 via-violet-500 to-purple-400',
+      barClass: 'bg-gradient-to-r from-purple-500 to-violet-400',
+      runningBg: 'bg-purple-900/20',
+      iconBg: 'bg-purple-500/10',
+      iconBorder: 'border-purple-600/30'
+    }}
+  />
+);

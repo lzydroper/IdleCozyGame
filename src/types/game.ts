@@ -186,22 +186,26 @@ export interface GameState {
   lastOfflineReport?: OfflineReport | null;
 }
 
+// 设施类型：冶炼炉 / 组装台（ticket 13 每种设施可扩建多台并行）
+export type FacilityType = 'smelter' | 'assembler';
+
 export interface AutoRecipe {
   id: string;
   name: string;
   input: Record<string, number>;
   output: Record<string, number>;
   duration: number; // 单次生产耗时（秒）
-  facilityId: 'smelter' | 'assembler';
+  facilityId: FacilityType;
 }
 
+// 产线设施实例（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级
 export interface AutomationFacility {
-  id: string;                     // 'smelter' | 'assembler'
+  id: FacilityType;               // 设施类型 id: 'smelter' | 'assembler'
   name: string;
-  level: number;                  // 设施等级，升级可缩短加工时间
-  activeRecipeId: string | null;  // 当前启用的加工配方，null表示未启用
-  currentProgress: number;        // 单次加工进度 (0 - 100)
-  timeLeft: number;               // 当前单次加工剩余时间 (秒)
+  level: number;                  // 设施等级：决定加工速度（每级 +10%）与队列容量（容量 = 等级）
+  queue: string[];                // FIFO 配方队列：队首 = 正在生产，其余排队等待
+  currentProgress: number;        // 队首配方单次加工进度 (0 - 100)
+  timeLeft: number;               // 队首配方当前单次加工剩余时间 (秒)
   active?: boolean;               // 控制启用状态，默认为 true
 }
 
@@ -210,7 +214,7 @@ export interface ShelterStats {
   batteryLevel: number;           // 蓄电池等级
   generatorLevel: number;         // 发电机等级
   recyclerLevel: number;           // 回收站等级
-  facilities: Record<string, AutomationFacility>;
+  facilities: Record<FacilityType, AutomationFacility[]>; // 每种设施可扩建多台并行（ticket 13）
   
   // 岗位分配
   assignedWatererId: string | null;   // 指派自动浇水的幸存者ID

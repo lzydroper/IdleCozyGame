@@ -1,13 +1,9 @@
 import type { GameState } from '../types/game';
-import { AUTO_RECIPES } from '../data/autoRecipes';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
-type UpgradeStatType = 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler';
-
-// 指派/取消幸存者岗位（自动浇水、挂机探索）——产线设施纯自动、不再派驻人员
+// 指派/取消幸存者岗位（自动浇水、挂机探索）——产线设施纯自动、不再派驻人员（ticket 13：设施见 state/facility.ts）
 export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jobId: 'waterer' | 'explorer' | null): UpdateResult<boolean> => {
   if (!survivorId || survivorId.trim() === '') return NO_OP(state);
   const survivor = state.survivors[survivorId];
@@ -82,119 +78,6 @@ export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jo
 };
 
 // 设置设施加工配方（切换时退还前一个配方的在制原料）
-export const setFacilityRecipeUpdate = (state: GameState, facilityId: string, recipeId: string | null): UpdateResult<boolean> => {
-  const facility = state.shelter.facilities[facilityId];
-  if (!facility) return NO_OP(state);
-  if (recipeId && !AUTO_RECIPES[recipeId]) return NO_OP(state);
-
-  const prevRecipeId = facility.activeRecipeId;
-  const prevRecipe = prevRecipeId ? AUTO_RECIPES[prevRecipeId] : null;
-  let updatedInventory = { ...state.inventory };
-
-  // 如果前一个配方正在生产中，退还扣除的原材料
-  if (prevRecipe && facility.timeLeft > 0) {
-    Object.entries(prevRecipe.input).forEach(([itemId, qty]) => {
-      updatedInventory[itemId] = (updatedInventory[itemId] || 0) + qty;
-    });
-  }
-
-  const updatedFacilities = {
-    ...state.shelter.facilities,
-    [facilityId]: {
-      ...facility,
-      activeRecipeId: recipeId,
-      currentProgress: 0,
-      timeLeft: 0
-    }
-  };
-
-  return {
-    state: {
-      ...state,
-      inventory: updatedInventory,
-      shelter: {
-        ...state.shelter,
-        facilities: updatedFacilities
-      }
-    },
-    result: true
-  };
-};
-
-// 启用/停用设施
-export const setFacilityActiveUpdate = (state: GameState, facilityId: string, active: boolean): UpdateResult<boolean> => {
-  const facility = state.shelter.facilities[facilityId];
-  if (!facility) return NO_OP(state);
-
-  return {
-    state: {
-      ...state,
-      shelter: {
-        ...state.shelter,
-        facilities: {
-          ...state.shelter.facilities,
-          [facilityId]: {
-            ...facility,
-            active
-          }
-        }
-      }
-    },
-    result: true
-  };
-};
-
-// 升级避难所设施（蓄电池/发电机/回收站/冶炼炉/组装台）
-export const upgradeShelterStatUpdate = (state: GameState, statType: UpgradeStatType): UpdateResult<boolean> => {
-  const upgrade = SHELTER_UPGRADES[statType];
-  if (!upgrade) return NO_OP(state);
-
-  let currentLevel = 1;
-  if (statType === 'battery') currentLevel = state.shelter.batteryLevel || 1;
-  else if (statType === 'generator') currentLevel = state.shelter.generatorLevel || 0;
-  else if (statType === 'recycler') currentLevel = state.shelter.recyclerLevel || 0;
-  else if (statType === 'smelter') currentLevel = state.shelter.facilities.smelter.level || 1;
-  else if (statType === 'assembler') currentLevel = state.shelter.facilities.assembler.level || 1;
-
-  const nextLevelConfig = upgrade.levels.find(l => l.level === currentLevel + 1);
-  if (!nextLevelConfig) return NO_OP(state);
-
-  // 校验所需材料
-  const canAfford = Object.entries(nextLevelConfig.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
-  if (!canAfford) return NO_OP(state);
-
-  // 扣材料并应用升级
-  const currentInventory = { ...state.inventory };
-  const currentShelter = {
-    ...state.shelter,
-    facilities: { ...state.shelter.facilities }
-  };
-
-  Object.entries(nextLevelConfig.cost).forEach(([item, qty]) => {
-    currentInventory[item] = (currentInventory[item] || 0) - qty;
-  });
-
-  const nextLevel = nextLevelConfig.level;
-
-  if (statType === 'battery') {
-    currentShelter.batteryLevel = nextLevel;
-    currentShelter.maxOfflineDuration = nextLevelConfig.effectValue;
-  } else if (statType === 'generator') {
-    currentShelter.generatorLevel = nextLevel;
-  } else if (statType === 'recycler') {
-    currentShelter.recyclerLevel = nextLevel;
-  } else if (statType === 'smelter') {
-    currentShelter.facilities.smelter = { ...currentShelter.facilities.smelter, level: nextLevel };
-  } else if (statType === 'assembler') {
-    currentShelter.facilities.assembler = { ...currentShelter.facilities.assembler, level: nextLevel };
-  }
-
-  return {
-    state: { ...state, inventory: currentInventory, shelter: currentShelter },
-    result: true
-  };
-};
-
 // 派遣幸存者挂机探索指定地点
 export const startExpeditionUpdate = (state: GameState, survivorId: string, locationId: string): UpdateResult<boolean> => {
   const loc = EXPEDITION_LOCATIONS[locationId as keyof typeof EXPEDITION_LOCATIONS];

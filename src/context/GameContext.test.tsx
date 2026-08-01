@@ -187,7 +187,7 @@ describe('GameContext Integration', () => {
           batteryLevel: 1,
           generatorLevel: 2,
           recyclerLevel: 3,
-          facilities: {},
+          facilities: { smelter: [], assembler: [] },
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
@@ -204,13 +204,13 @@ describe('GameContext Integration', () => {
   });
 
   describe('calculateDetailedOfflineProgress - Factory Automation Pipelines', () => {
-    it('should process factory smelt_alloy recipe with enough raw materials', () => {
+    it('should execute the FIFO recipe queue during offline (one batch per entry)', () => {
       const mockState: GameState = {
         player: {
           hp: 100, maxHp: 100, food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
-        inventory: { scrap_metal: 10 },
+        inventory: { scrap_metal: 6 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
         survivors: {},
         heroes: {},
@@ -240,15 +240,19 @@ describe('GameContext Integration', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: {
-            smelter: {
-              id: 'smelter',
-              name: '魔导冶炼炉',
-              level: 1,
-              activeRecipeId: 'smelt_alloy',
-              currentProgress: 0,
-              timeLeft: 0,
-              active: true
-            }
+            // Lv3 → 队列容量 3，每项配方各产一批（ticket 13）
+            smelter: [
+              {
+                id: 'smelter',
+                name: '魔导冶炼炉',
+                level: 3,
+                queue: ['smelt_alloy', 'smelt_alloy', 'smelt_alloy'],
+                currentProgress: 0,
+                timeLeft: 0,
+                active: true
+              }
+            ],
+            assembler: []
           },
           assignedWatererId: null,
           assignedExplorerId: null,
@@ -258,16 +262,18 @@ describe('GameContext Integration', () => {
 
       const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
 
-      expect(updatedState.inventory.scrap_metal).toBe(2);
+      // Lv3 单轮 23s（30/1.3）：3 批 × 23s = 69s 全部完成，余 31s 空转
+      expect(updatedState.inventory.scrap_metal).toBe(0);
       expect(updatedState.inventory.alloy_plate).toBe(3);
       expect(report.recoveredItems.alloy_plate).toBe(3);
-      
-      const smelter = updatedState.shelter.facilities.smelter;
-      expect(smelter.timeLeft).toBe(8);      // 3 轮完整 + 第 4 轮进行中（等级 1 效率 +10%，单轮 27s）
-      expect(smelter.currentProgress).toBe(70);
+
+      const smelter = updatedState.shelter.facilities.smelter[0];
+      expect(smelter.queue).toEqual([]);
+      expect(smelter.timeLeft).toBe(0);
+      expect(smelter.currentProgress).toBe(0);
     });
 
-    it('should stop factory processing early when raw materials run out', () => {
+    it('should pause the queue when raw materials run out (head entry kept)', () => {
       const mockState: GameState = {
         player: {
           hp: 100, maxHp: 100, food: 100, maxFood: 100,
@@ -303,15 +309,18 @@ describe('GameContext Integration', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: {
-            smelter: {
-              id: 'smelter',
-              name: '魔导冶炼炉',
-              level: 1,
-              activeRecipeId: 'smelt_alloy',
-              currentProgress: 0,
-              timeLeft: 0,
-              active: true
-            }
+            smelter: [
+              {
+                id: 'smelter',
+                name: '魔导冶炼炉',
+                level: 3,
+                queue: ['smelt_alloy', 'smelt_alloy'],
+                currentProgress: 0,
+                timeLeft: 0,
+                active: true
+              }
+            ],
+            assembler: []
           },
           assignedWatererId: null,
           assignedExplorerId: null,
@@ -321,11 +330,13 @@ describe('GameContext Integration', () => {
 
       const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
 
+      // 只有 2 废铁：第一批完成，第二批原料不足 → 暂停，队首保留
       expect(updatedState.inventory.scrap_metal).toBe(0);
       expect(updatedState.inventory.alloy_plate).toBe(1);
       expect(report.recoveredItems.alloy_plate).toBe(1);
 
-      const smelter = updatedState.shelter.facilities.smelter;
+      const smelter = updatedState.shelter.facilities.smelter[0];
+      expect(smelter.queue).toEqual(['smelt_alloy']);
       expect(smelter.timeLeft).toBe(0);
       expect(smelter.currentProgress).toBe(0);
     });
@@ -372,7 +383,7 @@ describe('GameContext Integration', () => {
           batteryLevel: 1,
           generatorLevel: 0,
           recyclerLevel: 0,
-          facilities: {},
+          facilities: { smelter: [], assembler: [] },
           assignedWatererId: 'survivor_waterer',
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }

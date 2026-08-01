@@ -1,5 +1,7 @@
 import type { GameState, LogEntry } from '../types/game';
+import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
+import { processFacility } from './facility';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
@@ -82,66 +84,24 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     };
   });
 
-  // 3. 工厂流水线 Tick
+  // 3. 工厂流水线 Tick：FIFO 配方队列顺序执行，纯自动运转（ticket 13）
   const updatedFacilities = { ...prev.shelter.facilities };
   const logsToAdd: TickLogEntry[] = [];
 
-  Object.entries(updatedFacilities).forEach(([facId, fac]) => {
-    if (fac.active === false || !fac.activeRecipeId) return;
-    const recipe = AUTO_RECIPES[fac.activeRecipeId];
-    if (!recipe) return;
-
-    // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
-    const speedBonus = 1 + fac.level * 0.1;
-    const actualDuration = Math.max(1, Math.floor(recipe.duration / speedBonus));
-
-    let facTimeLeft = fac.timeLeft;
-
-    if (facTimeLeft > 0) {
-      facTimeLeft -= 1;
-      if (facTimeLeft === 0) {
-        // 一轮完成，尝试产出
-        Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
-          currentInventory[itemId] = (currentInventory[itemId] || 0) + qtyProduced;
+  (Object.keys(updatedFacilities) as FacilityType[]).forEach(type => {
+    const units = updatedFacilities[type];
+    const multiUnit = units.length > 1;
+    updatedFacilities[type] = units.map((fac, unitIndex) => {
+      const r = processFacility(fac, currentInventory, elapsedSeconds);
+      Object.entries(r.completed).forEach(([recipeId, count]) => {
+        const recipe = AUTO_RECIPES[recipeId];
+        logsToAdd.push({
+          text: `🏭 ${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe?.name || recipeId} 的加工${count > 1 ? ` ×${count}` : ''}。`,
+          type: 'logistics'
         });
-        logsToAdd.push({ text: `🏭 ${fac.name} 完成了 ${recipe.name} 的加工。`, type: 'logistics' });
-
-        // 尝试扣除材料开始下一轮
-        let canStartNext = true;
-        Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-          if ((currentInventory[itemId] || 0) < qtyNeeded) {
-            canStartNext = false;
-          }
-        });
-        if (canStartNext) {
-          Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-            currentInventory[itemId] = (currentInventory[itemId] || 0) - qtyNeeded;
-          });
-          facTimeLeft = actualDuration;
-        }
-      }
-    } else {
-      // 处于空闲状态，尝试启动新一轮
-      let canStartNext = true;
-      Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-        if ((currentInventory[itemId] || 0) < qtyNeeded) {
-          canStartNext = false;
-        }
       });
-      if (canStartNext) {
-        Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-          currentInventory[itemId] = (currentInventory[itemId] || 0) - qtyNeeded;
-        });
-        facTimeLeft = actualDuration;
-      }
-    }
-
-    const progress = facTimeLeft > 0 ? Math.min(100, Math.round(((actualDuration - facTimeLeft) / actualDuration) * 100)) : 0;
-    updatedFacilities[facId] = {
-      ...fac,
-      timeLeft: facTimeLeft,
-      currentProgress: progress
-    };
+      return r.facility;
+    });
   });
 
   // 4. 挂机探索派遣 Tick

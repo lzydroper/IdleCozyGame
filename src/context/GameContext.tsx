@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState, EquipmentSlot } from '../types/game';
+import type { GameState, EquipmentSlot, FacilityType } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
@@ -17,12 +17,16 @@ import {
 import { craftItemUpdate, applySupplyItemUpdate } from '../state/workshop';
 import {
   assignSurvivorJobUpdate,
-  setFacilityRecipeUpdate,
-  setFacilityActiveUpdate,
-  upgradeShelterStatUpdate,
   startExpeditionUpdate,
   stopExpeditionUpdate
 } from '../state/shelter';
+import {
+  enqueueRecipeUpdate,
+  removeQueueEntryUpdate,
+  setFacilityActiveUpdate,
+  expandFacilityUpdate,
+  upgradeShelterStatUpdate
+} from '../state/facility';
 import { applyTick } from '../state/tick';
 import { summonUpdate, type SummonOutcome } from '../state/summon';
 import {
@@ -86,9 +90,11 @@ interface GameContextType {
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
   useSupplyItem: (itemId: string) => boolean;
   assignSurvivorJob: (survivorId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
-  setFacilityRecipe: (facilityId: string, recipeId: string | null) => boolean;
-  setFacilityActive: (facilityId: string, active: boolean) => boolean;
-  upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler') => boolean;
+  enqueueRecipe: (facilityType: FacilityType, unitIndex: number, recipeId: string) => boolean;
+  removeQueueEntry: (facilityType: FacilityType, unitIndex: number, queueIndex: number) => boolean;
+  expandFacility: (facilityType: FacilityType) => boolean;
+  setFacilityActive: (facilityType: FacilityType, unitIndex: number, active: boolean) => boolean;
+  upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler', unitIndex?: number) => boolean;
   startExpedition: (survivorId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
   summonHero: () => SummonOutcome;
@@ -462,30 +468,51 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
-  const setFacilityRecipe = (facilityId: string, recipeId: string | null): boolean => {
+  // 产线配方队列（ticket 13）：入队 / 移除 / 启停 / 扩建，纯自动运转、无需指派人员
+  const enqueueRecipe = (facilityType: FacilityType, unitIndex: number, recipeId: string): boolean => {
     let ok = false;
     setState(prev => {
-      const r = setFacilityRecipeUpdate(prev, facilityId, recipeId);
+      const r = enqueueRecipeUpdate(prev, facilityType, unitIndex, recipeId);
       ok = r.result;
       return r.state;
     });
     return ok;
   };
 
-  const setFacilityActive = (facilityId: string, active: boolean): boolean => {
+  const removeQueueEntry = (facilityType: FacilityType, unitIndex: number, queueIndex: number): boolean => {
     let ok = false;
     setState(prev => {
-      const r = setFacilityActiveUpdate(prev, facilityId, active);
+      const r = removeQueueEntryUpdate(prev, facilityType, unitIndex, queueIndex);
       ok = r.result;
       return r.state;
     });
     return ok;
   };
 
-  const upgradeShelterStat = (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler'): boolean => {
+  const setFacilityActive = (facilityType: FacilityType, unitIndex: number, active: boolean): boolean => {
     let ok = false;
     setState(prev => {
-      const r = upgradeShelterStatUpdate(prev, statType);
+      const r = setFacilityActiveUpdate(prev, facilityType, unitIndex, active);
+      ok = r.result;
+      return r.state;
+    });
+    return ok;
+  };
+
+  const expandFacility = (facilityType: FacilityType): boolean => {
+    let ok = false;
+    setState(prev => {
+      const r = expandFacilityUpdate(prev, facilityType);
+      ok = r.result;
+      return r.state;
+    });
+    return ok;
+  };
+
+  const upgradeShelterStat = (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler', unitIndex?: number): boolean => {
+    let ok = false;
+    setState(prev => {
+      const r = upgradeShelterStatUpdate(prev, statType, unitIndex ?? 0);
       ok = r.result;
       return r.state;
     });
@@ -711,7 +738,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       useSupplyItem,
       batchWater,
       assignSurvivorJob,
-      setFacilityRecipe,
+      enqueueRecipe,
+      removeQueueEntry,
+      expandFacility,
       setFacilityActive,
       upgradeShelterStat,
       startExpedition,

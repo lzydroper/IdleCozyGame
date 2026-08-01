@@ -119,22 +119,26 @@ export const INITIAL_STATE: GameState = {
     generatorLevel: 0,
     recyclerLevel: 0,
     facilities: {
-      smelter: {
-        id: 'smelter',
-        name: '魔导冶炼炉',
-        level: 1,
-        activeRecipeId: null,
-        currentProgress: 0,
-        timeLeft: 0
-      },
-      assembler: {
-        id: 'assembler',
-        name: '微型芯片组装台',
-        level: 1,
-        activeRecipeId: null,
-        currentProgress: 0,
-        timeLeft: 0
-      }
+      smelter: [
+        {
+          id: 'smelter',
+          name: '魔导冶炼炉',
+          level: 1,
+          queue: [],
+          currentProgress: 0,
+          timeLeft: 0
+        }
+      ],
+      assembler: [
+        {
+          id: 'assembler',
+          name: '微型芯片组装台',
+          level: 1,
+          queue: [],
+          currentProgress: 0,
+          timeLeft: 0
+        }
+      ]
     },
     assignedWatererId: null,
     assignedExplorerId: null,

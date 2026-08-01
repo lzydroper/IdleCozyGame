@@ -66,31 +66,49 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
   smelter: {
     id: 'smelter',
     name: '魔导冶炼炉',
-    description: '自动熔炼金属',
+    description: '自动熔炼金属（队列容量 = 等级）',
     maxLevel: 5,
     category: 'facility',
     effectLabel: '效率',
     levels: [
-      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%' },
-      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%' },
-      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%' },
-      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%' },
-      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%' }
+      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1' },
+      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2' },
+      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%，队列 3' },
+      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%，队列 4' },
+      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%，队列 5' }
     ]
   },
   assembler: {
     id: 'assembler',
     name: '微型芯片组装台',
-    description: '自动组装物品',
+    description: '自动组装物品（队列容量 = 等级）',
     maxLevel: 5,
     category: 'facility',
     effectLabel: '效率',
     levels: [
-      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%' },
-      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%' },
-      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%' },
-      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%' },
-      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%' }
+      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1' },
+      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2' },
+      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%，队列 3' },
+      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%，队列 4' },
+      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%，队列 5' }
+    ]
+  }
+};
+
+// 产线扩建（ticket 13）：同一类型设施可扩建多台并行运转；costs[i] = 扩建第 i+2 台的费用
+export const FACILITY_EXPANSION: Record<'smelter' | 'assembler', { maxUnits: number; costs: Record<string, number>[] }> = {
+  smelter: {
+    maxUnits: 3,
+    costs: [
+      { scrap_metal: 40 },
+      { scrap_metal: 120 }
+    ]
+  },
+  assembler: {
+    maxUnits: 3,
+    costs: [
+      { scrap_metal: 40 },
+      { scrap_metal: 120 }
     ]
   }
 };

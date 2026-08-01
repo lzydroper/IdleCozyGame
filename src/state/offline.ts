@@ -1,5 +1,7 @@
 import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from '../types/game';
+import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
+import { processFacility } from './facility';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
@@ -199,90 +201,32 @@ export function calculateDetailedOfflineProgress(
     }
   }
 
-  // 4. 工厂自动化流水线结算
+  // 4. 工厂自动化流水线结算（FIFO 配方队列，ticket 13）
   const updatedFacilities = { ...state.shelter.facilities };
-  Object.entries(updatedFacilities).forEach(([facId, fac]) => {
-    if (fac.active === false || !fac.activeRecipeId) return;
-    const recipe = AUTO_RECIPES[fac.activeRecipeId];
-    if (!recipe) return;
+  (Object.keys(updatedFacilities) as FacilityType[]).forEach(type => {
+    const units = updatedFacilities[type];
+    const multiUnit = units.length > 1;
+    updatedFacilities[type] = units.map((fac, unitIndex) => {
+      const r = processFacility(fac, currentInventory, actualSeconds);
 
-    // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
-    const speedBonus = 1 + fac.level * 0.1;
-    const actualDuration = Math.max(1, Math.floor(recipe.duration / speedBonus));
-
-    let facilityGained = 0;
-    let facTimeLeft = fac.timeLeft;
-    let tempInventory = { ...currentInventory };
-
-    let remainingSeconds = actualSeconds;
-    if (facTimeLeft > 0) {
-      if (remainingSeconds < facTimeLeft) {
-        facTimeLeft -= remainingSeconds;
-        remainingSeconds = 0;
-      } else {
-        remainingSeconds -= facTimeLeft;
-        facilityGained += 1;
-        facTimeLeft = 0;
-      }
-    }
-
-    if (remainingSeconds > 0) {
-      const maxCycles = Math.floor(remainingSeconds / actualDuration);
-      if (maxCycles > 0) {
-        let limitCycles = maxCycles;
-        Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-          const available = tempInventory[itemId] || 0;
-          const possibleCycles = Math.floor(available / qtyNeeded);
-          limitCycles = Math.min(limitCycles, possibleCycles);
-        });
-
-        if (limitCycles > 0) {
-          Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-            tempInventory[itemId] = Math.max(0, (tempInventory[itemId] || 0) - qtyNeeded * limitCycles);
-          });
-          facilityGained += limitCycles;
-          remainingSeconds -= limitCycles * actualDuration;
-        }
-      }
-
-      if (remainingSeconds > 0) {
-        let canStartNext = true;
-        Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-          if ((tempInventory[itemId] || 0) < qtyNeeded) {
-            canStartNext = false;
-          }
-        });
-        if (canStartNext) {
-          Object.entries(recipe.input).forEach(([itemId, qtyNeeded]) => {
-            tempInventory[itemId] = (tempInventory[itemId] || 0) - qtyNeeded;
-          });
-          facTimeLeft = Math.max(1, Math.round(actualDuration - remainingSeconds));
-        } else {
-          facTimeLeft = 0;
-        }
-      } else {
-        facTimeLeft = 0;
-      }
-    }
-
-    // 无论本次离线是否产出了成品，凡是涉及到启动下一轮生产或者有原料消耗的改动，都必须同步写回给背包
-    currentInventory = tempInventory;
-
-    if (facilityGained > 0) {
-      Object.entries(recipe.output).forEach(([itemId, qtyProduced]) => {
-        const totalQty = qtyProduced * facilityGained;
-        currentInventory[itemId] = (currentInventory[itemId] || 0) + totalQty;
-        recoveredItems[itemId] = (recoveredItems[itemId] || 0) + totalQty;
+      // 产出并入离线报告
+      Object.entries(r.produced).forEach(([itemId, qty]) => {
+        recoveredItems[itemId] = (recoveredItems[itemId] || 0) + qty;
       });
-      reportLogs.push(`🏭 ${fac.name} 离线运转 ${facilityGained} 次，加工出 ${recipe.name} 产物。`);
-    }
 
-    const progress = facTimeLeft > 0 ? Math.min(100, Math.round(((actualDuration - facTimeLeft) / actualDuration) * 100)) : 0;
-    updatedFacilities[facId] = {
-      ...fac,
-      timeLeft: facTimeLeft,
-      currentProgress: progress
-    };
+      const batches = Object.entries(r.completed);
+      if (batches.length > 0) {
+        const parts = batches
+          .map(([recipeId, count]) => {
+            const recipe = AUTO_RECIPES[recipeId];
+            return `${recipe?.name || recipeId}${count > 1 ? ` ×${count}` : ''}`;
+          })
+          .join('、');
+        reportLogs.push(`🏭 ${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 离线运转完成: ${parts}。`);
+      }
+
+      return r.facility;
+    });
   });
 
   // 5. 温室作物离线生长结算
