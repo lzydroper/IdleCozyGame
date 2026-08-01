@@ -208,6 +208,11 @@ const HeroTab: React.FC = () => {
                 🫱 {bond.name}：{formatBonus(bond.bonus)}
               </span>
             ))}
+            {activeBonds.length === 0 && (
+              <span className="text-[8px] text-zinc-600 font-bold">
+                未触发羁绊——凑齐特定英雄组合或同阵营英雄可激活加成。
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -298,10 +303,15 @@ const HeroTab: React.FC = () => {
 
               <div className="flex items-center justify-between text-[9px] font-bold text-rose-400">
                 <span>生命值 {hero.hp}/{hero.maxHp}</span>
-                {hero.wounded && naniteCount >= 1 && (
+                {hero.wounded && (
                   <button
                     onClick={() => handleHeal(id)}
-                    className="text-[9px] text-emerald-400 hover:underline cursor-pointer font-bold"
+                    disabled={naniteCount < 1}
+                    className={`text-[9px] font-bold ${
+                      naniteCount >= 1
+                        ? 'text-emerald-400 hover:underline cursor-pointer'
+                        : 'text-zinc-600 cursor-not-allowed'
+                    }`}
                   >
                     💉 治愈重伤
                   </button>
