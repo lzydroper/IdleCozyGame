@@ -28,6 +28,13 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   const [confirmUnequip, setConfirmUnequip] = useState<EquipmentSlot | null>(null);
   const confirmTimer = React.useRef<number | null>(null);
 
+  // 组件卸载时清理卸下确认定时器
+  React.useEffect(() => {
+    return () => {
+      if (confirmTimer.current) window.clearTimeout(confirmTimer.current);
+    };
+  }, []);
+
   const armConfirm = (slot: EquipmentSlot) => {
     setConfirmUnequip(slot);
     if (confirmTimer.current) window.clearTimeout(confirmTimer.current);

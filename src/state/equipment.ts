@@ -17,10 +17,6 @@ import { NO_OP } from './types';
 
 export const emptyEquipment = (): HeroEquipment => ({ weapon: null, armor: null, trinket: null });
 
-// 读取英雄某槽装备（防御旧存档缺 equipment 字段）
-export const getSlotEquipment = (state: GameState, heroId: string, slot: EquipmentSlot): EquippedItem | null =>
-  state.equipment?.[heroId]?.[slot] ?? null;
-
 // 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5（属性加强，强化等级保留）
 export const getEquippedItemStats = (item: EquippedItem): EquipmentStats => {
   const cfg = EQUIPMENT_CONFIG[item.itemId];
