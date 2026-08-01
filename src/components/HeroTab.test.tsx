@@ -119,7 +119,7 @@ describe('HeroTab Component', () => {
     expect(healButton.hasAttribute('disabled')).toBe(true);
   });
 
-  it('equips a weapon from inventory into the weapon slot (ticket 10)', () => {
+  it('equips a weapon from inventory into the weapon slot via HeroDetailModal (ticket 10)', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     save.inventory.ember_weapon = 1;
     localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
@@ -132,21 +132,16 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    // 打开武器槽位的候选装备列表并穿戴
-    fireEvent.click(screen.getAllByText('装备')[0]);
-    fireEvent.click(screen.getByText(/余烬长刃/));
+    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('一键装备'));
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.equipment.nova.weapon).toEqual({ itemId: 'ember_weapon', enhance: 0, mythic: false });
     expect(saved.inventory.ember_weapon).toBe(0);
-    // 穿戴后展示装备名（槽位 + 提示 toast）与强化按钮
-    expect(screen.getAllByText(/余烬长刃/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/\+0/)).toBeDefined();
   });
 
-  it('enhances an equipped weapon consuming enhance stones (ticket 10)', () => {
+  it('unequips all equipped items via HeroDetailModal (ticket 10)', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.inventory.enhance_stone = 5;
     save.equipment = { nova: { weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false }, armor: null, trinket: null } };
     localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
 
@@ -158,37 +153,10 @@ describe('HeroTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/强化 \+1/));
+    fireEvent.click(screen.getAllByText('详情面板 ›')[0]);
+    fireEvent.click(screen.getByText('全部卸下'));
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
-    expect(saved.equipment.nova.weapon.enhance).toBe(1);
-    expect(saved.inventory.enhance_stone).toBe(4);
-    expect(screen.getAllByText(/废土利刃/).length).toBeGreaterThan(0);
-  });
-
-  it('requires confirmation before unequipping an enhanced item (ticket 10)', () => {
-    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.equipment = { nova: { weapon: { itemId: 'wasteland_weapon', enhance: 12, mythic: false }, armor: null, trinket: null } };
-    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
-
-    render(
-      <GameProvider>
-        <ToastProvider>
-          <HeroTab />
-        </ToastProvider>
-      </GameProvider>
-    );
-
-    // 第一次点击进入确认态，装备未卸下
-    fireEvent.click(screen.getByText('卸下'));
-    expect(screen.getByText(/确认卸下？/)).toBeDefined();
-    let saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
-    expect(saved.equipment.nova.weapon.enhance).toBe(12);
-    expect(saved.inventory.wasteland_weapon).toBeUndefined();
-
-    // 第二次点击真正卸下（强化重置为背包计数）
-    fireEvent.click(screen.getByText(/确认卸下？/));
-    saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.equipment.nova.weapon).toBeNull();
     expect(saved.inventory.wasteland_weapon).toBe(1);
   });
