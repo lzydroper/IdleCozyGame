@@ -65,7 +65,11 @@ export const INITIAL_STATE: GameState = {
   combat: {
     zoneId: null,
     lastSettlement: null,
-    zonesCleared: []
+    zonesCleared: [],
+    idle: {
+      zoneId: null,
+      startTime: null
+    }
   },
   exploration: {
     inRealityExploration: false,

@@ -32,9 +32,12 @@ import {
   resolveEncounterBattleUpdate,
   fleeEncounterUpdate,
   startBossBattleUpdate,
+  startIdleUpdate,
+  stopIdleUpdate,
   type CombatOutcome,
   type EncounterBattleOutcome,
-  type BossBattleOutcome
+  type BossBattleOutcome,
+  type IdleStartOutcome
 } from '../state/combat';
 
 interface GameContextType {
@@ -74,6 +77,8 @@ interface GameContextType {
   resolveEncounterBattle: (encounterId: string) => EncounterBattleOutcome;
   fleeEncounter: () => boolean;
   startBossBattle: (zoneId: string) => BossBattleOutcome;
+  startIdle: (zoneId: string) => IdleStartOutcome;
+  stopIdle: () => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -535,6 +540,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // === 确认式离线挂机（ticket 08） ===
+  const startIdle = (zoneId: string): IdleStartOutcome => {
+    const r = startIdleUpdate(stateRef.current, zoneId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const stopIdle = (): boolean => {
+    const r = stopIdleUpdate(stateRef.current);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   const resetGame = () => {
     const now = Date.now();
     const freshState = createFreshState(INITIAL_STATE, now);
@@ -595,7 +617,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       healWoundedHero,
       resolveEncounterBattle,
       fleeEncounter,
-      startBossBattle
+      startBossBattle,
+      startIdle,
+      stopIdle
     }}>
 
       {children}

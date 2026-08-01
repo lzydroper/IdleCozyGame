@@ -1,4 +1,4 @@
-import type { GameState, HeroState, LogEntry, BattleResult, CombatSettlement } from '../types/game';
+import type { GameState, HeroState, LogEntry, BattleResult, CombatSettlement, CombatIdleState } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
@@ -280,7 +280,7 @@ export const startCombatUpdate = (
       inventory: settled.nextInventory,
       heroes: settled.nextHeroes,
       soulEchoes: settled.nextSoulEchoes,
-      combat: { zoneId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [] },
+      combat: { zoneId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [], idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
     result: { settlement }
@@ -384,7 +384,7 @@ export const resolveEncounterBattleUpdate = (
       heroes: nextHeroes,
       inventory: nextInventory,
       exploration: nextExploration,
-      combat: { zoneId: encounterId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [] },
+      combat: { zoneId: encounterId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [], idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
     result: { settlement }
@@ -492,12 +492,193 @@ export const startBossBattleUpdate = (
       inventory: settled.nextInventory,
       heroes: settled.nextHeroes,
       soulEchoes: settled.nextSoulEchoes,
-      combat: { zoneId, lastSettlement: settlement, zonesCleared },
+      combat: { zoneId, lastSettlement: settlement, zonesCleared, idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
     result: { settlement }
   };
 };
+
+// === 确认式离线挂机（ticket 08）：玩家主动开启后，离线期间战斗才推进 ===
+// 开启后离线按 battleDurationSeconds 一场接一场战斗；体力耗尽或小队战败自动停止；
+// 玩家手动停止后剩余体力保留。结算复用同一战斗场景（simulateBattle + settleBattle）。
+
+export type IdleStartFailure = 'unknown_zone' | 'locked' | 'no_party' | 'wounded' | 'no_stamina' | 'already_idling';
+
+export interface IdleStartOutcome {
+  ok: boolean;
+  failure?: IdleStartFailure;
+}
+
+/**
+ * 开始挂机：校验区域/队伍/体力后开启挂机开关（仅记录意图，不立即战斗）。
+ * 开启后离线期间（lastTick 之后）战斗才推进；未开启时离线不产生任何战斗结算。
+ */
+export const startIdleUpdate = (
+  state: GameState,
+  zoneId: string,
+  now: number = Date.now()
+): UpdateResult<IdleStartOutcome> => {
+  if (state.combat?.idle?.zoneId) return { state, result: { ok: false, failure: 'already_idling' } };
+
+  const zone = COMBAT_ZONES[zoneId];
+  if (!zone) return { state, result: { ok: false, failure: 'unknown_zone' } };
+  if (!isZoneUnlocked(state, zoneId)) return { state, result: { ok: false, failure: 'locked' } };
+
+  const party = (state.party || []).filter(id => isKnownHero(state, id));
+  if (party.length === 0) return { state, result: { ok: false, failure: 'no_party' } };
+  if (party.some(id => state.heroes[id].wounded)) return { state, result: { ok: false, failure: 'wounded' } };
+  if ((state.stamina || 0) < zone.staminaCost) return { state, result: { ok: false, failure: 'no_stamina' } };
+
+  return {
+    state: {
+      ...state,
+      combat: { ...state.combat, idle: { zoneId, startTime: now } }
+    },
+    result: { ok: true }
+  };
+};
+
+/**
+ * 停止挂机：清除挂机开关，剩余体力保留（不结算、不消耗）。
+ */
+export const stopIdleUpdate = (state: GameState): UpdateResult<boolean> => {
+  if (!state.combat?.idle?.zoneId) return NO_OP(state);
+  return {
+    state: {
+      ...state,
+      combat: { ...state.combat, idle: { zoneId: null, startTime: null } }
+    },
+    result: true
+  };
+};
+
+export interface IdleSettlementOutcome {
+  battlesFought: number;
+  victories: number;
+  defeats: number;
+  draws: number;
+  drops: Record<string, number>;     // 累计掉落（已入账）
+  soulEchoesGained: number;
+  expPerHero: number;                // 每位上阵英雄累计获得经验
+  staminaConsumed: number;
+  autoStopped: boolean;              // 体力耗尽 / 战败 → 自动停止
+  stopReason?: 'stamina' | 'defeat';
+}
+
+const emptyIdleOutcome = (): IdleSettlementOutcome => ({
+  battlesFought: 0, victories: 0, defeats: 0, draws: 0,
+  drops: {}, soulEchoesGained: 0, expPerHero: 0,
+  staminaConsumed: 0, autoStopped: false
+});
+
+/**
+ * 离线挂机战斗结算（ticket 08）：仅在挂机开启的时段生效。
+ * 战斗场数 = min(离线时长, maxIdleSettlementSeconds) / battleDurationSeconds，且受体力上限约束；
+ * 胜利 → 掉落 + 灵魂残响 + 经验入账（战后修整满血）；战败 → 全员重伤并自动停止；
+ * 体力耗尽 → 自动停止；未自动停止时挂机开关保留（下个离线时段继续）。
+ */
+export const settleIdleUpdate = (
+  state: GameState,
+  elapsedSeconds: number,
+  rng: () => number = Math.random
+): UpdateResult<IdleSettlementOutcome> => {
+  const idle = state.combat?.idle;
+  const zoneId = idle?.zoneId;
+  if (!zoneId || elapsedSeconds <= 0) return { state, result: emptyIdleOutcome() };
+
+  const zone = COMBAT_ZONES[zoneId];
+  const party = (state.party || []).filter(id => isKnownHero(state, id));
+  // 防御性兜底：区域未知 / 队伍为空 / 有重伤 → 无法继续挂机，自动停止且不结算
+  if (!zone || party.length === 0 || party.some(id => state.heroes[id].wounded)) {
+    return {
+      state: { ...state, combat: { ...state.combat, idle: { zoneId: null, startTime: null } } },
+      result: emptyIdleOutcome()
+    };
+  }
+
+  const idleSeconds = Math.min(elapsedSeconds, COMBAT_CONFIG.maxIdleSettlementSeconds);
+  const staminaBattles = Math.floor((state.stamina || 0) / zone.staminaCost);
+  // 体力已不足一场（挂机开启后在线消耗致体力见底）→ 视为体力耗尽，自动停止且不结算
+  if (staminaBattles === 0) {
+    return {
+      state: { ...state, combat: { ...state.combat, idle: { zoneId: null, startTime: null } } },
+      result: { ...emptyIdleOutcome(), autoStopped: true, stopReason: 'stamina' as const }
+    };
+  }
+  const battleCount = Math.min(
+    Math.floor(idleSeconds / COMBAT_CONFIG.battleDurationSeconds),
+    staminaBattles
+  );
+
+  const outcome = emptyIdleOutcome();
+  const drops = outcome.drops;
+  let next = state;
+
+  for (let i = 0; i < battleCount; i++) {
+    const battle = simulateBattle(
+      party.map(id => heroToCombatant(id, next.heroes[id])),
+      enemiesToCombatants(zone.enemies)
+    );
+    const settled = settleBattle(next, battle, party, {
+      staminaCost: zone.staminaCost,
+      drops: zone.drops,
+      soulEchoMin: zone.soulEchoMin,
+      soulEchoMax: zone.soulEchoMax,
+      expReward: zone.expReward,
+      lootTo: 'inventory'
+    }, rng);
+
+    next = {
+      ...next,
+      stamina: settled.nextStamina,
+      inventory: settled.nextInventory,
+      heroes: settled.nextHeroes,
+      soulEchoes: settled.nextSoulEchoes
+    };
+    outcome.battlesFought++;
+    outcome.staminaConsumed += zone.staminaCost;
+
+    if (battle.victory) {
+      outcome.victories++;
+      Object.entries(settled.drops).forEach(([itemId, qty]) => {
+        drops[itemId] = (drops[itemId] || 0) + qty;
+      });
+      outcome.soulEchoesGained += settled.soulEchoesGained;
+    } else if (battle.partyWiped) {
+      outcome.defeats++;
+      outcome.autoStopped = true;
+      outcome.stopReason = 'defeat';
+      break;
+    } else {
+      outcome.draws++;
+    }
+
+    // 体力耗尽（不足一场）→ 自动停止
+    if (settled.nextStamina < zone.staminaCost) {
+      outcome.autoStopped = true;
+      outcome.stopReason = 'stamina';
+      break;
+    }
+  }
+  outcome.expPerHero = zone.expReward * outcome.victories; // 累计经验/英雄
+
+  const idleStopped = outcome.autoStopped;
+  return {
+    state: {
+      ...next,
+      combat: {
+        ...next.combat,
+        idle: idleStopped ? { zoneId: null, startTime: null } : next.combat.idle
+      }
+    },
+    result: outcome
+  };
+};
+
+// 战斗状态构造时保留挂机开关（防御旧存档/损坏数据缺 idle 字段）
+const idleOrDefault = (state: GameState): CombatIdleState =>
+  state.combat?.idle || { zoneId: null, startTime: null };
 
 // 上阵队伍管理：最多 3 人、无重复、必须已拥有且未重伤
 export const setPartyUpdate = (state: GameState, heroIds: string[]): UpdateResult<boolean> => {

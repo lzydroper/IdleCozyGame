@@ -97,11 +97,19 @@ export interface CombatSettlement {
   woundedHeroIds: string[];        // 战败后进入重伤的英雄
 }
 
+// 确认式离线挂机（ticket 08）：玩家在某战斗区域主动开启后，离线期间战斗才推进；
+// 可随时停止；体力耗尽或小队战败自动停止
+export interface CombatIdleState {
+  zoneId: string | null;       // 正在挂机的区域（null = 未挂机）
+  startTime: number | null;    // 开始挂机时间戳（UI 展示用）
+}
+
 // 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）
 export interface CombatState {
   zoneId: string | null;
   lastSettlement: CombatSettlement | null;
   zonesCleared: string[];  // 已通关区域（ticket 07 线性区域链：通关当前区解锁下一区）
+  idle: CombatIdleState;   // 确认式离线挂机开关（ticket 08）
 }
 
 export interface GameState {
@@ -199,4 +207,21 @@ export interface OfflineReport {
   recoveredStamina: number;            // 离线期间恢复的体力
   recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
   logs: string[];
+  idleCombat?: IdleCombatReport | null;    // 确认式离线挂机战斗结算（ticket 08）
+}
+
+// 离线挂机战斗结算报告（ticket 08）：重连弹窗展示掉落与经验
+export interface IdleCombatReport {
+  zoneId: string;
+  zoneName: string;
+  battlesFought: number;   // 本次离线实际战斗场数
+  victories: number;       // 胜利场数
+  defeats: number;         // 战败场数（战败即自动停止挂机）
+  draws: number;           // 平局场数
+  drops: Record<string, number>;     // 累计掉落（已入账）
+  soulEchoesGained: number;          // 累计灵魂残响
+  expPerHero: number;                // 每位上阵英雄累计获得经验
+  staminaConsumed: number;           // 挂机战斗消耗的体力
+  autoStopped: boolean;              // 是否自动停止（体力耗尽 / 战败）
+  stopReason?: 'stamina' | 'defeat';
 }

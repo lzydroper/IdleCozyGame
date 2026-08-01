@@ -120,7 +120,12 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     ...initialState.combat,
     ...(parsed.combat || {}),
     // 区域链通关记录：旧存档缺失时回退空列表
-    zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared
+    zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared,
+    // 离线挂机开关（ticket 08）：旧存档缺失时回退未挂机
+    idle: {
+      ...initialState.combat.idle,
+      ...((parsed.combat && parsed.combat.idle) || {})
+    }
   }
 });
 

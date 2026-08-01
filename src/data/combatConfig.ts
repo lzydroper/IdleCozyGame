@@ -8,6 +8,8 @@ export interface CombatConfig {
   hpPerLevel: number;        // 每升一级生命成长
   attackPerLevel: number;    // 每升一级攻击成长
   encounterStaminaCost: number; // 探索战斗遭遇的体力消耗（ticket 06，ADR-0002 战斗耗体力）
+  battleDurationSeconds: number; // 离线挂机（ticket 08）每场战斗所需秒数
+  maxIdleSettlementSeconds: number; // 离线挂机结算时间上限（ticket 08，配置项）
 }
 
 export const COMBAT_CONFIG: CombatConfig = {
@@ -18,5 +20,7 @@ export const COMBAT_CONFIG: CombatConfig = {
   expPerLevel: 100,
   hpPerLevel: 8,
   attackPerLevel: 3,
-  encounterStaminaCost: 5
+  encounterStaminaCost: 5,
+  battleDurationSeconds: 20,
+  maxIdleSettlementSeconds: 8 * 3600
 };

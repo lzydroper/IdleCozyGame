@@ -169,7 +169,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [] },
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
@@ -220,7 +220,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [] },
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
@@ -282,7 +282,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [] },
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
@@ -351,7 +351,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [] },
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,

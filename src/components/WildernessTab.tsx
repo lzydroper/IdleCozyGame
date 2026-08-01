@@ -550,7 +550,7 @@ const EncounterPanel: React.FC<{ encounterId: string }> = ({ encounterId }) => {
 
 // === 战斗挂机面板（ticket 05）：选区 → 三人小队轮询回合制自动战斗 ===
 const CombatPanel: React.FC = () => {
-  const { state, startCombat, startBossBattle } = useGame();
+  const { state, startCombat, startBossBattle, startIdle, stopIdle } = useGame();
   const { showToast } = useToast();
 
   const stamina = Math.floor(state.stamina || 0);
@@ -560,6 +560,9 @@ const CombatPanel: React.FC = () => {
   const anyWounded = party.some(id => state.heroes[id].wounded);
   const settlement = state.combat?.lastSettlement || null;
   const clearedZones = state.combat?.zonesCleared || [];
+  // 确认式离线挂机（ticket 08）
+  const idle = state.combat?.idle || null;
+  const idleZone = idle?.zoneId ? COMBAT_ZONES[idle.zoneId] : null;
 
   const handleStart = (zoneId: string) => {
     const outcome = startCombat(zoneId);
@@ -571,6 +574,21 @@ const CombatPanel: React.FC = () => {
     else if (outcome.settlement?.battle.victory) showToast('⚔️ 战斗胜利！战利品与经验已入账。', 'success');
     else if (outcome.settlement?.battle.partyWiped) showToast('💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
     else if (outcome.settlement) showToast('⚔️ 战斗平局，未分胜负。', 'info');
+  };
+
+  const handleStartIdle = (zoneId: string) => {
+    const outcome = startIdle(zoneId);
+    if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
+    else if (outcome.failure === 'no_stamina') showToast('体力不足，无法开启挂机（需 ≥ 一场战斗的体力）。', 'error');
+    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
+    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
+    else if (outcome.failure === 'already_idling') showToast('已在其他区域挂机中，请先停止当前挂机。', 'warning');
+    else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
+    else showToast('⏳ 挂机已开启：离线期间将自动战斗，重连时结算掉落与经验。', 'success');
+  };
+
+  const handleStopIdle = () => {
+    if (stopIdle()) showToast('⏹ 挂机已停止，剩余体力保留。', 'info');
   };
 
   const handleBoss = (zoneId: string) => {
@@ -666,6 +684,27 @@ const CombatPanel: React.FC = () => {
         <span className="text-[8px] text-zinc-600 font-bold">每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点，战斗消耗后随时间自动回满。</span>
       </div>
 
+      {/* 确认式离线挂机状态（ticket 08）：开启后离线期间战斗才推进 */}
+      {idleZone && (
+        <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
+          <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
+            ⏳ 挂机中：{idleZone.emoji} {idleZone.name}
+            {idle?.startTime && (
+              <span className="text-[8px] font-bold text-amber-500/80">
+                自 {new Date(idle.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 起
+              </span>
+            )}
+            <span className="text-[8px] font-bold text-amber-500/80">离线期间自动战斗，重连时结算掉落与经验；体力耗尽自动停止。</span>
+          </span>
+          <button
+            onClick={handleStopIdle}
+            className="shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98"
+          >
+            ⏹ 停止挂机
+          </button>
+        </div>
+      )}
+
       {/* 当前上阵小队 */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
         <span className="text-[10px] font-black text-zinc-200">⚔️ 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
@@ -708,6 +747,10 @@ const CombatPanel: React.FC = () => {
           const prevZone = zoneIdx > 0 ? COMBAT_ZONE_LIST[zoneIdx - 1] : null;
           const insufficient = !unlocked || stamina < zone.staminaCost || party.length === 0 || anyWounded;
           const bossReady = unlocked && party.length > 0 && !anyWounded && stamina >= zone.boss.staminaCost;
+          // 确认式离线挂机（ticket 08）：单区域挂机开关
+          const idleActiveHere = idle?.zoneId === zone.id;
+          const idlingElsewhere = !!idle?.zoneId && idle.zoneId !== zone.id;
+          const idleDisabled = !unlocked || party.length === 0 || anyWounded || stamina < zone.staminaCost || idlingElsewhere;
           return (
             <div
               key={zone.id}
@@ -718,7 +761,7 @@ const CombatPanel: React.FC = () => {
                     ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
                     : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
               }`}
-              onClick={() => !insufficient && handleStart(zone.id)}
+              onClick={() => !insufficient && !idleActiveHere && handleStart(zone.id)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -740,16 +783,31 @@ const CombatPanel: React.FC = () => {
                   </h4>
                   <p className="text-[10px] text-zinc-500 mt-1 leading-normal">{zone.description}</p>
                 </div>
-                <button
-                  disabled={insufficient}
-                  className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                    insufficient
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer'
-                  }`}
-                >
-                  开战（体力 -{zone.staminaCost}）
-                </button>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button
+                    disabled={insufficient || idleActiveHere}
+                    className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
+                      insufficient || idleActiveHere
+                        ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer'
+                    }`}
+                  >
+                    {idleActiveHere ? '⏳ 挂机中…' : `开战（体力 -${zone.staminaCost}）`}
+                  </button>
+                  <button
+                    disabled={!idleActiveHere && idleDisabled}
+                    onClick={(e) => { e.stopPropagation(); if (idleActiveHere) handleStopIdle(); else handleStartIdle(zone.id); }}
+                    className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
+                      idleActiveHere
+                        ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98'
+                        : idleDisabled
+                          ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400/30 text-white cursor-pointer active:scale-98'
+                    }`}
+                  >
+                    {idleActiveHere ? '⏹ 停止挂机' : '⏳ 开始挂机'}
+                  </button>
+                </div>
               </div>
               {!unlocked && prevZone && (
                 <span className="text-[8px] text-zinc-600 font-bold">🔒 通关【{prevZone.name}】后解锁</span>

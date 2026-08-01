@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import WildernessTab from './WildernessTab';
+import { COMBAT_ZONE_LIST } from '../data/combatZones';
 
 describe('WildernessTab Component', () => {
   beforeEach(() => {
@@ -415,6 +416,60 @@ describe('WildernessTab Component', () => {
     // 区2 解锁：未解锁徽章从 2 减到 1，且出现"已通关"徽章
     expect(screen.getAllByText(/🔒 未解锁/).length).toBe(1);
     expect(screen.getByText(/✓ 已通关/)).toBeDefined();
+  });
+
+  it('arms offline idle from the combat panel and stops it preserving stamina (确认式离线挂机)', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+
+    // 区域卡上的挂机开关（首区可挂机，其余未解锁禁用）
+    const idleButtons = screen.getAllByText(/⏳ 开始挂机/);
+    expect(idleButtons.length).toBe(COMBAT_ZONE_LIST.length);
+    expect(idleButtons[0].hasAttribute('disabled')).toBe(false);
+    fireEvent.click(idleButtons[0]);
+
+    // 挂机状态横幅出现：不立即战斗、不消耗体力
+    expect(screen.getByText(/挂机中：/)).toBeDefined();
+    expect(screen.getAllByText(/⏹ 停止挂机/).length).toBeGreaterThan(0);
+    let saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.combat.idle.zoneId).toBe('wasteland_entrance');
+    expect(saved.combat.lastSettlement).toBeNull();
+    expect(saved.stamina).toBe(100);
+
+    // 停止挂机：剩余体力保留
+    fireEvent.click(screen.getAllByText(/⏹ 停止挂机/)[0]);
+    saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.combat.idle.zoneId).toBeNull();
+    expect(saved.stamina).toBe(100);
+  });
+
+  it('blocks idle arming when stamina is insufficient', () => {
+    const save = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    save.stamina = 0;
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    const idleButtons = screen.getAllByText(/⏳ 开始挂机/);
+    expect(idleButtons[0].hasAttribute('disabled')).toBe(true);
+    fireEvent.click(idleButtons[0]);
+
+    const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.combat?.idle?.zoneId).toBeNull(); // 体力不足未开启挂机
   });
 
   it('renders a draw settlement as 平局 rather than defeat (三态结算展示)', () => {
