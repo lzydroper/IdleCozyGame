@@ -27,7 +27,7 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-700 rounded-2xl w-[92%] max-w-[380px] h-[380px] max-h-[60vh] p-4 flex flex-col gap-3 shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-zinc-700 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col gap-3 shadow-2xl overflow-hidden"
       >
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
