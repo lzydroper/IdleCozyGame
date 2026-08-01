@@ -173,7 +173,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     }
   };
 
-  // 渲染单个装备槽位 (正方形 Icon 框 + 方框下方独立文字)
+  // 渲染单个装备槽位 (放大为 w-13 h-13 框，下方独立文字)
   const renderEquipSlot = (slot: EquipmentSlot, slotLabel: string, IconComponent: any) => {
     const item = heroEquip[slot];
     const itemConfig = item ? ITEMS_CONFIG[item.itemId] : null;
@@ -181,37 +181,37 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     return (
       <div className="flex flex-col items-center gap-0.5">
         <div
-          className={`w-11 h-11 aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden transition-all ${
+          className={`w-13 h-13 aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden transition-all ${
             item
               ? 'bg-zinc-950/90 border-amber-500/40 shadow-sm shadow-amber-950/30'
               : 'bg-zinc-950/40 border-zinc-800 border-dashed'
           }`}
         >
-          <IconComponent className={`w-4 h-4 ${item ? 'text-amber-400' : 'text-zinc-600'}`} />
+          <IconComponent className={`w-5 h-5 ${item ? 'text-amber-400' : 'text-zinc-600'}`} />
           {item && item.enhance > 0 && (
-            <span className="absolute top-0.5 right-0.5 text-[7px] font-black text-amber-300 bg-black/80 px-0.5 rounded border border-amber-500/30">
+            <span className="absolute top-0.5 right-0.5 text-[7.5px] font-black text-amber-300 bg-black/80 px-1 rounded border border-amber-500/30">
               +{item.enhance}
             </span>
           )}
         </div>
-        <span className="text-[8px] font-bold text-zinc-300 max-w-[54px] truncate text-center leading-tight">
+        <span className="text-[8.5px] font-bold text-zinc-300 max-w-[56px] truncate text-center leading-tight mt-0.5">
           {itemConfig?.name || slotLabel}
         </span>
       </div>
     );
   };
 
-  // 渲染技能槽位占位 (正方形 Icon 框 + 方框下方 技能 1, 2, 3)
+  // 渲染技能槽位占位 (放大为 w-13 h-13 框，下方独立文字 技能 1, 2, 3)
   const renderSkillSlot = (skillIndex: number) => {
     return (
       <div className="flex flex-col items-center gap-0.5">
         <div
-          className="w-11 h-11 aspect-square rounded-xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center relative overflow-hidden"
+          className="w-13 h-13 aspect-square rounded-xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center relative overflow-hidden"
           title={`技能 ${skillIndex}`}
         >
-          <Flame className="w-4 h-4 text-purple-400/70" />
+          <Flame className="w-5 h-5 text-purple-400/70" />
         </div>
-        <span className="text-[8px] font-bold text-zinc-400 max-w-[54px] truncate text-center leading-tight">
+        <span className="text-[8.5px] font-bold text-zinc-400 max-w-[56px] truncate text-center leading-tight mt-0.5">
           技能 {skillIndex}
         </span>
       </div>
@@ -262,56 +262,56 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           </button>
         </header>
 
-        {/* 满框填充的主体区域 (flex-1 flex flex-col justify-between gap-2.5) */}
-        <div className="flex-1 flex flex-col justify-between gap-2.5 min-h-0 pt-1">
-          {/* 上半部分三列布局 (完全对齐图 4 红框设计图) */}
-          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800/80 shrink-0">
+        {/* 满框饱满的主体区域 */}
+        <div className="flex-1 flex flex-col justify-between gap-2 min-h-0 pt-1">
+          {/* 上半部分三列布局 (放大头像 w-20 h-20，装备/技能框 w-13 h-13，自然占满 ~270px 高度) */}
+          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800/80 flex-1 min-h-0">
             {/* 左侧列：三槽装备 + 底部【一键装备/一键卸下】 */}
             <div className="flex flex-col items-center justify-between">
-              <div className="flex flex-col gap-1.5 items-center w-full">
+              <div className="flex flex-col gap-1 items-center w-full">
                 {renderEquipSlot('weapon', '武器', Sword)}
                 {renderEquipSlot('armor', '防具', Shield)}
                 {renderEquipSlot('trinket', '饰品', Sparkles)}
               </div>
               <button
                 onClick={handleToggleEquipAll}
-                className="w-full py-1.5 rounded-lg text-[8px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-1.5"
+                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-1"
               >
                 {hasAnyEquip ? '一键卸下' : '一键装备'}
               </button>
             </div>
 
-            {/* 中间列：头像、名称、标签 + 底部【升级】 */}
+            {/* 中间列：放大大头像 w-20 h-20、名称、标签 + 底部【升级】 */}
             <div className="flex flex-col items-center justify-between text-center">
               <div className="flex flex-col items-center gap-1">
-                {/* 正方形大头像 */}
-                <div className="w-16 h-16 aspect-square rounded-2xl bg-zinc-950 border-2 border-amber-500/40 flex items-center justify-center relative overflow-hidden shadow-lg shadow-amber-950/20">
+                {/* 放大正方形大头像 (w-20 h-20) */}
+                <div className="w-20 h-20 aspect-square rounded-2xl bg-zinc-950 border-2 border-amber-500/40 flex items-center justify-center relative overflow-hidden shadow-lg shadow-amber-950/20">
                   {config.avatar ? (
                     <img src={config.avatar} alt={config.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-2xl font-black text-amber-300">{firstChar}</span>
+                    <span className="text-3xl font-black text-amber-300">{firstChar}</span>
                   )}
                   {hero.awakened && (
-                    <div className="absolute top-0.5 left-0.5 bg-amber-500 text-zinc-950 text-[7px] font-black px-1 rounded shadow">
+                    <div className="absolute top-0.5 left-0.5 bg-amber-500 text-zinc-950 text-[7.5px] font-black px-1 rounded shadow">
                       觉醒
                     </div>
                   )}
                 </div>
 
                 {/* 名称与等级 */}
-                <span className="text-xs font-black text-zinc-100 truncate max-w-[90px]">
+                <span className="text-xs font-black text-zinc-100 truncate max-w-[96px] mt-0.5">
                   {awakenedName}
                 </span>
-                <span className="text-[9px] text-amber-400 font-bold">
+                <span className="text-[9.5px] text-amber-400 font-bold">
                   Lv.{hero.level} {'★'.repeat(hero.star)}
                 </span>
 
                 {/* 职阶/阵营 */}
                 <div className="flex items-center gap-1">
-                  <span className={`text-[7px] font-bold px-1 py-0.5 rounded border ${HERO_CLASS_COLORS[config.heroClass]}`}>
+                  <span className={`text-[7.5px] font-bold px-1 py-0.5 rounded border ${HERO_CLASS_COLORS[config.heroClass]}`}>
                     {HERO_CLASS_LABELS[config.heroClass]}
                   </span>
-                  <span className="text-[7px] font-bold px-1 py-0.5 rounded border border-purple-500/40 bg-purple-950/40 text-purple-300">
+                  <span className="text-[7.5px] font-bold px-1 py-0.5 rounded border border-purple-500/40 bg-purple-950/40 text-purple-300">
                     {HERO_FACTION_LABELS[config.faction]}
                   </span>
                 </div>
@@ -320,7 +320,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               {/* 中列底部按钮: 升级 */}
               <button
                 onClick={handleLevelUp}
-                className="w-full py-1.5 rounded-lg text-[8px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-1.5"
+                className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-1"
               >
                 升级
               </button>
@@ -328,7 +328,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
 
             {/* 右侧列：三项技能 + 底部【升星/觉醒】 */}
             <div className="flex flex-col items-center justify-between">
-              <div className="flex flex-col gap-1.5 items-center w-full">
+              <div className="flex flex-col gap-1 items-center w-full">
                 {renderSkillSlot(1)}
                 {renderSkillSlot(2)}
                 {renderSkillSlot(3)}
@@ -339,7 +339,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 <button
                   onClick={handleStarUp}
                   disabled={totalAvailableShards < shardCost}
-                  className={`w-full py-1.5 rounded-lg text-[8px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1.5 ${
+                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
                     totalAvailableShards >= shardCost
                       ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -351,7 +351,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 <button
                   onClick={handleAwaken}
                   disabled={!hasOrb}
-                  className={`w-full py-1.5 rounded-lg text-[8px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1.5 ${
+                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
                     hasOrb
                       ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 shadow-sm active:scale-95'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -362,7 +362,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               ) : (
                 <button
                   disabled
-                  className="w-full py-1.5 rounded-lg text-[8px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-1.5"
+                  className="w-full py-1.5 rounded-lg text-[8.5px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-1"
                 >
                   已觉醒
                 </button>
@@ -370,17 +370,17 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             </div>
           </div>
 
-          {/* 下半部分左右布局 (纵向 h-full 自动填满剩余空位，绝无底层黑块) */}
-          <div className="grid grid-cols-3 gap-2 flex-1 min-h-0">
+          {/* 下半部分左右布局 (恢复为自然紧凑的固定高度 h-[124px]，不再非自然拉伸) */}
+          <div className="grid grid-cols-3 gap-2 h-[124px] shrink-0">
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
-              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex flex-col items-center justify-center gap-2 cursor-pointer group transition-all h-full"
+              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-all h-full"
             >
-              <div className="w-9 h-9 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+              <div className="w-8.5 h-8.5 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
                 <Sliders className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-black text-zinc-200 group-hover:text-amber-300 transition-colors text-center">
+              <span className="text-[9.5px] font-black text-zinc-200 group-hover:text-amber-300 transition-colors text-center">
                 天赋树入口
               </span>
             </div>
@@ -399,7 +399,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9px] flex-1 items-center py-1">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[8.5px] py-0.5">
                 {/* 1. 生命 */}
                 <div className="flex items-center justify-between text-zinc-300">
                   <span className="text-zinc-500 font-bold flex items-center gap-0.5">
