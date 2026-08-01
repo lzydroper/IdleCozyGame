@@ -122,6 +122,7 @@ describe('HeroTab Component', () => {
   it('equips a weapon from inventory into the weapon slot via HeroDetailModal (ticket 10)', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     save.inventory.ember_weapon = 1;
+    save.equipment = { nova: { weapon: null, armor: null, trinket: null } };
     localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
 
     render(

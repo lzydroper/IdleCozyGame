@@ -99,7 +99,7 @@ const HeroTab: React.FC = () => {
               <Users className="w-3.5 h-3.5 text-amber-400" /> 英雄列表
             </h2>
             <span className="text-[9px] text-amber-400 font-bold">
-              已解锁 {heroIds.length} 位
+              已解锁 {heroIds.length} 位英雄
             </span>
           </header>
 
@@ -134,7 +134,7 @@ const HeroTab: React.FC = () => {
       <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-md">
         <header className="flex items-center justify-between">
           <h2 className="text-xs font-black text-zinc-100 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-amber-400" /> 上阵配置
+            <Shield className="w-3.5 h-3.5 text-amber-400" /> 上阵队伍
           </h2>
           <span className="text-[9px] text-zinc-500 font-bold">
             小队 ({party.length}/{partySize})
