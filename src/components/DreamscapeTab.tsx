@@ -159,14 +159,23 @@ const DreamscapeTab: React.FC = () => {
         });
       }
 
-      // 5. 检查强制唤醒
+      // 5. 检查强制唤醒（ticket 14：战利品永不因失败丢失 —— 强制唤醒同样带回梦境碎片）
       const isPollutionFull = newExploration.dreamPollution >= 100;
       const isSanityZero = newPlayer.sanity <= 0;
       const forceWakeUp = isPollutionFull || isSanityZero;
 
+      const newInventory = { ...prev.inventory };
+      if (forceWakeUp) {
+        // 强制唤醒：梦境碎片并入避难所库存，不因失败清空
+        Object.entries(newDreamBag).forEach(([item, qty]) => {
+          newInventory[item] = (newInventory[item] || 0) + qty;
+        });
+      }
+
       return {
         ...prev,
         player: newPlayer,
+        inventory: newInventory,
         survivors: newSurvivors,
         activeAlert: isPollutionFull
           ? { type: "dream_leak", hp: NIGHTMARE_CONFIG.dreamLeakDamage }
@@ -186,8 +195,8 @@ const DreamscapeTab: React.FC = () => {
     const nextPollution = state.exploration.dreamPollution + (choice.results.stats?.pollution || 0);
 
     if (nextSanity <= 0) {
-      showToast("理智耗尽！你精神休克被迫断开心灵连结，碎片全部消散！", "error");
-      addLog("理智崩溃，强制切断梦境连结。", "combat");
+      showToast("理智耗尽！你精神休克被迫断开心灵连结，已带回的梦境碎片已存入避难所。", "error");
+      addLog("理智崩溃，强制切断梦境连结，梦境碎片已自动入库。", "combat");
     } else if (nextPollution >= 100) {
       showToast("⚠️ 警告：污染度达100%！深渊扭曲，梦魇怪兽顺着精神印记入侵现实！", "error");
       addLog("梦境污染溢出，引动梦魇兽入侵避难所！", "combat");

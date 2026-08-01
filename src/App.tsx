@@ -506,7 +506,6 @@ const App: React.FC = () => {
                     user_id: user.id,
                     username: newCharName.trim(),
                     days: parsed.player?.days || 1,
-                    hp: parsed.player?.hp || 100,
                     data: parsed,
                     updated_at: new Date().toISOString()
                   });

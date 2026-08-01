@@ -60,7 +60,7 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
 
   // === 补给: spritesheet_supplies.png 索引 10-15 ===
   ration_deluxe: { id: 'ration_deluxe', name: '高级生存罐头', emoji: '🥫', description: '印有红色爱心徽标和铁皮密封扣的废土罐头', category: 'food', useEffect: { stats: { food: 45 } } },
-  stimpack: { id: 'stimpack', name: '废土肾上腺素', emoji: '💉', description: '橙色瞬时急救药剂针管，代表红血时的极限求生', category: 'equipment', useEffect: { stats: { energy: 15 } } },
+  stimpack: { id: 'stimpack', name: '废土肾上腺素', emoji: '💉', description: '橙色瞬时急救药剂针管，激发魔能的极限求生药剂', category: 'equipment', useEffect: { stats: { energy: 15 } } },
   geiger_counter: { id: 'geiger_counter', name: '盖革探测仪', emoji: '📡', description: '黄色外壳、带有科幻刻度表盘和雷达扫描的手持探测仪', category: 'equipment' },
   canteen: { id: 'canteen', name: '军用水壶', emoji: '🧴', description: '带迷彩保温护套和电子屏显示的科技感军用大水壶', category: 'equipment', useEffect: { stats: { food: 15 } } },
   deflective_lens: { id: 'deflective_lens', name: '偏光魔导镜片', emoji: '🔍', description: '折射七彩极光的六角形魔导透镜', category: 'special' },

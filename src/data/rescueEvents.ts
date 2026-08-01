@@ -33,7 +33,7 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     description: "实验室里弥漫着毒气，凯瑟琳医生被一群魔化辐射老鼠包围在配药舱内。你可以使用纳米修复针强攻，或者用魔能超频强熔溶解锁。",
     type: "danger",
     choices: {
-      A: { text: "使用纳米修复针破除大门 (需纳米针x1)", requirements: { nanite_injector: 1 }, results: { logText: "你快速使用纳米修复针打破封锁并保护凯瑟琳，虽然防化服被毒气微量腐蚀，但成功救出！" } },
+      A: { text: "部署炮塔轰开封锁门 (需炮塔x1)", requirements: { defensive_turret: 1 }, results: { items: { defensive_turret: -1 }, logText: "你部署炮塔轰碎了封锁大门，破门而入成功救出凯瑟琳！" } },
       B: { text: "魔能超频强熔溶解锁 (魔能-35)", results: { stats: { energy: -35 }, logText: "你强开魔能高热熔断锁孔，在变异鼠群合围前破门而入，成功救出凯瑟琳！" } }
     }
   },
@@ -69,7 +69,7 @@ export const RESCUE_EVENTS: Record<string, RealityEvent> = {
     description: "军械库内布满倒塌的金属武器架，药剂师艾拉被压在一根倒塌的承重柱旁边，她的药箱散落一地，腿部流着血。你需要修复支撑结构，或者强行破拆救人。",
     type: "danger",
     choices: {
-      A: { text: "使用纳米修复针稳定伤势 (需纳米针x1)", requirements: { nanite_injector: 1 }, results: { items: { nanite_injector: -1 }, logText: "你用纳米修复针为艾拉止血。她恢复行动力后与你配合撬开了压住她的柱子，你搀扶着她离开了军械库。" } },
+      A: { text: "用口粮稳定她的伤势 (需口粮x2)", requirements: { ration: 2 }, results: { items: { ration: -2 }, logText: "你喂艾拉吃下两份压缩口粮帮她恢复体力，她配合你撬开了压住她的柱子，你搀扶着她离开了军械库。" } },
       B: { text: "魔能超频举起柱子 (魔能-25)", results: { stats: { energy: -25 }, logText: "你咬牙催动魔能，双掌爆发出炽热的光芒将柱子硬生生抬起。艾拉在最后一刻滚了出来，你们两人都筋疲力尽。" } }
     }
   },

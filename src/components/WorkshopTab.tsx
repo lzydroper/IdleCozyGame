@@ -6,6 +6,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import GameIcon from './GameIcon';
 import ItemGridItem from './ItemGridItem';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { getDreamLockdownMinutes } from '../state/nightmare';
 import { Hammer, ShieldAlert, Zap } from 'lucide-react';
 
 const getRecipeIconId = (recipe: any) => {
@@ -92,7 +93,7 @@ const WorkshopTab: React.FC = () => {
     if (outcome.victory) {
       showToast("🛡️ 防御成功！梦魇被击退，获得虚空核心！", "success");
     } else if (outcome.partyWiped) {
-      showToast(`💥 防御失败！小队全员重伤，梦境被封锁 ${Math.round(NIGHTMARE_CONFIG.dreamLockdownDuration / 60)} 分钟。`, "error");
+      showToast(`💥 防御失败！小队全员重伤，梦境被封锁 ${getDreamLockdownMinutes()} 分钟。`, "error");
     } else {
       showToast("⚔️ 梦魇退回阴影深处，可稍后再次迎战。", "info");
     }
@@ -135,7 +136,7 @@ const WorkshopTab: React.FC = () => {
           {/* 怪物血量条 */}
           <div className="p-3 bg-zinc-950 rounded-2xl border border-red-500/20 text-xs">
             <div className="flex justify-between font-bold text-red-400 mb-1">
-              <span>侵入体：梦魇侵入体 👹</span>
+              <span>侵入体：{NIGHTMARE_CONFIG.leakName} 👹</span>
               <span>HP: {activeAlert.hp}</span>
             </div>
             <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden">
@@ -189,7 +190,7 @@ const WorkshopTab: React.FC = () => {
             </button>
           </div>
           <p className="text-[9px] text-zinc-500 text-center -mt-1">
-            炮塔开战前造成 {NIGHTMARE_CONFIG.turretDamage} 点伤害；防御胜利掉落虚空核心 ×1，失败则全员重伤 + 梦境封锁 {Math.round(NIGHTMARE_CONFIG.dreamLockdownDuration / 60)} 分钟
+            炮塔开战前造成 {NIGHTMARE_CONFIG.turretDamage} 点伤害；防御胜利掉落虚空核心 ×1，失败则全员重伤 + 梦境封锁 {getDreamLockdownMinutes()} 分钟
           </p>
         </div>
       )}

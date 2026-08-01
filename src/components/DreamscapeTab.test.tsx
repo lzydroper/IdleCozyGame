@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import DreamscapeTab from './DreamscapeTab';
+import { INITIAL_STATE } from '../data/initialState';
 
 describe('DreamscapeTab Component', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('aether_garden_save_current_user', 'Guest');
+  });
+
   it('should render the dream entry page initially', () => {
     render(
       <GameProvider>
@@ -30,5 +37,29 @@ describe('DreamscapeTab Component', () => {
     fireEvent.click(enterButton);
 
     expect(screen.getByText(/当前精神污染/i)).toBeDefined();
+  });
+
+  it('梦境封锁期间无法进入梦境（ticket 14）', () => {
+    const save = structuredClone(INITIAL_STATE) as typeof INITIAL_STATE;
+    save.exploration.dreamLockdownUntil = Date.now() + 600_000; // 封锁 10 分钟
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <DreamscapeTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 封锁横幅 + 按钮禁用 + 文案变化
+    expect(screen.getByText(/泄露防御失败后心灵通道被梦魇撕裂/)).toBeDefined();
+    expect(screen.getByText(/剩余 10 分/)).toBeDefined();
+    const button = screen.getByText('梦境封锁中 · 无法入梦');
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+
+    // 点击不会进入梦境
+    fireEvent.click(button);
+    expect(screen.queryByText(/当前精神污染/i)).toBeNull();
   });
 });

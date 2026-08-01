@@ -3,12 +3,17 @@ import type { CombatantState } from './combat';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { simulateBattle, heroToCombatant } from './combat';
 import { aggregateBonus } from './bonds';
+import { addLogUpdate } from './logs';
 import type { UpdateResult } from './types';
 
 // === 梦魇泄露防御（ticket 14）：出战当前小队，炮塔开战前辅助输出一轮 ===
 
 export type DreamLeakDefenseMethod = 'turret' | 'direct';
 export type DreamLeakDefenseFailure = 'no_alert' | 'no_party' | 'wounded' | 'no_turret';
+
+// 梦境封锁分钟数（派生自可配置秒数，供日志/UI 统一展示）
+export const getDreamLockdownMinutes = (): number =>
+  Math.round(NIGHTMARE_CONFIG.dreamLockdownDuration / 60);
 
 export interface DreamLeakDefenseOutcome {
   victory: boolean;         // 防御成功（梦魇被击退）
@@ -62,7 +67,7 @@ export const defendDreamLeakUpdate = (
   if (nightmareHp > 0) {
     const nightmare: CombatantState = {
       id: 'dream_leak_nightmare',
-      name: '梦魇侵入体',
+      name: NIGHTMARE_CONFIG.leakName,
       emoji: '👹',
       hp: nightmareHp,
       maxHp: nightmareHp,
@@ -78,10 +83,10 @@ export const defendDreamLeakUpdate = (
   const victory = nightmareHp <= 0 || (battle !== null && battle.victory);
   const partyWiped = !victory && !!battle?.partyWiped;
   const logText = victory
-    ? `🛡️ 防御成功！小队击退了梦魇侵入体，获得虚空核心 ×1，梦境污染已净化。`
+    ? `🛡️ 防御成功！小队击退了${NIGHTMARE_CONFIG.leakName}，获得虚空核心 ×1，梦境污染已净化。`
     : partyWiped
-      ? `💥 防御失败！小队全员重伤，梦境入口被封锁 ${Math.round(NIGHTMARE_CONFIG.dreamLockdownDuration / 60)} 分钟，请用纳米修复剂治愈后再次迎战。`
-      : `⚔️ 梦魇与小队僵持至回合上限，退回阴影深处，可稍后再次迎战。`;
+      ? `💥 防御失败！小队全员重伤，梦境入口被封锁 ${getDreamLockdownMinutes()} 分钟，请用纳米修复剂治愈后再次迎战。`
+      : `⚔️ ${NIGHTMARE_CONFIG.leakName}与小队僵持至回合上限，退回阴影深处，可稍后再次迎战。`;
 
   if (victory) {
     // 战后修整回满血（与自动战斗一致：战斗为独立"场景"）
@@ -95,24 +100,22 @@ export const defendDreamLeakUpdate = (
     });
   }
 
+  const nextState: GameState = {
+    ...state,
+    heroes: nextHeroes,
+    inventory: nextInventory,
+    activeAlert: victory ? { type: null, hp: 0 } : state.activeAlert,
+    exploration: {
+      ...state.exploration,
+      dreamPollution: victory ? 0 : state.exploration.dreamPollution,
+      dreamLockdownUntil: partyWiped
+        ? Date.now() + NIGHTMARE_CONFIG.dreamLockdownDuration * 1000
+        : state.exploration.dreamLockdownUntil
+    }
+  };
+
   return {
-    state: {
-      ...state,
-      heroes: nextHeroes,
-      inventory: nextInventory,
-      activeAlert: victory ? { type: null, hp: 0 } : state.activeAlert,
-      exploration: {
-        ...state.exploration,
-        dreamPollution: victory ? 0 : state.exploration.dreamPollution,
-        dreamLockdownUntil: partyWiped
-          ? Date.now() + NIGHTMARE_CONFIG.dreamLockdownDuration * 1000
-          : state.exploration.dreamLockdownUntil
-      },
-      logs: [
-        { id: `${Date.now()}_${Math.random()}`, text: logText, timestamp: Date.now(), type: 'combat' as const },
-        ...state.logs
-      ].slice(0, 100)
-    },
+    state: addLogUpdate(nextState, logText, 'combat'),
     result: { victory, partyWiped, battle }
   };
 };

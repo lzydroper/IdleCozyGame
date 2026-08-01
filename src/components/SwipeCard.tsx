@@ -182,7 +182,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
       Object.entries(choice.results.stats).forEach(([stat, val]) => {
         if (val === 0) return;
         let adjustedVal = val as number;
-        if (adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
+        if (adjustedVal < 0 && stat === 'food') {
           adjustedVal = Math.round(adjustedVal * (1 + statCostAdjustment));
         }
         
@@ -223,11 +223,6 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         let statColor = '';
         let statLabel = '';
         switch (stat) {
-          case 'hp':
-            statIcon = '❤️';
-            statColor = adjustedVal < 0 ? 'text-red-400' : 'text-emerald-400';
-            statLabel = 'HP';
-            break;
           case 'food':
             statIcon = '🍗';
             statColor = adjustedVal < 0 ? 'text-orange-400' : 'text-emerald-400';
