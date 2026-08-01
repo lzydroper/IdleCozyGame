@@ -59,7 +59,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
     ],
     drops: [
       { itemId: 'scrap_metal', chance: 0.6, minQty: 1, maxQty: 2 },
-      { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 }
+      { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 },
+      { itemId: 'enhance_stone', chance: 0.5, minQty: 1, maxQty: 2 }
     ],
     soulEchoMin: 2,
     soulEchoMax: 4,
@@ -74,7 +75,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
       drops: [
         { itemId: 'scrap_metal', chance: 0.8, minQty: 2, maxQty: 4 },
         { itemId: 'glow_fiber', chance: 0.5, minQty: 1, maxQty: 3 },
-        { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
+        { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 },
+        { itemId: 'enhance_stone', chance: 0.7, minQty: 1, maxQty: 3 }
       ],
       soulEchoMin: 5,
       soulEchoMax: 8
@@ -95,7 +97,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
     drops: [
       { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
       { itemId: 'alloy_plate', chance: 0.3, minQty: 1, maxQty: 1 },
-      { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
+      { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 },
+      { itemId: 'enhance_stone', chance: 0.6, minQty: 1, maxQty: 3 }
     ],
     soulEchoMin: 4,
     soulEchoMax: 7,
@@ -112,7 +115,9 @@ export const COMBAT_ZONES: CombatZonesMap = {
         { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
         { itemId: 'ember_weapon', chance: 0.15, minQty: 1, maxQty: 1 },
         { itemId: 'ember_armor', chance: 0.1, minQty: 1, maxQty: 1 },
-        { itemId: 'ember_trinket', chance: 0.1, minQty: 1, maxQty: 1 }
+        { itemId: 'ember_trinket', chance: 0.1, minQty: 1, maxQty: 1 },
+        { itemId: 'blueprint_ember_armory', chance: 0.25, minQty: 1, maxQty: 1 },
+        { itemId: 'enhance_stone', chance: 0.8, minQty: 2, maxQty: 4 }
       ],
       soulEchoMin: 10,
       soulEchoMax: 15
@@ -135,7 +140,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
       { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
       { itemId: 'rusted_spring', chance: 0.4, minQty: 1, maxQty: 2 },
       { itemId: 'plasma_cell', chance: 0.25, minQty: 1, maxQty: 1 },
-      { itemId: 'nanite_slurry', chance: 0.2, minQty: 1, maxQty: 1 }
+      { itemId: 'nanite_slurry', chance: 0.2, minQty: 1, maxQty: 1 },
+      { itemId: 'enhance_stone', chance: 0.7, minQty: 2, maxQty: 4 }
     ],
     soulEchoMin: 8,
     soulEchoMax: 12,
@@ -153,7 +159,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
         { itemId: 'nanite_slurry', chance: 0.4, minQty: 1, maxQty: 2 },
         { itemId: 'starcore_weapon', chance: 0.15, minQty: 1, maxQty: 1 },
         { itemId: 'starcore_armor', chance: 0.1, minQty: 1, maxQty: 1 },
-        { itemId: 'starcore_trinket', chance: 0.1, minQty: 1, maxQty: 1 }
+        { itemId: 'starcore_trinket', chance: 0.1, minQty: 1, maxQty: 1 },
+        { itemId: 'enhance_stone', chance: 0.9, minQty: 3, maxQty: 5 }
       ],
       soulEchoMin: 18,
       soulEchoMax: 25

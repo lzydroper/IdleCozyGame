@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState } from '../types/game';
+import type { GameState, EquipmentSlot } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
@@ -25,6 +25,14 @@ import {
 } from '../state/shelter';
 import { applyTick } from '../state/tick';
 import { summonUpdate, type SummonOutcome } from '../state/summon';
+import {
+  equipItemUpdate,
+  unequipItemUpdate,
+  enhanceItemUpdate,
+  forgeMythicUpdate,
+  type EnhanceFailure,
+  type ForgeFailure
+} from '../state/equipment';
 import {
   startCombatUpdate,
   setPartyUpdate,
@@ -71,6 +79,10 @@ interface GameContextType {
   startExpedition: (survivorId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
   summonHero: () => SummonOutcome;
+  equipItem: (heroId: string, slot: EquipmentSlot, itemId: string) => boolean;
+  unequipItem: (heroId: string, slot: EquipmentSlot) => boolean;
+  enhanceItem: (heroId: string, slot: EquipmentSlot) => EnhanceFailure | true;
+  forgeMythic: (heroId: string, slot: EquipmentSlot) => ForgeFailure | true;
   startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
@@ -491,6 +503,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // === 装备系统（ticket 10） ===
+  const equipItem = (heroId: string, slot: EquipmentSlot, itemId: string): boolean => {
+    const r = equipItemUpdate(stateRef.current, heroId, slot, itemId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const unequipItem = (heroId: string, slot: EquipmentSlot): boolean => {
+    const r = unequipItemUpdate(stateRef.current, heroId, slot);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const enhanceItem = (heroId: string, slot: EquipmentSlot): EnhanceFailure | true => {
+    const r = enhanceItemUpdate(stateRef.current, heroId, slot);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const forgeMythic = (heroId: string, slot: EquipmentSlot): ForgeFailure | true => {
+    const r = forgeMythicUpdate(stateRef.current, heroId, slot);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   // === 战斗核心（ticket 05） ===
   const startCombat = (zoneId: string): CombatOutcome => {
     const r = startCombatUpdate(stateRef.current, zoneId);
@@ -612,6 +657,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startExpedition,
       stopExpedition,
       summonHero,
+      equipItem,
+      unequipItem,
+      enhanceItem,
+      forgeMythic,
       startCombat,
       setParty,
       healWoundedHero,

@@ -11,6 +11,7 @@ import { COMBAT_CONFIG } from '../data/combatConfig';
 import { formatBonus } from '../data/bonds';
 import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';
+import HeroEquipmentPanel from './HeroEquipmentPanel';
 import type { SummonOutcome } from '../state/summon';
 
 const HeroTab: React.FC = () => {
@@ -240,6 +241,9 @@ const HeroTab: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* 装备面板（ticket 10）：3 槽穿戴 / 强化 / 神话锻造 / 套装特效 */}
+              <HeroEquipmentPanel heroId={id} />
 
               {/* 上阵/下阵 与 重伤治愈 */}
               {hero.wounded ? (

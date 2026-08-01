@@ -14,6 +14,11 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
     return NO_OP(state);
   }
 
+  // 图纸解锁（ticket 10）：配方需先获得对应图纸（背包持有，知识类物品不消耗）
+  if (recipe.blueprintId && (state.inventory[recipe.blueprintId] || 0) < 1) {
+    return NO_OP(state);
+  }
+
   // 校验材料
   const hasEnough = Object.entries(recipe.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
   if (!hasEnough) return NO_OP(state);

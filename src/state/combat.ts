@@ -1,4 +1,4 @@
-import type { GameState, HeroState, LogEntry, BattleResult, CombatSettlement, CombatIdleState } from '../types/game';
+import type { GameState, HeroState, HeroEquipment, LogEntry, BattleResult, CombatSettlement, CombatIdleState } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
@@ -7,6 +7,8 @@ import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { CombatBonus } from '../data/bonds';
 import { aggregateBonus } from './bonds';
+import type { EquipmentStats } from '../data/equipment';
+import { getHeroEquipmentBonus } from './equipment';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -123,22 +125,26 @@ export const simulateBattle = (
   };
 };
 
-// 英雄 → 战斗单位（羁绊加成在战斗场景内生效：攻击/防御/生命按百分比放大，退出战斗即复原）
-export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBonus = {}): CombatantState => {
+// 英雄 → 战斗单位（羁绊加成与装备加成在战斗场景内生效：攻击/防御/生命按百分比放大，
+// 装备提供平值属性；退出战斗即复原。装备系统见 ticket 10）
+export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBonus = {}, gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
-  const attackFactor = 1 + (bonus.attackPercent || 0) / 100;
-  const defenseFactor = 1 + (bonus.defensePercent || 0) / 100;
-  const hpFactor = 1 + (bonus.maxHpPercent || 0) / 100;
+  const { flat, percent } = gear ? getHeroEquipmentBonus(gear) : { flat: {} as EquipmentStats, percent: {} as CombatBonus };
+  const attackFactor = 1 + ((bonus.attackPercent || 0) + (percent.attackPercent || 0)) / 100;
+  const defenseFactor = 1 + ((bonus.defensePercent || 0) + (percent.defensePercent || 0)) / 100;
+  const hpFactor = 1 + ((bonus.maxHpPercent || 0) + (percent.maxHpPercent || 0)) / 100;
+  const baseMaxHp = heroMaxHp(config, hero.level) + (flat.maxHp || 0);
+  const maxHp = Math.round(baseMaxHp * hpFactor);
   return {
     id: heroId,
     name: config.name,
     emoji: config.emoji,
     // 当前血量按同比例缩放，保持战斗中已损比例不变
-    hp: Math.round(hero.hp * hpFactor),
-    maxHp: Math.round(hero.maxHp * hpFactor),
-    attack: Math.round(heroAttack(config, hero.level) * attackFactor),
-    defense: Math.round(config.baseDefense * defenseFactor)
+    hp: hero.maxHp > 0 ? Math.round((hero.hp / hero.maxHp) * maxHp) : maxHp,
+    maxHp,
+    attack: Math.round((heroAttack(config, hero.level) + (flat.attack || 0)) * attackFactor),
+    defense: Math.round((config.baseDefense + (flat.defense || 0)) * defenseFactor)
   };
 };
 
@@ -251,7 +257,7 @@ export const startCombatUpdate = (
   if ((state.stamina || 0) < zone.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party))),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
     enemiesToCombatants(zone.enemies)
   );
 
@@ -322,7 +328,7 @@ export const resolveEncounterBattleUpdate = (
   if ((state.stamina || 0) < COMBAT_CONFIG.encounterStaminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party))),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
     enemiesToCombatants(battleConfig.enemies)
   );
 
@@ -457,7 +463,7 @@ export const startBossBattleUpdate = (
 
   const boss = zone.boss;
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party))),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
     enemiesToCombatants(boss.enemies)
   );
 
@@ -624,7 +630,7 @@ export const settleIdleUpdate = (
 
   for (let i = 0; i < battleCount; i++) {
     const battle = simulateBattle(
-      party.map(id => heroToCombatant(id, next.heroes[id], aggregateBonus(party))),
+      party.map(id => heroToCombatant(id, next.heroes[id], aggregateBonus(party), next.equipment?.[id] || null)),
       enemiesToCombatants(zone.enemies)
     );
     const settled = settleBattle(next, battle, party, {

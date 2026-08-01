@@ -1,6 +1,13 @@
-import type { GameState } from '../types/game';
+import type { GameState, HeroEquipment, EquippedItem } from '../types/game';
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
+
+// 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值
+const normalizeSlot = (item: EquippedItem | null | undefined): EquippedItem | null => {
+  if (!item || typeof item !== 'object') return null;
+  const enhance = Number.isFinite(item.enhance) ? Math.min(Math.max(item.enhance, 0), 30) : 0;
+  return { itemId: item.itemId, enhance, mythic: !!item.mythic };
+};
 
 const isUuid = (str: string) => {
   const simpleUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -108,6 +115,17 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     ...initialState.heroes,
     ...(parsed.heroes || {})
   },
+  // 装备栏（ticket 10）：旧存档缺失时回退空表；逐槽归一化并钳制字段，防御损坏/半写入存档
+  equipment: Object.fromEntries(
+    Object.entries((parsed.equipment || {}) as Record<string, HeroEquipment>).map(([heroId, eq]) => [
+      heroId,
+      {
+        weapon: normalizeSlot(eq?.weapon),
+        armor: normalizeSlot(eq?.armor),
+        trinket: normalizeSlot(eq?.trinket)
+      }
+    ])
+  ),
   soulShards: {
     ...(initialState.soulShards || {}),
     ...(parsed.soulShards || {})

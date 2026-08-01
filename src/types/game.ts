@@ -67,6 +67,25 @@ export interface SummonState {
   pityCount: number;        // 连续未出英雄的累计次数（用于软保底）
 }
 
+// === 装备系统（ticket 10）：3 槽装备 + 系列套装 + 强化 + 神话锻造 ===
+
+// 装备槽位：武器 / 防具 / 饰品
+export type EquipmentSlot = 'weapon' | 'armor' | 'trinket';
+
+// 已穿戴的装备实例：配置 id + 强化等级（0-30）+ 神话标记
+export interface EquippedItem {
+  itemId: string;   // EQUIPMENT_CONFIG 中的装备配置 id
+  enhance: number;  // 强化等级，上限 +30
+  mythic: boolean;  // 是否已锻造为神话装备（必为 +30）
+}
+
+// 英雄的三槽装备栏（null = 空槽）
+export interface HeroEquipment {
+  weapon: EquippedItem | null;
+  armor: EquippedItem | null;
+  trinket: EquippedItem | null;
+}
+
 // === 战斗核心（ticket 05）：三人轮询回合制 ===
 
 // 单次攻击动作（战斗日志的一行）
@@ -121,6 +140,7 @@ export interface GameState {
   };
   survivors: Record<string, Survivor>;
   heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
+  equipment: Record<string, HeroEquipment>; // 英雄装备栏：hero id -> 三槽装备（ticket 10）
   soulEchoes: number;                  // 灵魂残响：英雄召唤货币（战斗掉落/日常/特殊途径获取）
   resonanceShards: number;             // 共鸣碎片：通用灵魂碎片
   soulShards: Record<string, number>;  // 灵魂碎片：英雄专属碎片（重复召唤转化，用于升星）

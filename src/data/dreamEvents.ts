@@ -600,5 +600,30 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         }
       }
     }
+  },
+  dreamveil_armory: {
+    id: "dreamveil_armory",
+    title: "梦境铸兵坊",
+    description: "废墟深处立着一座半透明的梦境铸兵坊，炉火是幽蓝色的。架上陈列着以梦境丝线织成的兵刃与纱衣——这是某位强大梦匠的遗物，取走它们或许能武装小队。",
+    type: "common",
+    weight: 60,
+    choices: {
+      A: {
+        text: "取走幽梦装备 (理智-8, 获得幽梦短匕×1、幽梦坠饰×1)",
+        results: {
+          stats: { sanity: -8 },
+          items: { dreamveil_weapon: 1, dreamveil_trinket: 1 },
+          logText: "你从铸兵坊的架上取下幽梦短匕与幽梦坠饰，触手冰凉如水雾。带出梦境后它们依然凝实，足以武装小队。"
+        }
+      },
+      B: {
+        text: "只取材料不惊动炉火 (理智-3, 获得梦境碎片×3)",
+        results: {
+          stats: { sanity: -3 },
+          items: { dream_shard: 3 },
+          logText: "你悄悄捡走炉边的梦境碎片便退出了铸兵坊。幽蓝炉火依旧燃烧，仿佛从未有人来过。"
+        }
+      }
+    }
   }
 };

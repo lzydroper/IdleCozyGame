@@ -7,6 +7,7 @@ export interface Recipe {
   special?: 'capsule_charge' | 'greenhouse_expansion'; // 特殊效果标记
   capsuleTarget?: string;          // 充能的胶囊 ID
   capsuleAmount?: number;          // 充能数量
+  blueprintId?: string;            // 需要先解锁的图纸物品 ID（ticket 10：装备合成分层）
 }
 
 export const RECIPES_CONFIG: Record<string, Recipe> = {
@@ -157,5 +158,62 @@ export const RECIPES_CONFIG: Record<string, Recipe> = {
     description: '用梦境碎片与虚空精华灌注手提魔灯',
     cost: { dream_shard: 3, void_essence: 1 },
     reward: { dream_lantern: 1 }
+  },
+
+  // === 装备合成分层（ticket 10） ===
+  // 第一层：废土系列 —— 无图纸门槛，废土边缘材料即可合成
+  wasteland_weapon_recipe: {
+    id: 'wasteland_weapon_recipe',
+    name: '废土利刃锻造',
+    description: '用废旧金属与合金板打磨求生刀刃',
+    cost: { scrap_metal: 5, alloy_plate: 2 },
+    reward: { wasteland_weapon: 1 }
+  },
+  wasteland_armor_recipe: {
+    id: 'wasteland_armor_recipe',
+    name: '废土护甲拼装',
+    description: '将合金板与废旧金属拼装成简易护甲',
+    cost: { scrap_metal: 6, alloy_plate: 3 },
+    reward: { wasteland_armor: 1 }
+  },
+  wasteland_trinket_recipe: {
+    id: 'wasteland_trinket_recipe',
+    name: '废土挂饰编织',
+    description: '用荧光纤维与魔能之尘编织护身挂饰',
+    cost: { glow_fiber: 4, mana_dust: 3, scrap_metal: 2 },
+    reward: { wasteland_trinket: 1 }
+  },
+  // 第二层：余烬系列 —— 需先获得「余烬军械图纸」（旧城废墟 BOSS 掉落）
+  ember_weapon_recipe: {
+    id: 'ember_weapon_recipe',
+    name: '余烬长刃锻造',
+    description: '依照图纸将合金与弹簧零件淬炼为余烬长刃',
+    cost: { alloy_plate: 6, rusted_spring: 3, mana_dust: 5 },
+    reward: { ember_weapon: 1 },
+    blueprintId: 'blueprint_ember_armory'
+  },
+  ember_armor_recipe: {
+    id: 'ember_armor_recipe',
+    name: '余烬重铠锻造',
+    description: '依照图纸以合金板与废旧金属锻造余烬重铠',
+    cost: { alloy_plate: 8, scrap_metal: 8 },
+    reward: { ember_armor: 1 },
+    blueprintId: 'blueprint_ember_armory'
+  },
+  ember_trinket_recipe: {
+    id: 'ember_trinket_recipe',
+    name: '余烬徽记铸造',
+    description: '依照图纸以魔能之尘与荧光纤维铸造余烬徽记',
+    cost: { mana_dust: 6, glow_fiber: 6 },
+    reward: { ember_trinket: 1 },
+    blueprintId: 'blueprint_ember_armory'
+  },
+  // 强化资源：强化魔晶合成
+  enhance_stone_recipe: {
+    id: 'enhance_stone_recipe',
+    name: '强化魔晶凝聚',
+    description: '将魔能之尘与废旧金属凝聚为强化魔晶',
+    cost: { mana_dust: 2, scrap_metal: 1 },
+    reward: { enhance_stone: 1 }
   }
 };

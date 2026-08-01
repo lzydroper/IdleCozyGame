@@ -53,6 +53,7 @@ export const INITIAL_STATE: GameState = {
   },
   survivors: {},
   heroes: INITIAL_HEROES,
+  equipment: {}, // 英雄装备栏：开局无装备（ticket 10）
   // 召唤经济：新手起始灵魂残响（500 = 5 抽），后续由战斗掉落/日常补充
   soulEchoes: 500,
   resonanceShards: 0,

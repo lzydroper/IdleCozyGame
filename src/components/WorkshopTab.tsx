@@ -266,8 +266,11 @@ const WorkshopTab: React.FC = () => {
         </h3>
         <div className="space-y-4">
           {Object.values(RECIPES_CONFIG).map(recipe => {
+            // 图纸解锁（ticket 10）：未获得图纸的配方锁定（背包持有即解锁，不消耗）
+            const locked = !!recipe.blueprintId && (inventory[recipe.blueprintId] || 0) < 1;
+            const blueprintMeta = recipe.blueprintId ? ITEMS_CONFIG[recipe.blueprintId] : null;
             // 判断是否材料充足
-            const canCraft = Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty);
+            const canCraft = !locked && Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty);
 
             return (
               <div key={recipe.id} className="p-3.5 bg-zinc-950/70 border border-zinc-900 rounded-2xl flex flex-col gap-2.5 animate-fade-in">
@@ -281,6 +284,11 @@ const WorkshopTab: React.FC = () => {
                           [当前充能: {state.exploration.capsulesCharge.sanity_capsule || 0}次]
                         </span>
                       )}
+                      {locked && (
+                        <span className="text-[9px] text-red-400 font-extrabold bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800/30" title={`需先在背包获得「${blueprintMeta?.name || recipe.blueprintId}」`}>
+                          🔒 未解锁
+                        </span>
+                      )}
                     </h4>
                     <button
                       onClick={() => handleCraft(recipe.id)}
@@ -291,6 +299,11 @@ const WorkshopTab: React.FC = () => {
                     </button>
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{recipe.description}</p>
+                  {locked && blueprintMeta && (
+                    <p className="text-[9px] text-red-400/80 mt-1 font-bold leading-relaxed">
+                      🔒 需要图纸：{blueprintMeta.name}（旧城废墟 BOSS 掉落）
+                    </p>
+                  )}
                 </div>
                 <div>
                   <h5 className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider mb-1">所需消耗:</h5>

@@ -69,11 +69,25 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
   // === 虚空核心 (nightmareConfig 引用, 但之前缺失 item 定义) ===
   void_core: { id: 'void_core', name: '虚空核心', emoji: '💜', description: '击败梦魇入侵后掉落的能量核心', category: 'special' },
 
-  // === 系列装备占位（ticket 07：仅由区域 BOSS 掉落，装备系统 ticket 10 落地） ===
-  ember_weapon: { id: 'ember_weapon', name: '余烬长刃', emoji: '🗡️', description: '【余烬系列·武器】旧城废墟 BOSS 专属掉落的占位装备，属性在装备系统（ticket 10）落地。', category: 'equipment' },
-  ember_armor: { id: 'ember_armor', name: '余烬重铠', emoji: '🛡️', description: '【余烬系列·防具】旧城废墟 BOSS 专属掉落的占位装备，属性在装备系统（ticket 10）落地。', category: 'equipment' },
-  ember_trinket: { id: 'ember_trinket', name: '余烬徽记', emoji: '💍', description: '【余烬系列·饰品】旧城废墟 BOSS 专属掉落的占位装备，属性在装备系统（ticket 10）落地。', category: 'equipment' },
-  starcore_weapon: { id: 'starcore_weapon', name: '星核神兵', emoji: '⚔️', description: '【星核系列·武器】辐射车间 BOSS 专属掉落的占位装备（最强系列之一），属性在装备系统（ticket 10）落地。', category: 'equipment' },
-  starcore_armor: { id: 'starcore_armor', name: '星核甲胄', emoji: '🛡️', description: '【星核系列·防具】辐射车间 BOSS 专属掉落的占位装备（最强系列之一），属性在装备系统（ticket 10）落地。', category: 'equipment' },
-  starcore_trinket: { id: 'starcore_trinket', name: '星核圣印', emoji: '💠', description: '【星核系列·饰品】辐射车间 BOSS 专属掉落的占位装备（最强系列之一），属性在装备系统（ticket 10）落地。', category: 'equipment' },
+  // === 装备系统（ticket 10）：系列套装装备与强化资源 ===
+  // 强化资源：装备强化消耗（随等级递增），工坊可合成、战斗掉落
+  enhance_stone: { id: 'enhance_stone', name: '强化魔晶', emoji: '🔶', description: '蕴含精纯魔力的晶石，用于强化装备（工坊可合成，战斗掉落）。', category: 'special' },
+  // 图纸：解锁余烬系列合成配方（旧城废墟 BOSS 掉落）
+  blueprint_ember_armory: { id: 'blueprint_ember_armory', name: '余烬军械图纸', emoji: '📜', description: '记载余烬系列装备锻造工艺的泛黄图纸，解锁后可于工坊合成。', category: 'special' },
+  // 废土系列：工坊合成（无图纸门槛）
+  wasteland_weapon: { id: 'wasteland_weapon', name: '废土利刃', emoji: '🗡️', description: '【废土系列·武器】废旧金属打磨的求生刀刃，工坊可合成。', category: 'equipment' },
+  wasteland_armor: { id: 'wasteland_armor', name: '废土护甲', emoji: '🛡️', description: '【废土系列·防具】合金板拼接的简易护甲，工坊可合成。', category: 'equipment' },
+  wasteland_trinket: { id: 'wasteland_trinket', name: '废土挂饰', emoji: '📿', description: '【废土系列·饰品】荧光纤维编成的护身挂饰，工坊可合成。', category: 'equipment' },
+  // 幽梦系列：梦境探险掉落
+  dreamveil_weapon: { id: 'dreamveil_weapon', name: '幽梦短匕', emoji: '🗡️', description: '【幽梦系列·武器】梦境深处凝结的匕首，梦境探险掉落。', category: 'equipment' },
+  dreamveil_armor: { id: 'dreamveil_armor', name: '幽梦纱衣', emoji: '🛡️', description: '【幽梦系列·防具】梦境丝线织成的纱衣，梦境探险掉落。', category: 'equipment' },
+  dreamveil_trinket: { id: 'dreamveil_trinket', name: '幽梦坠饰', emoji: '💍', description: '【幽梦系列·饰品】封存一缕梦境的坠饰，梦境探险掉落。', category: 'equipment' },
+  // 余烬系列：旧城废墟 BOSS 专属掉落 / 图纸解锁合成
+  ember_weapon: { id: 'ember_weapon', name: '余烬长刃', emoji: '🗡️', description: '【余烬系列·武器】旧城废墟 BOSS 掉落的系列装备，也可凭图纸于工坊合成。', category: 'equipment' },
+  ember_armor: { id: 'ember_armor', name: '余烬重铠', emoji: '🛡️', description: '【余烬系列·防具】旧城废墟 BOSS 掉落的系列装备，也可凭图纸于工坊合成。', category: 'equipment' },
+  ember_trinket: { id: 'ember_trinket', name: '余烬徽记', emoji: '💍', description: '【余烬系列·饰品】旧城废墟 BOSS 掉落的系列装备，也可凭图纸于工坊合成。', category: 'equipment' },
+  // 星核系列：最强系列，仅辐射车间 BOSS 掉落
+  starcore_weapon: { id: 'starcore_weapon', name: '星核神兵', emoji: '⚔️', description: '【星核系列·武器】最强系列，仅辐射车间 BOSS 掉落。', category: 'equipment' },
+  starcore_armor: { id: 'starcore_armor', name: '星核甲胄', emoji: '🛡️', description: '【星核系列·防具】最强系列，仅辐射车间 BOSS 掉落。', category: 'equipment' },
+  starcore_trinket: { id: 'starcore_trinket', name: '星核圣印', emoji: '💠', description: '【星核系列·饰品】最强系列，仅辐射车间 BOSS 掉落。', category: 'equipment' },
 };
