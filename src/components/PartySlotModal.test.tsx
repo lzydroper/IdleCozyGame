@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PartySlotModal from './PartySlotModal';
 import type { HeroState } from '../types/game';
