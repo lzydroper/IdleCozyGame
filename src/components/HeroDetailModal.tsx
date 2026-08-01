@@ -44,7 +44,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   onSelectHero,
   onClose
 }) => {
-  const { state, unequipItem, starUpHero, awakenHero } = useGame();
+  const { state, equipItem, unequipItem, starUpHero, awakenHero } = useGame();
   const { showToast } = useToast();
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
@@ -112,7 +112,23 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       });
       showToast(`已卸下【${config.name}】的全部装备！`, 'success');
     } else {
-      showToast('自动推荐穿戴最佳装备（可在背包页面管理具体装备）', 'info');
+      let equippedCount = 0;
+      const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
+      const inv = state.inventory || {};
+      slots.forEach(slot => {
+        if (!heroEquip[slot]) {
+          const matchItemId = Object.keys(inv).find(itemId => (inv[itemId] || 0) > 0 && ITEMS_CONFIG[itemId]?.slot === slot);
+          if (matchItemId) {
+            equipItem(heroId, slot, matchItemId);
+            equippedCount++;
+          }
+        }
+      });
+      if (equippedCount > 0) {
+        showToast(`已为【${config.name}】自动穿戴装备！`, 'success');
+      } else {
+        showToast('背包中暂无可用装备可穿戴。', 'info');
+      }
     }
   };
 

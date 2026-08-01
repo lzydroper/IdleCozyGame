@@ -292,6 +292,14 @@ const HeroTab: React.FC = () => {
                   <div className="text-xs text-amber-400">
                     {'★'.repeat(hero.star)}
                   </div>
+                  {isInParty && (
+                    <button
+                      onClick={() => setParty(party.filter(p => p !== id))}
+                      className="text-[9px] text-amber-400 font-bold hover:underline cursor-pointer mt-0.5 block"
+                    >
+                      ⬇ 下阵
+                    </button>
+                  )}
                   <button
                     onClick={() => setDetailModalHeroId(id)}
                     className="text-[9px] text-amber-400 font-bold hover:underline cursor-pointer mt-0.5 block"
