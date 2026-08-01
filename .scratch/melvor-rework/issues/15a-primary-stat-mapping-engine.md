@@ -5,8 +5,9 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 在 `src/state/statSystem.ts` 中定义 `PrimaryAttributes`, `BaseAttributes`, `SpecialAttributes` 及其基础面板结构
-- [ ] 实现元属性向基础属性额外增加/影响的计算公式（力量→攻击/暴倍，体质→生命/防御，敏捷→暴击率/免暴击，智慧→魔力/奥术增幅）
-- [ ] 编写 `src/state/statSystem.test.ts` 验证元属性加成计算的准确性
+- [x] 在 `src/state/statSystem.ts` 中定义 `PrimaryAttributes`, `BaseAttributes`, `SpecialAttributes` 及其基础面板结构
+- [x] 实现元属性向基础属性额外增加/影响的计算公式（力量→攻击/暴倍，体质→生命/防御，敏捷→暴击率/免暴击，智慧→魔力/奥术增幅）
+- [x] 编写 `src/state/statSystem.test.ts` 验证元属性加成计算的准确性
+
