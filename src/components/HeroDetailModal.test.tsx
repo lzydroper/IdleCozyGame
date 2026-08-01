@@ -30,7 +30,7 @@ describe('HeroDetailModal Component', () => {
     expect(screen.getByText('一键装备')).toBeDefined();
   });
 
-  it('triggers unequip all action when clicking 全部卸下', () => {
+  it('triggers unequip all action when clicking 一键卸下', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     save.equipment = { nova: { weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false }, armor: null, trinket: null } };
     localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
@@ -48,7 +48,7 @@ describe('HeroDetailModal Component', () => {
       </ToastProvider>
     );
 
-    const unequipBtn = screen.getByText('全部卸下');
+    const unequipBtn = screen.getByText('一键卸下');
     fireEvent.click(unequipBtn);
     expect(unequipBtn).toBeDefined();
   });
