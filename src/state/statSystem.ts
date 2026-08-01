@@ -65,8 +65,8 @@ export interface CalculatedEntityStats extends BaseAttributes {
 
 export interface CalculateStatsParams {
   baseAttributes: BaseAttributes;
-  primaryAttributes?: PrimaryAttributes;
-  specialAttributes?: SpecialAttributes;
+  primaryAttributes?: Partial<PrimaryAttributes>;
+  specialAttributes?: Partial<SpecialAttributes>;
 }
 
 /**
