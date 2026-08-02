@@ -11,7 +11,7 @@ import { Compass, ChevronRight, Swords } from 'lucide-react';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
-import { COMBAT_ZONE_LIST, COMBAT_ZONES } from '../data/combatZones';
+import { ALL_COMBAT_ZONES, COMBAT_ZONES } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
 import { isZoneUnlocked } from '../state/combat';
@@ -758,11 +758,11 @@ const CombatPanel: React.FC = () => {
       {/* 战斗区域列表 */}
       <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（线性递进，通关当前区解锁下一区）:</h3>
       <div className="flex flex-col gap-3">
-        {COMBAT_ZONE_LIST.map(zone => {
+        {ALL_COMBAT_ZONES.map(zone => {
           const unlocked = isZoneUnlocked(state, zone.id);
           const cleared = clearedZones.includes(zone.id);
-          const zoneIdx = COMBAT_ZONE_LIST.findIndex(z => z.id === zone.id);
-          const prevZone = zoneIdx > 0 ? COMBAT_ZONE_LIST[zoneIdx - 1] : null;
+          const zoneIdx = ALL_COMBAT_ZONES.findIndex(z => z.id === zone.id);
+          const prevZone = zoneIdx > 0 ? ALL_COMBAT_ZONES[zoneIdx - 1] : null;
           const insufficient = !unlocked || stamina < zone.staminaCost || party.length === 0 || anyWounded;
           const bossReady = unlocked && party.length > 0 && !anyWounded && stamina >= zone.boss.staminaCost;
           // 确认式离线挂机（ticket 08）：单区域挂机开关

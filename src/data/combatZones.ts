@@ -40,6 +40,7 @@ export interface CombatZoneConfig {
   soulEchoMin: number;            // 胜利灵魂残响掉落范围
   soulEchoMax: number;
   boss: CombatZoneBossConfig;     // 关底 BOSS：击败 = 通关本区，解锁下一区
+  isTestZone?: boolean;           // 测试专用区域标记（不进入主线线性递进链）
 }
 
 export type CombatZonesMap = Record<string, CombatZoneConfig>;
@@ -51,8 +52,9 @@ export const COMBAT_ZONES: CombatZonesMap = {
     emoji: '🛠️',
     description: '【测试专享区域】战斗胜利后 100% 掉落废土、余烬、幽梦、星核全套装备及大量强化魔晶，方便全方位测试装备系统。',
     recommendedLevel: 0,
-    staminaCost: 0,
+    staminaCost: 10,
     expReward: 50,
+    isTestZone: true,
     enemies: [
       { id: 'test_dummy', name: '测试靶机', emoji: '🎯', hp: 10, attack: 1, defense: 0 }
     ],
@@ -80,12 +82,10 @@ export const COMBAT_ZONES: CombatZonesMap = {
       enemies: [
         { id: 'test_boss', name: '测试领主', emoji: '🤖', hp: 20, attack: 2, defense: 0 }
       ],
-      staminaCost: 0,
+      staminaCost: 10,
       expReward: 100,
       drops: [
-        { itemId: 'starcore_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
-        { itemId: 'starcore_armor', chance: 1.0, minQty: 1, maxQty: 1 },
-        { itemId: 'starcore_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'arcane_orb', chance: 1.0, minQty: 1, maxQty: 1 },
         { itemId: 'enhance_stone', chance: 1.0, minQty: 100, maxQty: 100 }
       ],
       soulEchoMin: 50,
@@ -216,6 +216,11 @@ export const COMBAT_ZONES: CombatZonesMap = {
   }
 };
 
-// 按推荐等级升序排列的区域列表（UI 使用）
+// 线性递进的主线区域链（排除测试专用区域）
 export const COMBAT_ZONE_LIST: CombatZoneConfig[] = Object.values(COMBAT_ZONES)
+  .filter(z => !z.isTestZone)
+  .sort((a, b) => a.recommendedLevel - b.recommendedLevel);
+
+// 全部区域列表（含测试区域，用于 UI 渲染）
+export const ALL_COMBAT_ZONES: CombatZoneConfig[] = Object.values(COMBAT_ZONES)
   .sort((a, b) => a.recommendedLevel - b.recommendedLevel);

@@ -486,6 +486,8 @@ export const fleeEncounterUpdate = (state: GameState): UpdateResult<boolean> => 
 // 区域链解锁（ticket 07）：首区默认解锁，其余区域需通关上一区（按推荐等级升序线性链）；
 // 已通关区域永久解锁（防止后续新增/插入区域时把老玩家的通关记录反向锁死）
 export const isZoneUnlocked = (state: GameState, zoneId: string): boolean => {
+  const zone = COMBAT_ZONES[zoneId];
+  if (zone?.isTestZone) return true;
   const cleared = state.combat?.zonesCleared || [];
   if (cleared.includes(zoneId)) return true;
   const idx = COMBAT_ZONE_LIST.findIndex(z => z.id === zoneId);
