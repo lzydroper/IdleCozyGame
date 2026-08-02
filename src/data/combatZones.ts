@@ -51,8 +51,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
     name: '军备测试场 (测试专用)',
     emoji: '🛠️',
     description: '【测试专享区域】战斗胜利后 100% 掉落废土、余烬、幽梦、星核全套装备及大量强化魔晶，方便全方位测试装备系统。',
-    recommendedLevel: 0,
-    staminaCost: 10,
+    recommendedLevel: 99,
+    staminaCost: 0,
     expReward: 50,
     isTestZone: true,
     enemies: [
@@ -62,15 +62,9 @@ export const COMBAT_ZONES: CombatZonesMap = {
       { itemId: 'wasteland_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'wasteland_armor', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'wasteland_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
-      { itemId: 'ember_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
-      { itemId: 'ember_armor', chance: 1.0, minQty: 1, maxQty: 1 },
-      { itemId: 'ember_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'dreamveil_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'dreamveil_armor', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'dreamveil_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
-      { itemId: 'starcore_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
-      { itemId: 'starcore_armor', chance: 1.0, minQty: 1, maxQty: 1 },
-      { itemId: 'starcore_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'enhance_stone', chance: 1.0, minQty: 30, maxQty: 50 },
       { itemId: 'blueprint_ember_armory', chance: 1.0, minQty: 1, maxQty: 1 }
     ],
@@ -85,6 +79,12 @@ export const COMBAT_ZONES: CombatZonesMap = {
       staminaCost: 10,
       expReward: 100,
       drops: [
+        { itemId: 'ember_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'ember_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'ember_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
         { itemId: 'arcane_orb', chance: 1.0, minQty: 1, maxQty: 1 },
         { itemId: 'enhance_stone', chance: 1.0, minQty: 100, maxQty: 100 }
       ],
@@ -216,11 +216,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
   }
 };
 
-// 线性递进的主线区域链（排除测试专用区域）
+// 按推荐等级升序排列的区域列表（UI 与线性链共用）
 export const COMBAT_ZONE_LIST: CombatZoneConfig[] = Object.values(COMBAT_ZONES)
-  .filter(z => !z.isTestZone)
   .sort((a, b) => a.recommendedLevel - b.recommendedLevel);
 
-// 全部区域列表（含测试区域，用于 UI 渲染）
-export const ALL_COMBAT_ZONES: CombatZoneConfig[] = Object.values(COMBAT_ZONES)
-  .sort((a, b) => a.recommendedLevel - b.recommendedLevel);
+export const ALL_COMBAT_ZONES = COMBAT_ZONE_LIST;
