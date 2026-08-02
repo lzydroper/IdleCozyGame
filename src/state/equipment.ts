@@ -1,4 +1,4 @@
-import type { GameState, HeroEquipment, EquippedItem, EquipmentSlot } from '../types/game';
+import type { GameState, HeroEquipment, EquippedItem, EquipmentSlot, HeroFaction } from '../types/game';
 import type { EquipmentStats } from '../data/equipment';
 import {
   EQUIPMENT_CONFIG,
@@ -17,27 +17,28 @@ import { NO_OP } from './types';
 
 export const emptyEquipment = (): HeroEquipment => ({ weapon: null, armor: null, trinket: null });
 
-// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5（属性加强，强化等级保留）
-export const getEquippedItemStats = (item: EquippedItem): EquipmentStats => {
+// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5（属性加强，强化等级保留）；英雄穿戴时附带阵营加成 (+30%)
+export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): EquipmentStats => {
   const cfg = EQUIPMENT_CONFIG[item.itemId];
   if (!cfg) return {};
   const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1;
+  const factionMult = heroFaction ? 1.3 : 1;
   const stats: EquipmentStats = {};
   (['attack', 'defense', 'maxHp'] as const).forEach(key => {
-    const total = ((cfg.baseStats[key] || 0) + (cfg.statPerEnhance[key] || 0) * item.enhance) * mult;
+    const total = ((cfg.baseStats[key] || 0) + (cfg.statPerEnhance[key] || 0) * item.enhance) * mult * factionMult;
     if (total > 0) stats[key] = Math.round(total * 10) / 10;
   });
   return stats;
 };
 
 // 三槽装备汇总的平值属性（战斗内直接加在英雄基础属性上）
-export const getEquippedFlatStats = (equip: HeroEquipment | null): EquipmentStats => {
+export const getEquippedFlatStats = (equip: HeroEquipment | null, heroFaction?: HeroFaction): EquipmentStats => {
   const flat: EquipmentStats = {};
   if (!equip) return flat;
   (['weapon', 'armor', 'trinket'] as const).forEach(slot => {
     const item = equip[slot];
     if (!item) return;
-    const stats = getEquippedItemStats(item);
+    const stats = getEquippedItemStats(item, heroFaction);
     (['attack', 'defense', 'maxHp'] as const).forEach(key => {
       const v = stats[key] || 0;
       if (v !== 0) flat[key] = (flat[key] || 0) + v;
@@ -92,8 +93,8 @@ export const getSetBonuses = (equip: HeroEquipment | null): CombatBonus => {
 };
 
 // 英雄装备加成汇总（平值 + 百分比），战斗计算与 UI 共用
-export const getHeroEquipmentBonus = (equip: HeroEquipment | null): { flat: EquipmentStats; percent: CombatBonus } => ({
-  flat: getEquippedFlatStats(equip),
+export const getHeroEquipmentBonus = (equip: HeroEquipment | null, heroFaction?: HeroFaction): { flat: EquipmentStats; percent: CombatBonus } => ({
+  flat: getEquippedFlatStats(equip, heroFaction),
   percent: getSetBonuses(equip)
 });
 

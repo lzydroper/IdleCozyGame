@@ -18,6 +18,8 @@ import { calculateEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
 import HeroTalentPanel from './HeroTalentPanel';
+import EquipmentDetailModal from './EquipmentDetailModal';
+import EquipSelectorModal from './EquipSelectorModal';
 import {
   X,
   Shield,
@@ -52,6 +54,10 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
 
+  const [selectedEquipSlot, setSelectedEquipSlot] = useState<EquipmentSlot | null>(null);
+  const [showEquipDetailModal, setShowEquipDetailModal] = useState(false);
+  const [showEquipSelectorModal, setShowEquipSelectorModal] = useState(false);
+
   if (!isOpen || !heroId) return null;
 
   const heroIds = Object.keys(state.heroes);
@@ -64,8 +70,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const firstChar = config.name ? config.name[0] : '?';
   const awakenedName = getAwakenedName(heroId, hero) || config.name;
 
-  // 装备加成属性
-  const { flat: equipFlat } = getHeroEquipmentBonus(heroEquip);
+  // 装备加成属性（含阵营 30% 穿戴加成）
+  const { flat: equipFlat } = getHeroEquipmentBonus(heroEquip, config.faction);
 
   // 核心基础面板属性计算 (严格按 CONTEXT.md 6 项基础属性: 攻击、防御、生命、魔力、暴击、暴伤)
   const calculatedStats = calculateEntityStats({
@@ -171,28 +177,41 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     }
   };
 
+  const handleEquipSlotClick = (slot: EquipmentSlot) => {
+    setSelectedEquipSlot(slot);
+    if (heroEquip[slot]) {
+      setShowEquipDetailModal(true);
+    } else {
+      setShowEquipSelectorModal(true);
+    }
+  };
+
   // 渲染单个装备槽位 (放大为 w-15 h-15 框，Icon 放大为 w-6 h-6)
   const renderEquipSlot = (slot: EquipmentSlot, slotLabel: string, IconComponent: any) => {
     const item = heroEquip[slot];
     const itemConfig = item ? ITEMS_CONFIG[item.itemId] : null;
 
     return (
-      <div className="flex flex-col items-center gap-0.5">
+      <div
+        onClick={() => handleEquipSlotClick(slot)}
+        className="flex flex-col items-center gap-0.5 cursor-pointer group active:scale-95 transition-transform"
+        title={item ? `查看【${itemConfig?.name || slotLabel}】装备详情` : `选择【${slotLabel}】装备`}
+      >
         <div
           className={`w-15 h-15 aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden transition-all ${
             item
-              ? 'bg-zinc-950/90 border-amber-500/40 shadow-sm shadow-amber-950/30'
-              : 'bg-zinc-950/40 border-zinc-800 border-dashed'
+              ? 'bg-zinc-950/90 border-amber-500/40 shadow-sm shadow-amber-950/30 group-hover:border-amber-400'
+              : 'bg-zinc-950/40 border-zinc-800 border-dashed group-hover:border-amber-500/60'
           }`}
         >
-          <IconComponent className={`w-6 h-6 ${item ? 'text-amber-400' : 'text-zinc-600'}`} />
+          <IconComponent className={`w-6 h-6 ${item ? 'text-amber-400' : 'text-zinc-600 group-hover:text-amber-300'}`} />
           {item && item.enhance > 0 && (
             <span className="absolute top-0.5 right-0.5 text-[7.5px] font-black text-amber-300 bg-black/80 px-1 rounded border border-amber-500/30">
               +{item.enhance}
             </span>
           )}
         </div>
-        <span className="text-[8.5px] font-bold text-zinc-300 max-w-[58px] truncate text-center leading-tight mt-0.5">
+        <span className="text-[8.5px] font-bold text-zinc-300 max-w-[58px] truncate text-center leading-tight mt-0.5 group-hover:text-amber-200">
           {itemConfig?.name || slotLabel}
         </span>
       </div>
@@ -535,6 +554,27 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             <HeroTalentPanel heroId={heroId} />
           </div>
         </div>
+      )}
+
+      {/* 装备详情弹窗 */}
+      {selectedEquipSlot && heroEquip[selectedEquipSlot] && showEquipDetailModal && (
+        <EquipmentDetailModal
+          isOpen={showEquipDetailModal}
+          heroId={heroId}
+          slot={selectedEquipSlot}
+          onClose={() => setShowEquipDetailModal(false)}
+        />
+      )}
+
+      {/* 未装备选择器弹窗 */}
+      {selectedEquipSlot && showEquipSelectorModal && (
+        <EquipSelectorModal
+          isOpen={showEquipSelectorModal}
+          heroId={heroId}
+          slot={selectedEquipSlot}
+          onClose={() => setShowEquipSelectorModal(false)}
+          onSelectSuccess={() => setShowEquipSelectorModal(false)}
+        />
       )}
     </div>
   );
