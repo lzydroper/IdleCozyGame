@@ -20,6 +20,7 @@ import DetailedStatsModal from './DetailedStatsModal';
 import HeroTalentPanel from './HeroTalentPanel';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
+import { UI_TOKENS } from '../data/uiConstants';
 import {
   X,
   Shield,
@@ -238,12 +239,11 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const modalContent = (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[10000] bg-transparent flex flex-col items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
+      className={UI_TOKENS.modalBackdrop}
     >
-      {/* 恢复与 HeroListModal 100% 统一的固定外容器尺寸: w-[92%] max-w-[380px] h-[460px] max-h-[68vh] */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-3.5 flex flex-col justify-between shadow-2xl overflow-hidden"
+        className={UI_TOKENS.modalContainerStandard}
       >
         {/* 顶部 Header: 标题与切换箭头居中 (< 🏅 英雄详情 >) */}
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0 relative">

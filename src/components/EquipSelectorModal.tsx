@@ -12,6 +12,7 @@ import {
 import { ITEMS_CONFIG } from '../data/items';
 import { getEquippedItemStats } from '../state/equipment';
 import { HEROES_CONFIG } from '../data/heroes';
+import { UI_TOKENS } from '../data/uiConstants';
 import { X, Shield, Sword, Sparkles, PackageOpen } from 'lucide-react';
 
 export interface EquipSelectorModalProps {
@@ -69,11 +70,11 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
   const modalContent = (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[10002] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
+      className={UI_TOKENS.modalBackdropSub}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[360px] max-h-[75vh] p-4 flex flex-col justify-between shadow-2xl overflow-hidden"
+        className={UI_TOKENS.modalContainerCompact}
       >
         {/* Header */}
         <header className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">

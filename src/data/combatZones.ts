@@ -45,6 +45,53 @@ export interface CombatZoneConfig {
 export type CombatZonesMap = Record<string, CombatZoneConfig>;
 
 export const COMBAT_ZONES: CombatZonesMap = {
+  equipment_test_zone: {
+    id: 'equipment_test_zone',
+    name: '军备测试场 (测试专用)',
+    emoji: '🛠️',
+    description: '【测试专享区域】战斗胜利后 100% 掉落废土、余烬、幽梦、星核全套装备及大量强化魔晶，方便全方位测试装备系统。',
+    recommendedLevel: 0,
+    staminaCost: 0,
+    expReward: 50,
+    enemies: [
+      { id: 'test_dummy', name: '测试靶机', emoji: '🎯', hp: 10, attack: 1, defense: 0 }
+    ],
+    drops: [
+      { itemId: 'wasteland_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'wasteland_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'wasteland_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'ember_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'ember_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'ember_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'dreamveil_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'dreamveil_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'dreamveil_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'starcore_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'starcore_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'starcore_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+      { itemId: 'enhance_stone', chance: 1.0, minQty: 30, maxQty: 50 },
+      { itemId: 'blueprint_ember_armory', chance: 1.0, minQty: 1, maxQty: 1 }
+    ],
+    soulEchoMin: 20,
+    soulEchoMax: 50,
+    boss: {
+      name: '测试领主',
+      emoji: '🤖',
+      enemies: [
+        { id: 'test_boss', name: '测试领主', emoji: '🤖', hp: 20, attack: 2, defense: 0 }
+      ],
+      staminaCost: 0,
+      expReward: 100,
+      drops: [
+        { itemId: 'starcore_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_armor', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'starcore_trinket', chance: 1.0, minQty: 1, maxQty: 1 },
+        { itemId: 'enhance_stone', chance: 1.0, minQty: 100, maxQty: 100 }
+      ],
+      soulEchoMin: 50,
+      soulEchoMax: 100
+    }
+  },
   wasteland_entrance: {
     id: 'wasteland_entrance',
     name: '废土边缘',

@@ -5,6 +5,7 @@ import {
   EQUIPMENT_SETS,
   ENHANCE_MAX,
   MYTHIC_STAT_MULTIPLIER,
+  FACTION_EQUIPMENT_BONUS_MULTIPLIER,
   enhanceCost,
   FORGE_COST
 } from '../data/equipment';
@@ -22,7 +23,7 @@ export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFacti
   const cfg = EQUIPMENT_CONFIG[item.itemId];
   if (!cfg) return {};
   const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1;
-  const factionMult = heroFaction ? 1.3 : 1;
+  const factionMult = heroFaction ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
   const stats: EquipmentStats = {};
   (['attack', 'defense', 'maxHp'] as const).forEach(key => {
     const total = ((cfg.baseStats[key] || 0) + (cfg.statPerEnhance[key] || 0) * item.enhance) * mult * factionMult;

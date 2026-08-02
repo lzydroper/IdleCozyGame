@@ -8,6 +8,9 @@ import {
   EQUIPMENT_SETS,
   EQUIPMENT_SLOT_EMOJIS,
   ENHANCE_MAX,
+  MYTHIC_STAT_MULTIPLIER,
+  FACTION_EQUIPMENT_BONUS_MULTIPLIER,
+  FACTION_EQUIPMENT_BONUS_PERCENT,
   enhanceCost,
   FORGE_COST
 } from '../data/equipment';
@@ -15,6 +18,7 @@ import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
 import { ITEMS_CONFIG } from '../data/items';
 import { getEquippedItemStats, getSetEnhanceProgress } from '../state/equipment';
 import EquipSelectorModal from './EquipSelectorModal';
+import { UI_TOKENS } from '../data/uiConstants';
 import {
   X,
   Info,
@@ -62,13 +66,13 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const stoneCount = inventory.enhance_stone || 0;
   const cost = enhanceCost(item.enhance);
 
-  // 计算穿戴时装备属性（含 30% 阵营加成）
+  // 计算穿戴时装备属性（含阵营加成）
   const statsWithFaction = getEquippedItemStats(item, heroConfig?.faction);
   // 计算基础 0 强化（无阵营）与强化增加的绝对数值，用于分段展示 (base + enhanceBonus)
   const baseStats = cfg.baseStats;
   const statPerEnhance = cfg.statPerEnhance;
-  const mult = item.mythic ? 1.5 : 1.0;
-  const factionMult = 1.3;
+  const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1.0;
+  const factionMult = FACTION_EQUIPMENT_BONUS_MULTIPLIER;
 
   // 套装强化进度计算
   const setProgress = getSetEnhanceProgress(heroEquip);
@@ -150,11 +154,11 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const modalContent = (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[10001] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
+      className={UI_TOKENS.modalBackdrop}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border-2 border-amber-600/40 rounded-2xl w-[92%] max-w-[370px] max-h-[85vh] p-3.5 flex flex-col justify-between shadow-2xl overflow-y-auto"
+        className={UI_TOKENS.modalContainerEquipment}
       >
         {/* Header */}
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0">
@@ -227,7 +231,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             <div className="flex items-center gap-1.5 text-xs font-black text-sky-300">
               <Shield className="w-4 h-4 text-sky-400 shrink-0" />
               <span>
-                【{HERO_FACTION_LABELS[heroConfig.faction]}】英雄穿戴后，装备属性增加30%
+                【{HERO_FACTION_LABELS[heroConfig.faction]}】英雄穿戴后，装备属性增加{FACTION_EQUIPMENT_BONUS_PERCENT}%
               </span>
             </div>
             <div className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 ml-1">

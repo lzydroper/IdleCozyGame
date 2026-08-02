@@ -5,9 +5,9 @@
 
 **Blocked by:** 18 — 英雄详情弹窗与升星/觉醒.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] 开发 `EquipmentDetailModal.tsx` 及其未装备选择器 Modal
-- [ ] 展现阵营加成标签、套装羁绊与属性加成
-- [ ] 实现 100% 强化逻辑（消耗金币/材料，最高 +30）
-- [ ] 实现装备【替换】与【卸下】逻辑
+- [x] 开发 `EquipmentDetailModal.tsx` 及其未装备选择器 Modal
+- [x] 展现阵营加成标签、套装羁绊与属性加成
+- [x] 实现 100% 强化逻辑（消耗金币/材料，最高 +30）
+- [x] 实现装备【替换】与【卸下】逻辑

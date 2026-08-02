@@ -44,6 +44,8 @@ export interface EquipmentSetConfig {
 
 export const ENHANCE_MAX = 30;                    // 强化上限
 export const MYTHIC_STAT_MULTIPLIER = 1.5;        // 神话锻造：基础属性 ×1.5（强化等级保留）
+export const FACTION_EQUIPMENT_BONUS_MULTIPLIER = 1.3; // 英雄穿戴阵营装备加成倍率 (+30%)
+export const FACTION_EQUIPMENT_BONUS_PERCENT = 30;     // 阵营穿戴加成展示百分比
 // 强化消耗：从 level 强化到 level+1 所需强化魔晶数量（随等级递增，可配置）
 export const enhanceCost = (level: number): number => 1 + Math.floor(level / 5);
 // 神话锻造消耗
