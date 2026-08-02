@@ -14,7 +14,7 @@ export const SUMMON_CONFIG: SummonConfig = {
   heroBaseChance: 0.6,
   pityThreshold: 10,
   pityStep: 0.1,
-  guaranteedAt: 15,
+  guaranteedAt: 100,
   shardsPerDupe: 1,
   resonancePerMiss: 1
 };

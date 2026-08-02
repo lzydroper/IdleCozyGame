@@ -28,7 +28,7 @@ import {
   upgradeShelterStatUpdate
 } from '../state/facility';
 import { applyTick } from '../state/tick';
-import { summonUpdate, type SummonOutcome } from '../state/summon';
+import { summonUpdate, summonTenUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
 import {
   equipItemUpdate,
   unequipItemUpdate,
@@ -103,6 +103,10 @@ interface GameContextType {
   startExpedition: (survivorId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
   summonHero: () => SummonOutcome;
+  summonTenHeroes: () => MultiSummonResult;
+  isSummonOpen: boolean;
+  openSummonModal: () => void;
+  closeSummonModal: () => void;
   equipItem: (heroId: string, slot: EquipmentSlot, itemId: string) => boolean;
   unequipItem: (heroId: string, slot: EquipmentSlot) => boolean;
   enhanceItem: (heroId: string, slot: EquipmentSlot) => EnhanceFailure | true;
@@ -553,6 +557,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  const summonTenHeroes = (): MultiSummonResult => {
+    const r = summonTenUpdate(stateRef.current);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const [isSummonOpen, setIsSummonOpen] = useState(false);
+  const openSummonModal = () => setIsSummonOpen(true);
+  const closeSummonModal = () => setIsSummonOpen(false);
+
   // === 装备系统（ticket 10） ===
   const equipItem = (heroId: string, slot: EquipmentSlot, itemId: string): boolean => {
     const r = equipItemUpdate(stateRef.current, heroId, slot, itemId);
@@ -760,6 +776,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startExpedition,
       stopExpedition,
       summonHero,
+      summonTenHeroes,
+      isSummonOpen,
+      openSummonModal,
+      closeSummonModal,
       equipItem,
       unequipItem,
       enhanceItem,

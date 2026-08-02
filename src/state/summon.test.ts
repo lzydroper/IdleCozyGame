@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SUMMON_CONFIG } from '../data/summonConfig';
-import { computeHeroChance, rollHeroId, summonUpdate } from './summon';
+import { STAR_MAX } from '../data/awakening';
+import { computeHeroChance, rollHeroId, summonUpdate, summonTenUpdate } from './summon';
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
@@ -87,16 +88,57 @@ describe('summonUpdate', () => {
     expect(next.soulEchoes).toBe(200 - SUMMON_CONFIG.costPerSummon);
   });
 
-  it('guarantees a hero at the pity cap even with a bad roll', () => {
+  it('guarantees an unowned hero at 100-pull hard pity cap', () => {
     const state = makeState({
       soulEchoes: 200,
-      summon: { pityCount: SUMMON_CONFIG.guaranteedAt - 1 }
+      summon: { pityCount: 99 } // 99 + 1 = 100 抽保底
     });
-    // rng=0.9：chance 已是 1（必出）
-    const { state: next, result } = summonUpdate(state, () => 0.9);
+    const { state: next, result } = summonUpdate(state, () => 0.99);
 
     expect(result.heroId).not.toBeNull();
+    expect(result.isNew).toBe(true);
+    expect(next.heroes[result.heroId!]).toBeDefined();
     expect(next.summon.pityCount).toBe(0);
+  });
+
+  it('awards Arcane Orb at 100-pull hard pity cap when all heroes are 5-star', () => {
+    const allHeroes: Record<string, any> = {};
+    Object.keys(HEROES_CONFIG).forEach(id => {
+      allHeroes[id] = { ...createInitialHero(id), star: STAR_MAX };
+    });
+
+    const state = makeState({
+      soulEchoes: 200,
+      heroes: allHeroes,
+      summon: { pityCount: 99 },
+      inventory: {}
+    });
+
+    const { state: next, result } = summonUpdate(state, () => 0.99);
+
+    expect(result.heroId).toBeNull();
+    expect(result.arcaneOrbAwarded).toBe(true);
+    expect(next.inventory.arcane_orb).toBe(1);
+    expect(next.summon.pityCount).toBe(0);
+  });
+});
+
+describe('summonTenUpdate', () => {
+  it('fails if soul echoes are less than 1000', () => {
+    const state = makeState({ soulEchoes: 900 });
+    const { state: next, result } = summonTenUpdate(state);
+
+    expect(result.outcomes).toHaveLength(0);
+    expect(next.soulEchoes).toBe(900);
+  });
+
+  it('executes 10 pulls and consumes 1000 soul echoes', () => {
+    const state = makeState({ soulEchoes: 1500 });
+    const { state: next, result } = summonTenUpdate(state);
+
+    expect(result.outcomes).toHaveLength(10);
+    expect(result.soulEchoesUsed).toBe(1000);
+    expect(next.soulEchoes).toBe(500);
   });
 });
 

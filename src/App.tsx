@@ -6,6 +6,7 @@ import WorkshopTab from './components/WorkshopTab';
 import LogTab from './components/LogTab';
 import ShelterTab from './components/ShelterTab';
 import HeroTab from './components/HeroTab';
+import SummonTab from './components/SummonTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import { useAuth } from './hooks/useAuth';
@@ -43,7 +44,9 @@ const App: React.FC = () => {
     createAccount,
     deleteAccount,
     fetchCloudCharacterSummaries,
-    downloadCloudCharacter
+    downloadCloudCharacter,
+    isSummonOpen,
+    closeSummonModal
   } = useGame();
 
   const { showToast, showConfirm } = useToast();
@@ -1002,6 +1005,12 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 独立全屏英雄招募 View (ticket 20) */}
+      <SummonTab
+        isOpen={isSummonOpen}
+        onClose={closeSummonModal}
+      />
     </div>
   );
 };

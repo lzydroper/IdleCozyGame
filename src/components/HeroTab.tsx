@@ -11,7 +11,7 @@ import HeroDetailModal from './HeroDetailModal';
 import { Sparkles, Users, Plus, Shield } from 'lucide-react';
 
 const HeroTab: React.FC = () => {
-  const { state, setParty } = useGame();
+  const { state, setParty, openSummonModal } = useGame();
   const { showToast } = useToast();
 
   // Modal 状态
@@ -34,7 +34,7 @@ const HeroTab: React.FC = () => {
       <div className="flex items-center gap-3">
         {/* 正方形按钮 1: 招募 */}
         <div
-          onClick={() => showToast('招募为占位功能，后续扩展。', 'info')}
+          onClick={openSummonModal}
           className="w-20 h-20 aspect-square rounded-2xl bg-gradient-to-b from-purple-950/80 to-zinc-900/80 border border-purple-500/30 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-purple-400 transition-all shadow-md active:scale-95 group shrink-0"
         >
           <Sparkles className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
