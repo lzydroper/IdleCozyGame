@@ -66,17 +66,30 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const stoneCount = inventory.enhance_stone || 0;
   const cost = enhanceCost(item.enhance);
 
-  // 计算穿戴时装备属性（含阵营加成）
+  const isFactionMatched = Boolean(heroConfig?.faction && cfg.faction === heroConfig.faction);
+
+  // 计算穿戴时装备属性（只有同阵营英雄穿戴才触发 30% 阵营加成）
   const statsWithFaction = getEquippedItemStats(item, heroConfig?.faction);
-  // 计算基础 0 强化（无阵营）与强化增加的绝对数值，用于分段展示 (base + enhanceBonus)
   const baseStats = cfg.baseStats;
   const statPerEnhance = cfg.statPerEnhance;
   const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1.0;
-  const factionMult = FACTION_EQUIPMENT_BONUS_MULTIPLIER;
+  const factionMult = isFactionMatched ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
 
   // 套装强化进度计算
   const setProgress = getSetEnhanceProgress(heroEquip);
   const currentSetProgress = setProgress[cfg.set] || 0;
+
+  // 当前英雄已穿戴的同系列装备数量
+  const equippedSetItems = (['weapon', 'armor', 'trinket'] as const).filter(s => {
+    const itemOnSlot = heroEquip[s];
+    if (!itemOnSlot) return false;
+    const itemCfg = EQUIPMENT_CONFIG[itemOnSlot.itemId];
+    return itemCfg?.set === cfg.set;
+  });
+  const equippedSetCount = equippedSetItems.length;
+  const activeTierDescriptions = setCfg.tierEffects
+    .filter(t => currentSetProgress >= t.threshold)
+    .map(t => t.description);
 
   // 装备总战力/分值（ATK + DEF*2 + HP/5）
   const gearScore = Math.round(
@@ -88,7 +101,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   // 1. 【卸下】动作
   const handleUnequip = () => {
     if (unequipItem(heroId, slot)) {
-      showToast(`已卸下【${cfg.name}】，装备返回背包。`, 'success');
+      showToast(`已卸下【${cfg.name}】`, 'success');
       onClose();
     }
   };
@@ -97,7 +110,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const handleEnhance = () => {
     if (item.enhance >= ENHANCE_MAX) {
       if (!item.mythic) {
-        // 尝试神话锻造
         const result = forgeMythic(heroId, slot);
         if (result === true) {
           showToast(`🌟 锻造成功！【${cfg.mythicName}】诞生！`, 'success');
@@ -113,9 +125,13 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
       return;
     }
 
+    if (stoneCount < cost) {
+      showToast(`强化魔晶不足！需要 ${cost} 个，当前剩余 ${stoneCount} 个。`, 'error');
+      return;
+    }
     const res = enhanceItem(heroId, slot);
     if (res === true) {
-      showToast(`✨ 强化成功！【${cfg.name}】等级提升至 +${item.enhance + 1}！`, 'success');
+      showToast(`✨ 强化成功！【${cfg.name}】提升至 +${item.enhance + 1}`, 'success');
     } else if (res === 'no_stone') {
       showToast(`强化魔晶不足：需要 强化魔晶 ×${cost}。`, 'error');
     }
@@ -124,19 +140,19 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   // 渲染属性行 (base + enhanceBonus)
   const renderStatRow = (
     label: string,
-    IconComponent: any,
+    IconComp: React.ComponentType<{ className?: string }>,
     baseVal: number | undefined,
-    perEnhanceVal: number | undefined,
-    textColor: string
+    perLvlVal: number | undefined,
+    colorClass: string = 'text-amber-400'
   ) => {
-    if (!baseVal && !perEnhanceVal) return null;
+    if (!baseVal && !perLvlVal) return null;
     const base = Math.round((baseVal || 0) * mult * factionMult * 10) / 10;
-    const enhanceBonus = Math.round((perEnhanceVal || 0) * item.enhance * mult * factionMult * 10) / 10;
+    const enhanceBonus = Math.round((perLvlVal || 0) * item.enhance * mult * factionMult * 10) / 10;
 
     return (
-      <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/80">
+      <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80">
         <div className="flex items-center gap-1.5 font-bold text-zinc-300">
-          <IconComponent className={`w-3.5 h-3.5 ${textColor}`} />
+          <IconComp className={`w-3.5 h-3.5 ${colorClass}`} />
           <span>{label}</span>
         </div>
         <div className="font-mono font-black text-right">
@@ -160,7 +176,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         className={UI_TOKENS.modalContainerEquipment}
       >
-        {/* Header */}
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-1.5">
             <Info className="w-4 h-4 text-amber-400" />
@@ -175,31 +190,14 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
         </header>
 
         <div className="flex-1 flex flex-col gap-2.5 py-2">
-          {/* Top Card: Icon, Name, Level, Power & Swap Button */}
           <div className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex items-center gap-3 relative shadow-inner">
-            {/* Icon Box */}
             <div className="w-16 h-16 rounded-xl bg-zinc-900 border-2 border-amber-500/40 relative flex items-center justify-center text-2xl shadow-md shrink-0">
               {ITEMS_CONFIG[item.itemId]?.emoji || EQUIPMENT_SLOT_EMOJIS[slot]}
-              {/* Level Badge Overlay */}
               <span className="absolute -bottom-1 -right-1 text-[8.5px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1.5 py-0.5 rounded-md shadow">
                 +{item.enhance}
               </span>
-              {/* Equipped Hero Avatar Badge Overlay */}
-              <div
-                className="absolute -top-1.5 -left-1.5 w-6 h-6 rounded-full border-2 border-amber-400 bg-zinc-900 overflow-hidden flex items-center justify-center shadow"
-                title={`穿戴英雄: ${heroConfig?.name}`}
-              >
-                {heroConfig?.avatar ? (
-                  <img src={heroConfig.avatar} alt={heroConfig.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[10px] font-black text-amber-300">
-                    {heroConfig?.name?.[0] || '?' }
-                  </span>
-                )}
-              </div>
             </div>
 
-            {/* Name, Level & Power */}
             <div className="flex flex-col flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <span className={`text-sm font-black truncate ${item.mythic ? 'text-amber-300' : 'text-amber-100'}`}>
@@ -216,7 +214,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Top Right Swap Shortcut Button */}
             <button
               onClick={() => setShowReplaceModal(true)}
               className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-sky-400 border border-zinc-700 cursor-pointer active:scale-95 transition-all shrink-0"
@@ -226,27 +223,55 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             </button>
           </div>
 
-          {/* Faction Affinity Tag (阵营加成标签) */}
-          <div className="bg-sky-950/40 border border-sky-500/40 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-1.5 text-xs font-black text-sky-300">
-              <Shield className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>
-                【{HERO_FACTION_LABELS[heroConfig.faction]}】英雄穿戴后，装备属性增加{FACTION_EQUIPMENT_BONUS_PERCENT}%
-              </span>
+          {isFactionMatched ? (
+            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>
+                  【{HERO_FACTION_LABELS[cfg.faction]}】阵营加成已激活！同阵营英雄穿戴，装备属性 +{FACTION_EQUIPMENT_BONUS_PERCENT}%
+                </span>
+              </div>
+              <div className="w-5 h-5 rounded-full bg-emerald-900 border border-emerald-500 flex items-center justify-center text-emerald-300 shrink-0 ml-1">
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+              </div>
             </div>
-            <div className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 ml-1">
-              <Check className="w-3.5 h-3.5 stroke-[3]" />
+          ) : (
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm opacity-90">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400">
+                <Shield className="w-4 h-4 text-zinc-500 shrink-0" />
+                <span>
+                  【{HERO_FACTION_LABELS[cfg.faction]}】阵营装备（穿戴英雄：【{HERO_FACTION_LABELS[heroConfig.faction]}】），未激活 +{FACTION_EQUIPMENT_BONUS_PERCENT}% 加成
+                </span>
+              </div>
+              <div className="w-5 h-5 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center text-zinc-500 shrink-0 ml-1 text-[10px] font-mono">
+                🔒
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Set Info Section (套装羁绊与属性) */}
           <div className="bg-zinc-950/70 border border-zinc-800/90 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-sm">
             <div className="flex items-center justify-between text-xs font-black text-amber-300 border-b border-zinc-800 pb-1">
               <span className="flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                {setCfg.name} (强化 {Math.min(currentSetProgress, 30)}/30)
+                {setCfg.name} (已穿戴 {equippedSetCount}/3 件 · 强化总和: {currentSetProgress}/30)
               </span>
               <Info className="w-3.5 h-3.5 text-zinc-500" />
+            </div>
+
+            <div className="text-[10px] text-zinc-400 bg-zinc-900/60 p-2 rounded-lg border border-zinc-800/70 leading-relaxed font-medium">
+              💡 <span className="text-amber-300/90 font-bold">套装说明：</span>
+              穿戴同系列装备并提升强化等级，强化等级总和达 10/20/30 级时解锁对应属性加成。
+              <div className="mt-1 font-bold">
+                {activeTierDescriptions.length > 0 ? (
+                  <span className="text-amber-400 flex items-center gap-1">
+                    🔥 当前已生效：{activeTierDescriptions.join('、')}
+                  </span>
+                ) : (
+                  <span className="text-zinc-500">
+                    ❄️ 当前已生效：无（需强化等级总和 ≥ 10）
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col gap-1 pt-0.5 text-[11px]">
@@ -270,7 +295,9 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                       <span>{tier.description}</span>
                     </span>
                     {active ? (
-                      <span className="text-[10px] text-amber-400 font-black">已激活</span>
+                      <span className="text-[10px] text-amber-400 font-black flex items-center gap-0.5">
+                        <Check className="w-3 h-3" /> 已激活
+                      </span>
                     ) : (
                       <span className="text-[9.5px] text-zinc-600">未激活</span>
                     )}
@@ -280,15 +307,20 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Equipment Base & Enhanced Stats ("装备属性") */}
           <div className="bg-zinc-950/70 border border-zinc-800/90 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-sm">
             <div className="flex items-center justify-between text-xs font-black text-zinc-200 border-b border-zinc-800 pb-1">
               <span className="flex items-center gap-1">
                 <Zap className="w-3.5 h-3.5 text-amber-400" /> 装备属性
               </span>
-              <span className="text-[10px] text-sky-400 font-bold bg-sky-950/50 px-1.5 py-0.5 rounded border border-sky-500/30">
-                +30% 阵营加成已应用
-              </span>
+              {isFactionMatched ? (
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  +30% 阵营加成已应用
+                </span>
+              ) : (
+                <span className="text-[10px] text-zinc-500 font-bold bg-zinc-900/80 px-1.5 py-0.5 rounded border border-zinc-800">
+                  未激活阵营加成
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1 pt-0.5">

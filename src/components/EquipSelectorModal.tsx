@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
@@ -33,19 +33,23 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
   const { state, equipItem } = useGame();
   const { showToast } = useToast();
 
-  if (!isOpen) return null;
-
   const heroConfig = HEROES_CONFIG[heroId];
   const inventory = state.inventory || {};
 
-  // 背包中符合槽位条件的未穿戴装备候选列表
-  const candidates = Object.entries(inventory)
-    .filter(([itemId, qty]) => qty > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
-    .sort(([a], [b]) => {
-      const setA = EQUIPMENT_CONFIG[a]?.set || '';
-      const setB = EQUIPMENT_CONFIG[b]?.set || '';
-      return setA.localeCompare(setB);
-    });
+  // 背包中符合槽位条件的未穿戴装备候选列表 (Memoized 提升渲染效率)
+  const candidates = useMemo(
+    () =>
+      Object.entries(inventory)
+        .filter(([itemId, qty]) => qty > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
+        .sort(([a], [b]) => {
+          const setA = EQUIPMENT_CONFIG[a]?.set || '';
+          const setB = EQUIPMENT_CONFIG[b]?.set || '';
+          return setA.localeCompare(setB);
+        }),
+    [inventory, slot]
+  );
+
+  if (!isOpen) return null;
 
   const handleEquip = (itemId: string) => {
     const ok = equipItem(heroId, slot, itemId);

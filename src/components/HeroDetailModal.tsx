@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import {
@@ -71,20 +71,27 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const firstChar = config.name ? config.name[0] : '?';
   const awakenedName = getAwakenedName(heroId, hero) || config.name;
 
-  // 装备加成属性（含阵营 30% 穿戴加成）
-  const { flat: equipFlat } = getHeroEquipmentBonus(heroEquip, config.faction);
+  // 装备加成属性（含同阵营 30% 穿戴加成）
+  const { flat: equipFlat } = useMemo(
+    () => getHeroEquipmentBonus(heroEquip, config.faction),
+    [heroEquip, config.faction]
+  );
 
-  // 核心基础面板属性计算 (严格按 CONTEXT.md 6 项基础属性: 攻击、防御、生命、魔力、暴击、暴伤)
-  const calculatedStats = calculateEntityStats({
-    baseAttributes: {
-      attack: config.baseAttack + (hero.level - 1) * 3 + (equipFlat.attack || 0),
-      defense: config.baseDefense + (hero.level - 1) * 1 + (equipFlat.defense || 0),
-      maxHp: config.baseHp + (hero.level - 1) * 10 + (equipFlat.maxHp || 0),
-      maxMp: 50,
-      critRate: 0.05,
-      critDmg: 1.50
-    }
-  });
+  // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)
+  const calculatedStats = useMemo(
+    () =>
+      calculateEntityStats({
+        baseAttributes: {
+          attack: config.baseAttack + (hero.level - 1) * 3 + (equipFlat.attack || 0),
+          defense: config.baseDefense + (hero.level - 1) * 1 + (equipFlat.defense || 0),
+          maxHp: config.baseHp + (hero.level - 1) * 10 + (equipFlat.maxHp || 0),
+          maxMp: 50,
+          critRate: 0.05,
+          critDmg: 1.50
+        }
+      }),
+    [config.baseAttack, config.baseDefense, config.baseHp, hero.level, equipFlat]
+  );
 
   const soulCount = state.soulShards?.[heroId] || 0;
   const resonanceCount = state.resonanceShards || 0;

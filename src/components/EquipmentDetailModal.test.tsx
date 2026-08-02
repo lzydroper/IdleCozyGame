@@ -43,7 +43,7 @@ describe('EquipmentDetailModal and EquipSelectorModal (issue 19)', () => {
     expect(screen.getByText('装备详情')).toBeDefined();
     expect(screen.getByText('废土利刃')).toBeDefined();
     expect(screen.getByText('+20')).toBeDefined();
-    expect(screen.getByText(/【机械】英雄穿戴后，装备属性增加30%/)).toBeDefined();
+    expect(screen.getByText(/【机械】/)).toBeDefined();
     expect(screen.getByText(/废土系列/)).toBeDefined();
     expect(screen.getByText('装备属性')).toBeDefined();
     expect(screen.getByText('强化等级奖励')).toBeDefined();

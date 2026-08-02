@@ -18,12 +18,13 @@ import { NO_OP } from './types';
 
 export const emptyEquipment = (): HeroEquipment => ({ weapon: null, armor: null, trinket: null });
 
-// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5（属性加强，强化等级保留）；英雄穿戴时附带阵营加成 (+30%)
+// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5；英雄穿戴同阵营装备时附带阵营加成 (+30%)
 export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): EquipmentStats => {
   const cfg = EQUIPMENT_CONFIG[item.itemId];
   if (!cfg) return {};
   const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1;
-  const factionMult = heroFaction ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
+  const isFactionMatched = Boolean(heroFaction && cfg.faction === heroFaction);
+  const factionMult = isFactionMatched ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
   const stats: EquipmentStats = {};
   (['attack', 'defense', 'maxHp'] as const).forEach(key => {
     const total = ((cfg.baseStats[key] || 0) + (cfg.statPerEnhance[key] || 0) * item.enhance) * mult * factionMult;
