@@ -64,9 +64,9 @@ export interface HeroState {
   logisticsFacilityId: string | null; // 设施后勤驻守 ID（null 表示未驻守后勤，非 null 时无法上阵战斗）
 }
 
-// 召唤进度状态（软保底计数）
+// 召唤进度状态（100 抽保底计数）
 export interface SummonState {
-  pityCount: number;        // 连续未出英雄的累计次数（用于软保底）
+  pityCount: number;        // 连续未获得未拥有英雄的累计次数（100 抽硬保底 + 软保底共用）
 }
 
 // === 装备系统（ticket 10）：3 槽装备 + 系列套装 + 强化 + 神话锻造 ===

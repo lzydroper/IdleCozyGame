@@ -56,8 +56,22 @@ describe('summonUpdate', () => {
     expect(result.shardsGained).toBe(SUMMON_CONFIG.shardsPerDupe);
     expect(next.soulEchoes).toBe(200 - SUMMON_CONFIG.costPerSummon);
     expect(next.soulShards[firstHeroId]).toBe(SUMMON_CONFIG.shardsPerDupe);
-    expect(next.summon.pityCount).toBe(0); // 出英雄重置软保底
+    expect(next.summon.pityCount).toBe(1); // 抽到已拥有英雄：保底计数继续累加（ticket 20）
     expect(Object.keys(next.heroes)).toEqual([firstHeroId]); // 不新增英雄
+  });
+
+  it('does NOT reset pity counter when pulling an already-owned hero', () => {
+    const state = makeState({
+      soulEchoes: 200,
+      soulShards: {},
+      summon: { pityCount: 42 }
+    });
+    // rng=0 → 出英雄判定命中；rollHeroId(0) → 池中第一个英雄（开局已拥有的诺娃）
+    const firstHeroId = Object.keys(HEROES_CONFIG)[0];
+    const { state: next } = summonUpdate(state, () => 0);
+
+    expect(Object.keys(next.heroes)).toEqual([firstHeroId]); // 不新增英雄（抽到已拥有）
+    expect(next.summon.pityCount).toBe(43); // 未获得未拥有英雄 → 计数 +1
   });
 
   it('summons a brand-new hero and adds it to the roster', () => {
@@ -121,6 +135,28 @@ describe('summonUpdate', () => {
     expect(next.inventory.arcane_orb).toBe(1);
     expect(next.summon.pityCount).toBe(0);
   });
+
+  it('hard pity with all heroes owned (not all max-star) falls back to a duplicate and resets pity', () => {
+    const allHeroes: Record<string, any> = {};
+    Object.keys(HEROES_CONFIG).forEach((id, i) => {
+      allHeroes[id] = { ...createInitialHero(id), star: i === 0 ? 1 : STAR_MAX };
+    });
+
+    const state = makeState({
+      soulEchoes: 200,
+      heroes: allHeroes,
+      summon: { pityCount: 99 },
+      inventory: {}
+    });
+
+    // rng: rolled 任意 → 硬保底不受影响；rollHeroId(0) → 池中第一个英雄（已拥有）
+    const { state: next, result } = summonUpdate(state, sequenceRng([0.99, 0]));
+
+    expect(result.heroId).not.toBeNull();
+    expect(result.isNew).toBe(false); // 无未拥有英雄可出 → 兜底重复英雄
+    expect(next.summon.pityCount).toBe(0); // 硬保底已兑现 → 重置
+    expect(Object.keys(next.heroes)).toEqual(Object.keys(allHeroes)); // 不新增
+  });
 });
 
 describe('summonTenUpdate', () => {
@@ -139,6 +175,37 @@ describe('summonTenUpdate', () => {
     expect(result.outcomes).toHaveLength(10);
     expect(result.soulEchoesUsed).toBe(1000);
     expect(next.soulEchoes).toBe(500);
+  });
+
+  it('hard pity triggers inside a 10-pull: unowned hero guaranteed and counter resets', () => {
+    const ids = Object.keys(HEROES_CONFIG);
+    const lastId = ids[ids.length - 1];
+    // 已拥有除末位外的全部英雄 → 前 4 抽出重复英雄 pity 96/97/98/99，第 5 抽硬保底必出末位未拥有英雄
+    const heroes: Record<string, any> = {};
+    ids.slice(0, -1).forEach(id => {
+      heroes[id] = createInitialHero(id);
+    });
+
+    const state = makeState({
+      soulEchoes: 3000,
+      heroes,
+      summon: { pityCount: 95 }
+    });
+    // 每抽出英雄消耗 2 个 rng(rolled + rollHeroId)；抽1-4 出首个已拥有英雄(0)，
+    // 抽5 硬保底(rolled 不参与判定，idx=floor(0.99*1)=0 → 末位未拥有)，抽6-10 未出英雄(0.99)
+    // 共消耗 4*2 + 2 + 5 = 15 次 rng
+    const rngValues = [0.99, 0, 0.99, 0, 0.99, 0, 0.99, 0, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99];
+    const { state: next, result } = summonTenUpdate(state, sequenceRng(rngValues));
+
+    expect(result.outcomes).toHaveLength(10);
+    // 第 5 抽(索引 4)硬保底必出未拥有英雄
+    const fifth = result.outcomes[4];
+    expect(fifth.heroId).toBe(lastId);
+    expect(fifth.isNew).toBe(true);
+    // 硬保底后 pity 重置 0；剩余 5 抽未出英雄 → 5
+    expect(next.summon.pityCount).toBe(5);
+    expect(next.soulEchoes).toBe(3000 - 1000);
+    expect(next.heroes[lastId]).toBeDefined();
   });
 });
 

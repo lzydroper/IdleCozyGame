@@ -12,7 +12,10 @@ import {
   X,
   Award,
   Shield,
-  CheckCircle2
+  CheckCircle2,
+  Target,
+  Star,
+  Gem
 } from 'lucide-react';
 import gachaTavernBg from '../assets/gacha_tavern_bg.jpg';
 
@@ -88,33 +91,15 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* 右侧：玩家头像与 1725/100 计数 */}
+        {/* 右侧：玩家头像徽章 */}
         <div className="flex items-center gap-2">
-          <div className="flex flex-col items-end">
-            <span className="text-[9px] font-bold text-amber-400 drop-shadow">招募灵元</span>
-            <span className="text-xs font-black text-white drop-shadow">1725/100</span>
-          </div>
           <div className="w-10 h-10 rounded-full border-2 border-amber-400 bg-zinc-900/90 overflow-hidden shadow-lg flex items-center justify-center backdrop-blur-md">
             <Shield className="w-5 h-5 text-amber-400" />
           </div>
         </div>
       </header>
 
-      {/* 顶部 Banner: 招募等级 12 解锁 */}
-      <div className="relative z-10 flex justify-center -mt-1 px-4">
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/70 border border-amber-500/40 shadow-xl w-full max-w-[280px] justify-between backdrop-blur-md">
-          <div className="w-4.5 h-4.5 rounded-full bg-emerald-950 border border-emerald-400 flex items-center justify-center shrink-0">
-            <Sparkles className="w-2.5 h-2.5 text-emerald-300" />
-          </div>
-          <div className="flex flex-col flex-1 mx-1.5">
-            <span className="text-[9px] font-bold text-zinc-100">招募等级12解锁</span>
-            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: '41.6%' }} />
-            </div>
-          </div>
-          <span className="text-[9px] font-mono font-bold text-zinc-300 shrink-0">125/300</span>
-        </div>
-      </div>
+      {/* 顶部 Banner：占位已移除（无招募等级系统，避免硬编码假数据） */}
 
       {/* 中央 Floating Controls (保底进度 & 规则按钮) */}
       <main className="relative flex-1 flex flex-col justify-between py-6 px-4 z-10">
@@ -183,12 +168,8 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
             </button>
           </div>
 
-          {/* 底部副说明：下次免费 & 切换 */}
-          <div className="w-full flex items-center justify-between px-1">
-            <span className="text-[10px] font-bold text-white drop-shadow">
-              下次免费: <span className="font-mono text-amber-300 font-bold">12:16:56</span>
-            </span>
-
+          {/* 底部副说明：卡池切换（免费倒计时为设计稿 mock，已移除） */}
+          <div className="w-full flex items-center justify-end px-1">
             <button
               onClick={() => setInfoToastMessage('当前为英雄卡池，更多卡池敬请期待！')}
               className="flex items-center gap-1 px-3 py-1 rounded-xl bg-black/60 border border-zinc-600 text-[10px] font-bold text-zinc-200 hover:border-amber-400 transition-all cursor-pointer active:scale-95 backdrop-blur-md"
@@ -264,21 +245,24 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
             <div className="space-y-2.5 text-xs text-zinc-300 leading-relaxed max-h-72 overflow-y-auto pr-1">
               <section className="bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800">
-                <h4 className="font-bold text-amber-400 mb-1 text-[11px]">🎯 100 抽未拥有英雄硬保底</h4>
+                <h4 className="font-bold text-amber-400 mb-1 text-[11px] flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5 text-amber-400" /> 100 抽未拥有英雄硬保底</h4>
                 <p className="text-[10px] text-zinc-400">
                   连续 100 次未抽取到未拥有英雄时，第 100 抽必出任意一位未拥有的英雄！获得未拥有英雄后重置保底计数。
                 </p>
               </section>
 
               <section className="bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800">
-                <h4 className="font-bold text-amber-400 mb-1 text-[11px]">🌟 全满星极值奖励</h4>
+                <h4 className="font-bold text-amber-400 mb-1 text-[11px] flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 text-amber-400" /> 全满星极值奖励</h4>
                 <p className="text-[10px] text-zinc-400">
                   若玩家已拥有全部英雄且所有英雄均已达 5 星满星，100 抽保底将自动发放 1 个终局觉醒材料【奥术星体】！
                 </p>
               </section>
 
               <section className="bg-zinc-950/60 p-2.5 rounded-xl border border-zinc-800">
-                <h4 className="font-bold text-amber-400 mb-1 text-[11px]">💎 消耗与转换规则</h4>
+                <h4 className="font-bold text-amber-400 mb-1 text-[11px] flex items-center gap-1">
+                  <Gem className="w-3.5 h-3.5 text-amber-400" /> 消耗与转换规则</h4>
                 <p className="text-[10px] text-zinc-400">
                   单抽消耗 100 灵魂残响，10 连抽消耗 1000 灵魂残响。已拥有英雄重复抽出将转化为该英雄专属灵魂碎片；未抽出英雄则获得共鸣碎片。
                 </p>

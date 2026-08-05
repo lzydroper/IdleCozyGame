@@ -122,6 +122,10 @@ export const summonUpdate = (
   const nextSoulShards = { ...(state.soulShards || {}) };
   let nextResonance = state.resonanceShards || 0;
 
+  // 保底计数语义（ticket 20）：仅在获得【未拥有】英雄（或全满星保底兑现奥术星体）后重置。
+  // 抽到已拥有英雄同样属于"未获得未拥有英雄"，计数继续累加，否则保底进度永远无法兑现。
+  let nextPity = pityCount + 1;
+
   if (alreadyOwned) {
     // 若英雄已达 5 星满星，重复抽出的碎片 1:1 自动转化为通用共鸣碎片
     if (state.heroes[heroId].star >= STAR_MAX) {
@@ -129,8 +133,11 @@ export const summonUpdate = (
     } else {
       nextSoulShards[heroId] = (nextSoulShards[heroId] || 0) + SUMMON_CONFIG.shardsPerDupe;
     }
+    // 硬保底已触发的场合（全拥有非满星兜底出重复英雄，或保底兑现）视为保底已兑现，重置计数
+    if (isHardPity) nextPity = 0;
   } else {
     nextHeroes[heroId] = createInitialHero(heroId);
+    nextPity = 0;
   }
 
   return {
@@ -140,7 +147,7 @@ export const summonUpdate = (
       heroes: nextHeroes,
       soulShards: nextSoulShards,
       resonanceShards: nextResonance,
-      summon: { pityCount: 0 }
+      summon: { pityCount: nextPity }
     },
     result: {
       heroId,
