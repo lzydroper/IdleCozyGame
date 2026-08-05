@@ -5,7 +5,6 @@ export interface CropConfig {
   yields: Record<string, number>;
   seedCost: Record<string, number>;
   description: string;
-  image?: string;
 }
 
 export interface UpgradeLevel {
