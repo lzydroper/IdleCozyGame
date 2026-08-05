@@ -5,6 +5,7 @@ import { render } from '@testing-library/react';
 import { calculateOfflineProgress, calculateDetailedOfflineProgress } from '../state/offline';
 import { GameProvider, useGame } from './GameContext';
 import { CROPS_CONFIG } from '../data/crops';
+import { createInitialHero } from '../data/initialState';
 import type { GreenhouseSlot, GameState } from '../types/game';
 
 // 模拟作物配置表
@@ -69,24 +70,19 @@ const TestConsumer = ({
     addNova: () => {
       setState(prev => ({
         ...prev,
-        survivors: {
-          ...prev.survivors,
-          nova: {
-            id: 'nova',
-            name: '诺娃',
-            role: 'engineer',
-            isAssigned: false
-          }
+        heroes: {
+          ...prev.heroes,
+          nova: createInitialHero('nova')
         }
       }));
     },
     removeNova: () => {
       setState(prev => {
-        const nextSurvivors = { ...prev.survivors };
-        delete nextSurvivors.nova;
+        const nextHeroes = { ...prev.heroes };
+        delete nextHeroes.nova;
         return {
           ...prev,
-          survivors: nextSurvivors
+          heroes: nextHeroes
         };
       });
     }
@@ -106,16 +102,7 @@ describe('GameContext Integration', () => {
       </GameProvider>
     );
 
-    // 初始没有 nova，应该为 100 且 hasNova 为 false
-    expect(capturedState.player.maxEnergy).toBe(100);
-    expect(capturedState.hasNova).toBe(false);
-
-    // 触发添加 nova
-    React.act(() => {
-      actionRef.current.addNova();
-    });
-
-    // 被动系统退役后 maxEnergy 不再有 +30 加成，但 hasNova 派生状态仍生效
+    // ADR-0013：开局赠送诺娃，hasNova 派生状态初始为 true（英雄为唯一实体）
     expect(capturedState.player.maxEnergy).toBe(100);
     expect(capturedState.hasNova).toBe(true);
 
@@ -124,9 +111,18 @@ describe('GameContext Integration', () => {
       actionRef.current.removeNova();
     });
 
-    // 应该恢复为 100 且 hasNova 为 false
+    // 被动系统退役后 maxEnergy 不再有 +30 加成，但 hasNova 派生状态仍生效
     expect(capturedState.player.maxEnergy).toBe(100);
     expect(capturedState.hasNova).toBe(false);
+
+    // 触发添加 nova
+    React.act(() => {
+      actionRef.current.addNova();
+    });
+
+    // 应重新获得 nova
+    expect(capturedState.player.maxEnergy).toBe(100);
+    expect(capturedState.hasNova).toBe(true);
   });
 
   it('should have new crops correctly configured in CROPS_CONFIG', () => {
@@ -160,7 +156,6 @@ describe('GameContext Integration', () => {
         },
         inventory: { scrap_metal: 5 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
-        survivors: {},
         heroes: {},
         equipment: {},
         soulEchoes: 0,
@@ -175,7 +170,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -212,7 +207,6 @@ describe('GameContext Integration', () => {
         },
         inventory: { scrap_metal: 6 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
-        survivors: {},
         heroes: {},
         equipment: {},
         soulEchoes: 0,
@@ -227,7 +221,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -281,7 +275,6 @@ describe('GameContext Integration', () => {
         },
         inventory: { scrap_metal: 2 },
         greenhouse: { slots: [], unlockedSlotsCount: 0 },
-        survivors: {},
         heroes: {},
         equipment: {},
         soulEchoes: 0,
@@ -296,7 +289,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -356,7 +349,6 @@ describe('GameContext Integration', () => {
           ],
           unlockedSlotsCount: 4
         },
-        survivors: {},
         heroes: {},
         equipment: {},
         soulEchoes: 0,
@@ -371,7 +363,7 @@ describe('GameContext Integration', () => {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}, dreamLockdownUntil: null
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
         discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
@@ -384,7 +376,7 @@ describe('GameContext Integration', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: { smelter: [], assembler: [] },
-          assignedWatererId: 'survivor_waterer',
+          assignedWatererId: 'nova',
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
         }

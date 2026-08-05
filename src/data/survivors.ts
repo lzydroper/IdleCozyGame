@@ -71,7 +71,7 @@ export const SURVIVORS_CONFIG: SurvivorConfig[] = [
     realityLocationId: 'military_depot'
   },
 
-  // === 新幸存者 ===
+  // === 新英雄（剧情档案，ADR-0013：幸存者=英雄的剧情别称） ===
   {
     id: 'soldier',
     name: '铁卫',

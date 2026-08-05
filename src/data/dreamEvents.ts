@@ -6,11 +6,11 @@ export interface DreamChoice {
     stats?: {
       sanity?: number;
       pollution?: number;
-      resonance?: number; // 针对幸存者共鸣增加值
+      resonance?: number; // 针对英雄共鸣增加值
     };
     items?: Record<string, number>;
     logText: string;
-    targetSurvivorId?: string; // 如果是特定幸存者共鸣
+    targetHeroId?: string; // 如果是特定英雄共鸣
   };
 }
 
@@ -86,7 +86,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "建立心灵连结 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "roy",
+          targetHeroId: "roy",
           logText: "你将理智丝线探入虚空。在一片嘈杂的心灵尖叫声中，你紧紧抓住了罗伊的信号，你们的意识产生了强烈共鸣！"
         }
       },
@@ -110,7 +110,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "追踪植物声呐 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "mei",
+          targetHeroId: "mei",
           logText: "你向绿光伸出了精神触角。脑海中瞬间浮现出巨大的藤蔓幻象和阿梅的呼唤，定位连接成功建立！"
         }
       },
@@ -134,7 +134,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "极速拦截建立连结 (理智-10, 共鸣+50)",
         results: {
           stats: { sanity: -10, resonance: 50 },
-          targetSurvivorId: "zero",
+          targetHeroId: "zero",
           logText: "你瞬间燃烧理智向前飞跃，将精神捕获网稳稳套住了那个狂飙的光标。你捕获了 Zero 的方位信号！"
         }
       },
@@ -182,7 +182,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "建立心灵连结 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "catherine",
+          targetHeroId: "catherine",
           logText: "你将理智丝线探入充满药水味的心灵雾气中，紧紧抓住了凯瑟琳的信号。在满布手术刀痕迹的梦境幻象中，你们成功建立了共鸣连接！"
         }
       },
@@ -206,7 +206,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "建立心灵连结 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "buster",
+          targetHeroId: "buster",
           logText: "你用精神力网拦截下那段沙哑刺耳的重金属脑波。一阵轻微眩晕后，你与巴斯特达成了意识深处的共鸣！"
         }
       },
@@ -230,7 +230,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "建立心灵连结 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "soldier",
+          targetHeroId: "soldier",
           logText: "你循着铁砧的节奏探出精神触角。在四溅的火星与钢铁碰撞声中，你牢牢抓住了铁卫坚毅的心灵信号。"
         }
       },
@@ -254,7 +254,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "循着药香建立连结 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "healer",
+          targetHeroId: "healer",
           logText: "你深吸一口药香，让意识顺着气味分子飘散的方向延伸。在一片手术灯般的白色光芒中，你抓住了艾拉的信号。"
         }
       },
@@ -278,7 +278,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "追踪电波建立连结 (理智-8, 共鸣+50)",
         results: {
           stats: { sanity: -8, resonance: 50 },
-          targetSurvivorId: "apprentice",
+          targetHeroId: "apprentice",
           logText: "你细细分辨着广播噪音中的啜泣频率，就像拨弄老式收音机的旋钮一样逐渐对准了她的精神波长。连接成功！"
         }
       },
@@ -302,7 +302,7 @@ export const DREAM_EVENTS: Record<string, DreamEvent> = {
         text: "追踪强光信标 (理智-10, 共鸣+50)",
         results: {
           stats: { sanity: -10, resonance: 50 },
-          targetSurvivorId: "nova",
+          targetHeroId: "nova",
           logText: "你引导意识穿过闪烁的橙色警报光幕，强行在机甲动力过载核心彻底熔毁前截获了诺娃的精神信号，并确立了共鸣！"
         }
       },

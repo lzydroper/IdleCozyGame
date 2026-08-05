@@ -16,7 +16,7 @@ import {
 } from '../state/greenhouse';
 import { craftItemUpdate, applySupplyItemUpdate } from '../state/workshop';
 import {
-  assignSurvivorJobUpdate,
+  assignHeroJobUpdate,
   startExpeditionUpdate,
   stopExpeditionUpdate
 } from '../state/shelter';
@@ -94,13 +94,13 @@ interface GameContextType {
   fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number }>>;
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
   useSupplyItem: (itemId: string) => boolean;
-  assignSurvivorJob: (survivorId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
+  assignHeroJob: (heroId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
   enqueueRecipe: (facilityType: FacilityType, unitIndex: number, recipeId: string) => boolean;
   removeQueueEntry: (facilityType: FacilityType, unitIndex: number, queueIndex: number) => boolean;
   expandFacility: (facilityType: FacilityType) => boolean;
   setFacilityActive: (facilityType: FacilityType, unitIndex: number, active: boolean) => boolean;
   upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler', unitIndex?: number) => boolean;
-  startExpedition: (survivorId: string, locationId: string) => boolean;
+  startExpedition: (heroId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
   summonHero: () => SummonOutcome;
   summonTenHeroes: () => MultiSummonResult;
@@ -467,10 +467,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // === 避难所 ===
-  const assignSurvivorJob = (survivorId: string, jobId: 'waterer' | 'explorer' | null): boolean => {
+  const assignHeroJob = (heroId: string, jobId: 'waterer' | 'explorer' | null): boolean => {
     let ok = false;
     setState(prev => {
-      const r = assignSurvivorJobUpdate(prev, survivorId, jobId);
+      const r = assignHeroJobUpdate(prev, heroId, jobId);
       ok = r.result;
       return r.state;
     });
@@ -528,10 +528,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
-  const startExpedition = (survivorId: string, locationId: string): boolean => {
+  const startExpedition = (heroId: string, locationId: string): boolean => {
     let ok = false;
     setState(prev => {
-      const r = startExpeditionUpdate(prev, survivorId, locationId);
+      const r = startExpeditionUpdate(prev, heroId, locationId);
       ok = r.result;
       return r.state;
     });
@@ -726,9 +726,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(`aether_garden_save_${currentUser}`, JSON.stringify(freshState));
   };
 
-  const hasNova = !!state.survivors.nova;
-  const hasCatherine = !!state.survivors.catherine;
-  const hasBuster = !!state.survivors.buster;
+  // ADR-0013：英雄为唯一实体，从 heroes 派生（旧 survivors 状态已废弃）
+  const hasNova = !!state.heroes.nova;
+  const hasCatherine = !!state.heroes.catherine;
+  const hasBuster = !!state.heroes.buster;
   const maxEnergy = state.player.maxEnergy || 100;
 
   const adjustedState = {
@@ -767,7 +768,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       downloadCloudCharacter,
       useSupplyItem,
       batchWater,
-      assignSurvivorJob,
+      assignHeroJob,
       enqueueRecipe,
       removeQueueEntry,
       expandFacility,

@@ -167,6 +167,12 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   delete (mergedPlayer as Record<string, unknown>).hp;
   delete (mergedPlayer as Record<string, unknown>).maxHp;
 
+  // ADR-0013：旧存档的顶层 survivors 状态直接丢弃（alpha 不迁移，英雄为唯一实体）
+  delete (parsed as unknown as Record<string, unknown>).survivors;
+  if (parsed.exploration) {
+    delete (parsed.exploration as unknown as Record<string, unknown>).survivorResonance;
+  }
+
   return {
   ...initialState,
   ...parsed,
@@ -195,10 +201,19 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
       ...initialState.exploration.capsulesCharge,
       ...((parsed.exploration && parsed.exploration.capsulesCharge) || {})
     },
-    survivorResonance: {
-      ...initialState.exploration.survivorResonance,
-      ...((parsed.exploration && parsed.exploration.survivorResonance) || {})
-    }
+    // 救援进度（ADR-0013）：旧存档的 survivors/survivorResonance 直接丢弃（alpha 不迁移）
+    rescueProgress: Object.fromEntries(
+      Object.entries((parsed.exploration && parsed.exploration.rescueProgress) || {}).map(([heroId, p]) => {
+        const prog = (p || {}) as { resonance?: unknown; locationId?: unknown };
+        return [
+          heroId,
+          {
+            resonance: Number.isFinite(prog.resonance) ? Math.min(Math.max(prog.resonance as number, 0), 100) : 0,
+            ...(typeof prog.locationId === 'string' && prog.locationId ? { locationId: prog.locationId } : {})
+          }
+        ];
+      })
+    )
   },
   heroes: Object.fromEntries(
     Object.entries({ ...initialState.heroes, ...(parsed.heroes || {}) }).map(([heroId, h]) => [

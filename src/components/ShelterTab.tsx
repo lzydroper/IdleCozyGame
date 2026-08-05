@@ -6,6 +6,7 @@ import { CROPS_CONFIG } from '../data/crops';
 import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { SURVIVORS_CONFIG } from '../data/survivors';
+import { HEROES_CONFIG } from '../data/heroes';
 import { useToast } from './ToastSystem';
 import GameIcon from './GameIcon';
 import {
@@ -92,7 +93,7 @@ const ShelterTab: React.FC = () => {
   const {
     state,
     upgradeShelterStat,
-    assignSurvivorJob,
+    assignHeroJob,
     startExpedition,
     stopExpedition,
     batchWater,
@@ -190,9 +191,24 @@ const ShelterTab: React.FC = () => {
     return (state.shelter as any)[id + 'Level'] || 0;
   };
 
-  // 2. 幸存者列表
-  const survivorsList = Object.values(state.survivors).filter(s => !s.realityLocationId);
-  const meiSurvivor = state.survivors.mei;
+  // 2. 英雄列表（ADR-0013：已获得英雄全部可指派，岗位状态由 shelter 字段判定）
+  const heroesList = Object.keys(state.heroes);
+  const meiHero = state.heroes.mei;
+
+  // 英雄的废土职业（SURVIVORS_CONFIG 剧情档案，用于远征职业判定）
+  const getHeroRole = (heroId: string): string | undefined =>
+    SURVIVORS_CONFIG.find(c => c.id === heroId)?.role;
+
+  // 英雄当前岗位状态文案（由 shelter 指派字段派生）
+  const getHeroStatus = (heroId: string): string => {
+    if (state.shelter.assignedWatererId === heroId) return ' (当前岗位: 浇水)';
+    if (state.shelter.assignedExplorerId === heroId) return ' (当前岗位: 探索)';
+    return ' (空闲)';
+  };
+
+  // 英雄显示名（heroes 状态无 name，从配置读取）
+  const getHeroName = (heroId: string): string =>
+    HEROES_CONFIG[heroId]?.name || SURVIVORS_CONFIG.find(c => c.id === heroId)?.name || heroId;
 
   // 一键浇水操作
   const handleBatchWater = () => {
@@ -244,7 +260,7 @@ const ShelterTab: React.FC = () => {
   // 4. 挂机探索状态与数据计算
   const exp = state.shelter.expedition;
   const currentExplorer = exp.locationId && state.shelter.assignedExplorerId 
-    ? state.survivors[state.shelter.assignedExplorerId] 
+    ? state.heroes[state.shelter.assignedExplorerId] 
     : null;
   const expLocation = exp.locationId 
     ? EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS] 
@@ -269,24 +285,19 @@ const ShelterTab: React.FC = () => {
   // 开始派遣
   const handleStartExpedition = () => {
     if (!selectedExpExplorerId) {
-      showToast('请先指派一名幸存者作为探索员！', 'warning');
+      showToast('请先指派一名英雄作为探索员！', 'warning');
       return;
     }
     const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
     if (!loc) return;
 
-    // 检查角色要求
-    const explorer = state.survivors[selectedExpExplorerId];
+    // 检查英雄是否已获得（heroes 中仅含已获得的英雄，ADR-0013）
+    const explorer = state.heroes[selectedExpExplorerId];
     if (!explorer) {
-      showToast('派遣失败！未找到该幸存者。', 'error');
+      showToast('派遣失败！未找到该英雄。', 'error');
       return;
     }
-    // 检查是否已救援（防止绕过 UI 直接调用）
-    if (explorer.realityLocationId) {
-      showToast(`派遣失败！${explorer.name} 尚未从荒野救回，无法派遣远征。`, 'error');
-      return;
-    }
-    if (loc.requiredRole && explorer.role !== loc.requiredRole) {
+    if (loc.requiredRole && getHeroRole(selectedExpExplorerId) !== loc.requiredRole) {
       const roleLabel = SURVIVORS_CONFIG.find(c => c.role === loc.requiredRole)?.roleLabel || loc.requiredRole;
       showToast(`派遣失败！该地点需要【${roleLabel}】职业。`, 'error');
       return;
@@ -300,8 +311,8 @@ const ShelterTab: React.FC = () => {
 
     const success = startExpedition(selectedExpExplorerId, selectedLocationId);
     if (success) {
-      addLog(`探索员 ${explorer?.name || '幸存者'} 前往 ${loc.name} 开始挂机远征派遣`, 'logistics');
-      showToast(`幸存者 ${explorer?.name} 已带足口粮前往 ${loc.name} 挂机派遣！`, 'success');
+      addLog(`探索员 ${getHeroName(selectedExpExplorerId) || '英雄'} 前往 ${loc.name} 开始挂机远征派遣`, 'logistics');
+      showToast(`英雄 ${getHeroName(selectedExpExplorerId)} 已带足口粮前往 ${loc.name} 挂机派遣！`, 'success');
     } else {
       showToast('派遣失败，请检查人员状态！', 'error');
     }
@@ -591,14 +602,14 @@ const ShelterTab: React.FC = () => {
                 if (val === '') {
                   // 解雇当前浇水工
                   if (state.shelter.assignedWatererId) {
-                    const oldName = state.survivors[state.shelter.assignedWatererId]?.name || '幸存者';
-                    assignSurvivorJob(state.shelter.assignedWatererId, null);
+                    const oldName = getHeroName(state.shelter.assignedWatererId);
+                    assignHeroJob(state.shelter.assignedWatererId, null);
                     addLog(`取消了 ${oldName} 在温室自动浇水岗的操作员指派`, 'logistics');
                     showToast('已取消温室浇水托管。', 'info');
                   }
                 } else {
-                  assignSurvivorJob(val, 'waterer');
-                  const name = state.survivors[val]?.name || '幸存者';
+                  assignHeroJob(val, 'waterer');
+                  const name = getHeroName(val);
                   addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
                   showToast(`指派 ${name} 负责温室浇水！所有作物获得自动灌溉加成。`, 'success');
                 }
@@ -606,16 +617,13 @@ const ShelterTab: React.FC = () => {
               className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-300 p-1.5 rounded-xl outline-none focus:border-emerald-500/50"
             >
               <option value="">-- 未指派操作员 --</option>
-              {survivorsList.map(s => {
-                const isRecommended = s.id === 'mei';
-                const statusStr = s.assignedJobId 
-                  ? s.assignedJobId === 'waterer' 
-                    ? ' (当前岗位)' 
-                    : ` (忙碌于: ${s.assignedJobId})` 
-                  : ' (空闲)';
+              {heroesList.map(s => {
+                const isRecommended = s === 'mei';
+                const statusStr = getHeroStatus(s);
+                const roleLabel = SURVIVORS_CONFIG.find(c => c.id === s)?.roleLabel || '';
                 return (
-                  <option key={s.id} value={s.id}>
-                    {SURVIVORS_CONFIG.find(c => c.id === s.id)?.name || s.name} ({SURVIVORS_CONFIG.find(c => c.id === s.id)?.roleLabel || s.role})
+                  <option key={s} value={s}>
+                    {getHeroName(s)}{roleLabel ? ` (${roleLabel})` : ''}
                     {isRecommended ? ' [优先推荐]' : ''} {statusStr}
                   </option>
                 );
@@ -623,11 +631,11 @@ const ShelterTab: React.FC = () => {
             </select>
 
             {/* Mei 优先指派一键快捷键 */}
-            {meiSurvivor && state.shelter.assignedWatererId !== 'mei' && (
+            {meiHero && state.shelter.assignedWatererId !== 'mei' && (
               <button
                 onClick={() => {
-                  assignSurvivorJob('mei', 'waterer');
-                  addLog(`指派 ${meiSurvivor.name} 负责温室自动浇水`, 'logistics');
+                  assignHeroJob('mei', 'waterer');
+                  addLog(`指派 ${getHeroName('mei')} 负责温室自动浇水`, 'logistics');
                   showToast('阿梅 (Mei) 已快速就位自动浇水岗位！', 'success');
                 }}
                 className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
@@ -638,8 +646,8 @@ const ShelterTab: React.FC = () => {
           </div>
 
           <p className="text-[10px] text-zinc-500 leading-relaxed">
-            <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> <span className="text-zinc-400">托管效应：</span>指派任意幸存者在岗，温室插槽将自动维持浇水状态（生长速度翻倍），离线也生效。
-            {meiSurvivor ? (
+            <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> <span className="text-zinc-400">托管效应：</span>指派任意英雄在岗，温室插槽将自动维持浇水状态（生长速度翻倍），离线也生效。
+            {meiHero ? (
               <span className="text-emerald-500/90 font-medium"> 农学家【阿梅】是灌溉的绝佳人选！</span>
             ) : (
               <span className="text-zinc-500">（可在探索中救援阿梅以获得更好支持）</span>
@@ -722,8 +730,8 @@ const ShelterTab: React.FC = () => {
                     {expLocation.name}
                   </h3>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
-                    带队幸存者: <strong className="text-zinc-200 font-bold">{currentExplorer.name}</strong> 
-                    <span className="text-zinc-500 ml-1">[{SURVIVORS_CONFIG.find(c => c.id === currentExplorer.id)?.roleLabel || currentExplorer.role}]</span>
+                    带队英雄: <strong className="text-zinc-200 font-bold">{getHeroName(state.shelter.assignedExplorerId || '')}</strong> 
+                    <span className="text-zinc-500 ml-1">[{SURVIVORS_CONFIG.find(c => c.id === state.shelter.assignedExplorerId)?.roleLabel || getHeroRole(state.shelter.assignedExplorerId || '') || ''}]</span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -776,7 +784,7 @@ const ShelterTab: React.FC = () => {
             {/* 召回操作 */}
             <button
               onClick={() => {
-                const explorerName = currentExplorer?.name || '探索员';
+                const explorerName = getHeroName(state.shelter.assignedExplorerId || '');
                 const locName = expLocation?.name || '未知区域';
                 if (stopExpedition()) {
                   addLog(`远征探索员 ${explorerName} 已从 ${locName} 安全召回`, 'logistics');
@@ -794,7 +802,7 @@ const ShelterTab: React.FC = () => {
         ) : (
           /* 未派遣状态 - 允许派遣配置 */
           <div className="space-y-4">
-            {/* 步骤1：指派探险幸存者 */}
+            {/* 步骤1：指派远征英雄 */}
             <div className="space-y-1.5">
               <label className="text-[10px] text-zinc-400 font-bold block">1. 指派远征探索员：</label>
               <select
@@ -802,20 +810,19 @@ const ShelterTab: React.FC = () => {
                 onChange={(e) => setSelectedExpExplorerId(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-2 rounded-xl outline-none text-xs"
               >
-                <option value="">-- 选择派遣的幸存者 --</option>
-                {survivorsList.map(s => {
-                  const statusStr = s.assignedJobId 
-                    ? ` (当前忙于: ${s.assignedJobId})` 
-                    : ' (空闲在避难所)';
+                <option value="">-- 选择派遣的英雄 --</option>
+                {heroesList.map(s => {
+                  const statusStr = getHeroStatus(s);
+                  const cfg = SURVIVORS_CONFIG.find(c => c.id === s);
                   return (
-                    <option key={s.id} value={s.id}>
-                      {SURVIVORS_CONFIG.find(c => c.id === s.id)?.name || s.name} ({s.role === 'scout' ? `${SURVIVORS_CONFIG.find(c => c.id === s.id)?.roleLabel || '侦察兵'} [推荐]` : SURVIVORS_CONFIG.find(c => c.id === s.id)?.roleLabel || s.role}) {statusStr}
+                    <option key={s} value={s}>
+                      {getHeroName(s)} ({s === 'zero' || cfg?.role === 'scout' ? `${cfg?.roleLabel || '侦察兵'} [推荐]` : cfg?.roleLabel || '无职业'}) {statusStr}
                     </option>
                   );
                 })}
               </select>
               <p className="text-[9px] text-zinc-500">
-                <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> 部分地点需要特定职业的幸存者才能派遣（如侦察兵、工程师、卫兵）。
+                <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> 部分地点需要特定职业的英雄才能派遣（如侦察兵、工程师、卫兵）。
               </p>
             </div>
 
@@ -825,10 +832,10 @@ const ShelterTab: React.FC = () => {
               <div className="grid grid-cols-1 gap-2.5">
                 {Object.entries(EXPEDITION_LOCATIONS).map(([key, loc]) => {
                   const isSelected = selectedLocationId === key;
-                  const explorer = selectedExpExplorerId ? state.survivors[selectedExpExplorerId] : null;
+                  const explorer = selectedExpExplorerId ? state.heroes[selectedExpExplorerId] : null;
                   
                   // 职业要求校验
-                  const roleUnmatch = loc.requiredRole && explorer && explorer.role !== loc.requiredRole;
+                  const roleUnmatch = loc.requiredRole && explorer && getHeroRole(selectedExpExplorerId) !== loc.requiredRole;
                   
                   return (
                     <div
@@ -893,8 +900,8 @@ const ShelterTab: React.FC = () => {
             {/* 开始派遣按钮 */}
             {(() => {
               const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
-              const explorer = selectedExpExplorerId ? state.survivors[selectedExpExplorerId] : null;
-              const roleUnmatch = loc?.requiredRole && explorer && explorer.role !== loc.requiredRole;
+              const explorer = selectedExpExplorerId ? state.heroes[selectedExpExplorerId] : null;
+              const roleUnmatch = loc?.requiredRole && explorer && getHeroRole(selectedExpExplorerId) !== loc.requiredRole;
               const rationShortage = getInvQty('ration') < 1;
               const isDisabled = !selectedExpExplorerId || roleUnmatch || rationShortage;
 

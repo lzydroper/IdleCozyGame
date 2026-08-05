@@ -112,7 +112,7 @@ const DreamscapeTab: React.FC = () => {
   }, [exploration.inDreamExploration, exploration.dreamEventId]);
 
   const handleMakeChoice = (choice: DreamChoice) => {
-    let showSurvivorUnlockedAlert: { id: string; name: string; location: string } | null = null;
+    let showHeroUnlockedAlert: { id: string; name: string; location: string } | null = null;
 
     setState(prev => {
       const newPlayer = { ...prev.player };
@@ -128,26 +128,21 @@ const DreamscapeTab: React.FC = () => {
         newExploration.dreamPollution = Math.min(100, newExploration.dreamPollution + choice.results.stats.pollution);
       }
 
-      // 3. 处理幸存者共鸣
-      const newSurvivors = { ...prev.survivors };
-      const newResonance = { ...newExploration.survivorResonance };
-      
-      if (choice.results.stats?.resonance && choice.results.targetSurvivorId) {
-        const survivorId = choice.results.targetSurvivorId;
-        const currentRes = (newResonance[survivorId] || 0) + choice.results.stats.resonance;
-        newResonance[survivorId] = Math.min(100, currentRes);
+      // 3. 处理英雄共鸣（ADR-0013：共鸣进度与坐标锁定存入 rescueProgress，救援成功后才写入 heroes）
+      const newRescueProgress = { ...(newExploration.rescueProgress || {}) };
 
-        const config = SURVIVORS_CONFIG.find(s => s.id === survivorId);
-        if (currentRes >= 100 && !prev.survivors[survivorId] && config) {
-          showSurvivorUnlockedAlert = { id: survivorId, name: config.name, location: config.realityLocationId };
-          // 锁定现实坐标
-          newSurvivors[survivorId] = {
-            id: survivorId,
-            name: config.name,
-            role: config.role,
-            isAssigned: false,
-            realityLocationId: config.realityLocationId
-          };
+      if (choice.results.stats?.resonance && choice.results.targetHeroId) {
+        const heroId = choice.results.targetHeroId;
+        const current = newRescueProgress[heroId] || { resonance: 0 };
+        const newResonance = Math.min(100, (current.resonance || 0) + choice.results.stats.resonance);
+
+        const config = SURVIVORS_CONFIG.find(s => s.id === heroId);
+        if (newResonance >= 100 && !current.locationId && config) {
+          showHeroUnlockedAlert = { id: heroId, name: config.name, location: config.realityLocationId };
+          // 共鸣满：锁定现实坐标（待救援）
+          newRescueProgress[heroId] = { resonance: 100, locationId: config.realityLocationId };
+        } else {
+          newRescueProgress[heroId] = { resonance: newResonance };
         }
       }
 
@@ -176,13 +171,12 @@ const DreamscapeTab: React.FC = () => {
         ...prev,
         player: newPlayer,
         inventory: newInventory,
-        survivors: newSurvivors,
         activeAlert: isPollutionFull
           ? { type: "dream_leak", hp: NIGHTMARE_CONFIG.dreamLeakDamage }
           : prev.activeAlert,
         exploration: {
           ...newExploration,
-          survivorResonance: newResonance,
+          rescueProgress: newRescueProgress,
           dreamSteps: forceWakeUp ? 0 : newExploration.dreamSteps + 1,
           dreamBag: forceWakeUp ? {} : newDreamBag,
           inDreamExploration: !forceWakeUp,
@@ -204,11 +198,11 @@ const DreamscapeTab: React.FC = () => {
       setLogMessages(prev => [...prev, choice.results.logText]);
       addLog(choice.results.logText, 'dream');
       
-      if (showSurvivorUnlockedAlert) {
-        const { name, location } = showSurvivorUnlockedAlert;
+      if (showHeroUnlockedAlert) {
+        const { name, location } = showHeroUnlockedAlert;
         const loc = EXPEDITION_LOCATIONS[location];
         const locationName = loc?.shortName || loc?.displayName || location;
-        const msg = `脑波连结成功！已完美锁定幸存同伴【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
+        const msg = `脑波连结成功！已完美锁定英雄【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
         setLogMessages(prev => [...prev, msg]);
         addLog(msg, 'dream');
       }
@@ -309,7 +303,7 @@ const DreamscapeTab: React.FC = () => {
           <Brain className="w-16 h-16 text-purple-400 mb-4 animate-pulse" />
           <h2 className="text-xl font-bold text-white mb-2">同步潜入心灵梦境</h2>
           <p className="text-xs text-zinc-400 max-w-[280px] mb-6 leading-relaxed">
-            潜入梦境将扣除 <span className="text-purple-400 font-bold">10 点精神理智</span>。在集体梦境中，您可以与流失在外的幸存者锁定方位共鸣，或开采精神碎屑！
+            潜入梦境将扣除 <span className="text-purple-400 font-bold">10 点精神理智</span>。在集体梦境中，您可以与流失在外的英雄锁定方位共鸣，或开采精神碎屑！
           </p>
 
           {state.exploration.dreamPollution > 0 && (
@@ -477,14 +471,15 @@ const DreamscapeTab: React.FC = () => {
                   </div>
                   <div className="max-h-[48px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
                     {SURVIVORS_CONFIG.map(config => {
-                      const res = exploration.survivorResonance?.[config.id] || 0;
+                      const prog = exploration.rescueProgress?.[config.id];
+                      const res = prog?.resonance || 0;
                       if (res <= 0 || res >= 100) return null;
                       return (
                         <div key={config.id} className="flex flex-col animate-fade-in">
                           <div className="flex justify-between items-center text-emerald-400 font-bold text-[8.5px] mb-0.5">
                             <span className="flex items-center gap-0.5">
                               <Sparkles className="w-2 h-2 text-emerald-400" />
-                              同伴【{config.name}】共鸣: {res}%
+                              英雄【{config.name}】共鸣: {res}%
                             </span>
                           </div>
                           <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden">
@@ -496,8 +491,8 @@ const DreamscapeTab: React.FC = () => {
                         </div>
                       );
                     })}
-                    {Object.values(exploration.survivorResonance || {}).filter(res => (res as number) > 0 && (res as number) < 100).length === 0 && (
-                      <span className="text-[8px] text-zinc-600 italic block mt-1 text-center">无正在共鸣的同伴</span>
+                    {Object.values(exploration.rescueProgress || {}).filter(p => (p?.resonance || 0) > 0 && (p?.resonance || 0) < 100).length === 0 && (
+                      <span className="text-[8px] text-zinc-600 italic block mt-1 text-center">无正在共鸣的英雄</span>
                     )}
                   </div>
                 </div>

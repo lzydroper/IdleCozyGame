@@ -48,10 +48,10 @@ describe('WildernessTab Component', () => {
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      survivors: {
-        catherine: { id: 'catherine', name: '凯瑟琳', role: 'farmer', isAssigned: false, realityLocationId: 'bio_lab' }
-      },
       exploration: {
+        rescueProgress: {
+          catherine: { resonance: 100, locationId: 'bio_lab' }
+        },
         inRealityExploration: true,
         realitySteps: 4,
         realityLocationId: 'bio_lab',
@@ -75,10 +75,10 @@ describe('WildernessTab Component', () => {
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      survivors: {
-        buster: { id: 'buster', name: '巴斯特', role: 'scout', isAssigned: false, realityLocationId: 'collapsed_subway' }
-      },
       exploration: {
+        rescueProgress: {
+          buster: { resonance: 100, locationId: 'collapsed_subway' }
+        },
         inRealityExploration: true,
         realitySteps: 4,
         realityLocationId: 'collapsed_subway',
@@ -102,10 +102,10 @@ describe('WildernessTab Component', () => {
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      survivors: {
-        nova: { id: 'nova', name: '诺娃', role: 'engineer', isAssigned: false, realityLocationId: 'military_depot' }
-      },
       exploration: {
+        rescueProgress: {
+          nova: { resonance: 100, locationId: 'military_depot' }
+        },
         inRealityExploration: true,
         realitySteps: 4,
         realityLocationId: 'military_depot',
@@ -129,11 +129,13 @@ describe('WildernessTab Component', () => {
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: { defensive_turret: 1 },
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      survivors: {
-        roy: { id: 'roy', name: '罗伊', role: 'engineer', isAssigned: false, realityLocationId: 'radar_station' },
-        catherine: { id: 'catherine', name: '凯瑟琳', role: 'farmer', isAssigned: false }
+      heroes: {
+        catherine: createInitialHero('catherine')
       },
       exploration: {
+        rescueProgress: {
+          roy: { resonance: 100, locationId: 'radar_station' }
+        },
         inRealityExploration: true,
         realitySteps: 4,
         realityLocationId: 'radar_station',
@@ -175,8 +177,8 @@ describe('WildernessTab Component', () => {
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      survivors: {
-        buster: { id: 'buster', name: '巴斯特', role: 'scout', isAssigned: false }
+      heroes: {
+        buster: createInitialHero('buster')
       },
       exploration: {
         inRealityExploration: true,

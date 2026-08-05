@@ -58,7 +58,7 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocationsMap = {
     requiredRole: null, scavengeInterval: 0, lootTable: []
   },
 
-  // === 新幸存者救援地点 ===
+  // === 英雄救援地点（ADR-0013：幸存者已降级为英雄的剧情别称） ===
   poison_factory: {
     id: 'poison_factory', name: '废弃制药厂', displayName: '废弃制药厂', shortName: '制药厂',
     requiredRole: 'engineer', scavengeInterval: 420,

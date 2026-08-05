@@ -72,7 +72,7 @@ export const applySupplyItemUpdate = (state: GameState, itemId: string): UpdateR
   const newPlayer = { ...state.player };
   const newExploration = { ...state.exploration };
 
-  const isNovaPresent = !!state.survivors.nova;
+  const isNovaPresent = !!state.heroes.nova;
   const currentMaxEnergy = isNovaPresent ? 130 : 100;
   const STAT_MAX: Record<string, number> = { food: 100, energy: currentMaxEnergy, sanity: 100 };
 

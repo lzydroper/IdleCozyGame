@@ -81,7 +81,7 @@ export const LUCIDE_ICON_MAP: Record<string, LucideIcon> = {
   starcore_trinket: Gem,
   energy_cell: BatteryCharging,
 
-  // === 英雄/幸存者（heroes.ts / survivors.ts 全量） ===
+  // === 英雄/幸存者（heroes.ts 战斗配置 / survivors.ts 剧情档案，全量） ===
   nova: Rocket,
   buster: HandMetal,
   soldier: Shield,

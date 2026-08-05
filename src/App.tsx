@@ -882,7 +882,7 @@ const App: React.FC = () => {
                 )}
                 {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 && state.lastOfflineReport.recoveredStamina === 0 && !state.lastOfflineReport.idleCombat ? (
                   <div className="col-span-2 text-center text-zinc-600 py-2 text-[10px]">
-                    本次无资源挂机产出 (升级设施或指派幸存者以启动自动产出)
+                    本次无资源挂机产出 (升级设施或指派英雄以启动自动产出)
                   </div>
                 ) : (
                   Object.entries(state.lastOfflineReport.recoveredItems).map(([id, qty]) => {

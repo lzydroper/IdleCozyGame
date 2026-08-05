@@ -8,6 +8,7 @@ import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { COMBAT_ZONES } from '../data/combatZones';
 import { ITEMS_CONFIG } from '../data/items';
+import { HEROES_CONFIG } from '../data/heroes';
 import { recoverStamina, settleIdleUpdate } from './combat';
 
 // 纯函数：计算离线或Tick生长时间扣减
@@ -169,7 +170,6 @@ export function calculateDetailedOfflineProgress(
   if (exp.locationId && state.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
-      const explorer = state.survivors[state.shelter.assignedExplorerId];
       const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval));
       const scavengeTicks = Math.floor(actualSeconds / actualInterval);
 
@@ -196,7 +196,7 @@ export function calculateDetailedOfflineProgress(
       });
 
       if (Object.keys(scavengedCount).length > 0) {
-        reportLogs.push(`幸存者 ${explorer?.name || '探索员'} 挂机探索 ${loc.name} 结束，带回了物资。`);
+        reportLogs.push(`英雄 ${HEROES_CONFIG[state.shelter.assignedExplorerId]?.name || '探索员'} 挂机探索 ${loc.name} 结束，带回了物资。`);
       }
     }
   }

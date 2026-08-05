@@ -32,16 +32,6 @@ export interface GreenhouseSlot {
   isWatered: boolean;       // 浇水状态（生长速度翻倍）
 }
 
-export interface Survivor {
-  id: string;
-  name: string;
-  role: "farmer" | "engineer" | "scout" | "guard" | "chemist" | "scavenger";
-  isAssigned: boolean;      // 是否已指派工作
-  assignedSlotId?: number;  // 指派的温室槽位或工坊槽位
-  realityLocationId?: string; // 该幸存者在现实中的救援地点 ID
-  assignedJobId?: string | null;
-}
-
 // === 英雄（Hero）系统：Melvor 式改造新增 ===
 
 // 英雄职阶：守护者（坦克）/ 进攻者（输出）/ 协奏者（辅助）
@@ -67,6 +57,15 @@ export interface HeroState {
 // 召唤进度状态（100 抽保底计数）
 export interface SummonState {
   pityCount: number;        // 连续未获得未拥有英雄的累计次数（100 抽硬保底 + 软保底共用）
+}
+
+// 救援进度（ADR-0013）：英雄免费获取途径——梦境共鸣 → 现实救援
+// locationId 存在 ⇔ 共鸣满 100% 且现实坐标已锁定，可发起救援
+// 救援成功后条目移除，英雄写入 GameState.heroes
+// (旧字段 survivorResonance 已废弃，alpha 不迁移存档)
+export interface RescueProgress {
+  resonance: number;   // 共鸣度 0-100
+  locationId?: string; // 已锁定的现实救援地点 ID
 }
 
 // === 装备系统（ticket 10）：3 槽装备 + 系列套装 + 强化 + 神话锻造 ===
@@ -154,7 +153,6 @@ export interface GameState {
     slots: GreenhouseSlot[];
     unlockedSlotsCount: number;
   };
-  survivors: Record<string, Survivor>;
   heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
   equipment: Record<string, HeroEquipment>; // 英雄装备栏：hero id -> 三槽装备（ticket 10）
   soulEchoes: number;                  // 灵魂残响：英雄召唤货币（战斗掉落/日常/特殊途径获取）
@@ -180,7 +178,7 @@ export interface GameState {
     dreamBag: Record<string, number>;  // 梦境中获得的碎片/线索
     dreamEventId?: string | null;      // 当前激活的梦境事件ID
     capsulesCharge: Record<string, number>; // 梦胶囊ID -> 剩余可用次数
-    survivorResonance: Record<string, number>; // 幸存者ID -> 共鸣度
+    rescueProgress: Record<string, RescueProgress>; // 英雄ID -> 救援进度（共鸣+坐标锁定，ADR-0013）
     dreamLockdownUntil: number | null; // 梦境封锁截止时间戳（泄露防御失败触发，ticket 14）
   };
   discoveredBlueprints: string[];
@@ -229,8 +227,8 @@ export interface ShelterStats {
   facilities: Record<FacilityType, AutomationFacility[]>; // 每种设施可扩建多台并行（ticket 13）
   
   // 岗位分配
-  assignedWatererId: string | null;   // 指派自动浇水的幸存者ID
-  assignedExplorerId: string | null;  // 指派挂机探索的幸存者ID
+  assignedWatererId: string | null;   // 指派自动浇水的英雄ID
+  assignedExplorerId: string | null;  // 指派挂机探索的英雄ID
   
   // 挂机派遣状态
   expedition: {

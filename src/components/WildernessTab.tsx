@@ -15,6 +15,8 @@ import { GAME_CONSTANTS } from '../data/gameConstants';
 import { ALL_COMBAT_ZONES, COMBAT_ZONES } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
+import { SURVIVORS_CONFIG } from '../data/survivors';
+import { createInitialHero } from '../data/initialState';
 import { isZoneUnlocked } from '../state/combat';
 import { getActiveBonds } from '../state/bonds';
 import { formatBonus } from '../data/bonds';
@@ -209,17 +211,16 @@ const WildernessTab: React.FC = () => {
         });
       }
 
-      // 3. 处理幸存者成功救援
-      const newSurvivors = { ...prev.survivors };
+      // 3. 处理英雄成功救援（ADR-0013：救援成功即获得英雄，写入 heroes 并移除救援进度）
+      const newHeroes = { ...prev.heroes };
+      const newRescueProgress = { ...(prev.exploration.rescueProgress || {}) };
       if (currentEvent && currentEvent.id.startsWith("rescue_")) {
-        const survivorId = currentEvent.id.replace("rescue_", "");
-        if (newSurvivors[survivorId]) {
-          newSurvivors[survivorId] = {
-            ...newSurvivors[survivorId],
-            realityLocationId: undefined // 清除救援地点，代表营救完成！
-          };
+        const heroId = currentEvent.id.replace("rescue_", "");
+        if (newRescueProgress[heroId]?.locationId) {
+          newHeroes[heroId] = createInitialHero(heroId); // 正式加入避难所
+          delete newRescueProgress[heroId];              // 移除救援进度条目
           isRescueComplete = true;
-          rescuedName = newSurvivors[survivorId].name;
+          rescuedName = HEROES_CONFIG[heroId]?.name || SURVIVORS_CONFIG.find(s => s.id === heroId)?.name || heroId;
         }
       }
 
@@ -233,9 +234,10 @@ const WildernessTab: React.FC = () => {
           ...prev,
           player: newPlayer,
           inventory: newInventory,
-          survivors: newSurvivors,
+          heroes: newHeroes,
           exploration: {
             ...prev.exploration,
+            rescueProgress: newRescueProgress,
             inRealityExploration: false,
             realitySteps: 0,
             realityLocationId: null,
@@ -264,16 +266,18 @@ const WildernessTab: React.FC = () => {
     addLog(choice.results.logText, 'event');
 
     if (isRescueComplete) {
-      const congr = `营救成功！同伴【${rescuedName}】已安全护送回避难所！`;
-      showToast(`成功营救同伴 ${rescuedName}！`, "success");
+      const congr = `营救成功！英雄【${rescuedName}】已安全护送回避难所！`;
+      showToast(`成功营救英雄 ${rescuedName}！`, "success");
       addLog(congr, 'system');
     }
   };
 
   
 
-  // 整理出所有待营救同伴
-  const rescueTargets = Object.values(state.survivors).filter(s => s.realityLocationId);
+  // 整理出所有待营救英雄（ADR-0013：rescueProgress 中坐标已锁定的目标）
+  const rescueTargets = Object.entries(state.exploration.rescueProgress || {})
+    .filter(([, p]) => !!p.locationId)
+    .map(([heroId, p]) => ({ heroId, locationId: p.locationId as string }));
 
   return (
     <div className="w-full pb-20">
@@ -353,18 +357,19 @@ const WildernessTab: React.FC = () => {
 
             {/* Rescue explorations */}
             {rescueTargets.map(target => {
-              const loc = EXPEDITION_LOCATIONS[target.realityLocationId || ''];
+              const loc = EXPEDITION_LOCATIONS[target.locationId];
               const locationName = loc?.displayName || '未知废墟';
+              const targetName = SURVIVORS_CONFIG.find(s => s.id === target.heroId)?.name || target.heroId;
 
               return (
                 <div
-                  key={target.id}
-                  onClick={() => handleStartExploration(target.realityLocationId || null)}
+                  key={target.heroId}
+                  onClick={() => handleStartExploration(target.locationId)}
                   className="p-4 rounded-3xl bg-zinc-950/70 border border-amber-500/20 hover:border-amber-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group animate-pulse"
                 >
                   <div>
                     <h4 className="text-sm font-black text-amber-400 flex items-center gap-1.5">
-                      救援任务：寻找 {target.name}
+                      救援任务：寻找 {targetName}
                     </h4>
                     <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
                       目的地：{locationName}。深处极其凶险，需做好战斗准备！(饱食 -15, 魔能 -15)

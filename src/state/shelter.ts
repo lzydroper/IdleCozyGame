@@ -1,52 +1,44 @@
 import type { GameState } from '../types/game';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { SURVIVORS_CONFIG } from '../data/survivors';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
-// 指派/取消幸存者岗位（自动浇水、挂机探索）——产线设施纯自动、不再派驻人员（ticket 13：设施见 state/facility.ts）
-export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jobId: 'waterer' | 'explorer' | null): UpdateResult<boolean> => {
-  if (!survivorId || survivorId.trim() === '') return NO_OP(state);
-  const survivor = state.survivors[survivorId];
-  if (!survivor) return NO_OP(state);
+// 英雄的废土职业档案（ADR-0013）：SURVIVORS_CONFIG 已降级为英雄的剧情档案，
+// 其 role/roleLabel 仅用于远征派遣的职业判定与职位展示
+const getHeroRole = (heroId: string): string | undefined =>
+  SURVIVORS_CONFIG.find(c => c.id === heroId)?.role;
 
-  const updatedSurvivors = { ...state.survivors };
+// 指派/取消英雄岗位（自动浇水、挂机探索）——产线设施纯自动、不再派驻人员（ticket 13：设施见 state/facility.ts）
+// 英雄的"协助中"状态由 shelter.assignedWatererId / assignedExplorerId 表达（ADR-0013 单轨）
+export const assignHeroJobUpdate = (state: GameState, heroId: string, jobId: 'waterer' | 'explorer' | null): UpdateResult<boolean> => {
+  if (!heroId || heroId.trim() === '') return NO_OP(state);
+  if (!state.heroes[heroId]) return NO_OP(state);
+
   const updatedShelter = {
     ...state.shelter,
     facilities: { ...state.shelter.facilities }
   };
 
   if (!jobId) {
-    if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
-    if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
-    if (updatedSurvivors[survivorId]) {
-      updatedSurvivors[survivorId] = {
-        ...updatedSurvivors[survivorId],
-        isAssigned: false,
-        assignedJobId: null
-      };
-    }
+    if (updatedShelter.assignedWatererId === heroId) updatedShelter.assignedWatererId = null;
+    if (updatedShelter.assignedExplorerId === heroId) updatedShelter.assignedExplorerId = null;
     return {
-      state: { ...state, survivors: updatedSurvivors, shelter: updatedShelter },
+      state: { ...state, shelter: updatedShelter },
       result: true
     };
   }
 
-  let prevOccupantId: string | null = null;
-  if (jobId === 'waterer') {
-    prevOccupantId = updatedShelter.assignedWatererId;
-  } else if (jobId === 'explorer') {
-    prevOccupantId = updatedShelter.assignedExplorerId;
-  } else {
-    return NO_OP(state);
-  }
+  if (jobId !== 'waterer' && jobId !== 'explorer') return NO_OP(state);
 
-  if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
-  if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
+  // 旧占位者被下方赋值自然替换；先清空 heroId 在两岗位的占用，防止同英雄兼任
+  if (updatedShelter.assignedWatererId === heroId) updatedShelter.assignedWatererId = null;
+  if (updatedShelter.assignedExplorerId === heroId) updatedShelter.assignedExplorerId = null;
 
   if (jobId === 'waterer') {
-    updatedShelter.assignedWatererId = survivorId;
+    updatedShelter.assignedWatererId = heroId;
   } else if (jobId === 'explorer') {
-    updatedShelter.assignedExplorerId = survivorId;
+    updatedShelter.assignedExplorerId = heroId;
     const now = Date.now();
     updatedShelter.expedition = {
       ...updatedShelter.expedition,
@@ -55,62 +47,30 @@ export const assignSurvivorJobUpdate = (state: GameState, survivorId: string, jo
     };
   }
 
-  if (prevOccupantId && prevOccupantId !== survivorId && updatedSurvivors[prevOccupantId]) {
-    updatedSurvivors[prevOccupantId] = {
-      ...updatedSurvivors[prevOccupantId],
-      isAssigned: false,
-      assignedJobId: null
-    };
-  }
-
-  if (updatedSurvivors[survivorId]) {
-    updatedSurvivors[survivorId] = {
-      ...updatedSurvivors[survivorId],
-      isAssigned: true,
-      assignedJobId: jobId
-    };
-  }
-
   return {
-    state: { ...state, survivors: updatedSurvivors, shelter: updatedShelter },
+    state: { ...state, shelter: updatedShelter },
     result: true
   };
 };
 
 // 设置设施加工配方（切换时退还前一个配方的在制原料）
-// 派遣幸存者挂机探索指定地点
-export const startExpeditionUpdate = (state: GameState, survivorId: string, locationId: string): UpdateResult<boolean> => {
+// 派遣英雄挂机探索指定地点
+export const startExpeditionUpdate = (state: GameState, heroId: string, locationId: string): UpdateResult<boolean> => {
   const loc = EXPEDITION_LOCATIONS[locationId as keyof typeof EXPEDITION_LOCATIONS];
   if (!loc) return NO_OP(state);
 
-  const innerExplorer = state.survivors[survivorId];
-  if (!innerExplorer) return NO_OP(state);
-  if (loc.requiredRole && innerExplorer.role !== loc.requiredRole) return NO_OP(state);
+  if (!state.heroes[heroId]) return NO_OP(state);
+  if (loc.requiredRole && getHeroRole(heroId) !== loc.requiredRole) return NO_OP(state);
 
-  const updatedSurvivors = { ...state.survivors };
   const updatedShelter = {
     ...state.shelter,
     facilities: { ...state.shelter.facilities }
   };
 
-  if (updatedShelter.assignedWatererId === survivorId) updatedShelter.assignedWatererId = null;
-  if (updatedShelter.assignedExplorerId === survivorId) updatedShelter.assignedExplorerId = null;
+  if (updatedShelter.assignedWatererId === heroId) updatedShelter.assignedWatererId = null;
+  if (updatedShelter.assignedExplorerId === heroId) updatedShelter.assignedExplorerId = null;
 
-  const prevOccupantId = updatedShelter.assignedExplorerId;
-  if (prevOccupantId && updatedSurvivors[prevOccupantId]) {
-    updatedSurvivors[prevOccupantId] = {
-      ...updatedSurvivors[prevOccupantId],
-      isAssigned: false,
-      assignedJobId: null
-    };
-  }
-
-  updatedShelter.assignedExplorerId = survivorId;
-  updatedSurvivors[survivorId] = {
-    ...innerExplorer,
-    isAssigned: true,
-    assignedJobId: 'explorer'
-  };
+  updatedShelter.assignedExplorerId = heroId;
 
   const now = Date.now();
   updatedShelter.expedition = {
@@ -120,7 +80,7 @@ export const startExpeditionUpdate = (state: GameState, survivorId: string, loca
   };
 
   return {
-    state: { ...state, survivors: updatedSurvivors, shelter: updatedShelter },
+    state: { ...state, shelter: updatedShelter },
     result: true
   };
 };
@@ -137,20 +97,10 @@ export const stopExpeditionUpdate = (state: GameState): UpdateResult<boolean> =>
       lastScavengeTime: null
     }
   };
-
-  const explorerId = state.shelter.assignedExplorerId;
-  const updatedSurvivors = { ...state.survivors };
-  if (explorerId && updatedSurvivors[explorerId]) {
-    updatedSurvivors[explorerId] = {
-      ...updatedSurvivors[explorerId],
-      isAssigned: false,
-      assignedJobId: null
-    };
-  }
   updatedShelter.assignedExplorerId = null;
 
   return {
-    state: { ...state, shelter: updatedShelter, survivors: updatedSurvivors },
+    state: { ...state, shelter: updatedShelter },
     result: true
   };
 };

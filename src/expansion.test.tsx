@@ -23,7 +23,6 @@ const BASE_SAVE = {
     slots: [],
     unlockedSlotsCount: 4
   },
-  survivors: {},
   exploration: {
     inRealityExploration: false,
     realitySteps: 0,
@@ -37,7 +36,7 @@ const BASE_SAVE = {
       sanity_capsule: 3,
       warp_capsule: 0
     },
-    survivorResonance: {},
+    rescueProgress: {},
     dreamLockdownUntil: null
   },
   discoveredBlueprints: [],

@@ -53,7 +53,6 @@ export const INITIAL_STATE: GameState = {
     ],
     unlockedSlotsCount: 4
   },
-  survivors: {},
   heroes: INITIAL_HEROES,
   equipment: {}, // 英雄装备栏：开局无装备（ticket 10）
   // 召唤经济：新手起始灵魂残响（500 = 5 抽），后续由战斗掉落/日常补充
@@ -90,7 +89,7 @@ export const INITIAL_STATE: GameState = {
       sanity_capsule: 3,
       warp_capsule: 0
     },
-    survivorResonance: {},
+    rescueProgress: {}, // 英雄救援进度（共鸣+坐标锁定，ADR-0013）
     dreamLockdownUntil: null
   },
   discoveredBlueprints: [

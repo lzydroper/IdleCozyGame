@@ -121,7 +121,7 @@ const GameIcon: React.FC<GameIconProps> = ({ id, type, className = 'w-4 h-4', ..
     );
   }
 
-  // 幸存者是 3x3，物品类雪碧图（seeds, materials, supplies）都是 4x4
+  // 英雄立绘（survivors 雪碧图）是 3x3，物品类雪碧图（seeds, materials, supplies）都是 4x4
   const columns = iconConfig.sheet === 'survivors' ? 3 : 4;
   const rowCount = iconConfig.sheet === 'survivors' ? 3 : 4;
 

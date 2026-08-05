@@ -6,6 +6,7 @@ import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
+import { HEROES_CONFIG } from '../data/heroes';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { recoverStamina } from './combat';
@@ -110,7 +111,6 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   if (exp.locationId && prev.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
-      const explorer = prev.survivors[prev.shelter.assignedExplorerId];
       const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval));
 
       const timeDiff = now - (exp.lastScavengeTime || exp.startTime || now);
@@ -137,7 +137,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
             const item = ITEMS_CONFIG[id];
             return `${item?.name || id} ×${q}`;
           }).join(' ');
-          logsToAdd.push({ text: `探索员 ${explorer?.name || '幸存者'} 拾荒带回: ${itemsStr}`, type: 'logistics' as const });
+          logsToAdd.push({ text: `探索员 ${HEROES_CONFIG[prev.shelter.assignedExplorerId]?.name || '英雄'} 拾荒带回: ${itemsStr}`, type: 'logistics' as const });
         }
       }
     }
