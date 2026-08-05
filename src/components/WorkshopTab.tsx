@@ -7,7 +7,7 @@ import GameIcon from './GameIcon';
 import ItemGridItem from './ItemGridItem';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { getDreamLockdownMinutes } from '../state/nightmare';
-import { Hammer, ShieldAlert, Zap } from 'lucide-react';
+import { Hammer, ShieldAlert, Zap, Siren, Skull, Shield, HeartCrack, HeartPulse, Lock } from 'lucide-react';
 
 const getRecipeIconId = (recipe: any) => {
   const rewardKeys = Object.keys(recipe.reward || {});
@@ -91,11 +91,11 @@ const WorkshopTab: React.FC = () => {
     }
 
     if (outcome.victory) {
-      showToast("🛡️ 防御成功！梦魇被击退，获得虚空核心！", "success");
+      showToast("防御成功！梦魇被击退，获得虚空核心！", "success");
     } else if (outcome.partyWiped) {
-      showToast(`💥 防御失败！小队全员重伤，梦境被封锁 ${getDreamLockdownMinutes()} 分钟。`, "error");
+      showToast(`防御失败！小队全员重伤，梦境被封锁 ${getDreamLockdownMinutes()} 分钟。`, "error");
     } else {
-      showToast("⚔️ 梦魇退回阴影深处，可稍后再次迎战。", "info");
+      showToast("梦魇退回阴影深处，可稍后再次迎战。", "info");
     }
   };
 
@@ -127,7 +127,7 @@ const WorkshopTab: React.FC = () => {
         <div className="p-5 rounded-3xl bg-red-950/30 border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-pulse flex flex-col gap-4">
           <div className="text-center">
             <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-2" />
-            <h3 className="text-lg font-black text-red-400">🚨 警告：心灵梦魇入侵！</h3>
+            <h3 className="text-lg font-black text-red-400 flex items-center justify-center gap-1.5"><Siren className="w-5 h-5 text-red-500" /> 警告：心灵梦魇入侵！</h3>
             <p className="text-xs text-zinc-300 mt-2.5 leading-relaxed">
               虚空缝隙已被撕裂！梦魇怪物顺着精神印记降临避难所，温室农田已被污染，植物已**停止生长**！请出战当前小队歼灭怪兽；防御失败将导致全员重伤并封锁梦境入口。
             </p>
@@ -136,7 +136,7 @@ const WorkshopTab: React.FC = () => {
           {/* 怪物血量条 */}
           <div className="p-3 bg-zinc-950 rounded-2xl border border-red-500/20 text-xs">
             <div className="flex justify-between font-bold text-red-400 mb-1">
-              <span>侵入体：{NIGHTMARE_CONFIG.leakName} 👹</span>
+              <span>侵入体：{NIGHTMARE_CONFIG.leakName} <Skull className="w-3.5 h-3.5 inline-block -mt-0.5" /></span>
               <span>HP: {activeAlert.hp}</span>
             </div>
             <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden">
@@ -150,7 +150,7 @@ const WorkshopTab: React.FC = () => {
           {/* 出战小队 */}
           <div className="p-3 bg-zinc-950 rounded-2xl border border-red-500/20 text-xs">
             <div className="flex justify-between font-bold text-zinc-300 mb-1">
-              <span>🛡️ 当前出战小队</span>
+              <span className="flex items-center gap-1"><Shield className="w-3 h-3" /> 当前出战小队</span>
               <span className="text-zinc-500">{state.party.length}/3</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -167,7 +167,7 @@ const WorkshopTab: React.FC = () => {
                         : 'bg-emerald-950/40 border-emerald-700/40 text-emerald-300'
                     }`}
                   >
-                    {hero.wounded ? '💔 重伤' : '💚 可战'} {id}
+                    {hero.wounded ? <><HeartCrack className="w-3 h-3" /> 重伤</> : <><HeartPulse className="w-3 h-3" /> 可战</>} {id}
                   </span>
                 );
               })}
@@ -259,7 +259,7 @@ const WorkshopTab: React.FC = () => {
                       )}
                       {locked && (
                         <span className="text-[9px] text-red-400 font-extrabold bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800/30" title={`需先在背包获得「${blueprintMeta?.name || recipe.blueprintId}」`}>
-                          🔒 未解锁
+                          <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />未解锁
                         </span>
                       )}
                     </h4>
@@ -274,7 +274,7 @@ const WorkshopTab: React.FC = () => {
                   <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{recipe.description}</p>
                   {locked && blueprintMeta && (
                     <p className="text-[9px] text-red-400/80 mt-1 font-bold leading-relaxed">
-                      🔒 需要图纸：{blueprintMeta.name}（旧城废墟 BOSS 掉落）
+                      <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />需要图纸：{blueprintMeta.name}（旧城废墟 BOSS 掉落）
                     </p>
                   )}
                 </div>
@@ -286,7 +286,7 @@ const WorkshopTab: React.FC = () => {
                 </div>
                 {Object.keys(recipe.reward).length > 0 && (
                   <div>
-                    <h5 className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-1">⚡ 产出:</h5>
+                    <h5 className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><Zap className="w-2.5 h-2.5" /> 产出:</h5>
                     <div className="flex flex-wrap gap-1">
                       {Object.entries(recipe.reward).map(([item, qty]) => {
                         const label = ITEMS_CONFIG[item]?.name || item;

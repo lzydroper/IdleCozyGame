@@ -96,7 +96,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       Object.entries(r.completed).forEach(([recipeId, count]) => {
         const recipe = AUTO_RECIPES[recipeId];
         logsToAdd.push({
-          text: `🏭 ${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe?.name || recipeId} 的加工${count > 1 ? ` ×${count}` : ''}。`,
+          text: `${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe?.name || recipeId} 的加工${count > 1 ? ` ×${count}` : ''}。`,
           type: 'logistics'
         });
       });
@@ -135,9 +135,9 @@ export const applyTick = (prev: GameState, now: number): GameState => {
         if (Object.keys(scavengedCount).length > 0) {
           const itemsStr = Object.entries(scavengedCount).map(([id, q]) => {
             const item = ITEMS_CONFIG[id];
-            return `${item?.emoji || ''} ${item?.name || id} ×${q}`;
+            return `${item?.name || id} ×${q}`;
           }).join(' ');
-          logsToAdd.push({ text: `🤠 探索员 ${explorer?.name || '幸存者'} 拾荒带回: ${itemsStr}`, type: 'logistics' as const });
+          logsToAdd.push({ text: `探索员 ${explorer?.name || '幸存者'} 拾荒带回: ${itemsStr}`, type: 'logistics' as const });
         }
       }
     }

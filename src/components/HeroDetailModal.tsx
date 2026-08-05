@@ -33,7 +33,8 @@ import {
   ChevronRight,
   Sliders,
   Flame,
-  Wand2
+  Wand2,
+  Star
 } from 'lucide-react';
 import type { EquipmentSlot } from '../types/game';
 
@@ -159,14 +160,14 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         }
       };
     });
-    showToast(`⬆ 【${config.name}】升级到 Lv.${hero.level + 1}！`, 'success');
+    showToast(`【${config.name}】升级到 Lv.${hero.level + 1}！`, 'success');
   };
 
   // 3. 【升星 / 觉醒】
   const handleStarUp = () => {
     const result = starUpHero(heroId);
     if (result === true) {
-      showToast(`⭐ ${config.name} 升星成功！当前星级：★${hero.star + 1}`, 'success');
+      showToast(`${config.name} 升星成功！当前星级：${hero.star + 1} 星`, 'success');
     } else if (result === 'no_shards') {
       showToast('升星失败：灵魂碎片或共鸣碎片不足！', 'error');
     } else if (result === 'max_star') {
@@ -177,7 +178,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const handleAwaken = () => {
     const result = awakenHero(heroId);
     if (result === true) {
-      showToast(`🌟 觉醒成功！【${awakenedName}】解锁专属技能与觉醒被动！`, 'success');
+      showToast(`觉醒成功！【${awakenedName}】解锁专属技能与觉醒被动！`, 'success');
     } else if (result === 'no_orb') {
       showToast('觉醒失败：需要 1 个【奥术星体】（辐射车间 BOSS 掉落）。', 'error');
     } else if (result === 'not_max_star') {
@@ -252,7 +253,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         className={UI_TOKENS.modalContainerStandard}
       >
-        {/* 顶部 Header: 标题与切换箭头居中 (< 🏅 英雄详情 >) */}
+        {/* 顶部 Header: 标题与切换箭头居中 (< 英雄详情 >) */}
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0 relative">
           <div className="flex-1 flex items-center justify-center gap-2">
             {heroIds.length > 1 && (
@@ -327,7 +328,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   {awakenedName}
                 </span>
                 <span className="text-[9px] text-amber-400 font-bold leading-tight">
-                  Lv.{hero.level} {'★'.repeat(hero.star)}
+                  Lv.{hero.level} {Array.from({ length: hero.star }, (_, i) => (
+              <Star key={i} className="w-3 h-3 inline-block fill-amber-400 text-amber-400" />
+            ))}
                 </span>
 
                 {/* 职阶/阵营 */}
@@ -370,9 +373,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                         后勤驻守特长
                       </div>
                       <div className="text-[7.5px] font-semibold text-zinc-300 leading-tight">
-                        {config.dutyMeta.facilitySpeedMultiplier && `⚡ 生产速度 +${Math.round(config.dutyMeta.facilitySpeedMultiplier * 100)}%`}
-                        {config.dutyMeta.facilityYieldMultiplier && `🌾 额外产出 +${Math.round(config.dutyMeta.facilityYieldMultiplier * 100)}%`}
-                        {config.dutyMeta.facilityCostReduction && `📦 配方消耗 -${Math.round(config.dutyMeta.facilityCostReduction * 100)}%`}
+                        {config.dutyMeta.facilitySpeedMultiplier && `生产速度 +${Math.round(config.dutyMeta.facilitySpeedMultiplier * 100)}%`}
+                        {config.dutyMeta.facilityYieldMultiplier && `额外产出 +${Math.round(config.dutyMeta.facilityYieldMultiplier * 100)}%`}
+                        {config.dutyMeta.facilityCostReduction && `配方消耗 -${Math.round(config.dutyMeta.facilityCostReduction * 100)}%`}
                       </div>
                     </>
                   ) : (
@@ -417,7 +420,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
                   }`}
                 >
-                  ⭐ 升星({shardCost})
+                  <Star className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />升星({shardCost})
                 </button>
               ) : !hero.awakened ? (
                 <button
@@ -429,7 +432,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
                   }`}
                 >
-                  🌟 觉醒
+                  <Sparkles className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />觉醒
                 </button>
               ) : (
                 <button

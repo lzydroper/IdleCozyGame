@@ -62,12 +62,6 @@ export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {
   trinket: '饰品'
 };
 
-export const EQUIPMENT_SLOT_EMOJIS: Record<EquipmentSlot, string> = {
-  weapon: '🗡️',
-  armor: '🛡️',
-  trinket: '💍'
-};
-
 // === 系列套装 ===
 
 export const EQUIPMENT_SETS: Record<string, EquipmentSetConfig> = {

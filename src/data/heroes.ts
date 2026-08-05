@@ -11,7 +11,6 @@ export interface HeroDutyMeta {
 export interface HeroConfig {
   id: string;
   name: string;
-  emoji: string;
   avatar?: string; // 英雄头像图片路径/URL（若无则备选显示首字）
   heroClass: HeroClass;
   faction: HeroFaction;
@@ -50,7 +49,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   nova: {
     id: 'nova',
     name: '诺娃',
-    emoji: '☄️',
+
     heroClass: 'attacker',
     faction: 'mechanical',
     baseHp: 100,
@@ -62,7 +61,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   buster: {
     id: 'buster',
     name: '巴斯特',
-    emoji: '🦾',
+
     heroClass: 'attacker',
     faction: 'astral',
     baseHp: 110,
@@ -74,7 +73,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   soldier: {
     id: 'soldier',
     name: '铁卫',
-    emoji: '🛡️',
+
     heroClass: 'guardian',
     faction: 'spirit',
     baseHp: 160,
@@ -86,7 +85,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   catherine: {
     id: 'catherine',
     name: '凯瑟琳',
-    emoji: '🩺',
+
     heroClass: 'guardian',
     faction: 'nightmare',
     baseHp: 150,
@@ -98,7 +97,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   roy: {
     id: 'roy',
     name: '罗伊',
-    emoji: '🔧',
+
     heroClass: 'conductor',
     faction: 'mechanical',
     baseHp: 115,
@@ -110,7 +109,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   mei: {
     id: 'mei',
     name: '阿梅',
-    emoji: '🌾',
+
     heroClass: 'conductor',
     faction: 'arcane',
     baseHp: 120,
@@ -122,7 +121,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   zero: {
     id: 'zero',
     name: '赛罗',
-    emoji: '🏃',
+
     heroClass: 'conductor',
     faction: 'soulseal',
     baseHp: 110,
@@ -134,7 +133,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   healer: {
     id: 'healer',
     name: '艾拉',
-    emoji: '⚗️',
+
     heroClass: 'conductor',
     faction: 'arcane',
     baseHp: 115,
@@ -146,7 +145,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
   apprentice: {
     id: 'apprentice',
     name: '小米',
-    emoji: '🔧',
+
     heroClass: 'conductor',
     faction: 'astral',
     baseHp: 108,

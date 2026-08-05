@@ -1,8 +1,10 @@
 import React from 'react';
+import { HelpCircle } from 'lucide-react';
+import { LUCIDE_ICON_MAP, ENEMY_ICON_MAP, ZONE_ICON_MAP } from './iconMaps';
 
 export interface GameIconProps extends React.HTMLAttributes<HTMLDivElement> {
   id: string;
-  type: 'item' | 'survivor';
+  type: 'item' | 'survivor' | 'enemy' | 'zone';
 }
 
 type SheetType = 'seeds' | 'materials' | 'supplies' | 'survivors';
@@ -12,6 +14,7 @@ interface IconConfig {
   index: number;
 }
 
+// 雪碧图配置（最终目标是全 sprite 化）：命中则渲染 PNG 精灵，未命中走 Lucide 待补标记
 const ICON_CONFIG: Record<string, IconConfig> = {
   // survivors (3x3)
   roy: { sheet: 'survivors', index: 0 },
@@ -82,16 +85,38 @@ const ICON_CONFIG: Record<string, IconConfig> = {
 };
 
 const GameIcon: React.FC<GameIconProps> = ({ id, type, className = 'w-4 h-4', ...rest }) => {
+  // 敌人/区域：无雪碧图，直接渲染 Lucide 映射
+  if (type === 'enemy' || type === 'zone') {
+    const Icon = (type === 'enemy' ? ENEMY_ICON_MAP : ZONE_ICON_MAP)[id] || HelpCircle;
+    return (
+      <div
+        className={`inline-flex items-center justify-center select-none shrink-0 ${className}`}
+        title={id}
+        {...rest}
+      >
+        <Icon className="w-[72%] h-[72%]" />
+      </div>
+    );
+  }
+
   const iconConfig = ICON_CONFIG[id];
 
   if (!iconConfig) {
-    console.error(`[GameIcon] Missing icon config for ID: "${id}" (type: "${type}")`);
+    // 雪碧图缺失：以 Lucide 映射 + 醒目「待补 sprite」标记表露，方便后续补充（最终目标是全 sprite 化）
+    const Icon = LUCIDE_ICON_MAP[id] || HelpCircle;
+    // 常态回退（Lucide 映射存在）用 debug 级别，避免高频渲染刷屏；仅完全无映射时告警
+    if (!LUCIDE_ICON_MAP[id]) {
+      console.warn(`[GameIcon] 缺少 sprite 与 Lucide 映射: "${id}"（type: "${type}"）`);
+    } else {
+      console.debug(`[GameIcon] 缺少 sprite 配置: "${id}"（type: "${type}"），以 Lucide 待补标记渲染`);
+    }
     return (
       <div
-        className={`inline-flex items-center justify-center bg-rose-950 border border-rose-500 text-rose-400 font-bold select-none text-[10px] rounded shrink-0 ${className}`}
-        title={`Missing: ${id}`}
+        className={`inline-flex items-center justify-center bg-amber-950/30 border border-dashed border-amber-500/60 text-amber-300 rounded select-none shrink-0 ${className}`}
+        title={`[sprite 待补] ${id}`}
+        {...rest}
       >
-        ⚠️
+        <Icon className="w-[72%] h-[72%]" />
       </div>
     );
   }

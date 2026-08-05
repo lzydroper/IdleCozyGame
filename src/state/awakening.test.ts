@@ -143,8 +143,8 @@ describe('觉醒', () => {
 describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => {
   // 简单敌人：低防御便于验证伤害公式
   const dummyEnemies = () => [
-    { id: 'e1', name: '靶子甲', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 },
-    { id: 'e2', name: '靶子乙', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }
+    { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
+    { id: 'e2', name: '靶子乙', hp: 500, maxHp: 500, attack: 1, defense: 0 }
   ];
 
   it('strike 技能：单体重击 + 冷却节奏（用后 3 回合普通攻击再发动）', () => {
@@ -181,7 +181,7 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
     // maxHp = round(115 × (1 + 星级 16% + 觉醒被动 15%)) = round(150.65) = 151
     expect(combatant.maxHp).toBe(151);
     const heroes = [combatant];
-    const enemies = [{ id: 'e1', name: '靶子', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
     const healAction = result.actions.find(a => a.kind === 'heal');
     expect(healAction).toBeDefined();
@@ -193,7 +193,7 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
   it('heal 治疗量受生命上限约束', () => {
     const catherine: HeroState = { ...createInitialHero('catherine'), star: STAR_MAX, awakened: true, hp: 149 }; // maxHp 150，缺 1
     const heroes = [heroToCombatant('catherine', catherine)];
-    const enemies = [{ id: 'e1', name: '靶子', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
     const healAction = result.actions.find(a => a.kind === 'heal');
     expect(healAction!.damage).toBe(1); // 只补缺的 1 点

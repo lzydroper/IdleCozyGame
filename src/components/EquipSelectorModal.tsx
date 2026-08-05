@@ -6,14 +6,14 @@ import type { EquipmentSlot } from '../types/game';
 import {
   EQUIPMENT_CONFIG,
   EQUIPMENT_SETS,
-  EQUIPMENT_SLOT_LABELS,
-  EQUIPMENT_SLOT_EMOJIS
+  EQUIPMENT_SLOT_LABELS
 } from '../data/equipment';
 import { ITEMS_CONFIG } from '../data/items';
 import { getEquippedItemStats } from '../state/equipment';
 import { HEROES_CONFIG } from '../data/heroes';
 import { UI_TOKENS } from '../data/uiConstants';
 import { X, Shield, Sword, Sparkles, PackageOpen } from 'lucide-react';
+import GameIcon from './GameIcon';
 
 export interface EquipSelectorModalProps {
   isOpen: boolean;
@@ -55,7 +55,7 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
     const ok = equipItem(heroId, slot, itemId);
     if (ok) {
       const itemCfg = ITEMS_CONFIG[itemId];
-      showToast(`⚔️ 【${heroConfig?.name || '英雄'}】已装备【${itemCfg?.name || itemId}】！`, 'success');
+      showToast(`【${heroConfig?.name || '英雄'}】已装备【${itemCfg?.name || itemId}】！`, 'success');
       if (onSelectSuccess) onSelectSuccess();
       onClose();
     } else {
@@ -126,8 +126,8 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
                   className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex items-center justify-between gap-2 transition-all shadow-sm"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-11 h-11 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-xl shrink-0">
-                      {ITEMS_CONFIG[itemId]?.emoji || EQUIPMENT_SLOT_EMOJIS[slot]}
+                    <div className="w-11 h-11 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center shrink-0">
+                      <GameIcon type="item" id={itemId} className="w-7 h-7" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5 truncate">

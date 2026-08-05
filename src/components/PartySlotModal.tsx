@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { HeroState } from '../types/game';
-import { Shield, Check, X, Lock, Wrench } from 'lucide-react';
+import { Shield, Check, X, Lock, Wrench, Star } from 'lucide-react';
 
 export interface PartySlotModalProps {
   isOpen: boolean;
@@ -52,7 +52,6 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
       id,
       name: config?.name || id,
       avatar: config?.avatar,
-      emoji: config?.emoji,
       heroClass: config?.heroClass || 'guardian',
       level: heroState?.level || 1,
       star: heroState?.star || 1,
@@ -204,7 +203,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                         Lv.{item.level}
                       </span>
                       <span className="text-xs text-amber-300 font-bold">
-                        ★{item.star}
+                        <Star className="w-2.5 h-2.5 inline-block fill-amber-400 text-amber-400 mr-0.5" />{item.star}
                       </span>
                     </div>
                   </div>

@@ -11,7 +11,7 @@ describe('CombatPlaybackView Component (ticket 21)', () => {
       partyWiped: false,
       rounds: 2,
       actions: [
-        { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '🗡️', targetName: '变异丧尸', damage: 15, kind: 'attack' }
+        { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '变异丧尸', damage: 15, kind: 'attack' }
       ]
     },
     drops: { scrap_metal: 3 },
@@ -26,9 +26,9 @@ describe('CombatPlaybackView Component (ticket 21)', () => {
       partyWiped: false,
       rounds: 2,
       actions: [
-        { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '🗡️', targetName: '变异恶犬', damage: 15, kind: 'attack' },
-        { round: 1, actorSide: 'enemy', actorId: 'hound', actorName: '变异恶犬', actorEmoji: '🐕', targetName: '诺娃', damage: 5, kind: 'attack' },
-        { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '🗡️', targetName: '变异恶犬', damage: 20, kind: 'skill', skillName: '星能重击' }
+        { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '变异恶犬', damage: 15, kind: 'attack' },
+        { round: 1, actorSide: 'enemy', actorId: 'hound', actorName: '变异恶犬', targetName: '诺娃', damage: 5, kind: 'attack' },
+        { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '变异恶犬', damage: 20, kind: 'skill', skillName: '星能重击' }
       ]
     },
     drops: { scrap_metal: 5 },
@@ -91,7 +91,7 @@ describe('CombatPlaybackView Component (ticket 21)', () => {
 
     // Skip 后直接显示所有动作与最终结算
     expect(screen.getByText('战斗胜利！')).toBeDefined();
-    expect(screen.getByText(/✨ 战后恢复：全员 100% HP/)).toBeDefined();
+    expect(screen.getByText(/战后恢复：全员 100% HP/)).toBeDefined();
     expect(screen.getByText(/灵魂残响 ×20/)).toBeDefined();
     expect(screen.getByText(/经验 ×50 \/ 英雄/)).toBeDefined();
   });
@@ -103,16 +103,16 @@ describe('CombatPlaybackView Component (ticket 21)', () => {
         partyWiped: false,
         rounds: 2,
         actions: [
-          { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '🗡️', targetName: '变异恶犬', damage: 20, kind: 'attack' }
+          { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '变异恶犬', damage: 20, kind: 'attack' }
         ],
         hpTrack: [
           [
-            { id: 'nova', side: 'hero', name: '诺娃', emoji: '🗡️', hp: 100, maxHp: 100 },
-            { id: 'hound', side: 'enemy', name: '变异恶犬', emoji: '🐕', hp: 50, maxHp: 50 }
+            { id: 'nova', side: 'hero', name: '诺娃', hp: 100, maxHp: 100 },
+            { id: 'hound', side: 'enemy', name: '变异恶犬', hp: 50, maxHp: 50 }
           ],
           [
-            { id: 'nova', side: 'hero', name: '诺娃', emoji: '🗡️', hp: 100, maxHp: 100 },
-            { id: 'hound', side: 'enemy', name: '变异恶犬', emoji: '🐕', hp: 30, maxHp: 50 }
+            { id: 'nova', side: 'hero', name: '诺娃', hp: 100, maxHp: 100 },
+            { id: 'hound', side: 'enemy', name: '变异恶犬', hp: 30, maxHp: 50 }
           ]
         ]
       },

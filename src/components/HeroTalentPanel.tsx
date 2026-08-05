@@ -4,6 +4,7 @@ import { useToast } from './ToastSystem';
 import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
 import { formatTalentEffect } from '../data/talents';
 import { getTalentNodes, getTalentLevel, getTalentBonus, getInvestedPoints } from '../state/talents';
+import { Lock, TreeDeciduous, Star } from 'lucide-react';
 
 // 英雄天赋面板（ticket 11）：职阶公共主干 + 英雄专属节点，加点/撤点/重置，效果计入战斗数值
 const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
@@ -38,7 +39,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   const handleReset = () => {
     if (invested === 0) return;
     if (resetTalents(heroId)) {
-      showToast(`🌱 天赋已重置，返还 ${invested} 点。`, 'success');
+      showToast(`天赋已重置，返还 ${invested} 点。`, 'success');
     }
   };
 
@@ -56,11 +57,12 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
       <div key={node.id} className={`rounded-lg border px-2 py-1.5 ${locked ? 'border-zinc-800/60 bg-zinc-900/20 opacity-60' : 'border-zinc-800/80 bg-zinc-900/40'}`}>
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-black text-zinc-200 flex-1 truncate">
-            {locked && <span className="mr-1">🔒</span>}
+            {locked && <span className="mr-1"><Lock className="w-2.5 h-2.5 inline-block" /></span>}
             {node.name}
           </span>
           <span className="text-[8px] font-bold text-emerald-400/90">
-            {'★'.repeat(level)}{'☆'.repeat(Math.max(0, node.maxLevel - level))}
+            {Array.from({ length: level }, (_, i) => <Star key={`f${i}`} className="w-2.5 h-2.5 inline-block fill-amber-400 text-amber-400" />)}
+        {Array.from({ length: Math.max(0, node.maxLevel - level) }, (_, i) => <Star key={`e${i}`} className="w-2.5 h-2.5 inline-block text-zinc-600" />)}
           </span>
           <span className="text-[8px] font-bold text-zinc-600">{level}/{node.maxLevel}</span>
           <button
@@ -88,7 +90,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-2 flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-black text-emerald-300/90 tracking-wide">🌳 天赋</span>
+        <span className="text-[9px] font-black text-emerald-300/90 tracking-wide flex items-center gap-1"><TreeDeciduous className="w-3 h-3" /> 天赋</span>
         <div className="flex items-center gap-1.5">
           <span className="text-[8px] font-bold text-emerald-400">天赋点 ×{points}</span>
           <button

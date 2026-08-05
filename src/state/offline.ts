@@ -52,7 +52,7 @@ export function calculateDetailedOfflineProgress(
   const nextStamina = recoverStamina(currentStamina, state.maxStamina || COMBAT_CONFIG.maxStamina, actualSeconds);
   const recoveredStamina = Math.max(0, Math.floor(nextStamina - currentStamina));
   if (recoveredStamina > 0) {
-    reportLogs.push(`⚡ 战斗体力在挂机期间恢复了 ${recoveredStamina} 点。`);
+    reportLogs.push(`战斗体力在挂机期间恢复了 ${recoveredStamina} 点。`);
   }
 
   // 1.5. 确认式离线挂机战斗结算（ticket 08）：仅当玩家在某区域主动开启挂机后才推进；
@@ -93,7 +93,7 @@ export function calculateDetailedOfflineProgress(
       };
       if (result.battlesFought > 0) {
         const dropsText = Object.entries(result.drops)
-          .map(([id, qty]) => `${ITEMS_CONFIG[id]?.emoji || ''}${ITEMS_CONFIG[id]?.name || id} ×${qty}`)
+          .map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} ×${qty}`)
           .join('、');
         const stopText = result.autoStopped
           ? (result.stopReason === 'defeat'
@@ -101,17 +101,17 @@ export function calculateDetailedOfflineProgress(
             : '，体力耗尽，挂机已自动停止')
           : '';
         reportLogs.push(
-          `⚔️ 挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories} / 平 ${result.draws} / 败 ${result.defeats}），` +
+          `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories} / 平 ${result.draws} / 败 ${result.defeats}），` +
           `获得 ${dropsText || '少量材料'}、灵魂残响 ×${result.soulEchoesGained}、经验 ×${result.expPerHero}/英雄${stopText}。`
         );
       } else {
         reportLogs.push(
-          `⚠️ 挂机已自动停止：${result.stopReason === 'defeat' ? '小队战败全员重伤' : '体力耗尽'}，未进行战斗，剩余体力保留。`
+          `挂机已自动停止：${result.stopReason === 'defeat' ? '小队战败全员重伤' : '体力耗尽'}，未进行战斗，剩余体力保留。`
         );
       }
     } else if (currentCombat.idle?.zoneId === null) {
       // 防御性停止（区域未知/队伍为空/重伤）：无战斗结算，仅日志提示
-      reportLogs.push('⚠️ 挂机因队伍状态异常自动停止（区域未知/队伍为空/重伤），未产生战斗结算。');
+      reportLogs.push('挂机因队伍状态异常自动停止（区域未知/队伍为空/重伤），未产生战斗结算。');
     }
   }
 
@@ -136,7 +136,7 @@ export function calculateDetailedOfflineProgress(
 
     currentEnergy = Math.min(currentMaxEnergy, currentEnergy + energyGained);
     if (energyGained > 0) {
-      reportLogs.push(`⚡ 避难所魔能发电机在挂机期间累计凝聚了 ${energyGained} 点魔能。`);
+      reportLogs.push(`避难所魔能发电机在挂机期间累计凝聚了 ${energyGained} 点魔能。`);
     }
   }
 
@@ -159,7 +159,7 @@ export function calculateDetailedOfflineProgress(
     if (scrapGained > 0) {
       currentInventory.scrap_metal = (currentInventory.scrap_metal || 0) + scrapGained;
       recoveredItems.scrap_metal = (recoveredItems.scrap_metal || 0) + scrapGained;
-      reportLogs.push(`🔧 物资回收站自动收集并提炼了 ${scrapGained} 个废旧金属。`);
+      reportLogs.push(`物资回收站自动收集并提炼了 ${scrapGained} 个废旧金属。`);
     }
   }
 
@@ -196,7 +196,7 @@ export function calculateDetailedOfflineProgress(
       });
 
       if (Object.keys(scavengedCount).length > 0) {
-        reportLogs.push(`🤠 幸存者 ${explorer?.name || '探索员'} 挂机探索 ${loc.name} 结束，带回了物资。`);
+        reportLogs.push(`幸存者 ${explorer?.name || '探索员'} 挂机探索 ${loc.name} 结束，带回了物资。`);
       }
     }
   }
@@ -222,7 +222,7 @@ export function calculateDetailedOfflineProgress(
             return `${recipe?.name || recipeId}${count > 1 ? ` ×${count}` : ''}`;
           })
           .join('、');
-        reportLogs.push(`🏭 ${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 离线运转完成: ${parts}。`);
+        reportLogs.push(`${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 离线运转完成: ${parts}。`);
       }
 
       return r.facility;

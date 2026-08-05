@@ -131,7 +131,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     // 敌方每回合造成 2 点伤害（攻击 13 - 艾拉防御 11）：
     // 115hp 无加成 → 第 58 回合阵亡（重伤）；+10% 生命（127hp）→ 存活至 60 回合上限（平局）
     const healer = createInitialHero('healer');
-    const enemy = { id: 'e', name: '强敌', emoji: '👹', hp: 9999, maxHp: 9999, attack: 13, defense: 0 };
+    const enemy = { id: 'e', name: '强敌', hp: 9999, maxHp: 9999, attack: 13, defense: 0 };
     const without = simulateBattle([heroToCombatant('healer', healer)], [enemy]);
     expect(without.partyWiped).toBe(true);
     const withBond = simulateBattle([heroToCombatant('healer', healer, { maxHpPercent: 10 })], [enemy]);

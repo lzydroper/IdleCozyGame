@@ -7,7 +7,8 @@ import { CATEGORY_WEIGHTS } from '../data/realityEvents';
 import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ChevronRight, Swords } from 'lucide-react';
+import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Timer, Flag, Handshake, Check, Lock, Square, Crown } from 'lucide-react';
+import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
@@ -263,7 +264,7 @@ const WildernessTab: React.FC = () => {
     addLog(choice.results.logText, 'event');
 
     if (isRescueComplete) {
-      const congr = `🎉 营救成功！同伴【${rescuedName}】已安全护送回避难所！`;
+      const congr = `营救成功！同伴【${rescuedName}】已安全护送回避难所！`;
       showToast(`成功营救同伴 ${rescuedName}！`, "success");
       addLog(congr, 'system');
     }
@@ -283,9 +284,9 @@ const WildernessTab: React.FC = () => {
           zoneName={encounterEventTitle}
           autoPlay
           onComplete={() => {
-            if (encounterSettlement.battle.victory) showToast('⚔️ 遭遇战胜利！战利品与经验已入账。', 'success');
-            else if (encounterSettlement.battle.partyWiped) showToast('💥 遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
-            else showToast('⚔️ 遭遇战平局，未分胜负。', 'info');
+            if (encounterSettlement.battle.victory) showToast('遭遇战胜利！战利品与经验已入账。', 'success');
+            else if (encounterSettlement.battle.partyWiped) showToast('遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
+            else showToast('遭遇战平局，未分胜负。', 'info');
           }}
           onExit={() => setEncounterSettlement(null)}
           exitLabel={encounterSettlement.battle.victory ? '继续探索' : '返回荒野'}
@@ -302,7 +303,7 @@ const WildernessTab: React.FC = () => {
                 : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            🗺️ 探索荒野
+            <Map className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />探索荒野
           </button>
           <button
             onClick={() => setMode('combat')}
@@ -312,7 +313,7 @@ const WildernessTab: React.FC = () => {
                 : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            ⚔️ 战斗挂机
+            <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />战斗挂机
           </button>
         </div>
       )}
@@ -417,7 +418,7 @@ const WildernessTab: React.FC = () => {
                   exploreSubTab === 'bag' ? 'text-cyan-400 border-cyan-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
                 }`}
               >
-                🎒 临时背囊 ({Object.keys(exploration.realityBag).length})
+                <Backpack className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />临时背囊 ({Object.keys(exploration.realityBag).length})
               </button>
               <button
                 onClick={() => setExploreSubTab('logs')}
@@ -425,7 +426,7 @@ const WildernessTab: React.FC = () => {
                   exploreSubTab === 'logs' ? 'text-cyan-400 border-cyan-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
                 }`}
               >
-                📻 无线电日志
+                <Radio className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />无线电日志
               </button>
             </div>
             <div className="min-h-[40px] flex flex-col justify-center">
@@ -497,19 +498,19 @@ const EncounterPanel: React.FC<{
 
   const handleFlee = () => {
     const ok = fleeEncounter();
-    if (ok) showToast('🏃 已撤离遭遇，绕行继续探索。', 'info');
+    if (ok) showToast('已撤离遭遇，绕行继续探索。', 'info');
   };
 
   return (
     <div className="rounded-2xl border border-rose-500/30 bg-gradient-to-b from-rose-950/50 to-zinc-900/60 p-3 flex flex-col gap-2">
-      <div className="text-xs font-black text-rose-300">⚔️ 战斗遭遇 —— {event.title}</div>
+      <div className="text-xs font-black text-rose-300 flex items-center gap-1.5"><Swords className="w-3.5 h-3.5" /> 战斗遭遇 —— {event.title}</div>
       <p className="text-[9px] text-zinc-400 leading-relaxed">{event.description}</p>
       <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-          敌人：{battleConfig.enemies.map(e => `${e.emoji}${e.name}`).join('、')}
+          敌人：{battleConfig.enemies.map(e => e.name).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-          掉落：{battleConfig.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')}
+          掉落：{battleConfig.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{battleConfig.expReward}/英雄</span>
       </div>
@@ -527,7 +528,7 @@ const EncounterPanel: React.FC<{
                   ? 'border-red-500/40 bg-red-950/40 text-red-400'
                   : 'border-zinc-700 bg-zinc-950/60 text-zinc-300'
               }`}>
-                {cfg.emoji} {cfg.name} Lv.{hero.level}
+                <GameIcon type="survivor" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
                 {hero.wounded && '（重伤）'}
               </span>
             );
@@ -547,13 +548,13 @@ const EncounterPanel: React.FC<{
               : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
           }`}
         >
-          ⚔️ 迎战！（体力 -{staminaCost}）
+          <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />迎战！（体力 -{staminaCost}）
         </button>
         <button
           onClick={handleFlee}
           className="px-3 py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 cursor-pointer active:scale-98"
         >
-          🚩 撤离
+          <Flag className="w-3 h-3 inline-block mr-1 -mt-0.5" />撤离
         </button>
       </div>
     </div>
@@ -585,7 +586,7 @@ const CombatPanel: React.FC = () => {
 
   const handleStart = (zoneId: string) => {
     const outcome = startCombat(zoneId);
-    if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
+    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
@@ -598,13 +599,13 @@ const CombatPanel: React.FC = () => {
 
   const handleStartIdle = (zoneId: string) => {
     const outcome = startIdle(zoneId);
-    if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
+    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，无法开启挂机（需 ≥ 一场战斗的体力）。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
     else if (outcome.failure === 'already_idling') showToast('已在其他区域挂机中，请先停止当前挂机。', 'warning');
     else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
-    else showToast('⏳ 挂机已开启：离线期间将自动战斗，重连时结算掉落与经验。', 'success');
+    else showToast('挂机已开启：离线期间将自动战斗，重连时结算掉落与经验。', 'success');
   };
 
   const handleStopIdle = () => {
@@ -613,7 +614,7 @@ const CombatPanel: React.FC = () => {
 
   const handleBoss = (zoneId: string) => {
     const outcome = startBossBattle(zoneId);
-    if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
+    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
@@ -628,11 +629,11 @@ const CombatPanel: React.FC = () => {
     if (!pendingSettlement) return;
     const { settlement: s, isBoss, wasCleared } = pendingSettlement;
     if (s.battle.victory) {
-      if (isBoss) showToast(wasCleared ? '🏆 BOSS 再战胜利！专属掉落已入账。' : '🏆 首通 BOSS！区域已通关，解锁下一区域。', 'success');
-      else showToast('⚔️ 战斗胜利！战利品与经验已入账。', 'success');
+      if (isBoss) showToast(wasCleared ? 'BOSS 再战胜利！专属掉落已入账。' : '首通 BOSS！区域已通关，解锁下一区域。', 'success');
+      else showToast('战斗胜利！战利品与经验已入账。', 'success');
     }
-    else if (s.battle.partyWiped) showToast(isBoss ? '💥 BOSS 战失败，小队全员重伤，需纳米修复剂治愈！' : '💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
-    else showToast('⚔️ 战斗平局，未分胜负。', 'info');
+    else if (s.battle.partyWiped) showToast(isBoss ? 'BOSS 战失败，小队全员重伤，需纳米修复剂治愈！' : '战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
+    else showToast('战斗平局，未分胜负。', 'info');
   };
 
   return (
@@ -658,7 +659,7 @@ const CombatPanel: React.FC = () => {
       {idleZone && (
         <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
           <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
-            ⏳ 挂机中：{idleZone.emoji} {idleZone.name}
+            <Timer className="w-3.5 h-3.5 text-amber-300" /> 挂机中：<GameIcon type="zone" id={idleZone.id} className="w-3.5 h-3.5" />{idleZone.name}
             {idle?.startTime && (
               <span className="text-[8px] font-bold text-amber-500/80">
                 自 {new Date(idle.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 起
@@ -670,14 +671,14 @@ const CombatPanel: React.FC = () => {
             onClick={handleStopIdle}
             className="shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98"
           >
-            ⏹ 停止挂机
+            <Square className="w-3 h-3 inline-block mr-1 -mt-0.5" />停止挂机
           </button>
         </div>
       )}
 
       {/* 当前上阵小队 */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <span className="text-[10px] font-black text-zinc-200">⚔️ 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
+        <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Swords className="w-3.5 h-3.5" /> 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
         {party.length === 0 ? (
           <span className="text-[9px] text-zinc-600 font-bold">小队为空 —— 请前往英雄页编队（至少上阵 1 名英雄）。</span>
         ) : (
@@ -692,13 +693,13 @@ const CombatPanel: React.FC = () => {
                     ? 'border-red-500/40 bg-red-950/40 text-red-400'
                     : `border-zinc-700 bg-zinc-950/60 text-zinc-300`
                 }`}>
-                  {cfg.emoji} {cfg.name} Lv.{hero.level}
+                  <GameIcon type="survivor" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
                   {hero.wounded && '（重伤）'}
                 </span>
               );
             })}
             {anyWounded && (
-              <span className="text-[8px] text-red-400 font-bold w-full">⚠ 小队有重伤英雄，战斗被禁止，请先在英雄页治愈。</span>
+              <span className="text-[8px] text-red-400 font-bold w-full">小队有重伤英雄，战斗被禁止，请先在英雄页治愈。</span>
             )}
           </div>
         )}
@@ -706,7 +707,7 @@ const CombatPanel: React.FC = () => {
 
       {/* 羁绊加成（ticket 09）：队伍满足组合/阵营条件即触发，战斗中数值生效 */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <span className="text-[10px] font-black text-zinc-200">🫱 羁绊加成</span>
+        <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Handshake className="w-3.5 h-3.5" /> 羁绊加成</span>
         {party.length === 0 ? (
           <span className="text-[9px] text-zinc-600 font-bold">上阵英雄后查看羁绊触发状态。</span>
         ) : activeBonds.length === 0 ? (
@@ -719,7 +720,7 @@ const CombatPanel: React.FC = () => {
                 title={bond.description}
                 className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300"
               >
-                🫱 {bond.name}：{formatBonus(bond.bonus)}
+                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatBonus(bond.bonus)}
               </span>
             ))}
           </div>
@@ -775,18 +776,18 @@ const CombatPanel: React.FC = () => {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                    <span>{zone.emoji}</span> {zone.name}
+                    <GameIcon type="zone" id={zone.id} className="w-4 h-4" />{zone.name}
                     <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-400">
                       推荐 Lv.{zone.recommendedLevel}
                     </span>
                     {cleared && (
                       <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-400">
-                        ✓ 已通关
+                        <Check className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />已通关
                       </span>
                     )}
                     {!unlocked && (
                       <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-500">
-                        🔒 未解锁
+                        <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />未解锁
                       </span>
                     )}
                   </h4>
@@ -801,7 +802,7 @@ const CombatPanel: React.FC = () => {
                         : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer'
                     }`}
                   >
-                    {idleActiveHere ? '⏳ 挂机中…' : `开战（体力 -${zone.staminaCost}）`}
+                    {idleActiveHere ? '挂机中…' : `开战（体力 -${zone.staminaCost}）`}
                   </button>
                   <button
                     disabled={!idleActiveHere && idleDisabled}
@@ -814,19 +815,19 @@ const CombatPanel: React.FC = () => {
                           : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400/30 text-white cursor-pointer active:scale-98'
                     }`}
                   >
-                    {idleActiveHere ? '⏹ 停止挂机' : '⏳ 开始挂机'}
+                    {idleActiveHere ? '停止挂机' : '开始挂机'}
                   </button>
                 </div>
               </div>
               {!unlocked && prevZone && (
-                <span className="text-[8px] text-zinc-600 font-bold">🔒 通关【{prevZone.name}】后解锁</span>
+                <span className="text-[8px] text-zinc-600 font-bold"><Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />通关【{prevZone.name}】后解锁</span>
               )}
               <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  敌人：{zone.enemies.map(e => `${e.emoji}${e.name}`).join('、')}
+                  敌人：{zone.enemies.map(e => e.name).join('、')}
                 </span>
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} 🔮{zone.soulEchoMin}-{zone.soulEchoMax}
+                  掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.soulEchoMin}-{zone.soulEchoMax}
                 </span>
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{zone.expReward}/英雄</span>
               </div>
@@ -837,10 +838,10 @@ const CombatPanel: React.FC = () => {
               }`}>
                 <div className="flex flex-col gap-0.5 min-w-0">
                   <span className="text-[9px] font-black text-purple-300 truncate">
-                    👑 关底 BOSS：{zone.boss.emoji} {zone.boss.name}
+                    <Crown className="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-amber-300" />关底 BOSS：<GameIcon type="enemy" id={zone.boss.enemies[0].id} className="w-3 h-3 inline-block" />{zone.boss.name}
                   </span>
                   <span className="text-[8px] text-zinc-500 font-bold truncate">
-                    专属掉落：{zone.boss.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.emoji || ''}${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} 🔮{zone.boss.soulEchoMin}-{zone.boss.soulEchoMax} · 经验 ×{zone.boss.expReward}
+                    专属掉落：{zone.boss.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.boss.soulEchoMin}-{zone.boss.soulEchoMax} · 经验 ×{zone.boss.expReward}
                   </span>
                 </div>
                 <button
@@ -852,7 +853,7 @@ const CombatPanel: React.FC = () => {
                       : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
                   }`}
                 >
-                  ⚔️ 挑战 BOSS（体力 -{zone.boss.staminaCost}）
+                  <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />挑战 BOSS（体力 -{zone.boss.staminaCost}）
                 </button>
               </div>
             </div>

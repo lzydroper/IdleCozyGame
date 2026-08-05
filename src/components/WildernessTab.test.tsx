@@ -223,7 +223,7 @@ describe('WildernessTab Component', () => {
     );
 
     // 切换到战斗挂机模式
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
     expect(screen.getAllByText(/废土边缘/).length).toBeGreaterThan(0); // 区域卡标题 + 下一区解锁提示
     expect(screen.getByText(/战斗体力/)).toBeDefined();
 
@@ -253,7 +253,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
     const button = screen.getByText(/开战（体力 -10）/);
     expect(button.hasAttribute('disabled')).toBe(true);
 
@@ -292,8 +292,8 @@ describe('WildernessTab Component', () => {
     );
 
     // 遭遇场景（与自动战斗同一战斗场景）
-    expect(screen.getByText(/⚔️ 战斗遭遇 —— 废土掠食者群/)).toBeDefined();
-    fireEvent.click(screen.getByText(/⚔️ 迎战！/));
+    expect(screen.getByText(/战斗遭遇 —— 废土掠食者群/)).toBeDefined();
+    fireEvent.click(screen.getByText(/迎战！（体力/));
 
     // 触发战斗动画播报 → 跳过（加快测试速度）
     const skipBtn = screen.queryByText(/跳过/);
@@ -348,8 +348,8 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    expect(screen.getByText(/⚔️ 战斗遭遇 —— 车间畸变体群/)).toBeDefined();
-    fireEvent.click(screen.getByText(/⚔️ 迎战！/));
+    expect(screen.getByText(/战斗遭遇 —— 车间畸变体群/)).toBeDefined();
+    fireEvent.click(screen.getByText(/迎战！（体力/));
 
     // 触发战斗动画播报 → 跳过（加快测试速度）
     const skipBtn = screen.queryByText(/跳过/);
@@ -401,12 +401,12 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    const fightButton = screen.getByText(/⚔️ 迎战！/);
+    const fightButton = screen.getByText(/迎战！（体力/);
     expect(fightButton.hasAttribute('disabled')).toBe(true); // 体力不足
     expect(screen.getByText(/体力不足/)).toBeDefined();
 
     // 撤离：不战而退，探索继续
-    fireEvent.click(screen.getByText(/🚩 撤离/));
+    fireEvent.click(screen.getByText(/^撤离$/));
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.realityEncounterId).toBeNull();
     expect(savedState.exploration.realitySteps).toBe(2);
@@ -426,21 +426,21 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
     // 初始仅首区解锁：区2、区3 显示未解锁
-    expect(screen.getAllByText(/🔒 未解锁/).length).toBe(2);
-    expect(screen.getByText(/👑 关底 BOSS：🦁 废土鬣狗王/)).toBeDefined();
+    expect(screen.getAllByText(/未解锁/).length).toBe(2);
+    expect(screen.getByText(/关底 BOSS：废土鬣狗王/)).toBeDefined();
 
     // 单诺娃挑战区1 BOSS → 胜利通关
-    fireEvent.click(screen.getByText(/⚔️ 挑战 BOSS（体力 -12）/));
+    fireEvent.click(screen.getByText(/挑战 BOSS（体力 -12）/));
 
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
     expect(savedState.combat.zonesCleared).toEqual(['wasteland_entrance']);
     expect(savedState.stamina).toBe(100 - 12); // BOSS 战消耗体力
     // 区2 解锁：未解锁徽章从 2 减到 1，且出现"已通关"徽章
-    expect(screen.getAllByText(/🔒 未解锁/).length).toBe(1);
-    expect(screen.getByText(/✓ 已通关/)).toBeDefined();
+    expect(screen.getAllByText(/未解锁/).length).toBe(1);
+    expect(screen.getByText(/已通关/)).toBeDefined();
   });
 
   it('arms offline idle from the combat panel and stops it preserving stamina (确认式离线挂机)', () => {
@@ -452,24 +452,24 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
 
     // 区域卡上的挂机开关（首区可挂机，其余未解锁禁用）
-    const idleButtons = screen.getAllByText(/⏳ 开始挂机/);
+    const idleButtons = screen.getAllByText(/开始挂机/);
     expect(idleButtons.length).toBe(COMBAT_ZONE_LIST.length);
     expect(idleButtons[0].hasAttribute('disabled')).toBe(false);
     fireEvent.click(idleButtons[0]);
 
     // 挂机状态横幅出现：不立即战斗、不消耗体力
     expect(screen.getByText(/挂机中：/)).toBeDefined();
-    expect(screen.getAllByText(/⏹ 停止挂机/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/停止挂机/).length).toBeGreaterThan(0);
     let saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(saved.combat.idle.zoneId).toBe('wasteland_entrance');
     expect(saved.combat.lastSettlement).toBeNull();
     expect(saved.stamina).toBe(100);
 
     // 停止挂机：剩余体力保留
-    fireEvent.click(screen.getAllByText(/⏹ 停止挂机/)[0]);
+    fireEvent.click(screen.getAllByText(/停止挂机/)[0]);
     saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(saved.combat.idle.zoneId).toBeNull();
     expect(saved.stamina).toBe(100);
@@ -488,8 +488,8 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
-    const idleButtons = screen.getAllByText(/⏳ 开始挂机/);
+    fireEvent.click(screen.getByText(/战斗挂机/));
+    const idleButtons = screen.getAllByText(/开始挂机/);
     expect(idleButtons[0].hasAttribute('disabled')).toBe(true);
     fireEvent.click(idleButtons[0]);
 
@@ -511,7 +511,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
     // 机械搭档（诺娃 + 罗伊）：攻击 +10%
     expect(screen.getByText(/机械搭档/)).toBeDefined();
     expect(screen.getByText(/攻击 \+10%/)).toBeDefined();
@@ -547,12 +547,12 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
     const skipBtn2 = screen.queryByText('跳过');
     if (skipBtn2) fireEvent.click(skipBtn2);
 
     expect(screen.getByText(/战斗平局/)).toBeDefined();
-    expect(screen.queryByText(/💥 战斗失败/)).toBeNull();
+    expect(screen.queryByText(/战斗失败/)).toBeNull();
     expect(screen.getByText(/鏖战至回合上限未分胜负/)).toBeDefined();
   });
 
@@ -571,9 +571,9 @@ describe('WildernessTab Component', () => {
           battle: {
             victory: true, partyWiped: false, rounds: 2,
             actions: [
-              { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '☄️', targetName: '废土鬣狗', damage: 28, kind: 'skill', skillName: '电涌过载' },
-              { round: 1, actorSide: 'enemy', actorId: 'e1', actorName: '废土鬣狗', actorEmoji: '🐺', targetName: '诺娃', damage: 6, kind: 'attack' },
-              { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '☄️', targetName: '诺娃', damage: 76, kind: 'heal', skillName: '净化之泉' }
+              { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '废土鬣狗', damage: 28, kind: 'skill', skillName: '电涌过载' },
+              { round: 1, actorSide: 'enemy', actorId: 'e1', actorName: '废土鬣狗', targetName: '诺娃', damage: 6, kind: 'attack' },
+              { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '诺娃', damage: 76, kind: 'heal', skillName: '净化之泉' }
             ]
           },
           drops: {},
@@ -593,7 +593,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
     const skipBtn3 = screen.queryByText('跳过');
     if (skipBtn3) fireEvent.click(skipBtn3);
 
@@ -613,7 +613,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    fireEvent.click(screen.getByText(/战斗挂机/));
 
     // 第一场：点击开战 → 动画播放中（跳过按钮可见）
     fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);

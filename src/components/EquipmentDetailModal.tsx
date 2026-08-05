@@ -6,7 +6,6 @@ import type { EquipmentSlot } from '../types/game';
 import {
   EQUIPMENT_CONFIG,
   EQUIPMENT_SETS,
-  EQUIPMENT_SLOT_EMOJIS,
   ENHANCE_MAX,
   MYTHIC_STAT_MULTIPLIER,
   FACTION_EQUIPMENT_BONUS_MULTIPLIER,
@@ -19,6 +18,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { getEquippedItemStats, getSetEnhanceProgress } from '../state/equipment';
 import EquipSelectorModal from './EquipSelectorModal';
 import { UI_TOKENS } from '../data/uiConstants';
+import GameIcon from './GameIcon';
 import {
   X,
   Info,
@@ -30,7 +30,13 @@ import {
   Plus,
   Sparkles,
   Zap,
-  Hammer
+  Hammer,
+  Castle,
+  Lock,
+  Lightbulb,
+  Flame,
+  Snowflake,
+  Gem
 } from 'lucide-react';
 
 export interface EquipmentDetailModalProps {
@@ -112,7 +118,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
       if (!item.mythic) {
         const result = forgeMythic(heroId, slot);
         if (result === true) {
-          showToast(`🌟 锻造成功！【${cfg.mythicName}】诞生！`, 'success');
+          showToast(`锻造成功！【${cfg.mythicName}】诞生！`, 'success');
         } else if (result === 'no_materials') {
           const need = Object.entries(FORGE_COST)
             .map(([id, q]) => `${ITEMS_CONFIG[id]?.name || id}×${q}`)
@@ -131,7 +137,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     }
     const res = enhanceItem(heroId, slot);
     if (res === true) {
-      showToast(`✨ 强化成功！【${cfg.name}】提升至 +${item.enhance + 1}`, 'success');
+      showToast(`强化成功！【${cfg.name}】提升至 +${item.enhance + 1}`, 'success');
     } else if (res === 'no_stone') {
       showToast(`强化魔晶不足：需要 强化魔晶 ×${cost}。`, 'error');
     }
@@ -191,8 +197,8 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
         <div className="flex-1 flex flex-col gap-2.5 py-2">
           <div className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex items-center gap-3 relative shadow-inner">
-            <div className="w-16 h-16 rounded-xl bg-zinc-900 border-2 border-amber-500/40 relative flex items-center justify-center text-2xl shadow-md shrink-0">
-              {ITEMS_CONFIG[item.itemId]?.emoji || EQUIPMENT_SLOT_EMOJIS[slot]}
+            <div className="w-16 h-16 rounded-xl bg-zinc-900 border-2 border-amber-500/40 relative flex items-center justify-center shadow-md shrink-0">
+              <GameIcon type="item" id={item.itemId} className="w-11 h-11" />
               <span className="absolute -bottom-1 -right-1 text-[8.5px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1.5 py-0.5 rounded-md shadow">
                 +{item.enhance}
               </span>
@@ -209,7 +215,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                   Lv. {item.enhance}/{ENHANCE_MAX}
                 </span>
                 <span className="text-[10px] font-black text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                  🏰 {gearScore}
+                  <Castle className="w-3 h-3" /> {gearScore}
                 </span>
               </div>
             </div>
@@ -244,7 +250,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                 </span>
               </div>
               <div className="w-5 h-5 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center text-zinc-500 shrink-0 ml-1 text-[10px] font-mono">
-                🔒
+                <Lock className="w-3 h-3" />
               </div>
             </div>
           )}
@@ -259,16 +265,16 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             </div>
 
             <div className="text-[10px] text-zinc-400 bg-zinc-900/60 p-2 rounded-lg border border-zinc-800/70 leading-relaxed font-medium">
-              💡 <span className="text-amber-300/90 font-bold">套装说明：</span>
+              <Lightbulb className="w-3 h-3 inline-block mr-1 -mt-0.5 text-amber-400" /><span className="text-amber-300/90 font-bold">套装说明：</span>
               穿戴同系列装备并提升强化等级，强化等级总和达 10/20/30 级时解锁对应属性加成。
               <div className="mt-1 font-bold">
                 {activeTierDescriptions.length > 0 ? (
                   <span className="text-amber-400 flex items-center gap-1">
-                    🔥 当前已生效：{activeTierDescriptions.join('、')}
+                    <Flame className="w-3 h-3" /> 当前已生效：{activeTierDescriptions.join('、')}
                   </span>
                 ) : (
                   <span className="text-zinc-500">
-                    ❄️ 当前已生效：无（需强化等级总和 ≥ 10）
+                    <Snowflake className="w-3 h-3" /> 当前已生效：无（需强化等级总和 ≥ 10）
                   </span>
                 )}
               </div>
@@ -366,7 +372,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           {item.enhance < ENHANCE_MAX && !item.mythic && (
             <div className="bg-zinc-950/90 border border-zinc-800 rounded-xl p-2 flex items-center justify-between shadow-inner">
               <div className="flex items-center gap-2">
-                <span className="text-sm">🔷</span>
+                <Gem className="w-3.5 h-3.5" />
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-zinc-400 leading-tight">
                     强化魔晶消耗

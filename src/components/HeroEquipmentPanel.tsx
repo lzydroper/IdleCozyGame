@@ -7,12 +7,14 @@ import {
   EQUIPMENT_SETS,
   EQUIPMENT_SLOTS,
   EQUIPMENT_SLOT_LABELS,
-  EQUIPMENT_SLOT_EMOJIS,
   ENHANCE_MAX,
   enhanceCost,
   FORGE_COST
 } from '../data/equipment';
 import { ITEMS_CONFIG } from '../data/items';
+import GameIcon from './GameIcon';
+import { SLOT_ICON_MAP } from './iconMaps';
+import { Backpack, Hammer } from 'lucide-react';
 import { getEquippedItemStats, getSetEnhanceProgress } from '../state/equipment';
 
 // 英雄装备面板（ticket 10）：3 槽穿戴 / 强化（上限 +30）/ 神话锻造 / 套装特效进度
@@ -44,7 +46,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   const handleEquip = (slot: EquipmentSlot, itemId: string) => {
     const ok = equipItem(heroId, slot, itemId);
     if (ok) {
-      showToast(`⚔️ 已穿戴【${ITEMS_CONFIG[itemId]?.name || itemId}】`, 'success');
+      showToast(`已穿戴【${ITEMS_CONFIG[itemId]?.name || itemId}】`, 'success');
       setOpenSlot(null);
     } else {
       showToast('穿戴失败：背包中没有该装备。', 'error');
@@ -70,7 +72,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
     const cost = enhanceCost(item.enhance);
     const result = enhanceItem(heroId, slot);
     if (result === true) {
-      showToast(`✨ 强化成功！${ITEMS_CONFIG[item.itemId]?.name || item.itemId} +${item.enhance + 1}`, 'success');
+      showToast(`强化成功！${ITEMS_CONFIG[item.itemId]?.name || item.itemId} +${item.enhance + 1}`, 'success');
     } else if (result === 'no_stone') {
       showToast(`强化失败：需要强化魔晶 ×${cost}（工坊合成或战斗掉落）。`, 'error');
     } else if (result === 'maxed') {
@@ -85,7 +87,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
     if (result === true) {
       const item = equip[slot];
       const cfg = item && EQUIPMENT_CONFIG[item.itemId];
-      showToast(`🌟 锻造成功！【${cfg?.mythicName || '神话装备'}】诞生，附带系列词条！`, 'success');
+      showToast(`锻造成功！【${cfg?.mythicName || '神话装备'}】诞生，附带系列词条！`, 'success');
     } else if (result === 'no_materials') {
       const need = Object.entries(FORGE_COST).map(([id, q]) => `${ITEMS_CONFIG[id]?.name || id}×${q}`).join('、');
       showToast(`锻造失败：需要 ${need}。`, 'error');
@@ -107,7 +109,9 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-2 flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-black text-amber-300/90 tracking-wide">🎒 装备</span>
+        <span className="text-[9px] font-black text-amber-300/90 tracking-wide flex items-center gap-1">
+          <Backpack className="w-3 h-3" /> 装备
+        </span>
         <span className="text-[8px] text-zinc-600 font-bold">强化魔晶 ×{stoneCount}</span>
       </div>
 
@@ -122,9 +126,11 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
           return (
             <div key={slot} className="rounded-lg border border-zinc-800/80 bg-zinc-900/40 px-2 py-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] w-8 shrink-0 text-zinc-500 font-bold">
-                  {EQUIPMENT_SLOT_EMOJIS[slot]}{EQUIPMENT_SLOT_LABELS[slot]}
+                {(() => { const SlotIcon = SLOT_ICON_MAP[slot]; return (
+                <span className="text-[10px] w-8 shrink-0 text-zinc-500 font-bold flex items-center gap-0.5">
+                  <SlotIcon className="w-3 h-3" />{EQUIPMENT_SLOT_LABELS[slot]}
                 </span>
+                ); })()}
 
                 {item && cfg ? (
                   <>
@@ -183,7 +189,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                       }`}
                       title={stoneCount >= cost ? `消耗强化魔晶 ×${cost}` : `强化魔晶不足（需要 ×${cost}）`}
                     >
-                      强化 +{cost}🔶
+                      强化 +{cost}
                     </button>
                   )}
                   {!item.mythic && item.enhance >= ENHANCE_MAX && (
@@ -197,7 +203,8 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                       }`}
                       title="锻造为神话装备（更名/属性加强/附加系列词条）"
                     >
-                      ⚒ 锻造神话
+                      <Hammer className="w-2.5 h-2.5 inline mr-0.5" />
+                      锻造神话
                     </button>
                   )}
                   {item.mythic && (
@@ -222,7 +229,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                           onClick={() => handleEquip(slot, itemId)}
                           className="text-left text-[9px] font-bold px-2 py-1 rounded border border-zinc-800 bg-zinc-900/60 hover:border-amber-500/40 text-zinc-300 cursor-pointer flex items-center gap-1.5"
                         >
-                          <span>{ITEMS_CONFIG[itemId]?.emoji || '🎒'}</span>
+                          <GameIcon type="item" id={itemId} className="w-4 h-4 shrink-0" />
                           <span className="flex-1">{c.name}</span>
                           <span className="text-[8px] text-zinc-500">[{EQUIPMENT_SETS[c.set].name}] ×{qty}</span>
                         </button>

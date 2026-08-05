@@ -2,7 +2,6 @@
 export interface CombatEnemyConfig {
   id: string;
   name: string;
-  emoji: string;
   hp: number;
   attack: number;
   defense: number;
@@ -18,7 +17,6 @@ export interface CombatDropConfig {
 // 关底 BOSS 配置（ticket 07）：每区一个，击败后通关区域、解锁下一区；复用同一战斗场景
 export interface CombatZoneBossConfig {
   name: string;
-  emoji: string;
   enemies: CombatEnemyConfig[];   // BOSS 战敌人组（含护卫）
   staminaCost: number;            // BOSS 战体力消耗
   expReward: number;              // BOSS 战胜利每位英雄经验
@@ -30,7 +28,6 @@ export interface CombatZoneBossConfig {
 export interface CombatZoneConfig {
   id: string;
   name: string;
-  emoji: string;
   description: string;
   recommendedLevel: number;   // 推荐队伍平均等级（同时决定线性链顺序）
   staminaCost: number;        // 每场战斗消耗的体力
@@ -49,14 +46,14 @@ export const COMBAT_ZONES: CombatZonesMap = {
   equipment_test_zone: {
     id: 'equipment_test_zone',
     name: '军备测试场 (测试专用)',
-    emoji: '🛠️',
+
     description: '【测试专享区域】战斗胜利后 100% 掉落废土、余烬、幽梦、星核全套装备及大量强化魔晶，方便全方位测试装备系统。',
     recommendedLevel: 99,
     staminaCost: 0,
     expReward: 50,
     isTestZone: true,
     enemies: [
-      { id: 'test_dummy', name: '测试靶机', emoji: '🎯', hp: 10, attack: 1, defense: 0 }
+      { id: 'test_dummy', name: '测试靶机', hp: 10, attack: 1, defense: 0 }
     ],
     drops: [
       { itemId: 'wasteland_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
@@ -72,9 +69,9 @@ export const COMBAT_ZONES: CombatZonesMap = {
     soulEchoMax: 50,
     boss: {
       name: '测试领主',
-      emoji: '🤖',
+
       enemies: [
-        { id: 'test_boss', name: '测试领主', emoji: '🤖', hp: 20, attack: 2, defense: 0 }
+        { id: 'test_boss', name: '测试领主', hp: 20, attack: 2, defense: 0 }
       ],
       staminaCost: 10,
       expReward: 100,
@@ -95,14 +92,14 @@ export const COMBAT_ZONES: CombatZonesMap = {
   wasteland_entrance: {
     id: 'wasteland_entrance',
     name: '废土边缘',
-    emoji: '🏜️',
+
     description: '避难所大门外的第一片废土，游荡着饥饿的变异鬣狗与鼠群，是检验小队战力的最佳训练场。',
     recommendedLevel: 1,
     staminaCost: 10,
     expReward: 20,
     enemies: [
-      { id: 'wasteland_hound', name: '废土鬣狗', emoji: '🐺', hp: 45, attack: 9, defense: 3 },
-      { id: 'mutant_rat', name: '变异鼠群', emoji: '🐀', hp: 30, attack: 7, defense: 1 }
+      { id: 'wasteland_hound', name: '废土鬣狗', hp: 45, attack: 9, defense: 3 },
+      { id: 'mutant_rat', name: '变异鼠群', hp: 30, attack: 7, defense: 1 }
     ],
     drops: [
       { itemId: 'scrap_metal', chance: 0.6, minQty: 1, maxQty: 2 },
@@ -113,9 +110,9 @@ export const COMBAT_ZONES: CombatZonesMap = {
     soulEchoMax: 4,
     boss: {
       name: '废土鬣狗王',
-      emoji: '🦁',
+
       enemies: [
-        { id: 'wasteland_hound_king', name: '废土鬣狗王', emoji: '🦁', hp: 90, attack: 13, defense: 5 }
+        { id: 'wasteland_hound_king', name: '废土鬣狗王', hp: 90, attack: 13, defense: 5 }
       ],
       staminaCost: 12,
       expReward: 30,
@@ -132,14 +129,14 @@ export const COMBAT_ZONES: CombatZonesMap = {
   old_town_ruins: {
     id: 'old_town_ruins',
     name: '旧城废墟',
-    emoji: '🏚️',
+
     description: '残破的旧城街区盘踞着拾荒匪徒与变异生物，废墟深处埋藏着可用的合金与魔能材料。',
     recommendedLevel: 3,
     staminaCost: 15,
     expReward: 35,
     enemies: [
-      { id: 'ruin_scavenger', name: '废墟拾荒者', emoji: '🧟', hp: 80, attack: 16, defense: 4 },
-      { id: 'mutant_rat', name: '变异鼠群', emoji: '🐀', hp: 35, attack: 8, defense: 1 }
+      { id: 'ruin_scavenger', name: '废墟拾荒者', hp: 80, attack: 16, defense: 4 },
+      { id: 'mutant_rat', name: '变异鼠群', hp: 35, attack: 8, defense: 1 }
     ],
     drops: [
       { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
@@ -151,10 +148,10 @@ export const COMBAT_ZONES: CombatZonesMap = {
     soulEchoMax: 7,
     boss: {
       name: '废墟霸主',
-      emoji: '💀',
+
       enemies: [
-        { id: 'ruin_overlord', name: '废墟霸主', emoji: '💀', hp: 150, attack: 20, defense: 8 },
-        { id: 'mutant_rat', name: '变异鼠群', emoji: '🐀', hp: 35, attack: 8, defense: 1 }
+        { id: 'ruin_overlord', name: '废墟霸主', hp: 150, attack: 20, defense: 8 },
+        { id: 'mutant_rat', name: '变异鼠群', hp: 35, attack: 8, defense: 1 }
       ],
       staminaCost: 18,
       expReward: 50,
@@ -173,15 +170,15 @@ export const COMBAT_ZONES: CombatZonesMap = {
   radiated_workshop: {
     id: 'radiated_workshop',
     name: '辐射车间',
-    emoji: '🏭',
+
     description: '被辐射侵蚀的自动化车间，失控机器与畸变实验体在浓雾中游荡，产出高价值合金与等离子材料。',
     recommendedLevel: 6,
     staminaCost: 20,
     expReward: 60,
     enemies: [
-      { id: 'radiation_mutant', name: '辐射变异体', emoji: '👹', hp: 130, attack: 20, defense: 6 },
-      { id: 'rogue_machine', name: '失控机器仆从', emoji: '🤖', hp: 90, attack: 15, defense: 8 },
-      { id: 'aberrant_subject', name: '畸变实验体', emoji: '🧬', hp: 70, attack: 18, defense: 5 }
+      { id: 'radiation_mutant', name: '辐射变异体', hp: 130, attack: 20, defense: 6 },
+      { id: 'rogue_machine', name: '失控机器仆从', hp: 90, attack: 15, defense: 8 },
+      { id: 'aberrant_subject', name: '畸变实验体', hp: 70, attack: 18, defense: 5 }
     ],
     drops: [
       { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
@@ -194,10 +191,10 @@ export const COMBAT_ZONES: CombatZonesMap = {
     soulEchoMax: 12,
     boss: {
       name: '车间之主·畸变聚合体',
-      emoji: '👾',
+
       enemies: [
-        { id: 'workshop_abomination', name: '车间之主·畸变聚合体', emoji: '👾', hp: 260, attack: 26, defense: 10 },
-        { id: 'rogue_machine', name: '失控机器仆从', emoji: '🤖', hp: 90, attack: 15, defense: 8 }
+        { id: 'workshop_abomination', name: '车间之主·畸变聚合体', hp: 260, attack: 26, defense: 10 },
+        { id: 'rogue_machine', name: '失控机器仆从', hp: 90, attack: 15, defense: 8 }
       ],
       staminaCost: 25,
       expReward: 80,

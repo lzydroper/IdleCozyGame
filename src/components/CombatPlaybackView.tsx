@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { CombatSettlement, BattleAction, BattleHpEntry } from '../types/game';
 import { ITEMS_CONFIG } from '../data/items';
-import { FastForward, Zap, CheckCircle2, AlertTriangle, Shield, Play, Pause, RotateCcw } from 'lucide-react';
+import { FastForward, Zap, CheckCircle2, AlertTriangle, Shield, Play, Pause, RotateCcw, Swords, Gem, Sparkles } from 'lucide-react';
+import GameIcon from './GameIcon';
 
 interface CombatPlaybackViewProps {
   settlement: CombatSettlement;
@@ -130,8 +131,13 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
       : 'bg-gradient-to-r from-rose-600 to-red-400';
     return (
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-        <span className="text-[9px] shrink-0 w-14 truncate text-right">
-          {entry.emoji} {entry.name}
+        <span className="text-[9px] shrink-0 w-14 truncate text-right flex items-center justify-end gap-1">
+          {entry.side === 'hero' ? (
+            <GameIcon type="survivor" id={entry.id} className="w-3.5 h-3.5" />
+          ) : (
+            <GameIcon type="enemy" id={entry.id} className="w-3.5 h-3.5" />
+          )}
+          {entry.name}
         </span>
         <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700/70 min-w-0">
           <div
@@ -228,8 +234,9 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
         className="bg-zinc-950/80 rounded-xl p-2.5 flex flex-col gap-1 h-48 overflow-y-auto border border-zinc-800/80 font-mono text-[10px] leading-relaxed shadow-inner"
       >
         {visibleActions.length === 0 ? (
-          <div className="text-zinc-600 text-center my-auto py-4 text-[9px] font-sans italic">
-            ⚔️ 战斗准备中，即将开始第一回合...
+          <div className="text-zinc-600 text-center my-auto py-4 text-[9px] font-sans italic flex items-center justify-center gap-1.5">
+            <Swords className="w-3 h-3" />
+            战斗准备中，即将开始第一回合...
           </div>
         ) : (
           visibleActions.map((a: BattleAction, idx: number) => (
@@ -242,11 +249,16 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
               <div className="flex items-center gap-1.5 truncate">
                 <span className="text-zinc-600 font-bold shrink-0">R{a.round}</span>
                 <span
-                  className={`font-bold shrink-0 ${
+                  className={`font-bold shrink-0 flex items-center gap-1 ${
                     a.actorSide === 'hero' ? 'text-cyan-400' : 'text-rose-400'
                   }`}
                 >
-                  {a.actorEmoji} {a.actorName}
+                  {a.actorSide === 'hero' ? (
+                    <GameIcon type="survivor" id={a.actorId} className="w-3 h-3" />
+                  ) : (
+                    <GameIcon type="enemy" id={a.actorId} className="w-3 h-3" />
+                  )}
+                  {a.actorName}
                 </span>
 
                 {a.skillName ? (
@@ -303,14 +315,18 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
                   <span>战斗失败！</span>
                 </>
               ) : (
-                <span>⚔️ 战斗平局（达到回合上限）</span>
+                <>
+                  <Swords className="w-4 h-4 text-zinc-400" />
+                  <span>战斗平局（达到回合上限）</span>
+                </>
               )}
             </span>
 
             {/* 胜利全员 100% 满血复活 Badge */}
             {victory && (
-              <span className="px-2 py-0.5 rounded-full bg-emerald-900/80 border border-emerald-400/50 text-[9px] font-black text-emerald-200 shadow-sm">
-                ✨ 战后恢复：全员 100% HP
+              <span className="px-2 py-0.5 rounded-full bg-emerald-900/80 border border-emerald-400/50 text-[9px] font-black text-emerald-200 shadow-sm flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                战后恢复：全员 100% HP
               </span>
             )}
           </div>
@@ -323,21 +339,21 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
                   key={itemId}
                   className="px-2 py-1 rounded-md border border-amber-500/40 bg-amber-950/50 text-amber-300 flex items-center gap-1"
                 >
-                  <span>{ITEMS_CONFIG[itemId]?.emoji}</span>
+                  <GameIcon type="item" id={itemId} className="w-3.5 h-3.5" />
                   <span>{ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}</span>
                 </span>
               ))}
 
               {settlement.soulEchoes > 0 && (
                 <span className="px-2 py-1 rounded-md border border-purple-500/40 bg-purple-950/50 text-purple-300 flex items-center gap-1">
-                  <span>🔮</span>
+                  <Gem className="w-3 h-3" />
                   <span>灵魂残响 ×{settlement.soulEchoes}</span>
                 </span>
               )}
 
               {settlement.expPerHero > 0 && (
                 <span className="px-2 py-1 rounded-md border border-cyan-500/40 bg-cyan-950/50 text-cyan-300 flex items-center gap-1">
-                  <span>✦</span>
+                  <Sparkles className="w-3 h-3" />
                   <span>经验 ×{settlement.expPerHero} / 英雄</span>
                 </span>
               )}

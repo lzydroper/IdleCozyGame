@@ -21,7 +21,6 @@ import { NO_OP } from './types';
 export interface CombatantState {
   id: string;
   name: string;
-  emoji: string;
   hp: number;
   maxHp: number;
   attack: number;
@@ -91,11 +90,11 @@ export const simulateBattle = (
   // 记录当前全员 HP 快照（ticket 21 血条播放）
   const snapshot = (): BattleHpEntry[] => [
     ...h.map(x => ({
-      id: x.id, side: 'hero' as const, name: x.name, emoji: x.emoji,
+      id: x.id, side: 'hero' as const, name: x.name,
       hp: Math.max(0, x.hp), maxHp: x.maxHp
     })),
     ...e.map(x => ({
-      id: x.id, side: 'enemy' as const, name: x.name, emoji: x.emoji,
+      id: x.id, side: 'enemy' as const, name: x.name,
       hp: Math.max(0, x.hp), maxHp: x.maxHp
     }))
   ];
@@ -120,7 +119,7 @@ export const simulateBattle = (
           const dmg = dealDamage(Math.round(hero.attack * skill.multiplier), target.defense);
           target.hp -= dmg;
           actions.push({
-            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
+            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name,
             targetName: target.name, damage: dmg, kind: 'skill', skillName: skill.name
           });
           hpTrack.push(snapshot());
@@ -131,7 +130,7 @@ export const simulateBattle = (
             const dmg = dealDamage(Math.round(hero.attack * skill.multiplier), en.defense);
             en.hp -= dmg;
             actions.push({
-              round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
+              round, actorSide: 'hero', actorId: hero.id, actorName: hero.name,
               targetName: en.name, damage: dmg, kind: 'skill', skillName: skill.name
             });
             hpTrack.push(snapshot());
@@ -142,7 +141,7 @@ export const simulateBattle = (
           const actual = Math.min(hero.maxHp - hero.hp, heal);
           hero.hp += actual;
           actions.push({
-            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
+            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name,
             targetName: hero.name, damage: actual, kind: 'heal', skillName: skill.name
           });
           hpTrack.push(snapshot());
@@ -157,7 +156,6 @@ export const simulateBattle = (
           actorSide: 'hero',
           actorId: hero.id,
           actorName: hero.name,
-          actorEmoji: hero.emoji,
           targetName: target.name,
           damage: dmg,
           kind: 'attack'
@@ -180,7 +178,6 @@ export const simulateBattle = (
         actorSide: 'enemy',
         actorId: enemy.id,
         actorName: enemy.name,
-        actorEmoji: enemy.emoji,
         targetName: target.name,
         damage: dmg,
         kind: 'attack'
@@ -218,7 +215,6 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBo
   return {
     id: heroId,
     name: config.name,
-    emoji: config.emoji,
     // 当前血量按同比例缩放，保持战斗中已损比例不变
     hp: hero.maxHp > 0 ? Math.round((hero.hp / hero.maxHp) * maxHp) : maxHp,
     maxHp,
@@ -234,7 +230,7 @@ const isKnownHero = (state: GameState, heroId: string): boolean =>
 
 // 敌人配置 → 战斗单位（自动战斗区域与探索遭遇共用）
 const enemiesToCombatants = (enemies: CombatEnemyConfig[]): CombatantState[] =>
-  enemies.map(en => ({ id: en.id, name: en.name, emoji: en.emoji, hp: en.hp, maxHp: en.hp, attack: en.attack, defense: en.defense }));
+  enemies.map(en => ({ id: en.id, name: en.name, hp: en.hp, maxHp: en.hp, attack: en.attack, defense: en.defense }));
 
 // 战斗日志条目构造（自动战斗/探索遭遇共用）
 const makeCombatLog = (text: string): LogEntry => ({
@@ -360,10 +356,10 @@ export const startCombatUpdate = (
 
   // 战斗日志入账
   const logText = battle.victory
-    ? `⚔️ 战斗胜利！小队在【${zone.name}】击退敌人，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${settled.soulEchoesGained} 与经验 ×${zone.expReward}。`
+    ? `战斗胜利！小队在【${zone.name}】击退敌人，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${settled.soulEchoesGained} 与经验 ×${zone.expReward}。`
     : battle.partyWiped
-      ? `💥 战斗失败！小队在【${zone.name}】全员倒下，进入重伤状态，需使用纳米修复剂治愈。`
-      : `⚔️ 战斗平局！小队在【${zone.name}】鏖战至回合上限未分胜负，无战利品，亦无人重伤。`;
+      ? `战斗失败！小队在【${zone.name}】全员倒下，进入重伤状态，需使用纳米修复剂治愈。`
+      : `战斗平局！小队在【${zone.name}】鏖战至回合上限未分胜负，无战利品，亦无人重伤。`;
   const logEntry = makeCombatLog(logText);
 
   return {
@@ -464,10 +460,10 @@ export const resolveEncounterBattleUpdate = (
 
   const eventTitle = REALITY_EVENTS[encounterId]?.title || '遭遇战';
   const logText = battle.victory
-    ? `⚔️ 遭遇战胜利！小队击退【${eventTitle}】，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'} 与经验 ×${expPerHero}，继续探索。`
+    ? `遭遇战胜利！小队击退【${eventTitle}】，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'} 与经验 ×${expPerHero}，继续探索。`
     : battle.partyWiped
-      ? `💥 探索遭遇战失败！小队全灭于【${eventTitle}】，探索终止，已获战利品并入库存，小队进入重伤状态。`
-      : `⚔️ 遭遇战平局！小队与【${eventTitle}】鏖战未分胜负，继续探索。`;
+      ? `探索遭遇战失败！小队全灭于【${eventTitle}】，探索终止，已获战利品并入库存，小队进入重伤状态。`
+      : `遭遇战平局！小队与【${eventTitle}】鏖战未分胜负，继续探索。`;
   const logEntry = makeCombatLog(logText);
 
   return {
@@ -488,7 +484,7 @@ export const resolveEncounterBattleUpdate = (
 export const fleeEncounterUpdate = (state: GameState): UpdateResult<boolean> => {
   if (!state.exploration.realityEncounterId) return NO_OP(state);
   const eventTitle = REALITY_EVENTS[state.exploration.realityEncounterId]?.title || '遭遇战';
-  const logEntry = makeCombatLog(`🏃 小队撤离了遭遇【${eventTitle}】，绕行继续探索。`);
+  const logEntry = makeCombatLog(`小队撤离了遭遇【${eventTitle}】，绕行继续探索。`);
   return {
     state: {
       ...state,
@@ -574,10 +570,10 @@ export const startBossBattleUpdate = (
   const nextZone = COMBAT_ZONE_LIST[COMBAT_ZONE_LIST.findIndex(z => z.id === zoneId) + 1];
 
   const logText = battle.victory
-    ? `🏆 ${wasCleared ? '再战' : '首通'}！小队击败【${boss.name}】${wasCleared ? '' : '，通关【' + zone.name + '】' + (nextZone ? `，解锁【${nextZone.name}】` : '')}，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${settled.soulEchoesGained} 与经验 ×${boss.expReward}。`
+    ? `${wasCleared ? '再战' : '首通'}！小队击败【${boss.name}】${wasCleared ? '' : '，通关【' + zone.name + '】' + (nextZone ? `，解锁【${nextZone.name}】` : '')}，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}、灵魂残响 ×${settled.soulEchoesGained} 与经验 ×${boss.expReward}。`
     : battle.partyWiped
-      ? `💥 BOSS 战失败！小队在【${zone.name}】被【${boss.name}】全灭，进入重伤状态，需使用纳米修复剂治愈。`
-      : `⚔️ BOSS 战平局！小队与【${boss.name}】鏖战未分胜负。`;
+      ? `BOSS 战失败！小队在【${zone.name}】被【${boss.name}】全灭，进入重伤状态，需使用纳米修复剂治愈。`
+      : `BOSS 战平局！小队与【${boss.name}】鏖战未分胜负。`;
   const logEntry = makeCombatLog(logText);
 
   return {

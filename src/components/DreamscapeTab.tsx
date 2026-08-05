@@ -6,7 +6,7 @@ import type { DreamChoice } from '../data/dreamEvents';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Sparkles, Brain, AlertOctagon } from 'lucide-react';
+import { Sparkles, Brain, AlertOctagon, MoonStar, Backpack, BarChart3, Pill, Orbit } from 'lucide-react';
 import { ITEMS_CONFIG } from '../data/items';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { isDreamLockdownActive, getDreamLockdownRemaining } from '../state/nightmare';
@@ -198,7 +198,7 @@ const DreamscapeTab: React.FC = () => {
       showToast("理智耗尽！你精神休克被迫断开心灵连结，已带回的梦境碎片已存入避难所。", "error");
       addLog("理智崩溃，强制切断梦境连结，梦境碎片已自动入库。", "combat");
     } else if (nextPollution >= 100) {
-      showToast("⚠️ 警告：污染度达100%！深渊扭曲，梦魇怪兽顺着精神印记入侵现实！", "error");
+      showToast("警告：污染度达100%！深渊扭曲，梦魇怪兽顺着精神印记入侵现实！", "error");
       addLog("梦境污染溢出，引动梦魇兽入侵避难所！", "combat");
     } else {
       setLogMessages(prev => [...prev, choice.results.logText]);
@@ -208,7 +208,7 @@ const DreamscapeTab: React.FC = () => {
         const { name, location } = showSurvivorUnlockedAlert;
         const loc = EXPEDITION_LOCATIONS[location];
         const locationName = loc?.shortName || loc?.displayName || location;
-        const msg = `✨ 脑波连结成功！已完美锁定幸存同伴【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
+        const msg = `脑波连结成功！已完美锁定幸存同伴【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
         setLogMessages(prev => [...prev, msg]);
         addLog(msg, 'dream');
       }
@@ -246,7 +246,7 @@ const DreamscapeTab: React.FC = () => {
     });
 
     if (capsuleType === 'sanity') {
-      const msg = "💊 服用了『稳定胶囊』，精神状态好转了点 (理智+25)";
+      const msg = "服用了『稳定胶囊』，精神状态好转了点 (理智+25)";
       setLogMessages(prev => [...prev, msg]);
       showToast("使用稳定胶囊成功 (理智 +25)", "success");
       addLog(msg, 'dream');
@@ -259,7 +259,7 @@ const DreamscapeTab: React.FC = () => {
           dreamPollution: Math.max(0, prev.exploration.dreamPollution - 40)
         }
       }));
-      const msg = "🌀 使用了『折跃胶囊』，驱散了脑海中的部分梦魇阴霾 (精神污染-40)";
+      const msg = "使用了『折跃胶囊』，驱散了脑海中的部分梦魇阴霾 (精神污染-40)";
       setLogMessages(prev => [...prev, msg]);
       showToast("使用折跃胶囊成功 (精神污染 -40)", "success");
       addLog(msg, 'dream');
@@ -371,7 +371,7 @@ const DreamscapeTab: React.FC = () => {
                   dreamSubTab === 'logs' ? 'text-purple-400 border-purple-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
                 }`}
               >
-                🔮 波束日志
+                <MoonStar className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />波束日志
               </button>
               <button
                 onClick={() => setDreamSubTab('bag')}
@@ -379,7 +379,7 @@ const DreamscapeTab: React.FC = () => {
                   dreamSubTab === 'bag' ? 'text-purple-400 border-purple-400' : 'text-zinc-500 border-transparent hover:text-zinc-400'
                 }`}
               >
-                🎒 心智背囊 ({Object.keys(exploration.dreamBag || {}).length})
+                <Backpack className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />心智背囊 ({Object.keys(exploration.dreamBag || {}).length})
               </button>
               {(() => {
                 const pollution = exploration.dreamPollution || 0;
@@ -393,7 +393,7 @@ const DreamscapeTab: React.FC = () => {
                     onClick={() => setDreamSubTab('status')}
                     className={`text-[10px] pb-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-0.5 ${titleColor}`}
                   >
-                    📊 当前精神污染 ({pollution}%)
+                    <BarChart3 className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />当前精神污染 ({pollution}%)
                   </button>
                 );
               })()}
@@ -423,7 +423,7 @@ const DreamscapeTab: React.FC = () => {
                           : 'bg-zinc-900/50 text-zinc-600 border border-zinc-950/50 cursor-not-allowed opacity-50'
                       }`}
                     >
-                      <span>💊 稳定胶囊 (剩{(state.exploration.capsulesCharge.sanity_capsule || 0)}次)</span>
+                      <span><Pill className="w-3 h-3 inline-block mr-0.5 -mt-0.5" />稳定胶囊 (剩{(state.exploration.capsulesCharge.sanity_capsule || 0)}次)</span>
                     </button>
                     <button
                       onClick={() => handleUseCapsule('warp')}
@@ -434,7 +434,7 @@ const DreamscapeTab: React.FC = () => {
                           : 'bg-zinc-900/50 text-zinc-650 border border-zinc-950/50 cursor-not-allowed opacity-50'
                       }`}
                     >
-                      <span>🌀 折跃胶囊 (剩{(state.exploration.capsulesCharge.warp_capsule || 0)}次)</span>
+                      <span><Orbit className="w-3 h-3 inline-block mr-0.5 -mt-0.5" />折跃胶囊 (剩{(state.exploration.capsulesCharge.warp_capsule || 0)}次)</span>
                     </button>
                   </div>
 

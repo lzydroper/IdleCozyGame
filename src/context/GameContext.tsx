@@ -159,14 +159,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const stateRef = useRef<GameState>(state);
   stateRef.current = state; // 每次渲染时同步更新
 
-  // 1. ✅ 自动存盘 Effect
+  // 1. 自动存盘 Effect
   useEffect(() => {
     if (currentUser) {
       saveState(currentUser, state);
     }
   }, [state, currentUser]);
 
-  // 2. ✅ 初始化 Effect
+  // 2. 初始化 Effect
   useEffect(() => {
     const isTest = isTestEnv();
     if (isTest) return;
@@ -186,7 +186,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // 3. ✅ 游戏全局 Tick 循环 - 修复天数递增
+  // 3. 游戏全局 Tick 循环 - 修复天数递增
   useEffect(() => {
     const timer = setInterval(() => {
       setState(prev => applyTick(prev, Date.now()));

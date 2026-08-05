@@ -68,7 +68,6 @@ export const defendDreamLeakUpdate = (
     const nightmare: CombatantState = {
       id: 'dream_leak_nightmare',
       name: NIGHTMARE_CONFIG.leakName,
-      emoji: '👹',
       hp: nightmareHp,
       maxHp: nightmareHp,
       attack: NIGHTMARE_CONFIG.leakAttack,
@@ -83,10 +82,10 @@ export const defendDreamLeakUpdate = (
   const victory = nightmareHp <= 0 || (battle !== null && battle.victory);
   const partyWiped = !victory && !!battle?.partyWiped;
   const logText = victory
-    ? `🛡️ 防御成功！小队击退了${NIGHTMARE_CONFIG.leakName}，获得虚空核心 ×1，梦境污染已净化。`
+    ? `防御成功！小队击退了${NIGHTMARE_CONFIG.leakName}，获得虚空核心 ×1，梦境污染已净化。`
     : partyWiped
-      ? `💥 防御失败！小队全员重伤，梦境入口被封锁 ${getDreamLockdownMinutes()} 分钟，请用纳米修复剂治愈后再次迎战。`
-      : `⚔️ ${NIGHTMARE_CONFIG.leakName}与小队僵持至回合上限，退回阴影深处，可稍后再次迎战。`;
+      ? `防御失败！小队全员重伤，梦境入口被封锁 ${getDreamLockdownMinutes()} 分钟，请用纳米修复剂治愈后再次迎战。`
+      : `${NIGHTMARE_CONFIG.leakName}与小队僵持至回合上限，退回阴影深处，可稍后再次迎战。`;
 
   if (victory) {
     // 战后修整回满血（与自动战斗一致：战斗为独立"场景"）

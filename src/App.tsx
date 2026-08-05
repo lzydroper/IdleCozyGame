@@ -27,7 +27,13 @@ import {
   Trash2,
   Lock,
   Cpu,
-  Users
+  Users,
+  Save,
+  Package,
+  Zap,
+  Dumbbell,
+  Swords,
+  ClipboardList
 } from 'lucide-react';
 import shelterBg from './assets/shelter_bg.jpg';
 
@@ -89,7 +95,7 @@ const App: React.FC = () => {
     const plantedSlots = state.greenhouse.slots.filter(s => s.cropId !== null);
     if (plantedSlots.length > 0 && plantedSlots.every(s => s.growthProgress >= 100)) {
       if (!hasRemindedCropsMature) {
-        showToast("🌿 温室的所有作物已完全成熟，可以安全撤退收获了！", "success");
+        showToast("温室的所有作物已完全成熟，可以安全撤退收获了！", "success");
         setHasRemindedCropsMature(true);
       }
     } else {
@@ -637,7 +643,7 @@ const App: React.FC = () => {
             </div>
             {isExploring && (
               <div className="mb-3 px-3 py-1.5 bg-amber-950/20 border border-amber-500/20 text-[10px] text-amber-400 rounded-xl font-bold flex items-center gap-1 select-none animate-pulse">
-                ⚠️ 探险中无法切换或创建生存者
+                探险中无法切换或创建生存者
               </div>
             )}
 
@@ -837,8 +843,9 @@ const App: React.FC = () => {
             
             {/* 头部 */}
             <div className="text-center">
-              <span className="inline-block px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2">
-                💾 避难所离线运转报告
+              <span className="inline-block px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2 flex items-center gap-1">
+                <Save className="w-3 h-3" />
+                避难所离线运转报告
               </span>
               <h2 className="text-sm font-bold text-zinc-150">
                 欢迎归来，生存者！
@@ -856,19 +863,20 @@ const App: React.FC = () => {
 
             {/* 资源收益汇总 */}
             <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/60 space-y-2.5">
-              <h3 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1">
-                📦 累计收集与产出
+              <h3 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
+                <Package className="w-3 h-3" />
+                累计收集与产出
               </h3>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 {state.lastOfflineReport.recoveredEnergy > 0 && (
                   <div className="flex items-center gap-1.5 text-amber-500">
-                    <span className="text-xs">⚡</span>
+                    <Zap className="w-3 h-3 text-amber-400" />
                     <span>魔能: +{state.lastOfflineReport.recoveredEnergy}</span>
                   </div>
                 )}
                 {state.lastOfflineReport.recoveredStamina > 0 && (
                   <div className="flex items-center gap-1.5 text-emerald-500">
-                    <span className="text-xs">💪</span>
+                    <Dumbbell className="w-3 h-3 text-emerald-400" />
                     <span>体力: +{state.lastOfflineReport.recoveredStamina}</span>
                   </div>
                 )}
@@ -893,8 +901,9 @@ const App: React.FC = () => {
             {/* 挂机战斗报告（ticket 08：确认式离线挂机结算掉落与经验） */}
             {state.lastOfflineReport.idleCombat && (
               <div className="bg-zinc-950/60 p-3 rounded-2xl border border-amber-500/20 space-y-2">
-                <h3 className="text-[10px] text-amber-400 font-bold border-b border-zinc-900 pb-1">
-                  ⚔️ 挂机战斗报告 —— {state.lastOfflineReport.idleCombat.zoneName}
+                <h3 className="text-[10px] text-amber-400 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
+                  <Swords className="w-3 h-3" />
+                  挂机战斗报告 —— {state.lastOfflineReport.idleCombat.zoneName}
                 </h3>
                 <div className="text-[10px] text-zinc-300 font-mono flex flex-col gap-1">
                   <span>
@@ -904,19 +913,20 @@ const App: React.FC = () => {
                   {Object.keys(state.lastOfflineReport.idleCombat.drops).length > 0 && (
                     <span className="flex flex-wrap gap-1">
                       {Object.entries(state.lastOfflineReport.idleCombat.drops).map(([itemId, qty]) => (
-                        <span key={itemId} className="px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300">
-                          {ITEMS_CONFIG[itemId]?.emoji} {ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}
+                        <span key={itemId} className="px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300 flex items-center gap-1">
+                          <GameIcon type="item" id={itemId} className="w-3 h-3" />
+                          {ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}
                         </span>
                       ))}
                     </span>
                   )}
                   <span>
-                    🔮 灵魂残响 ×{state.lastOfflineReport.idleCombat.soulEchoesGained} · ✦ 经验 ×{state.lastOfflineReport.idleCombat.expPerHero}/英雄 · 体力 -{state.lastOfflineReport.idleCombat.staminaConsumed}
+                    灵魂残响 ×{state.lastOfflineReport.idleCombat.soulEchoesGained} · 经验 ×{state.lastOfflineReport.idleCombat.expPerHero}/英雄 · 体力 -{state.lastOfflineReport.idleCombat.staminaConsumed}
                   </span>
                   {state.lastOfflineReport.idleCombat.autoStopped ? (
                     <span className={state.lastOfflineReport.idleCombat.stopReason === 'defeat' ? 'text-red-400 font-bold' : 'text-amber-400 font-bold'}>
                       {state.lastOfflineReport.idleCombat.stopReason === 'defeat'
-                        ? '⚠ 小队战败全员重伤，挂机已自动停止，需纳米修复剂治愈。'
+                        ? '小队战败全员重伤，挂机已自动停止，需纳米修复剂治愈。'
                         : '体力耗尽，挂机已自动停止，恢复体力后可重新开启。'}
                     </span>
                   ) : (
@@ -929,8 +939,9 @@ const App: React.FC = () => {
             {/* 结算日志明细 */}
             {state.lastOfflineReport.logs.length > 0 && (
               <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/60 flex flex-col space-y-1">
-                <h4 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 mb-1">
-                  📋 避难所自动运转明细
+                <h4 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 mb-1 flex items-center gap-1">
+                  <ClipboardList className="w-3 h-3" />
+                  避难所自动运转明细
                 </h4>
                 <div className="space-y-1 text-[9px] text-zinc-400 font-mono max-h-[120px] overflow-y-auto pr-1">
                   {state.lastOfflineReport.logs.map((log, idx) => (
@@ -957,11 +968,11 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 4. ✅ 自定义删除生存者弹窗 */}
+      {/* 4. 自定义删除生存者弹窗 */}
       {deletingCharId && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-6 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl w-full max-w-xs shadow-2xl relative">
-            <h3 className="text-sm font-black text-rose-400 mb-2">⚠ 抹除生存者冷冻数据</h3>
+            <h3 className="text-sm font-black text-rose-400 mb-2">抹除生存者冷冻数据</h3>
             <p className="text-[10px] text-zinc-400 leading-relaxed mb-4">
               确定要擦除生存者 <strong className="text-zinc-200 font-bold">【{getSurvivorPreview(deletingCharId).username}】</strong> 的避难所数据吗？此操作无法撤消！
             </p>

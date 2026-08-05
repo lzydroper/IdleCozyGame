@@ -96,7 +96,6 @@ export interface BattleAction {
   actorSide: 'hero' | 'enemy';
   actorId: string;
   actorName: string;
-  actorEmoji: string;
   targetName: string;
   damage: number;
   kind?: 'attack' | 'skill' | 'heal'; // 行动类型（ticket 12 觉醒专属技能：heal 的 damage 为治疗量）
@@ -120,7 +119,6 @@ export interface BattleHpEntry {
   id: string;
   side: 'hero' | 'enemy';
   name: string;
-  emoji: string;
   hp: number;
   maxHp: number;
 }

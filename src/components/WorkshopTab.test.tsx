@@ -28,7 +28,7 @@ describe('WorkshopTab Component', () => {
       </GameProvider>
     );
 
-    expect(screen.getAllByText(/🔒 未解锁/).length).toBeGreaterThanOrEqual(3); // 余烬三件套
+    expect(screen.getAllByText(/未解锁/).length).toBeGreaterThanOrEqual(3); // 余烬三件套
     expect(screen.getAllByText(/需要图纸：余烬军械图纸/).length).toBeGreaterThanOrEqual(3);
     // 废土系列无图纸门槛，可直接合成
     expect(screen.getByText(/废土利刃锻造/)).toBeDefined();

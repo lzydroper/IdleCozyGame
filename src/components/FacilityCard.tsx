@@ -158,7 +158,7 @@ function FacilityUnitCard({
             onClick={() => {
               if (isMax) return;
               if (upgradeShelterStat(type, unitIndex)) {
-                addLog(`🏭 ${fac.name} ${units.length > 1 ? `${unitIndex + 1}号 ` : ''}升级至 Lv.${level + 1}`, 'logistics');
+                addLog(`${fac.name} ${units.length > 1 ? `${unitIndex + 1}号 ` : ''}升级至 Lv.${level + 1}`, 'logistics');
                 showToast(`${fac.name}升级成功！效率与队列容量提升。`, 'success');
               } else {
                 showToast('所需资源不足，无法升级！', 'error');
@@ -399,7 +399,7 @@ function FacilityTypeSection({
         onClick={() => {
           if (!canExpand) return;
           if (expandFacility(type)) {
-            addLog(`🏗️ ${units[0]?.name || type} 扩建完成，新增 ${units.length + 1} 号设施。`, 'logistics');
+            addLog(`${units[0]?.name || type} 扩建完成，新增 ${units.length + 1} 号设施。`, 'logistics');
             showToast('扩建成功！新增一台并行设施。', 'success');
           } else {
             showToast('扩建失败：资源不足。', 'error');

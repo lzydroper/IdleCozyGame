@@ -31,7 +31,7 @@ const sequenceRng = (values: number[]): (() => number) => {
 
 // 构造一个纯战斗单位
 const unit = (id: string, hp: number, attack: number, defense: number, name = id): CombatantState => ({
-  id, name, emoji: '⚔️', hp, maxHp: hp, attack, defense
+  id, name, hp, maxHp: hp, attack, defense
 });
 
 describe('Hero stat scaling (等级成长)', () => {
@@ -127,8 +127,8 @@ describe('simulateBattle (轮询回合制)', () => {
     // aoe 技能：一次行动对全部存活敌人造成伤害
     const nova = heroToCombatant('nova', { ...createInitialHero('nova'), star: STAR_MAX, awakened: true });
     const enemies = [
-      { id: 'e1', name: '靶子甲', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 },
-      { id: 'e2', name: '靶子乙', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }
+      { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
+      { id: 'e2', name: '靶子乙', hp: 500, maxHp: 500, attack: 1, defense: 0 }
     ];
     const aoeResult = simulateBattle([nova], enemies, 1);
     expect(aoeResult.hpTrack!.length).toBe(aoeResult.actions.length + 1);
@@ -144,7 +144,7 @@ describe('simulateBattle (轮询回合制)', () => {
 
     // heal 技能：自身治疗 → 血量反弹，帧差为正
     const healer = heroToCombatant('healer', { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 });
-    const healEnemies = [{ id: 'e1', name: '靶子', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const healEnemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const healResult = simulateBattle([healer], healEnemies, 1);
     const healAction = healResult.actions.find(a => a.kind === 'heal')!;
     expect(healAction).toBeDefined();

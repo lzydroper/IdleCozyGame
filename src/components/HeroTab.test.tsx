@@ -202,7 +202,7 @@ describe('HeroTab Component', () => {
 
     fireEvent.click(screen.getByText('英雄列表'));
     fireEvent.click(screen.getByTestId('hero-card-nova'));
-    fireEvent.click(screen.getByText(/⭐ 升星/));
+    fireEvent.click(screen.getByText(/升星/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.star).toBe(2);
     expect(saved.soulShards.nova).toBe(5); // cost(1) = 5
@@ -224,7 +224,7 @@ describe('HeroTab Component', () => {
 
     fireEvent.click(screen.getByText('英雄列表'));
     fireEvent.click(screen.getByTestId('hero-card-nova'));
-    fireEvent.click(screen.getByText(/🌟 觉醒/));
+    fireEvent.click(screen.getByText(/觉醒/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.awakened).toBe(true);
     expect(saved.inventory.arcane_orb).toBe(0);

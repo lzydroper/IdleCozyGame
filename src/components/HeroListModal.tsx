@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { HEROES_CONFIG } from '../data/heroes';
-import { X, Users } from 'lucide-react';
+import { X, Users, Star } from 'lucide-react';
 import type { HeroState } from '../types/game';
 
 export interface HeroListModalProps {
@@ -96,7 +96,7 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
                   </span>
                   <div className="flex items-center gap-1 text-[8px] text-amber-400 font-bold">
                     <span>Lv.{hero.level}</span>
-                    <span>★{hero.star}</span>
+                    <span><Star className="w-3 h-3 inline-block fill-amber-400 text-amber-400 mr-0.5" />{hero.star}</span>
                   </div>
                 </div>
               </div>
