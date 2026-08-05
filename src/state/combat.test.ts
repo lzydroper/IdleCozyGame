@@ -13,8 +13,10 @@ import {
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
+  heroToCombatant,
   type CombatantState
 } from './combat';
+import { STAR_MAX } from '../data/awakening';
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
@@ -80,6 +82,77 @@ describe('simulateBattle (轮询回合制)', () => {
     const { victory, partyWiped } = simulateBattle(heroes, enemies);
     expect(victory).toBe(false);
     expect(partyWiped).toBe(true);
+  });
+
+  it('records an hpTrack snapshot per action for HP bar playback (ticket 21)', () => {
+    const heroes = [unit('nova', 100, 35, 8, '诺娃')];
+    const enemies = [unit('hound', 45, 9, 3, '废土鬣狗')];
+    const { actions, hpTrack, victory } = simulateBattle(heroes, enemies);
+
+    expect(hpTrack).toBeDefined();
+    // 初始满血快照 + 每动作一帧
+    expect(hpTrack!.length).toBe(actions.length + 1);
+    // 首帧：双方满血
+    expect(hpTrack![0]).toMatchObject([
+      { id: 'nova', side: 'hero', hp: 100, maxHp: 100 },
+      { id: 'hound', side: 'enemy', hp: 45, maxHp: 45 }
+    ]);
+    // 逐帧与动作一一对应：第 i+1 帧 = 第 i 帧应用 actions[i] 后的状态
+    for (let i = 0; i < actions.length; i++) {
+      const before = hpTrack![i];
+      const after = hpTrack![i + 1];
+      const action = actions[i];
+      // 攻击/技能：目标血量减少恰好 damage；其余参战者不变
+      const targetBefore = before.find(x => x.name === action.targetName)!;
+      const targetAfter = after.find(x => x.name === action.targetName)!;
+      if (action.kind === 'heal') {
+        expect(targetAfter.hp).toBe(targetBefore.hp + action.damage);
+      } else {
+        expect(targetAfter.hp).toBe(Math.max(0, targetBefore.hp - action.damage));
+      }
+      for (const entry of before) {
+        if (entry.name === action.targetName) continue;
+        const afterEntry = after.find(x => x.name === entry.name)!;
+        expect(afterEntry.hp).toBe(entry.hp);
+      }
+    }
+    // 末帧与胜负一致：胜利 → 敌人 hp 归零
+    expect(victory).toBe(true);
+    const last = hpTrack![hpTrack!.length - 1];
+    expect(last.find(x => x.side === 'enemy')!.hp).toBe(0);
+    expect(last.find(x => x.side === 'hero')!.hp).toBeGreaterThan(0);
+  });
+
+  it('hpTrack stays in sync for aoe multi-target and heal actions (ticket 21)', () => {
+    // aoe 技能：一次行动对全部存活敌人造成伤害
+    const nova = heroToCombatant('nova', { ...createInitialHero('nova'), star: STAR_MAX, awakened: true });
+    const enemies = [
+      { id: 'e1', name: '靶子甲', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 },
+      { id: 'e2', name: '靶子乙', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }
+    ];
+    const aoeResult = simulateBattle([nova], enemies, 1);
+    expect(aoeResult.hpTrack!.length).toBe(aoeResult.actions.length + 1);
+    // 第一回合的两个 aoe 动作：每个目标各扣一次，且两次扣血互不影响其他目标
+    const round1 = aoeResult.actions.filter(a => a.round === 1 && a.kind === 'skill');
+    expect(round1).toHaveLength(2);
+    const frame1 = aoeResult.hpTrack![1].find(x => x.id === 'e1')!;
+    const frame2 = aoeResult.hpTrack![2].find(x => x.id === 'e1')!;
+    const frame2e2 = aoeResult.hpTrack![2].find(x => x.id === 'e2')!;
+    expect(frame1.hp).toBe(500 - round1[0].damage);
+    expect(frame2.hp).toBe(frame1.hp); // 第二次 aoe 打 e2，e1 不再变化
+    expect(frame2e2.hp).toBe(500 - round1[1].damage);
+
+    // heal 技能：自身治疗 → 血量反弹，帧差为正
+    const healer = heroToCombatant('healer', { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 });
+    const healEnemies = [{ id: 'e1', name: '靶子', emoji: '🎯', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const healResult = simulateBattle([healer], healEnemies, 1);
+    const healAction = healResult.actions.find(a => a.kind === 'heal')!;
+    expect(healAction).toBeDefined();
+    const healIdx = healResult.actions.indexOf(healAction);
+    const heroBefore = healResult.hpTrack![healIdx].find(x => x.id === 'healer')!;
+    const heroAfter = healResult.hpTrack![healIdx + 1].find(x => x.id === 'healer')!;
+    expect(heroAfter.hp).toBe(heroBefore.hp + healAction.damage); // 治疗帧血量上升
+    expect(heroAfter.hp).toBeLessThanOrEqual(heroAfter.maxHp);
   });
 });
 

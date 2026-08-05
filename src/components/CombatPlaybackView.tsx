@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { CombatSettlement, BattleAction } from '../types/game';
+import type { CombatSettlement, BattleAction, BattleHpEntry } from '../types/game';
 import { ITEMS_CONFIG } from '../data/items';
 import { FastForward, Zap, CheckCircle2, AlertTriangle, Shield, Play, Pause, RotateCcw } from 'lucide-react';
 
@@ -102,6 +102,37 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   const victory = settlement.battle.victory;
   const wiped = settlement.battle.partyWiped;
 
+  // 血条快照（ticket 21）：actionIndex 对应已执行动作数，取第 actionIndex 帧快照
+  const hpTrack = settlement.battle.hpTrack;
+  const currentHp = hpTrack ? hpTrack[Math.min(actionIndex, hpTrack.length - 1)] : null;
+  const heroSide = currentHp ? currentHp.filter(x => x.side === 'hero') : [];
+  const enemySide = currentHp ? currentHp.filter(x => x.side === 'enemy') : [];
+
+  // 单条血条
+  const HpBar: React.FC<{ entry: BattleHpEntry }> = ({ entry }) => {
+    const pct = entry.maxHp > 0 ? Math.max(0, Math.min(100, (entry.hp / entry.maxHp) * 100)) : 0;
+    const isHero = entry.side === 'hero';
+    const barColor = isHero
+      ? 'bg-gradient-to-r from-cyan-500 to-sky-400'
+      : 'bg-gradient-to-r from-rose-600 to-red-400';
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        <span className="text-[9px] shrink-0 w-14 truncate text-right">
+          {entry.emoji} {entry.name}
+        </span>
+        <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700/70 min-w-0">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className={`text-[9px] font-mono shrink-0 w-12 ${isHero ? 'text-cyan-300' : 'text-rose-300'}`}>
+          {entry.hp}/{entry.maxHp}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-3 flex flex-col gap-3 shadow-xl overflow-hidden">
       {/* 顶部标题与倍速/Skip 控制条 */}
@@ -158,6 +189,23 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
           )}
         </div>
       </header>
+
+      {/* 实时血条（ticket 21）：随动作步进扣减，无 hpTrack(旧存档)时回退纯日志 */}
+      {currentHp && (
+        <div className="flex flex-col gap-1.5 bg-zinc-950/80 rounded-xl p-2.5 border border-zinc-800/80">
+          <div className="flex flex-col gap-1">
+            {heroSide.map(entry => (
+              <HpBar key={entry.id} entry={entry} />
+            ))}
+          </div>
+          <div className="w-full h-px bg-zinc-800/70" />
+          <div className="flex flex-col gap-1">
+            {enemySide.map(entry => (
+              <HpBar key={entry.id} entry={entry} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 实时动作播报日志窗口 */}
       <div

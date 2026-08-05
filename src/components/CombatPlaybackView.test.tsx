@@ -95,4 +95,56 @@ describe('CombatPlaybackView Component (ticket 21)', () => {
     expect(screen.getByText(/灵魂残响 ×20/)).toBeDefined();
     expect(screen.getByText(/经验 ×50 \/ 英雄/)).toBeDefined();
   });
+
+  it('renders HP bars that deplete as actions step (ticket 21)', () => {
+    const settlement: CombatSettlement = {
+      battle: {
+        victory: true,
+        partyWiped: false,
+        rounds: 2,
+        actions: [
+          { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', actorEmoji: '🗡️', targetName: '变异恶犬', damage: 20, kind: 'attack' }
+        ],
+        hpTrack: [
+          [
+            { id: 'nova', side: 'hero', name: '诺娃', emoji: '🗡️', hp: 100, maxHp: 100 },
+            { id: 'hound', side: 'enemy', name: '变异恶犬', emoji: '🐕', hp: 50, maxHp: 50 }
+          ],
+          [
+            { id: 'nova', side: 'hero', name: '诺娃', emoji: '🗡️', hp: 100, maxHp: 100 },
+            { id: 'hound', side: 'enemy', name: '变异恶犬', emoji: '🐕', hp: 30, maxHp: 50 }
+          ]
+        ]
+      },
+      drops: {},
+      soulEchoes: 0,
+      expPerHero: 0,
+      woundedHeroIds: []
+    };
+
+    render(<CombatPlaybackView settlement={settlement} zoneName="废土荒原" />);
+
+    // 初始帧：敌人满血 50/50
+    expect(screen.getByText('50/50')).toBeDefined();
+    expect(screen.getByText('100/100')).toBeDefined();
+
+    // 步进 1 个动作后：敌人 30/50
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(screen.getByText('30/50')).toBeDefined();
+  });
+
+  it('falls back to log-only playback when hpTrack is absent (old saves)', () => {
+    const legacy: CombatSettlement = {
+      ...mockSettlement1,
+      battle: { ...mockSettlement1.battle, hpTrack: undefined }
+    };
+    const { container } = render(<CombatPlaybackView settlement={legacy} zoneName="废土荒原" />);
+
+    // 无 hpTrack → 不渲染血条数值，纯日志播报仍可用
+    expect(screen.queryByText('100/100')).toBeNull();
+    expect(screen.getByText('跳过')).toBeDefined();
+    expect(container.querySelectorAll('.font-mono').length).toBeGreaterThan(0);
+  });
 });

@@ -109,6 +109,20 @@ export interface BattleResult {
   partyWiped: boolean;   // 英雄全灭 → 战败（重伤触发条件）
   rounds: number;
   actions: BattleAction[];
+  // 逐动作 HP 快照（ticket 21 血条播放）：hpTrack[0] = 初始满血状态，
+  // hpTrack[k] = 第 k 个动作执行后的全员 HP（长度 = actions.length + 1）。
+  // 可选：旧存档/测试 mock 无此字段时 UI 回退为纯日志播报。
+  hpTrack?: BattleHpEntry[][];
+}
+
+// 单个参战者的 HP 快照（ticket 21 血条展示用）
+export interface BattleHpEntry {
+  id: string;
+  side: 'hero' | 'enemy';
+  name: string;
+  emoji: string;
+  hp: number;
+  maxHp: number;
 }
 
 // 战斗结算：掉落/经验/重伤入账

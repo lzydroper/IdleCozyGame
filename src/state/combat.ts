@@ -1,4 +1,4 @@
-import type { GameState, HeroState, HeroEquipment, LogEntry, BattleResult, CombatSettlement, CombatIdleState } from '../types/game';
+import type { GameState, HeroState, HeroEquipment, LogEntry, BattleResult, BattleHpEntry, CombatSettlement, CombatIdleState } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
@@ -84,8 +84,22 @@ export const simulateBattle = (
   const h = heroes.map(x => ({ ...x }));
   const e = enemies.map(x => ({ ...x }));
   const actions: BattleResult['actions'] = [];
+  const hpTrack: BattleHpEntry[][] = [];
   const skillCooldown: Record<string, number> = {}; // 英雄 id -> 剩余冷却（按自身行动轮）
   let round = 0;
+
+  // 记录当前全员 HP 快照（ticket 21 血条播放）
+  const snapshot = (): BattleHpEntry[] => [
+    ...h.map(x => ({
+      id: x.id, side: 'hero' as const, name: x.name, emoji: x.emoji,
+      hp: Math.max(0, x.hp), maxHp: x.maxHp
+    })),
+    ...e.map(x => ({
+      id: x.id, side: 'enemy' as const, name: x.name, emoji: x.emoji,
+      hp: Math.max(0, x.hp), maxHp: x.maxHp
+    }))
+  ];
+  hpTrack.push(snapshot()); // 初始满血（战斗开始前）
 
   while (round < maxRounds) {
     round++;
@@ -109,6 +123,7 @@ export const simulateBattle = (
             round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
             targetName: target.name, damage: dmg, kind: 'skill', skillName: skill.name
           });
+          hpTrack.push(snapshot());
         } else if (skill.type === 'aoe') {
           // 对全部存活敌人造成伤害
           for (const en of e) {
@@ -119,6 +134,7 @@ export const simulateBattle = (
               round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
               targetName: en.name, damage: dmg, kind: 'skill', skillName: skill.name
             });
+            hpTrack.push(snapshot());
           }
         } else if (skill.type === 'heal') {
           // 自身治疗：不超过生命上限
@@ -129,6 +145,7 @@ export const simulateBattle = (
             round, actorSide: 'hero', actorId: hero.id, actorName: hero.name, actorEmoji: hero.emoji,
             targetName: hero.name, damage: actual, kind: 'heal', skillName: skill.name
           });
+          hpTrack.push(snapshot());
         }
       } else {
         // 冷却递减 + 普通攻击
@@ -145,6 +162,7 @@ export const simulateBattle = (
           damage: dmg,
           kind: 'attack'
         });
+        hpTrack.push(snapshot());
       }
     }
     // 全部敌人阵亡 → 本回合胜利
@@ -167,6 +185,7 @@ export const simulateBattle = (
         damage: dmg,
         kind: 'attack'
       });
+      hpTrack.push(snapshot());
     }
 
     // 英雄全灭 → 战败
@@ -178,7 +197,8 @@ export const simulateBattle = (
     victory: e.every(en => en.hp <= 0),
     partyWiped: !h.some(he => he.hp > 0),
     rounds: round,
-    actions
+    actions,
+    hpTrack
   };
 };
 
