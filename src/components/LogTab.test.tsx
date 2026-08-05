@@ -94,23 +94,32 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     expect(screen.getAllByText('能量补充剂').length).toBeGreaterThan(0);
     expect(screen.getAllByText('废土肾上腺素').length).toBeGreaterThan(0);
 
-    // 装备 tab 为空禁用
-    const equipmentBtn = screen.getByText('装备').closest('button') as HTMLButtonElement;
-    expect(equipmentBtn.disabled).toBe(true);
+    // 装备 tab 为空：可点击查看空状态（不再禁用）
+    fireEvent.click(screen.getByText('装备'));
+    expect(screen.getByText('该分类暂无物资')).toBeDefined();
   });
 
-  it('disables empty category tabs', () => {
+  it('empty category tabs are clickable and show the empty state (no disabled tabs)', () => {
     renderWithSave({ scrap_metal: 5 });
 
-    const itemBtn = screen.getByText('道具').closest('button') as HTMLButtonElement;
-    const equipmentBtn = screen.getByText('装备').closest('button') as HTMLButtonElement;
-    const shardBtn = screen.getByText('碎片').closest('button') as HTMLButtonElement;
-    const resourceBtn = screen.getByText('资源').closest('button') as HTMLButtonElement;
-
-    expect(itemBtn.disabled).toBe(true);
-    expect(equipmentBtn.disabled).toBe(true);
-    expect(shardBtn.disabled).toBe(true);
-    expect(resourceBtn.disabled).toBe(false);
+    // 默认选中第一个非空分类（资源），物品可见
     expect(screen.getAllByText('废旧金属').length).toBeGreaterThan(0);
+
+    // 空分类（碎片/道具）可点击查看空状态
+    fireEvent.click(screen.getByText('碎片'));
+    expect(screen.getByText('该分类暂无物资')).toBeDefined();
+
+    fireEvent.click(screen.getByText('道具'));
+    expect(screen.getByText('该分类暂无物资')).toBeDefined();
+
+    // 切回资源：物品仍可见
+    fireEvent.click(screen.getByText('资源'));
+    expect(screen.getAllByText('废旧金属').length).toBeGreaterThan(0);
+
+    // 无任何 tab 被禁用
+    for (const label of ['道具', '资源', '碎片', '装备']) {
+      const btn = screen.getByText(label).closest('button') as HTMLButtonElement;
+      expect(btn.disabled, label).toBe(false);
+    }
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { ITEMS_CONFIG } from '../data/items';
 import ItemGridItem from './ItemGridItem';
@@ -40,22 +40,11 @@ const LogTab: React.FC = () => {
       return { qty, ...meta };
     });
 
-  // 无「全部」分类：默认选中第一个非空分类，避免开局看到空列表
+  // 无「全部」分类：默认选中第一个非空分类，避免开局看到空列表；
+  // 空分类不禁用（用户可点击查看空状态），故无自动回退逻辑
   const [backpackCat, setBackpackCat] = useState<BackpackCategory>(
     BACKPACK_CATEGORIES.find(cat => backpackItems.some(it => cat.id === it.category))?.id ?? 'item'
   );
-
-  // 当前分类被耗尽（物品用光/切存档）时，自动回退到第一个非空分类
-  useEffect(() => {
-    if (backpackItems.length === 0) return;
-    const active = BACKPACK_CATEGORIES.find(c => c.id === backpackCat);
-    if (!active) return;
-    const isEmpty = !backpackItems.some(it => active.id === it.category);
-    if (isEmpty) {
-      const next = BACKPACK_CATEGORIES.find(c => backpackItems.some(it => c.id === it.category))?.id ?? 'item';
-      setBackpackCat(next);
-    }
-  }, [backpackItems, backpackCat]);
 
   const visibleBackpackItems = backpackItems.filter(it =>
     BACKPACK_CATEGORIES.find(c => c.id === backpackCat)?.id === it.category
@@ -76,7 +65,7 @@ const LogTab: React.FC = () => {
           避难所物资背囊
         </h3>
 
-        {/* 分类切页（ticket 22）：4 大分类，无「全部」；空分类禁用并显示数量 */}
+        {/* 分类切页：4 大分类，无「全部」；空分类可点击查看空状态（无禁用） */}
         <div className="flex gap-1.5 mb-3">
           {BACKPACK_CATEGORIES.map(cat => {
             const CatIcon = cat.icon;
@@ -86,8 +75,7 @@ const LogTab: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => setBackpackCat(cat.id)}
-                disabled={count === 0}
-                className={`flex-1 py-1.5 rounded-xl text-[10px] font-black flex items-center justify-center gap-1 border transition-all cursor-pointer disabled:opacity-30 disabled:pointer-events-none ${
+                className={`flex-1 py-1.5 rounded-xl text-[10px] font-black flex items-center justify-center gap-1 border transition-all cursor-pointer ${
                   active
                     ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-md'
                     : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200'
