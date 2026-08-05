@@ -227,11 +227,13 @@ describe('WildernessTab Component', () => {
     expect(screen.getAllByText(/废土边缘/).length).toBeGreaterThan(0); // 区域卡标题 + 下一区解锁提示
     expect(screen.getByText(/战斗体力/)).toBeDefined();
 
-    // 初始队伍 = 诺娃，满体力 100 → 可开战（体力 -10）
     fireEvent.click(screen.getByText(/开战（体力 -10）/));
 
+    const skipBtn1 = screen.queryByText('跳过');
+    if (skipBtn1) fireEvent.click(skipBtn1);
+
     // 胜利结算展示 + 体力扣减 + 结算写入存档
-    expect(screen.getByText(/✅ 战斗胜利/)).toBeDefined();
+    expect(screen.getAllByText(/战斗胜利/).length).toBeGreaterThan(0);
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.stamina).toBe(90);
     expect(savedState.combat.zoneId).toBe('wasteland_entrance');
@@ -293,6 +295,10 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/⚔️ 战斗遭遇 —— 废土掠食者群/)).toBeDefined();
     fireEvent.click(screen.getByText(/⚔️ 迎战！/));
 
+    // 触发战斗动画播报 → 跳过（加快测试速度）
+    const skipBtn = screen.queryByText(/跳过/);
+    if (skipBtn) fireEvent.click(skipBtn);
+
     // 胜利 → 继续探索：下一张卡牌出现、步数 +1、遭遇清除
     expect(screen.getByText(/废弃的魔导卡车/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
@@ -339,6 +345,10 @@ describe('WildernessTab Component', () => {
 
     expect(screen.getByText(/⚔️ 战斗遭遇 —— 车间畸变体群/)).toBeDefined();
     fireEvent.click(screen.getByText(/⚔️ 迎战！/));
+
+    // 触发战斗动画播报 → 跳过（加快测试速度）
+    const skipBtn = screen.queryByText(/跳过/);
+    if (skipBtn) fireEvent.click(skipBtn);
 
     // 战败 → 探索终止回到荒野入口，战利品并入库存，小队重伤
     expect(screen.getByText(/踏入废土荒野/)).toBeDefined();
@@ -528,7 +538,10 @@ describe('WildernessTab Component', () => {
     );
 
     fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
-    expect(screen.getByText(/⚔️ 战斗平局/)).toBeDefined();
+    const skipBtn2 = screen.queryByText('跳过');
+    if (skipBtn2) fireEvent.click(skipBtn2);
+
+    expect(screen.getByText(/战斗平局/)).toBeDefined();
     expect(screen.queryByText(/💥 战斗失败/)).toBeNull();
     expect(screen.getByText(/鏖战至回合上限未分胜负/)).toBeDefined();
   });
@@ -571,6 +584,9 @@ describe('WildernessTab Component', () => {
     );
 
     fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+    const skipBtn3 = screen.queryByText('跳过');
+    if (skipBtn3) fireEvent.click(skipBtn3);
+
     // strike：发动【技能】→ 目标名（技能 span 内含目标）；heal：发动【技能】+治疗量（无目标箭头）
     expect(screen.getByText(/发动【电涌过载】/).textContent).toContain('废土鬣狗');
     expect(screen.getByText('-28')).toBeDefined(); // strike 伤害

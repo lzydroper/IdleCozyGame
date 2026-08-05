@@ -18,6 +18,7 @@ import { isZoneUnlocked } from '../state/combat';
 import { getActiveBonds } from '../state/bonds';
 import { formatBonus } from '../data/bonds';
 import type { CombatSettlement } from '../types/game';
+import CombatPlaybackView from './CombatPlaybackView';
 
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -25,6 +26,9 @@ const WildernessTab: React.FC = () => {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
+  // 遭遇战结算：state 中 realityEncounterId 清空后仍需继续播放动画
+  const [encounterSettlement, setEncounterSettlement] = useState<CombatSettlement | null>(null);
+  const [encounterEventTitle, setEncounterEventTitle] = useState<string>('遭遇战');
 
   const exploration = state.exploration;
   const player = state.player;
@@ -272,8 +276,21 @@ const WildernessTab: React.FC = () => {
 
   return (
     <div className="w-full pb-20">
-      {/* 探索 / 战斗 模式切换（探索中锁定） */}
-      {!exploration.inRealityExploration && (
+      {/* 遭遇战结算动画（探索状态清空后仍需继续播放） */}
+      {encounterSettlement && (
+        <CombatPlaybackView
+          settlement={encounterSettlement}
+          zoneName={encounterEventTitle}
+          onComplete={() => {
+            if (encounterSettlement.battle.victory) showToast('⚔️ 遭遇战胜利！继续探索。', 'success');
+            else if (encounterSettlement.battle.partyWiped) showToast('💥 遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
+            else showToast('⚔️ 遭遇战平局，继续探索。', 'info');
+            setEncounterSettlement(null);
+          }}
+        />
+      )}
+      {/* 探索 / 战斗 模式切换（探索中锁定，遭遇战播放期间也锁定） */}
+      {!encounterSettlement && !exploration.inRealityExploration && (
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setMode('explore')}
@@ -297,7 +314,7 @@ const WildernessTab: React.FC = () => {
           </button>
         </div>
       )}
-      {!exploration.inRealityExploration ? (
+      {!encounterSettlement && (!exploration.inRealityExploration ? (
         mode === 'combat' ? (
           <CombatPanel />
         ) : (
@@ -360,9 +377,15 @@ const WildernessTab: React.FC = () => {
       ) : (
         /* In exploration display */
         <div className="space-y-2.5 pt-0.5">
-          {/* 战斗遭遇场景（ticket 06：与自动战斗同一战斗场景） */}
+          {/* 战斗遭遇面板 */}
           {exploration.realityEncounterId && (
-            <EncounterPanel encounterId={exploration.realityEncounterId} />
+            <EncounterPanel
+              encounterId={exploration.realityEncounterId}
+              onFight={(s, title) => {
+                setEncounterEventTitle(title);
+                setEncounterSettlement(s);
+              }}
+            />
           )}
 
           {/* 遭遇卡牌 - 使用左右滑动交互组件 */}
@@ -436,13 +459,16 @@ const WildernessTab: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };
 
 // === 战斗遭遇场景（ticket 06）：探索中遭遇战斗事件，进入与自动战斗同一战斗场景 ===
-const EncounterPanel: React.FC<{ encounterId: string }> = ({ encounterId }) => {
+const EncounterPanel: React.FC<{
+  encounterId: string;
+  onFight: (settlement: CombatSettlement, eventTitle: string) => void;
+}> = ({ encounterId, onFight }) => {
   const { state, resolveEncounterBattle, fleeEncounter } = useGame();
   const { showToast } = useToast();
 
@@ -458,12 +484,13 @@ const EncounterPanel: React.FC<{ encounterId: string }> = ({ encounterId }) => {
 
   const handleStart = () => {
     const outcome = resolveEncounterBattle(encounterId);
-    if (outcome.failure === 'no_stamina') showToast(`体力不足（需要 ${staminaCost}），等待恢复或撤离。`, 'error');
-    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
-    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.settlement?.battle.victory) showToast('⚔️ 遭遇战胜利！继续探索。', 'success');
-    else if (outcome.settlement?.battle.partyWiped) showToast('💥 遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
-    else if (outcome.settlement) showToast('⚔️ 遭遇战平局，继续探索。', 'info');
+    if (outcome.failure === 'no_stamina') { showToast(`体力不足（需要 ${staminaCost}），等待恢复或撤离。`, 'error'); return; }
+    if (outcome.failure === 'no_party') { showToast('小队为空，请先在英雄页编队上阵！', 'warning'); return; }
+    if (outcome.failure === 'wounded') { showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error'); return; }
+    // 战斗开始：将结算结果传给父组件，由父组件负责播放动画（避免 EncounterPanel 卸载时丢失状态）
+    if (outcome.settlement) {
+      onFight(outcome.settlement, event.title);
+    }
   };
 
   const handleFlee = () => {
@@ -591,73 +618,11 @@ const CombatPanel: React.FC = () => {
   };
 
   const renderSettlement = (s: CombatSettlement) => {
-    const victory = s.battle.victory;
-    const wiped = s.battle.partyWiped;
-    const recentActions = s.battle.actions.slice(-6);
+    const zoneName = COMBAT_ZONES[state.combat?.zoneId || '']?.name || REALITY_EVENTS[state.combat?.zoneId || '']?.title || '战斗区域';
+    // 用内容派生的稳定 key，防止挂机 tick 更新 state 对象引用时重置动画
+    const stableKey = `${s.battle.rounds}|${s.battle.actions.length}|${s.battle.victory}|${s.battle.partyWiped}`;
     return (
-      <div className={`rounded-2xl border p-3 flex flex-col gap-2 ${
-        victory
-          ? 'bg-emerald-950/40 border-emerald-500/30'
-          : wiped
-            ? 'bg-red-950/40 border-red-500/30'
-            : 'bg-zinc-900/60 border-zinc-700/50'
-      }`}>
-        <div className={`text-xs font-black ${victory ? 'text-emerald-300' : wiped ? 'text-red-300' : 'text-zinc-400'}`}>
-          {victory ? '✅ 战斗胜利' : wiped ? '💥 战斗失败' : '⚔️ 战斗平局'} —— {COMBAT_ZONES[state.combat?.zoneId || '']?.name || REALITY_EVENTS[state.combat?.zoneId || '']?.title || '未知区域'}（{s.battle.rounds} 回合）
-        </div>
-        {victory ? (
-          <div className="flex flex-wrap gap-1.5 text-[9px] font-bold">
-            {Object.entries(s.drops).map(([itemId, qty]) => (
-              <span key={itemId} className="px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300">
-                {ITEMS_CONFIG[itemId]?.emoji} {ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}
-              </span>
-            ))}
-            {s.soulEchoes > 0 && (
-              <span className="px-1.5 py-0.5 rounded-md border border-purple-500/40 bg-purple-950/40 text-purple-300">
-                🔮 灵魂残响 ×{s.soulEchoes}
-              </span>
-            )}
-            <span className="px-1.5 py-0.5 rounded-md border border-cyan-500/40 bg-cyan-950/40 text-cyan-300">
-              ✦ 经验 ×{s.expPerHero} / 英雄
-            </span>
-          </div>
-        ) : wiped ? (
-          <div className="text-[9px] text-red-300 font-bold">
-            {s.woundedHeroIds.map(id => HEROES_CONFIG[id]?.name || id).join('、')} 进入重伤状态，
-            需在英雄页使用纳米修复剂治愈。
-          </div>
-        ) : (
-          <div className="text-[9px] text-zinc-500 font-bold">鏖战至回合上限未分胜负，无战利品，亦无人重伤。</div>
-        )}
-        {recentActions.length > 0 && (
-          <div className="bg-zinc-950/60 rounded-xl p-2 flex flex-col gap-0.5 max-h-28 overflow-y-auto">
-            {recentActions.map((a, i) => (
-              <div key={i} className="text-[8px] text-zinc-400 font-mono leading-relaxed">
-                <span className="text-zinc-600">R{a.round}</span>{' '}
-                <span className={a.actorSide === 'hero' ? 'text-cyan-400' : 'text-rose-400'}>
-                  {a.actorEmoji} {a.actorName}
-                </span>{' '}
-                {a.skillName ? (
-                  <span className="text-purple-400">
-                    发动【{a.skillName}】
-                    {a.kind === 'skill' && a.actorName !== a.targetName && (
-                      <>→ <span className="text-zinc-300">{a.targetName}</span></>
-                    )}
-                  </span>
-                ) : (
-                  <>→ <span className="text-zinc-300">{a.targetName}</span></>
-                )}{' '}
-                <span className={a.kind === 'heal' ? 'text-emerald-400' : 'text-amber-400'}>
-                  {a.kind === 'heal' ? `+${a.damage}` : `-${a.damage}`}
-                </span>
-              </div>
-            ))}
-            {s.battle.actions.length > recentActions.length && (
-              <div className="text-[8px] text-zinc-600 text-center font-bold">…… 共 {s.battle.actions.length} 次行动</div>
-            )}
-          </div>
-        )}
-      </div>
+      <CombatPlaybackView key={stableKey} settlement={s} zoneName={zoneName} />
     );
   };
 
@@ -775,7 +740,7 @@ const CombatPanel: React.FC = () => {
               className={`p-4 rounded-3xl border transition-all flex flex-col gap-2 ${
                 !unlocked
                   ? 'bg-zinc-950/30 border-zinc-800/50 opacity-60'
-                  : insufficient
+                  : insufficient || idleActiveHere
                     ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
                     : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
               }`}
