@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { REALITY_EVENTS } from '../data/realityEvents';
@@ -276,17 +276,19 @@ const WildernessTab: React.FC = () => {
 
   return (
     <div className="w-full pb-20">
-      {/* 遭遇战结算动画（探索状态清空后仍需继续播放） */}
+      {/* 遭遇战结算动画（探索状态清空后仍需继续播放；播完停留，由用户点击按钮才离开，ticket 21 用户反馈 4） */}
       {encounterSettlement && (
         <CombatPlaybackView
           settlement={encounterSettlement}
           zoneName={encounterEventTitle}
+          autoPlay
           onComplete={() => {
-            if (encounterSettlement.battle.victory) showToast('⚔️ 遭遇战胜利！继续探索。', 'success');
+            if (encounterSettlement.battle.victory) showToast('⚔️ 遭遇战胜利！战利品与经验已入账。', 'success');
             else if (encounterSettlement.battle.partyWiped) showToast('💥 遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
-            else showToast('⚔️ 遭遇战平局，继续探索。', 'info');
-            setEncounterSettlement(null);
+            else showToast('⚔️ 遭遇战平局，未分胜负。', 'info');
           }}
+          onExit={() => setEncounterSettlement(null)}
+          exitLabel={encounterSettlement.battle.victory ? '继续探索' : '返回荒野'}
         />
       )}
       {/* 探索 / 战斗 模式切换（探索中锁定，遭遇战播放期间也锁定） */}
@@ -576,6 +578,11 @@ const CombatPanel: React.FC = () => {
   const idle = state.combat?.idle || null;
   const idleZone = idle?.zoneId ? COMBAT_ZONES[idle.zoneId] : null;
 
+  // 本次点击开战/BOSS 产生的新结算（ticket 21 用户反馈 1/2）：
+  // 历史 lastSettlement 静态展示不自动播放；只有新战斗才播放动画，播完后再提示奖励
+  const [pendingSettlement, setPendingSettlement] = useState<{ settlement: CombatSettlement; isBoss: boolean; wasCleared: boolean; seq: number } | null>(null);
+  const pendingSeqRef = useRef(0);
+
   const handleStart = (zoneId: string) => {
     const outcome = startCombat(zoneId);
     if (outcome.failure === 'locked') showToast('🔒 区域尚未解锁，先通关上一区域！', 'warning');
@@ -583,9 +590,10 @@ const CombatPanel: React.FC = () => {
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
     else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
-    else if (outcome.settlement?.battle.victory) showToast('⚔️ 战斗胜利！战利品与经验已入账。', 'success');
-    else if (outcome.settlement?.battle.partyWiped) showToast('💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
-    else if (outcome.settlement) showToast('⚔️ 战斗平局，未分胜负。', 'info');
+    else if (outcome.settlement) {
+      // 奖励提示延迟到动画播完（onComplete）再弹，避免"先提示后播放"
+      setPendingSettlement({ settlement: outcome.settlement, isBoss: false, wasCleared: false, seq: ++pendingSeqRef.current });
+    }
   };
 
   const handleStartIdle = (zoneId: string) => {
@@ -609,21 +617,22 @@ const CombatPanel: React.FC = () => {
     else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.settlement?.battle.victory) {
+    else if (outcome.settlement) {
       const wasCleared = clearedZones.includes(zoneId);
-      showToast(wasCleared ? '🏆 BOSS 再战胜利！专属掉落已入账。' : '🏆 首通 BOSS！区域已通关，解锁下一区域。', 'success');
+      setPendingSettlement({ settlement: outcome.settlement, isBoss: true, wasCleared, seq: ++pendingSeqRef.current });
     }
-    else if (outcome.settlement?.battle.partyWiped) showToast('💥 BOSS 战失败，小队全员重伤，需纳米修复剂治愈！', 'error');
-    else if (outcome.settlement) showToast('⚔️ BOSS 战平局，未分胜负。', 'info');
   };
 
-  const renderSettlement = (s: CombatSettlement) => {
-    const zoneName = COMBAT_ZONES[state.combat?.zoneId || '']?.name || REALITY_EVENTS[state.combat?.zoneId || '']?.title || '战斗区域';
-    // 用内容派生的稳定 key，防止挂机 tick 更新 state 对象引用时重置动画
-    const stableKey = `${s.battle.rounds}|${s.battle.actions.length}|${s.battle.victory}|${s.battle.partyWiped}`;
-    return (
-      <CombatPlaybackView key={stableKey} settlement={s} zoneName={zoneName} />
-    );
+  // 播放完成后再弹奖励/结果提示（ticket 21 用户反馈 2：先播放动画，播完再提示）
+  const handlePlaybackComplete = () => {
+    if (!pendingSettlement) return;
+    const { settlement: s, isBoss, wasCleared } = pendingSettlement;
+    if (s.battle.victory) {
+      if (isBoss) showToast(wasCleared ? '🏆 BOSS 再战胜利！专属掉落已入账。' : '🏆 首通 BOSS！区域已通关，解锁下一区域。', 'success');
+      else showToast('⚔️ 战斗胜利！战利品与经验已入账。', 'success');
+    }
+    else if (s.battle.partyWiped) showToast(isBoss ? '💥 BOSS 战失败，小队全员重伤，需纳米修复剂治愈！' : '💥 战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
+    else showToast('⚔️ 战斗平局，未分胜负。', 'info');
   };
 
   return (
@@ -717,8 +726,25 @@ const CombatPanel: React.FC = () => {
         )}
       </div>
 
-      {/* 最近一次战斗结算 */}
-      {settlement && renderSettlement(settlement)}
+      {/* 最近一次战斗结算：新战斗播放动画；历史结算静态展示不自动播放（ticket 21 用户反馈 1） */}
+      {pendingSettlement ? (
+        <CombatPlaybackView
+          key={`pending-${pendingSettlement.seq}`}
+          settlement={pendingSettlement.settlement}
+          zoneName={COMBAT_ZONES[state.combat?.zoneId || '']?.name || '战斗区域'}
+          autoPlay
+          onComplete={handlePlaybackComplete}
+        />
+      ) : (
+        settlement && (
+          <CombatPlaybackView
+            key={`history-${settlement.battle.rounds}|${settlement.battle.actions.length}|${settlement.battle.victory}|${settlement.battle.partyWiped}`}
+            settlement={settlement}
+            zoneName={COMBAT_ZONES[state.combat?.zoneId || '']?.name || '战斗区域'}
+            autoPlay={false}
+          />
+        )
+      )}
 
       {/* 战斗区域列表 */}
       <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（线性递进，通关当前区解锁下一区）:</h3>

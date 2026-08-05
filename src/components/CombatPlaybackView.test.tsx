@@ -147,4 +147,44 @@ describe('CombatPlaybackView Component (ticket 21)', () => {
     expect(screen.getByText('跳过')).toBeDefined();
     expect(container.querySelectorAll('.font-mono').length).toBeGreaterThan(0);
   });
+
+  it('renders statically without autoplay for historical settlements (autoPlay=false)', () => {
+    render(<CombatPlaybackView settlement={mockSettlement2} zoneName="废土荒原" autoPlay={false} />);
+
+    // 直接显示最终状态：全部动作可见、结算卡片立即可见
+    expect(screen.getByText(/废土荒原/)).toBeDefined();
+    expect(screen.getAllByText(/变异恶犬/).length).toBeGreaterThan(0);
+    expect(screen.getByText('战斗胜利！')).toBeDefined();
+    // 无播放控制按钮（不自动播放、不可跳过/重播）
+    expect(screen.queryByText('跳过')).toBeNull();
+    expect(screen.queryByText('重播')).toBeNull();
+    // 不触发 onComplete
+    const onComplete = vi.fn();
+    render(<CombatPlaybackView settlement={mockSettlement1} zoneName="x" autoPlay={false} onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('shows the exit button after playback and calls onExit when clicked (ticket 21 feedback 4)', () => {
+    const onExit = vi.fn();
+    render(
+      <CombatPlaybackView
+        settlement={mockSettlement1}
+        zoneName="废土荒原"
+        onComplete={() => {}}
+        onExit={onExit}
+        exitLabel="继续探索"
+      />
+    );
+
+    // 播放中不显示离开按钮
+    expect(screen.queryByText('继续探索')).toBeNull();
+
+    // 点击跳过 → 播放完成，出现离开按钮
+    fireEvent.click(screen.getByText('跳过'));
+    expect(screen.getByText('继续探索')).toBeDefined();
+
+    // 点击离开 → onExit 被调用；未播完前不会触发 onComplete
+    fireEvent.click(screen.getByText('继续探索'));
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
 });

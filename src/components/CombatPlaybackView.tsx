@@ -6,7 +6,14 @@ import { FastForward, Zap, CheckCircle2, AlertTriangle, Shield, Play, Pause, Rot
 interface CombatPlaybackViewProps {
   settlement: CombatSettlement;
   zoneName?: string;
+  /** 是否自动逐动作播放（新战斗 true；历史结算静态展示传 false，直接显示最终状态） */
+  autoPlay?: boolean;
+  /** 播放完成（自动播完或 Skip）时触发一次；历史静态展示不会触发 */
   onComplete?: () => void;
+  /** 可选：提供后完成态渲染「离开」按钮，由用户主动点击退出（如遭遇战播完停留） */
+  onExit?: () => void;
+  /** 离开按钮文案（默认「离开战斗」） */
+  exitLabel?: string;
 }
 
 /**
@@ -21,7 +28,10 @@ function deriveBattleKey(s: CombatSettlement): string {
 export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   settlement,
   zoneName = '战斗区域',
-  onComplete
+  autoPlay = true,
+  onComplete,
+  onExit,
+  exitLabel = '离开战斗'
 }) => {
   const actions = settlement.battle.actions;
 
@@ -29,18 +39,22 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   const battleKey = useMemo(() => deriveBattleKey(settlement), [settlement]);
   const prevBattleKeyRef = useRef<string>(battleKey);
 
+  // 完成回调防重入（StrictMode 下 updater 会 double-invoke，故用 effect + ref 只触发一次）
+  const completedRef = useRef<boolean>(false);
+
   // 倍速状态：1x -> 2x -> 4x
   const [speed, setSpeed] = useState<1 | 2 | 4>(1);
 
-  // 步进索引：从 0 开始逐动作播报
+  // 步进索引：autoPlay=false 时直接显示最终状态（历史结算静态展示，不自动播放）
   // 用 render-phase 比较（而非 useEffect）来重置 actionIndex，避免出现"已完成"状态的闪现帧
-  const [actionIndex, setActionIndex] = useState<number>(0);
+  const [actionIndex, setActionIndex] = useState<number>(autoPlay ? 0 : actions.length);
   const [currentBattleKey, setCurrentBattleKey] = useState<string>(battleKey);
 
   // 当 battleKey 改变时，在 render 阶段同步重置（不等 useEffect 周期）
   if (battleKey !== currentBattleKey) {
     setCurrentBattleKey(battleKey);
-    setActionIndex(0);
+    setActionIndex(autoPlay ? 0 : actions.length);
+    completedRef.current = false;
     prevBattleKeyRef.current = battleKey;
   }
 
@@ -50,6 +64,12 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   const isFinished = actionIndex >= actions.length;
   const logContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!autoPlay || !isFinished || completedRef.current) return;
+    completedRef.current = true;
+    if (onComplete) onComplete();
+  }, [autoPlay, isFinished, onComplete]);
+
   // 自动滚动到最新日志
   useEffect(() => {
     if (logContainerRef.current) {
@@ -57,25 +77,19 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
     }
   }, [actionIndex]);
 
-  // 定时器驱动逐动作步进
+  // 定时器驱动逐动作步进；历史静态展示（autoPlay=false）不启动
   useEffect(() => {
-    if (isFinished || isPaused) return;
+    if (!autoPlay || isFinished || isPaused) return;
 
     // 1x = 800ms, 2x = 400ms, 4x = 200ms
     const intervalMs = Math.max(100, Math.round(800 / speed));
 
     const timer = setTimeout(() => {
-      setActionIndex((prev) => {
-        const next = prev + 1;
-        if (next >= actions.length && onComplete) {
-          onComplete();
-        }
-        return next;
-      });
+      setActionIndex((prev) => prev + 1);
     }, intervalMs);
 
     return () => clearTimeout(timer);
-  }, [actionIndex, speed, isFinished, isPaused, actions.length, onComplete]);
+  }, [autoPlay, actionIndex, speed, isFinished, isPaused, actions.length, onComplete]);
 
   // 循环切换倍速
   const handleToggleSpeed = () => {
@@ -84,13 +98,12 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
     else setSpeed(1);
   };
 
-  // 单场 Skip 瞬间完成
+  // 单场 Skip 瞬间完成（onComplete 由 isFinished effect 统一触发）
   const handleSkip = () => {
     setActionIndex(actions.length);
-    if (onComplete) onComplete();
   };
 
-  // 重新播放
+  // 重新播放（不重置 completedRef：重播仅是重看动画，结果提示每场战斗只弹一次）
   const handleReplay = () => {
     setActionIndex(0);
     setIsPaused(false);
@@ -144,50 +157,52 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
           </span>
         </div>
 
-        {/* 右侧控制组: 暂停 / 倍速 / Skip / 重播 */}
-        <div className="flex items-center gap-1.5">
-          {!isFinished ? (
-            <>
-              {/* 暂停/继续 */}
-              <button
-                onClick={() => setIsPaused(!isPaused)}
-                className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer active:scale-95 transition-all"
-                title={isPaused ? '继续' : '暂停'}
-              >
-                {isPaused ? <Play className="w-3 h-3 text-emerald-400" /> : <Pause className="w-3 h-3 text-amber-400" />}
-              </button>
+        {/* 右侧控制组: 暂停 / 倍速 / Skip / 重播（历史静态展示 autoPlay=false 时不显示） */}
+        {autoPlay && (
+          <div className="flex items-center gap-1.5">
+            {!isFinished ? (
+              <>
+                {/* 暂停/继续 */}
+                <button
+                  onClick={() => setIsPaused(!isPaused)}
+                  className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer active:scale-95 transition-all"
+                  title={isPaused ? '继续' : '暂停'}
+                >
+                  {isPaused ? <Play className="w-3 h-3 text-emerald-400" /> : <Pause className="w-3 h-3 text-amber-400" />}
+                </button>
 
-              {/* 1x -> 2x -> 4x 倍速切换按钮 */}
-              <button
-                onClick={handleToggleSpeed}
-                className="px-2 py-1 rounded-lg bg-amber-950/70 border border-amber-500/50 hover:bg-amber-900 text-amber-300 text-[10px] font-black flex items-center gap-1 cursor-pointer active:scale-95 transition-all shadow-sm"
-                title="切换播放倍速"
-              >
-                <Zap className="w-3 h-3 text-amber-400" />
-                <span>{speed}x</span>
-              </button>
+                {/* 1x -> 2x -> 4x 倍速切换按钮 */}
+                <button
+                  onClick={handleToggleSpeed}
+                  className="px-2 py-1 rounded-lg bg-amber-950/70 border border-amber-500/50 hover:bg-amber-900 text-amber-300 text-[10px] font-black flex items-center gap-1 cursor-pointer active:scale-95 transition-all shadow-sm"
+                  title="切换播放倍速"
+                >
+                  <Zap className="w-3 h-3 text-amber-400" />
+                  <span>{speed}x</span>
+                </button>
 
-              {/* 单场 Skip 瞬间结算按钮 */}
+                {/* 单场 Skip 瞬间结算按钮 */}
+                <button
+                  onClick={handleSkip}
+                  className="px-2 py-1 rounded-lg bg-gradient-to-r from-purple-900 to-indigo-900 border border-purple-400/50 hover:brightness-110 text-purple-200 text-[10px] font-black flex items-center gap-1 cursor-pointer active:scale-95 transition-all shadow-sm"
+                  title="跳过战斗动画"
+                >
+                  <FastForward className="w-3 h-3 text-purple-300" />
+                  <span>跳过</span>
+                </button>
+              </>
+            ) : (
               <button
-                onClick={handleSkip}
-                className="px-2 py-1 rounded-lg bg-gradient-to-r from-purple-900 to-indigo-900 border border-purple-400/50 hover:brightness-110 text-purple-200 text-[10px] font-black flex items-center gap-1 cursor-pointer active:scale-95 transition-all shadow-sm"
-                title="跳过战斗动画"
+                onClick={handleReplay}
+                className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                title="重播战斗动画"
               >
-                <FastForward className="w-3 h-3 text-purple-300" />
-                <span>跳过</span>
+                <RotateCcw className="w-3 h-3 text-amber-400" />
+                <span>重播</span>
               </button>
-            </>
-          ) : (
-            <button
-              onClick={handleReplay}
-              className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-              title="重播战斗动画"
-            >
-              <RotateCcw className="w-3 h-3 text-amber-400" />
-              <span>重播</span>
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </header>
 
       {/* 实时血条（ticket 21）：随动作步进扣减，无 hpTrack(旧存档)时回退纯日志 */}
@@ -207,10 +222,10 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
         </div>
       )}
 
-      {/* 实时动作播报日志窗口 */}
+      {/* 实时动作播报日志窗口：固定高度 + 滚动条（ticket 21 用户反馈 3） */}
       <div
         ref={logContainerRef}
-        className="bg-zinc-950/80 rounded-xl p-2.5 flex flex-col gap-1 max-h-48 min-h-[120px] overflow-y-auto border border-zinc-800/80 font-mono text-[10px] leading-relaxed shadow-inner"
+        className="bg-zinc-950/80 rounded-xl p-2.5 flex flex-col gap-1 h-48 overflow-y-auto border border-zinc-800/80 font-mono text-[10px] leading-relaxed shadow-inner"
       >
         {visibleActions.length === 0 ? (
           <div className="text-zinc-600 text-center my-auto py-4 text-[9px] font-sans italic">
@@ -341,6 +356,22 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
             <p className="text-[10px] text-zinc-400 font-bold leading-relaxed">
               鏖战至回合上限未分胜负，无战利品，亦无人重伤。
             </p>
+          )}
+
+          {/* 用户主动离开按钮（ticket 21 用户反馈 4：播完停留，由用户选择离开） */}
+          {onExit && (
+            <button
+              onClick={onExit}
+              className={`w-full py-2 rounded-xl text-[10px] font-black transition-all border cursor-pointer active:scale-98 ${
+                victory
+                  ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-400/40 text-emerald-950'
+                  : wiped
+                  ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+                  : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+              }`}
+            >
+              {exitLabel}
+            </button>
           )}
         </div>
       )}

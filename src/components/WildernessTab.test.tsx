@@ -299,7 +299,12 @@ describe('WildernessTab Component', () => {
     const skipBtn = screen.queryByText(/跳过/);
     if (skipBtn) fireEvent.click(skipBtn);
 
-    // 胜利 → 继续探索：下一张卡牌出现、步数 +1、遭遇清除
+    // 播完停留：不自动跳转，显示胜利结算与「继续探索」按钮（ticket 21 用户反馈 4）
+    expect(screen.getByText(/战斗胜利！/)).toBeDefined();
+    expect(screen.getByText('继续探索')).toBeDefined();
+
+    // 用户主动点击后才离开遭遇战，继续探索
+    fireEvent.click(screen.getByText('继续探索'));
     expect(screen.getByText(/废弃的魔导卡车/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.realitySteps).toBe(2);
@@ -350,7 +355,12 @@ describe('WildernessTab Component', () => {
     const skipBtn = screen.queryByText(/跳过/);
     if (skipBtn) fireEvent.click(skipBtn);
 
-    // 战败 → 探索终止回到荒野入口，战利品并入库存，小队重伤
+    // 播完停留：显示失败结算与「返回荒野」按钮，不自动跳转（ticket 21 用户反馈 4）
+    expect(screen.getByText(/战斗失败！/)).toBeDefined();
+    expect(screen.getByText('返回荒野')).toBeDefined();
+
+    // 用户主动点击后才离开遭遇战，回到荒野入口
+    fireEvent.click(screen.getByText('返回荒野'));
     expect(screen.getByText(/踏入废土荒野/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.inRealityExploration).toBe(false);
@@ -592,5 +602,31 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText('-28')).toBeDefined(); // strike 伤害
     expect(screen.getByText(/发动【净化之泉】/).textContent).not.toContain('→'); // heal 无目标箭头
     expect(screen.getByText('+76')).toBeDefined(); // heal 治疗量
+  });
+
+  it('replays the animation for consecutive identical battles (unique key per battle)', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/⚔️ 战斗挂机/));
+
+    // 第一场：点击开战 → 动画播放中（跳过按钮可见）
+    fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
+    expect(screen.getByText('跳过')).toBeDefined();
+    fireEvent.click(screen.getByText('跳过'));
+    // 播完：结算卡片可见、无跳过按钮（进入完成态）
+    expect(screen.queryByText('跳过')).toBeNull();
+    expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+
+    // 第二场（内容与第一场完全相同）：点击开战 → 重新播放动画
+    fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
+    expect(screen.getByText('跳过')).toBeDefined();
+    fireEvent.click(screen.getByText('跳过'));
+    expect(screen.queryByText('跳过')).toBeNull();
   });
 });
