@@ -5,9 +5,9 @@
 
 **Blocked by:** 16 — 废除 Survivor 并支持英雄设施后勤驻守与 Supabase SQL 留档.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 在 `HeroTab.tsx` 中绑定【招募】按钮点击弹出 `SummonTab` 全屏大 Modal 视图
-- [ ] 展现【招募券】与【灵魂残响】资源消耗栏及 `25/100` 保底进度条
-- [ ] 实现 1 抽与 10 抽逻辑，扣减精确道具并更新累抽计数
-- [ ] 实现 100 抽必出未拥有英雄（或已全满星给予奥术星体）保底逻辑
+- [x] 在 `HeroTab.tsx` 中绑定【招募】按钮点击弹出 `SummonTab` 全屏大 Modal 视图
+- [x] 展现【招募券】与【灵魂残响】资源消耗栏及 `25/100` 保底进度条（经确认仅采用灵魂残响，与 spec "Summon Tickets or Soul Echoes" 一致）
+- [x] 实现 1 抽与 10 抽逻辑，扣减精确道具并更新累抽计数
+- [x] 实现 100 抽必出未拥有英雄（或已全满星给予奥术星体）保底逻辑
