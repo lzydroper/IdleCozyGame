@@ -411,17 +411,23 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
 
               {/* 右列底部按钮: 升星 / 觉醒 */}
               {hero.star < STAR_MAX ? (
-                <button
-                  onClick={handleStarUp}
-                  disabled={totalAvailableShards < shardCost}
-                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
-                    totalAvailableShards >= shardCost
-                      ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-600'
-                  }`}
-                >
-                  <Star className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />升星({shardCost})
-                </button>
+                <div className="flex flex-col w-full">
+                  <button
+                    onClick={handleStarUp}
+                    disabled={totalAvailableShards < shardCost}
+                    className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                      totalAvailableShards >= shardCost
+                        ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-600'
+                    }`}
+                  >
+                    <Star className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />升星({shardCost})
+                  </button>
+                  {/* 升星素材（ADR-0014 物品化）：专属与通用碎片均存于背包 */}
+                  <div className="w-full text-center text-[8px] text-zinc-500 leading-tight mt-0.5">
+                    专属碎片 {soulCount} · 共鸣碎片 {resonanceCount}
+                  </div>
+                </div>
               ) : !hero.awakened ? (
                 <button
                   onClick={handleAwaken}

@@ -142,4 +142,39 @@ describe('SummonTab Component (ticket 20)', () => {
     expect(screen.getByText('100抽必出')).toBeDefined();
     expect(screen.getByText('英雄招募')).toBeDefined();
   });
+
+  it('blocks a single pull with insufficient soul echoes (toast, no deduction)', () => {
+    const testSave = {
+      ...INITIAL_STATE,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 50 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
+
+    renderWithProviders(<SummonTab isOpen={true} onClose={() => {}} />);
+
+    fireEvent.click(screen.getByText('招募 1 次'));
+
+    expect(screen.getByText('灵魂残响不足 (需要 100 灵魂残响)')).toBeDefined();
+    expect(screen.queryByText('招募获得')).toBeNull(); // 未触发召唤结果
+    // 背包余额不变
+    const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.inventory.soul_echo).toBe(50);
+  });
+
+  it('blocks a 10x pull with insufficient soul echoes (toast, no deduction)', () => {
+    const testSave = {
+      ...INITIAL_STATE,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 500 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
+
+    renderWithProviders(<SummonTab isOpen={true} onClose={() => {}} />);
+
+    fireEvent.click(screen.getByText('招募 10 次'));
+
+    expect(screen.getByText('灵魂残响不足 (需要 1000 灵魂残响)')).toBeDefined();
+    expect(screen.queryByText('10 连招募获得')).toBeNull();
+    const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.inventory.soul_echo).toBe(500);
+  });
 });
