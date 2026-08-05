@@ -1,4 +1,7 @@
 import type { HeroClass, HeroFaction } from '../types/game';
+import type { LucideIcon } from 'lucide-react';
+import { FlaskConical, Footprints, Hammer, HandMetal, HeartPulse, Rocket, Shield, Wheat, Wrench } from 'lucide-react';
+import type { ItemSprite } from './items/types';
 
 // 英雄后勤 Meta 属性定义：英雄驻守设施时提供的产能/速度加成
 export interface HeroDutyMeta {
@@ -18,6 +21,8 @@ export interface HeroConfig {
   baseAttack: number;
   baseDefense: number;
   dutyMeta?: HeroDutyMeta; // 后勤驻守 Meta 属性
+  sprite?: ItemSprite;      // 立绘雪碧图（survivors sheet，3x3）
+  icon?: LucideIcon;        // Lucide 回退图标（sprite 缺失时显示）
   backstory: string;
 }
 
@@ -56,6 +61,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 35,
     baseDefense: 8,
     dutyMeta: { facilitySpeedMultiplier: 0.25 }, // +25% 设施运行速度
+    sprite: { sheet: 'survivors', index: 5 },
+    icon: Rocket,
     backstory: '前联合防卫军魔导机甲的备用驾驶员，擅长让魔导设施过载运转。'
   },
   buster: {
@@ -68,6 +75,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 32,
     baseDefense: 10,
     dutyMeta: { facilityYieldMultiplier: 0.20 }, // +20% 产出数量
+    sprite: { sheet: 'survivors', index: 4 },
+    icon: HandMetal,
     backstory: '在废土中行走了二十年的清道夫硬汉，能从垃圾堆里淘出核心部件。'
   },
   soldier: {
@@ -80,6 +89,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 15,
     baseDefense: 16,
     dutyMeta: { facilityCostReduction: 0.15 }, // -15% 原料消耗
+    sprite: { sheet: 'survivors', index: 6 },
+    icon: Shield,
     backstory: '避难所防御队长，擅长防御部署与阵地战。'
   },
   catherine: {
@@ -92,6 +103,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 15,
     baseDefense: 15,
     dutyMeta: { facilitySpeedMultiplier: 0.15, facilityYieldMultiplier: 0.10 },
+    sprite: { sheet: 'survivors', index: 3 },
+    icon: HeartPulse,
     backstory: '前辐射防治所主任，常年镇守边陲、熟悉梦魇的侵蚀手段。'
   },
   roy: {
@@ -104,6 +117,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 20,
     baseDefense: 12,
     dutyMeta: { facilitySpeedMultiplier: 0.30 }, // +30% 设施运行速度
+    sprite: { sheet: 'survivors', index: 0 },
+    icon: Wrench,
     backstory: '前废土矿山工程师，擅长修理各种机械设备。'
   },
   mei: {
@@ -116,6 +131,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 18,
     baseDefense: 10,
     dutyMeta: { facilityYieldMultiplier: 0.25 }, // +25% 作物/温室产出
+    sprite: { sheet: 'survivors', index: 1 },
+    icon: Wheat,
     backstory: '对变异植物了如指掌的农学家，以魔法作物滋养队伍。'
   },
   zero: {
@@ -128,6 +145,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 22,
     baseDefense: 9,
     dutyMeta: { facilitySpeedMultiplier: 0.20 },
+    sprite: { sheet: 'survivors', index: 2 },
+    icon: Footprints,
     backstory: '废土信使，沿途留下魂印标记，熟悉所有地形与危险区域。'
   },
   healer: {
@@ -140,6 +159,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 16,
     baseDefense: 11,
     dutyMeta: { facilityCostReduction: 0.20 }, // -20% 药剂/配方消耗
+    sprite: { sheet: 'survivors', index: 7 },
+    icon: FlaskConical,
     backstory: '精通净化药剂调配的药剂师，以奥术药剂维系队伍续航。'
   },
   apprentice: {
@@ -152,6 +173,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     baseAttack: 19,
     baseDefense: 10,
     dutyMeta: { facilityYieldMultiplier: 0.15, facilityCostReduction: 0.10 },
+    sprite: { sheet: 'survivors', index: 8 },
+    icon: Hammer,
     backstory: '在废土中长大的拾荒学徒，星野之间练就了一双巧手。'
   }
 };

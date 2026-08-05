@@ -92,17 +92,6 @@ export const INITIAL_STATE: GameState = {
     rescueProgress: {}, // 英雄救援进度（共鸣+坐标锁定，ADR-0013）
     dreamLockdownUntil: null
   },
-  discoveredBlueprints: [
-    'filter_refill',
-    'ration_pack',
-    'sanity_capsule',
-    'hot_stew',
-    'nanite_injector',
-    'purifying_serum',
-    'energy_refill_advanced',
-    'shield_battery_recipe',
-    'greenhouse_expansion'
-  ],
   activeAlert: {
     type: null,
     hp: 0

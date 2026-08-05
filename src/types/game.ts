@@ -181,9 +181,7 @@ export interface GameState {
     rescueProgress: Record<string, RescueProgress>; // 英雄ID -> 救援进度（共鸣+坐标锁定，ADR-0013）
     dreamLockdownUntil: number | null; // 梦境封锁截止时间戳（泄露防御失败触发，ticket 14）
   };
-  discoveredBlueprints: string[];
-  activeAlert: {
-    type: "dream_leak" | null;
+  activeAlert: {    type: "dream_leak" | null;
     hp: number;
   };
   lastTick: number;

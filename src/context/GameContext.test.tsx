@@ -172,7 +172,6 @@ describe('GameContext Integration', () => {
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),
@@ -223,7 +222,6 @@ describe('GameContext Integration', () => {
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),
@@ -291,7 +289,6 @@ describe('GameContext Integration', () => {
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),
@@ -365,7 +362,6 @@ describe('GameContext Integration', () => {
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
           capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),

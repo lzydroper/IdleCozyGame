@@ -344,7 +344,7 @@ const ShelterTab: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <GameIcon type="item" id="energy_cell" className="w-7 h-7 flex-shrink-0" title="魔能储备" />
+          <Battery className="w-7 h-7 flex-shrink-0 text-cyan-400" />
           <div>
             <div className="text-[10px] text-zinc-500 font-semibold">魔能储备</div>
             <div className="text-cyan-400 font-bold text-xs">{Math.floor(state.player.energy)}/{state.player.maxEnergy}</div>

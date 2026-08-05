@@ -39,7 +39,6 @@ const BASE_SAVE = {
     rescueProgress: {},
     dreamLockdownUntil: null
   },
-  discoveredBlueprints: [],
   activeAlert: {
     type: null,
     hp: 0

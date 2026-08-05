@@ -4,17 +4,17 @@ import { ITEMS_CONFIG } from '../data/items';
 import ItemGridItem from './ItemGridItem';
 import { BookOpen, Package, Clock, Settings, Compass, Cog, MoonStar, Swords, Save, CookingPot, Shield, Layers, Gem } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ItemMeta } from '../data/items';
+import type { ItemCategory } from '../data/items';
 
-// 背包分类切页（ticket 22）：4 大分类，无「全部」；基于 ItemMeta.category 映射
-// 消耗品=food、装备=equipment、材料=material+seed、碎片=special
-type BackpackCategory = 'consumable' | 'equipment' | 'material' | 'shard';
+// 背包分类切页：4 大分类直接绑定 ItemMeta.category 枚举（ADR-0014），无「全部」
+// 道具=可主动使用、资源=生产消耗物（原料/种子/货币）、碎片=英雄碎片与觉醒素材、装备=装备生态
+type BackpackCategory = ItemCategory;
 
-const BACKPACK_CATEGORIES: { id: BackpackCategory; label: string; icon: LucideIcon; matches: (cat: ItemMeta['category']) => boolean }[] = [
-  { id: 'consumable', label: '消耗品', icon: CookingPot, matches: c => c === 'food' },
-  { id: 'equipment', label: '装备', icon: Shield, matches: c => c === 'equipment' },
-  { id: 'material', label: '材料', icon: Layers, matches: c => c === 'material' || c === 'seed' },
-  { id: 'shard', label: '碎片', icon: Gem, matches: c => c === 'special' },
+const BACKPACK_CATEGORIES: { id: BackpackCategory; label: string; icon: LucideIcon }[] = [
+  { id: 'item', label: '道具', icon: CookingPot },
+  { id: 'resource', label: '资源', icon: Layers },
+  { id: 'shard', label: '碎片', icon: Gem },
+  { id: 'equipment', label: '装备', icon: Shield },
 ];
 
 // 日志类型图标映射（替代 emoji 暂代）
@@ -42,7 +42,7 @@ const LogTab: React.FC = () => {
 
   // 无「全部」分类：默认选中第一个非空分类，避免开局看到空列表
   const [backpackCat, setBackpackCat] = useState<BackpackCategory>(
-    BACKPACK_CATEGORIES.find(cat => backpackItems.some(it => cat.matches(it.category)))?.id ?? 'consumable'
+    BACKPACK_CATEGORIES.find(cat => backpackItems.some(it => cat.id === it.category))?.id ?? 'item'
   );
 
   // 当前分类被耗尽（物品用光/切存档）时，自动回退到第一个非空分类
@@ -50,15 +50,15 @@ const LogTab: React.FC = () => {
     if (backpackItems.length === 0) return;
     const active = BACKPACK_CATEGORIES.find(c => c.id === backpackCat);
     if (!active) return;
-    const isEmpty = !backpackItems.some(it => active.matches(it.category));
+    const isEmpty = !backpackItems.some(it => active.id === it.category);
     if (isEmpty) {
-      const next = BACKPACK_CATEGORIES.find(c => backpackItems.some(it => c.matches(it.category)))?.id ?? 'consumable';
+      const next = BACKPACK_CATEGORIES.find(c => backpackItems.some(it => c.id === it.category))?.id ?? 'item';
       setBackpackCat(next);
     }
   }, [backpackItems, backpackCat]);
 
   const visibleBackpackItems = backpackItems.filter(it =>
-    BACKPACK_CATEGORIES.find(c => c.id === backpackCat)?.matches(it.category)
+    BACKPACK_CATEGORIES.find(c => c.id === backpackCat)?.id === it.category
   );
 
   // Filter logs
@@ -80,7 +80,7 @@ const LogTab: React.FC = () => {
         <div className="flex gap-1.5 mb-3">
           {BACKPACK_CATEGORIES.map(cat => {
             const CatIcon = cat.icon;
-            const count = backpackItems.filter(it => cat.matches(it.category)).length;
+            const count = backpackItems.filter(it => cat.id === it.category).length;
             const active = backpackCat === cat.id;
             return (
               <button
