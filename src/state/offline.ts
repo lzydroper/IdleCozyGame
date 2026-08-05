@@ -59,7 +59,6 @@ export function calculateDetailedOfflineProgress(
   // 1.5. 确认式离线挂机战斗结算（ticket 08）：仅当玩家在某区域主动开启挂机后才推进；
   // 体力耗尽或小队战败自动停止；未开启时离线不产生任何战斗结算
   let currentHeroes = { ...state.heroes };
-  let currentSoulEchoes = state.soulEchoes;
   let currentCombat = state.combat;
   let finalStamina = nextStamina;
   let idleCombat: IdleCombatReport | null = null;
@@ -73,7 +72,6 @@ export function calculateDetailedOfflineProgress(
     finalStamina = afterIdle.stamina;
     currentInventory = afterIdle.inventory;
     currentHeroes = afterIdle.heroes;
-    currentSoulEchoes = afterIdle.soulEchoes;
     currentCombat = afterIdle.combat;
 
     if (result.battlesFought > 0 || result.autoStopped) {
@@ -255,7 +253,6 @@ export function calculateDetailedOfflineProgress(
     stamina: finalStamina,
     inventory: currentInventory,
     heroes: currentHeroes,
-    soulEchoes: currentSoulEchoes,
     combat: currentCombat,
     greenhouse: { ...state.greenhouse, slots: updatedSlots },
     shelter: {

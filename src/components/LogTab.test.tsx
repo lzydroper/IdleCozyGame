@@ -14,7 +14,9 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
 
   const renderWithSave = (inventory: Record<string, number>) => {
     const save = structuredClone(INITIAL_STATE) as typeof INITIAL_STATE;
-    save.inventory = inventory;
+    // 背包以传入 inventory 为准：初始默认物品清零（避免 mergeSavedState 的默认值补齐干扰分类断言）
+    save.inventory = Object.fromEntries(Object.keys(INITIAL_STATE.inventory).map(k => [k, 0]));
+    Object.assign(save.inventory, inventory);
     save.logs = [];
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
     render(

@@ -155,9 +155,6 @@ export interface GameState {
   };
   heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
   equipment: Record<string, HeroEquipment>; // 英雄装备栏：hero id -> 三槽装备（ticket 10）
-  soulEchoes: number;                  // 灵魂残响：英雄召唤货币（战斗掉落/日常/特殊途径获取）
-  resonanceShards: number;             // 共鸣碎片：通用灵魂碎片
-  soulShards: Record<string, number>;  // 灵魂碎片：英雄专属碎片（重复召唤转化，用于升星）
   summon: SummonState;                 // 召唤进度（软保底）
   stamina: number;                     // 体力：自动战斗消耗的独立资源，随时间恢复
   maxStamina: number;                  // 体力上限

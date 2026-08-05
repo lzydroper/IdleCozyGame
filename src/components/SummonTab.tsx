@@ -37,9 +37,11 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
   const pityCount = state.summon?.pityCount ?? 0;
   const maxPity = SUMMON_CONFIG.guaranteedAt; // 100
   const pityPercentage = Math.min(100, Math.max(0, (pityCount / maxPity) * 100));
+  // 灵魂残响（ADR-0014 物品化）：货币存于背包
+  const soulEchoes = state.inventory.soul_echo || 0;
 
   const handleSingleSummon = () => {
-    if (state.soulEchoes < SUMMON_CONFIG.costPerSummon) {
+    if (soulEchoes < SUMMON_CONFIG.costPerSummon) {
       setInfoToastMessage('灵魂残响不足 (需要 100 灵魂残响)');
       return;
     }
@@ -49,7 +51,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
   const handleTenSummon = () => {
     const cost = SUMMON_CONFIG.costPerSummon * 10;
-    if (state.soulEchoes < cost) {
+    if (soulEchoes < cost) {
       setInfoToastMessage('灵魂残响不足 (需要 1000 灵魂残响)');
       return;
     }
@@ -86,7 +88,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-purple-500/50 shadow-md backdrop-blur-md">
             <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
             <span className="text-xs font-black text-purple-200">
-              {state.soulEchoes}
+              {soulEchoes}
             </span>
           </div>
         </div>
@@ -146,7 +148,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
               <div className="flex items-center gap-1 px-3 py-0.5 rounded-full bg-sky-950/80 border border-sky-300/50">
                 <Sparkles className="w-3.5 h-3.5 text-sky-300" />
                 <span className="text-[10px] font-black text-sky-100">
-                  {state.soulEchoes}/100
+                  {soulEchoes}/100
                 </span>
               </div>
             </button>
@@ -162,7 +164,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
               <div className="flex items-center gap-1 px-3 py-0.5 rounded-full bg-sky-950/80 border border-sky-300/50">
                 <Sparkles className="w-3.5 h-3.5 text-sky-300" />
                 <span className="text-[10px] font-black text-sky-100">
-                  {state.soulEchoes}/1000
+                  {soulEchoes}/1000
                 </span>
               </div>
             </button>

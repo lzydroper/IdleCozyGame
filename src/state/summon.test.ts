@@ -36,7 +36,7 @@ describe('computeHeroChance (软保底概率)', () => {
 
 describe('summonUpdate', () => {
   it('fails without enough soul echoes (no state change)', () => {
-    const state = makeState({ soulEchoes: SUMMON_CONFIG.costPerSummon - 1 });
+    const state = makeState({ inventory: { soul_echo: SUMMON_CONFIG.costPerSummon - 1 } });
     const { state: next, result } = summonUpdate(state);
 
     expect(result.heroId).toBeNull();
@@ -45,7 +45,7 @@ describe('summonUpdate', () => {
   });
 
   it('summons a duplicate hero and converts it to soul shards', () => {
-    const state = makeState({ soulEchoes: 200, soulShards: {} });
+    const state = makeState({ inventory: { soul_echo: 200 } });
     // rng=0 → 出英雄判定命中；rollHeroId(0) → 池中第一个英雄（开局已拥有的诺娃）
     const firstHeroId = Object.keys(HEROES_CONFIG)[0];
     const { state: next, result } = summonUpdate(state, () => 0);
@@ -54,16 +54,15 @@ describe('summonUpdate', () => {
     expect(result.isNew).toBe(false);
     expect(result.shardType).toBe('soul');
     expect(result.shardsGained).toBe(SUMMON_CONFIG.shardsPerDupe);
-    expect(next.soulEchoes).toBe(200 - SUMMON_CONFIG.costPerSummon);
-    expect(next.soulShards[firstHeroId]).toBe(SUMMON_CONFIG.shardsPerDupe);
+    expect(next.inventory.soul_echo).toBe(200 - SUMMON_CONFIG.costPerSummon);
+    expect(next.inventory[`shard_${firstHeroId}`]).toBe(SUMMON_CONFIG.shardsPerDupe);
     expect(next.summon.pityCount).toBe(1); // 抽到已拥有英雄：保底计数继续累加（ticket 20）
     expect(Object.keys(next.heroes)).toEqual([firstHeroId]); // 不新增英雄
   });
 
   it('does NOT reset pity counter when pulling an already-owned hero', () => {
     const state = makeState({
-      soulEchoes: 200,
-      soulShards: {},
+      inventory: { soul_echo: 200 },
       summon: { pityCount: 42 }
     });
     // rng=0 → 出英雄判定命中；rollHeroId(0) → 池中第一个英雄（开局已拥有的诺娃）
@@ -75,7 +74,7 @@ describe('summonUpdate', () => {
   });
 
   it('summons a brand-new hero and adds it to the roster', () => {
-    const state = makeState({ soulEchoes: 200, soulShards: {} });
+    const state = makeState({ inventory: { soul_echo: 200 } });
     const ids = Object.keys(HEROES_CONFIG);
     const target = ids[ids.length - 1];
     // 第一次 rng=0.1 命中出英雄；第二次 rng≈1 → 选池中最后一个英雄
@@ -90,21 +89,21 @@ describe('summonUpdate', () => {
   });
 
   it('misses a hero and grants a resonance shard (pity increases)', () => {
-    const state = makeState({ soulEchoes: 200, resonanceShards: 0, summon: { pityCount: 3 } });
+    const state = makeState({ inventory: { soul_echo: 200, resonance_shard: 0 }, summon: { pityCount: 3 } });
     // rng=0.9 > 0.6 → 未出英雄
     const { state: next, result } = summonUpdate(state, () => 0.9);
 
     expect(result.heroId).toBeNull();
     expect(result.shardType).toBe('resonance');
     expect(result.shardsGained).toBe(SUMMON_CONFIG.resonancePerMiss);
-    expect(next.resonanceShards).toBe(SUMMON_CONFIG.resonancePerMiss);
+    expect(next.inventory.resonance_shard).toBe(SUMMON_CONFIG.resonancePerMiss);
     expect(next.summon.pityCount).toBe(4);
-    expect(next.soulEchoes).toBe(200 - SUMMON_CONFIG.costPerSummon);
+    expect(next.inventory.soul_echo).toBe(200 - SUMMON_CONFIG.costPerSummon);
   });
 
   it('guarantees an unowned hero at 100-pull hard pity cap', () => {
     const state = makeState({
-      soulEchoes: 200,
+      inventory: { soul_echo: 200 },
       summon: { pityCount: 99 } // 99 + 1 = 100 抽保底
     });
     const { state: next, result } = summonUpdate(state, () => 0.99);
@@ -122,10 +121,9 @@ describe('summonUpdate', () => {
     });
 
     const state = makeState({
-      soulEchoes: 200,
+      inventory: { soul_echo: 200 },
       heroes: allHeroes,
-      summon: { pityCount: 99 },
-      inventory: {}
+      summon: { pityCount: 99 }
     });
 
     const { state: next, result } = summonUpdate(state, () => 0.99);
@@ -143,10 +141,9 @@ describe('summonUpdate', () => {
     });
 
     const state = makeState({
-      soulEchoes: 200,
+      inventory: { soul_echo: 200 },
       heroes: allHeroes,
-      summon: { pityCount: 99 },
-      inventory: {}
+      summon: { pityCount: 99 }
     });
 
     // rng: rolled 任意 → 硬保底不受影响；rollHeroId(0) → 池中第一个英雄（已拥有）
@@ -161,20 +158,20 @@ describe('summonUpdate', () => {
 
 describe('summonTenUpdate', () => {
   it('fails if soul echoes are less than 1000', () => {
-    const state = makeState({ soulEchoes: 900 });
+    const state = makeState({ inventory: { soul_echo: 900 } });
     const { state: next, result } = summonTenUpdate(state);
 
     expect(result.outcomes).toHaveLength(0);
-    expect(next.soulEchoes).toBe(900);
+    expect(next.inventory.soul_echo).toBe(900);
   });
 
   it('executes 10 pulls and consumes 1000 soul echoes', () => {
-    const state = makeState({ soulEchoes: 1500 });
+    const state = makeState({ inventory: { soul_echo: 1500 } });
     const { state: next, result } = summonTenUpdate(state);
 
     expect(result.outcomes).toHaveLength(10);
     expect(result.soulEchoesUsed).toBe(1000);
-    expect(next.soulEchoes).toBe(500);
+    expect(next.inventory.soul_echo).toBe(500);
   });
 
   it('hard pity triggers inside a 10-pull: unowned hero guaranteed and counter resets', () => {
@@ -187,7 +184,7 @@ describe('summonTenUpdate', () => {
     });
 
     const state = makeState({
-      soulEchoes: 3000,
+      inventory: { soul_echo: 3000 },
       heroes,
       summon: { pityCount: 95 }
     });
@@ -204,7 +201,7 @@ describe('summonTenUpdate', () => {
     expect(fifth.isNew).toBe(true);
     // 硬保底后 pity 重置 0；剩余 5 抽未出英雄 → 5
     expect(next.summon.pityCount).toBe(5);
-    expect(next.soulEchoes).toBe(3000 - 1000);
+    expect(next.inventory.soul_echo).toBe(3000 - 1000);
     expect(next.heroes[lastId]).toBeDefined();
   });
 });

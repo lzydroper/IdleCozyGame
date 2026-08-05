@@ -25,7 +25,7 @@ describe('SummonTab Component (ticket 20)', () => {
   it('renders the SummonTab view with pity progress and currency', () => {
     const testSave = {
       ...INITIAL_STATE,
-      soulEchoes: 500,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 500 },
       summon: { pityCount: 25 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
@@ -47,7 +47,7 @@ describe('SummonTab Component (ticket 20)', () => {
   it('opens and closes the rules modal when clicking the ? / Info button', () => {
     const testSave = {
       ...INITIAL_STATE,
-      soulEchoes: 500,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 500 },
       summon: { pityCount: 0 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
@@ -71,7 +71,7 @@ describe('SummonTab Component (ticket 20)', () => {
   it('executes a 1x pull, deducts 100 soul echoes, and shows result modal', () => {
     const testSave = {
       ...INITIAL_STATE,
-      soulEchoes: 300,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 300 },
       summon: { pityCount: 10 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
@@ -96,7 +96,7 @@ describe('SummonTab Component (ticket 20)', () => {
   it('executes a 10x pull, deducts 1000 soul echoes, and shows 10 results', () => {
     const testSave = {
       ...INITIAL_STATE,
-      soulEchoes: 1500,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 1500 },
       summon: { pityCount: 0 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
@@ -118,7 +118,7 @@ describe('SummonTab Component (ticket 20)', () => {
   it('opens SummonTab from HeroTab when clicking recruit button', () => {
     const testSave = {
       ...INITIAL_STATE,
-      soulEchoes: 500
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 500 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
 

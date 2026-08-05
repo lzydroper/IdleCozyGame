@@ -189,7 +189,7 @@ describe('HeroTab Component', () => {
 
   it('star-up consumes soul shards and raises the star level (ticket 12)', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.soulShards = { nova: 10 };
+    save.inventory.shard_nova = 10;
     localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
 
     render(
@@ -205,7 +205,7 @@ describe('HeroTab Component', () => {
     fireEvent.click(screen.getByText(/升星/));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.star).toBe(2);
-    expect(saved.soulShards.nova).toBe(5); // cost(1) = 5
+    expect(saved.inventory.shard_nova).toBe(5); // cost(1) = 5
   });
 
   it('awakens a max-star hero consuming the arcane orb (ticket 12)', () => {

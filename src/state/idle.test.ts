@@ -28,8 +28,7 @@ const WINNING_STATE = makeState({
     nova: createInitialHero('nova'),
     soldier: createInitialHero('soldier')
   },
-  inventory: { scrap_metal: 0, glow_fiber: 0 },
-  soulEchoes: 0
+  inventory: { scrap_metal: 0, glow_fiber: 0 }
 });
 
 describe('startIdleUpdate / stopIdleUpdate (挂机开关)', () => {
@@ -114,8 +113,7 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
       ...WINNING_STATE,
       ...armed('wasteland_entrance'),
       stamina: 100,
-      inventory: { scrap_metal: 0, glow_fiber: 0 },
-      soulEchoes: 0
+      inventory: { scrap_metal: 0, glow_fiber: 0 }
     });
     // 每场：scrap 命中取 max(2) + glow_fiber 命中取 max(2) + enhance_stone 命中取 max(2) + 灵魂残响取 max(4)
     const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
@@ -140,7 +138,7 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
     expect(next.inventory.enhance_stone).toBe(20);
     // 灵魂残响与经验累计
     expect(result.soulEchoesGained).toBe(40);
-    expect(next.soulEchoes).toBe(40);
+    expect(next.inventory.soul_echo).toBe(40);
     expect(result.expPerHero).toBe(10 * COMBAT_ZONES.wasteland_entrance.expReward);
     // 200 总经验/英雄：升 2 级消耗 100（level 1 * expPerLevel），余 100
     expect(next.heroes.nova.exp).toBe(100);
@@ -157,8 +155,7 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
       party: ['nova'],
       heroes: { nova: createInitialHero('nova') },
       stamina: 100,
-      inventory: { scrap_metal: 5 },
-      soulEchoes: 5
+      inventory: { scrap_metal: 5, soul_echo: 5 }
     });
     const { state: next, result } = settleIdleUpdate(state, 10000);
 
@@ -171,7 +168,7 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
     expect(next.heroes.nova.wounded).toBe(true);
     expect(next.heroes.nova.hp).toBe(0);
     expect(next.inventory.scrap_metal).toBe(5); // 战败无掉落
-    expect(next.soulEchoes).toBe(5);            // 战败无灵魂残响
+    expect(next.inventory.soul_echo).toBe(5);   // 战败无灵魂残响
     expect(next.stamina).toBe(100 - COMBAT_ZONES.radiated_workshop.staminaCost); // 体力照常消耗
   });
 
@@ -179,8 +176,7 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
     const state = makeState({
       ...WINNING_STATE,
       ...armed('wasteland_entrance'),
-      stamina: 100000,
-      soulEchoes: 0
+      stamina: 100000
     });
     // 100 小时离线 → 上限 maxIdleSettlementSeconds = 8h → 28800/20 = 1440 场
     const { state: next, result } = settleIdleUpdate(state, 100 * 3600, () => 0.99);
@@ -228,8 +224,7 @@ describe('calculateDetailedOfflineProgress + 挂机 (重连结算)', () => {
         soldier: createInitialHero('soldier')
       },
       stamina: 100,
-      inventory: { scrap_metal: 0, glow_fiber: 0 },
-      soulEchoes: 0
+      inventory: { scrap_metal: 0, glow_fiber: 0 }
     });
     const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
     const { updatedState, report } = calculateDetailedOfflineProgress(state, 1000, rng);

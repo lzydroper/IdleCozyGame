@@ -257,7 +257,6 @@ interface BattleSettlement {
   nextInventory: Record<string, number>;
   nextBag: Record<string, number>;
   nextHeroes: Record<string, HeroState>;
-  nextSoulEchoes: number;
   soulEchoesGained: number;
   drops: Record<string, number>;
   woundedHeroIds: string[];
@@ -274,7 +273,6 @@ const settleBattle = (
   const nextInventory = { ...state.inventory };
   const nextBag = { ...(state.exploration.realityBag || {}) };
   const nextHeroes = { ...state.heroes };
-  let nextSoulEchoes = state.soulEchoes;
   const drops: Record<string, number> = {};
   const woundedHeroIds: string[] = [];
   let soulEchoesGained = 0;
@@ -289,11 +287,11 @@ const settleBattle = (
         target[drop.itemId] = (target[drop.itemId] || 0) + qty;
       }
     });
-    // 灵魂残响掉落
+    // 灵魂残响掉落（落账进背包，结算报告保留 soulEchoesGained）
     if (cfg.soulEchoMax > cfg.soulEchoMin) {
       const seRoll = cfg.soulEchoMin + Math.floor(rng() * (cfg.soulEchoMax - cfg.soulEchoMin + 1));
       soulEchoesGained = seRoll;
-      nextSoulEchoes += seRoll;
+      nextInventory.soul_echo = (nextInventory.soul_echo || 0) + seRoll;
     }
     // 经验入账 + 战后修整恢复满血（设计决策：战斗为独立"场景"，失败才承担重伤代价）
     party.forEach(id => {
@@ -309,7 +307,7 @@ const settleBattle = (
   }
   // 平局（回合上限双方均未全灭）：无掉落、无经验、无重伤，仅消耗体力
 
-  return { nextStamina, nextInventory, nextBag, nextHeroes, nextSoulEchoes, soulEchoesGained, drops, woundedHeroIds };
+  return { nextStamina, nextInventory, nextBag, nextHeroes, soulEchoesGained, drops, woundedHeroIds };
 };
 
 /**
@@ -368,7 +366,6 @@ export const startCombatUpdate = (
       stamina: settled.nextStamina,
       inventory: settled.nextInventory,
       heroes: settled.nextHeroes,
-      soulEchoes: settled.nextSoulEchoes,
       combat: { zoneId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [], idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
@@ -582,7 +579,6 @@ export const startBossBattleUpdate = (
       stamina: settled.nextStamina,
       inventory: settled.nextInventory,
       heroes: settled.nextHeroes,
-      soulEchoes: settled.nextSoulEchoes,
       combat: { zoneId, lastSettlement: settlement, zonesCleared, idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },
@@ -724,8 +720,7 @@ export const settleIdleUpdate = (
       ...next,
       stamina: settled.nextStamina,
       inventory: settled.nextInventory,
-      heroes: settled.nextHeroes,
-      soulEchoes: settled.nextSoulEchoes
+      heroes: settled.nextHeroes
     };
     outcome.battlesFought++;
     outcome.staminaConsumed += zone.staminaCost;

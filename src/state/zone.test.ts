@@ -125,8 +125,7 @@ describe('startBossBattleUpdate (关底 BOSS 战)', () => {
         nova: createInitialHero('nova'),
         soldier: createInitialHero('soldier')
       },
-      inventory: { scrap_metal: 0 },
-      soulEchoes: 0
+      inventory: { scrap_metal: 0 }
     });
     // rng 序列：两件 boss 掉落都命中并取 maxQty + 灵魂残响取 max
     const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.99]);
@@ -140,7 +139,7 @@ describe('startBossBattleUpdate (关底 BOSS 战)', () => {
     expect(next.inventory.scrap_metal).toBe(4);
     expect(next.inventory.glow_fiber).toBe(3);
     // 灵魂残响 + 经验
-    expect(next.soulEchoes).toBe(zone.boss.soulEchoMax);
+    expect(next.inventory.soul_echo).toBe(zone.boss.soulEchoMax);
     expect(next.heroes.nova.exp).toBe(zone.boss.expReward);
     expect(next.heroes.nova.hp).toBe(next.heroes.nova.maxHp);
     // 通关本区 → 解锁下一区

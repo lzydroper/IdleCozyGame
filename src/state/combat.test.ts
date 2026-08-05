@@ -191,7 +191,6 @@ describe('startCombatUpdate (开战校验与结算)', () => {
     const state = makeState({
       stamina: 50,
       inventory: { scrap_metal: 0 },
-      soulEchoes: 0,
       party: ['nova', 'buster'],
       heroes: {
         nova: { ...createInitialHero('nova'), hp: 30 },
@@ -212,7 +211,7 @@ describe('startCombatUpdate (开战校验与结算)', () => {
     expect(next.inventory.scrap_metal).toBe(2);   // 命中 + maxQty
     expect(next.inventory.glow_fiber).toBe(2);    // 命中 + maxQty
     // 灵魂残响入账
-    expect(next.soulEchoes).toBe(zone.soulEchoMax);
+    expect(next.inventory.soul_echo).toBe(zone.soulEchoMax);
     // 经验入账：两位上阵英雄都获得 expReward，战后再恢复满血
     expect(next.heroes.nova.exp).toBe(zone.expReward);
     expect(next.heroes.buster.exp).toBe(zone.expReward);
@@ -228,8 +227,7 @@ describe('startCombatUpdate (开战校验与结算)', () => {
   it('defeat: wounds the whole party, no drops or exp, stamina still consumed', () => {
     const state = makeState({
       stamina: 30,
-      inventory: { scrap_metal: 5 },
-      soulEchoes: 5,
+      inventory: { scrap_metal: 5, soul_echo: 5 },
       party: ['nova'],
       heroes: { nova: createInitialHero('nova') },
       combat: { ...INITIAL_STATE.combat, zonesCleared: ['wasteland_entrance', 'old_town_ruins'] }
@@ -242,7 +240,7 @@ describe('startCombatUpdate (开战校验与结算)', () => {
     expect(next.heroes.nova.wounded).toBe(true);
     expect(next.heroes.nova.hp).toBe(0);
     expect(next.inventory.scrap_metal).toBe(5); // 无掉落
-    expect(next.soulEchoes).toBe(5);           // 无灵魂残响
+    expect(next.inventory.soul_echo).toBe(5);   // 无灵魂残响
     expect(next.heroes.nova.exp).toBe(0);      // 无经验
     expect(result.settlement!.woundedHeroIds).toEqual(['nova']);
   });

@@ -94,8 +94,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     [config.baseAttack, config.baseDefense, config.baseHp, hero.level, equipFlat]
   );
 
-  const soulCount = state.soulShards?.[heroId] || 0;
-  const resonanceCount = state.resonanceShards || 0;
+  const soulCount = state.inventory[`shard_${heroId}`] || 0;
+  const resonanceCount = state.inventory.resonance_shard || 0;
   const shardCost = starUpShardCost(hero.star);
   const totalAvailableShards = soulCount + resonanceCount;
   const hasOrb = (state.inventory.arcane_orb || 0) >= 1;

@@ -55,26 +55,26 @@ describe('升星/觉醒配置完整性（ticket 12）', () => {
 
 describe('升星', () => {
   it('消耗灵魂碎片升星，先扣专属碎片', () => {
-    const state = makeState({ soulShards: { nova: 10 }, resonanceShards: 0 });
+    const state = makeState({ inventory: { shard_nova: 10, resonance_shard: 0 } });
     const r = starUpUpdate(state, 'nova');
     expect(r.result).toBe(true);
     expect(r.state.heroes.nova.star).toBe(2);
-    expect(r.state.soulShards.nova).toBe(10 - starUpShardCost(1)); // cost(1)=5
+    expect(r.state.inventory.shard_nova).toBe(10 - starUpShardCost(1)); // cost(1)=5
   });
 
   it('专属碎片不足时用共鸣碎片补齐', () => {
-    const state = makeState({ soulShards: { nova: 3 }, resonanceShards: 10 });
+    const state = makeState({ inventory: { shard_nova: 3, resonance_shard: 10 } });
     const r = starUpUpdate(state, 'nova');
     expect(r.result).toBe(true);
     expect(r.state.heroes.nova.star).toBe(2);
-    expect(r.state.soulShards.nova).toBeUndefined(); // 3 张专属全用掉
-    expect(r.state.resonanceShards).toBe(10 - (5 - 3)); // 补 2 张共鸣
+    expect(r.state.inventory.shard_nova).toBeUndefined(); // 3 张专属全用掉
+    expect(r.state.inventory.resonance_shard).toBe(10 - (5 - 3)); // 补 2 张共鸣
   });
 
   it('拒绝：碎片不足 / 已满星 / 未知英雄', () => {
     expect(starUpUpdate(makeState(), 'nova').result).toBe('no_shards');
     expect(starUpUpdate(novaAt(STAR_MAX), 'nova').result).toBe('max_star');
-    expect(starUpUpdate(makeState({ soulShards: { nova: 99 } }), 'ghost').result).toBe('unknown_hero');
+    expect(starUpUpdate(makeState({ inventory: { shard_nova: 99 } }), 'ghost').result).toBe('unknown_hero');
   });
 
   it('星级越高消耗越多（cost = 当前星级 × 5）', () => {

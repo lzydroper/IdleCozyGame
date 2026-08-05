@@ -23,34 +23,35 @@ export const starUpUpdate = (state: GameState, heroId: string): UpdateResult<Sta
   if (hero.star >= STAR_MAX) return { state, result: 'max_star' as const };
 
   const cost = starUpShardCost(hero.star);
-  const soul = state.soulShards?.[heroId] || 0;
-  const resonance = state.resonanceShards || 0;
+  const soul = state.inventory[`shard_${heroId}`] || 0;
+  const resonance = state.inventory.resonance_shard || 0;
   if (soul + resonance < cost) return { state, result: 'no_shards' as const };
 
   // 先扣专属灵魂碎片，不足部分用通用共鸣碎片补齐
   const soulUsed = Math.min(soul, cost);
   const resonanceUsed = cost - soulUsed;
-  const nextSoulShards = { ...(state.soulShards || {}) };
+  const nextInventory = { ...state.inventory };
   if (soulUsed > 0) {
-    nextSoulShards[heroId] = soul - soulUsed;
-    if (nextSoulShards[heroId] <= 0) delete nextSoulShards[heroId];
+    const shardId = `shard_${heroId}`;
+    nextInventory[shardId] = soul - soulUsed;
+    if (nextInventory[shardId] <= 0) delete nextInventory[shardId];
   }
 
   const nextStar = hero.star + 1;
-  let nextResonanceShards = resonance - resonanceUsed;
+  nextInventory.resonance_shard = resonance - resonanceUsed;
 
   // 升至 5 星满星后，持有的溢出专属灵魂碎片 1:1 自动转为通用共鸣碎片
-  if (nextStar >= STAR_MAX && nextSoulShards[heroId] && nextSoulShards[heroId] > 0) {
-    const overflow = nextSoulShards[heroId];
-    delete nextSoulShards[heroId];
-    nextResonanceShards += overflow;
+  const shardId = `shard_${heroId}`;
+  if (nextStar >= STAR_MAX && nextInventory[shardId] && nextInventory[shardId] > 0) {
+    const overflow = nextInventory[shardId];
+    delete nextInventory[shardId];
+    nextInventory.resonance_shard = (nextInventory.resonance_shard || 0) + overflow;
   }
 
   return {
     state: {
       ...state,
-      soulShards: nextSoulShards,
-      resonanceShards: nextResonanceShards,
+      inventory: nextInventory,
       heroes: { ...state.heroes, [heroId]: { ...hero, star: nextStar } }
     },
     result: true

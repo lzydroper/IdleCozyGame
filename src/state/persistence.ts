@@ -177,6 +177,17 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   ...initialState,
   ...parsed,
   player: mergedPlayer,
+  // 经济实体物品化（ADR-0014）：仅补物品化新增条目（soul_echo/resonance_shard/shard_*）的默认值，
+  // 其余物品以存档为准（缺键视为 0），避免初始物品在精简/空背包存档上“复活”。
+  // 注意：物品化前的旧存档其经济余额（顶层 soulEchoes 等）按 ADR-0014 alpha 决策直接舍弃，不迁移。
+  inventory: {
+    ...(parsed.inventory || {}),
+    ...Object.fromEntries(
+      Object.entries(initialState.inventory)
+        .filter(([k]) => k === 'soul_echo' || k === 'resonance_shard' || k.startsWith('shard_'))
+        .map(([k, v]) => [k, parsed.inventory && parsed.inventory[k] !== undefined ? parsed.inventory[k] : v])
+    )
+  },
   greenhouse: {
     ...initialState.greenhouse,
     ...(parsed.greenhouse || {})
@@ -238,10 +249,6 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
       }
     ])
   ),
-  soulShards: {
-    ...(initialState.soulShards || {}),
-    ...(parsed.soulShards || {})
-  },
   summon: {
     ...(initialState.summon || { pityCount: 0 }),
     ...(parsed.summon || {})

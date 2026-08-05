@@ -42,7 +42,11 @@ export const INITIAL_STATE: GameState = {
     seed_aether_berry: 2,
     ration: 5,
     scrap_metal: 10,
-    dream_shard: 5
+    dream_shard: 5,
+    // 经济实体物品化（ADR-0014）：货币与碎片全部入背包；shard_<hero> 随英雄配置生成
+    soul_echo: 500,
+    resonance_shard: 0,
+    ...Object.fromEntries(Object.keys(HEROES_CONFIG).map(id => [`shard_${id}`, 0]))
   },
   greenhouse: {
     slots: [
@@ -55,10 +59,7 @@ export const INITIAL_STATE: GameState = {
   },
   heroes: INITIAL_HEROES,
   equipment: {}, // 英雄装备栏：开局无装备（ticket 10）
-  // 召唤经济：新手起始灵魂残响（500 = 5 抽），后续由战斗掉落/日常补充
-  soulEchoes: 500,
-  resonanceShards: 0,
-  soulShards: {},
+  // 召唤经济（ADR-0014）：新手起始灵魂残响 500（= 5 抽），后续由战斗掉落/日常补充
   summon: { pityCount: 0 },
   // 战斗核心：开局满体力，初始小队 = 初始英雄诺娃
   stamina: COMBAT_CONFIG.maxStamina,

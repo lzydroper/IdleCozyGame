@@ -37,15 +37,16 @@ export const rollHeroId = (rng: () => number): string => {
 /**
  * 英雄召唤（单抽）：消耗灵魂残响，按单概率池 + 100 抽保底判定。
  * - 100 抽保底必出未拥有英雄（若全拥有且已全满星则给予【奥术星体】）
- * - 出英雄：未拥有则新获得；若已拥有 → 转化为该英雄灵魂碎片（soulShards）或 5 星满星转化共鸣碎片
- * - 未出英雄：获得共鸣碎片（resonanceShards）
+ * - 出英雄：未拥有则新获得；若已拥有 → 转化为该英雄灵魂碎片（shard_<hero> 入背包）或 5 星满星转化共鸣碎片
+ * - 未出英雄：获得共鸣碎片（resonance_shard 入背包）
+ * 货币与碎片均存于 inventory（ADR-0014 物品化）。
  * rng 可注入，便于测试确定性。
  */
 export const summonUpdate = (
   state: GameState,
   rng: () => number = Math.random
 ): UpdateResult<SummonOutcome> => {
-  if ((state.soulEchoes || 0) < SUMMON_CONFIG.costPerSummon) {
+  if ((state.inventory.soul_echo || 0) < SUMMON_CONFIG.costPerSummon) {
     return {
       state,
       result: { heroId: null, isNew: false, shardsGained: 0, shardType: null }
@@ -62,8 +63,11 @@ export const summonUpdate = (
     return {
       state: {
         ...state,
-        soulEchoes: state.soulEchoes - SUMMON_CONFIG.costPerSummon,
-        resonanceShards: (state.resonanceShards || 0) + SUMMON_CONFIG.resonancePerMiss,
+        inventory: {
+          ...state.inventory,
+          soul_echo: (state.inventory.soul_echo || 0) - SUMMON_CONFIG.costPerSummon,
+          resonance_shard: (state.inventory.resonance_shard || 0) + SUMMON_CONFIG.resonancePerMiss
+        },
         summon: { pityCount: pityCount + 1 }
       },
       result: {
@@ -92,12 +96,12 @@ export const summonUpdate = (
         // 全满星给予 1 个【奥术星体】
         const nextInventory = {
           ...state.inventory,
-          arcane_orb: (state.inventory.arcane_orb || 0) + 1
+          arcane_orb: (state.inventory.arcane_orb || 0) + 1,
+          soul_echo: (state.inventory.soul_echo || 0) - SUMMON_CONFIG.costPerSummon
         };
         return {
           state: {
             ...state,
-            soulEchoes: state.soulEchoes - SUMMON_CONFIG.costPerSummon,
             inventory: nextInventory,
             summon: { pityCount: 0 }
           },
@@ -119,8 +123,10 @@ export const summonUpdate = (
 
   const alreadyOwned = !!state.heroes[heroId];
   const nextHeroes = { ...state.heroes };
-  const nextSoulShards = { ...(state.soulShards || {}) };
-  let nextResonance = state.resonanceShards || 0;
+  const nextInventory: Record<string, number> = {
+    ...state.inventory,
+    soul_echo: (state.inventory.soul_echo || 0) - SUMMON_CONFIG.costPerSummon
+  };
 
   // 保底计数语义（ticket 20）：仅在获得【未拥有】英雄（或全满星保底兑现奥术星体）后重置。
   // 抽到已拥有英雄同样属于"未获得未拥有英雄"，计数继续累加，否则保底进度永远无法兑现。
@@ -129,9 +135,10 @@ export const summonUpdate = (
   if (alreadyOwned) {
     // 若英雄已达 5 星满星，重复抽出的碎片 1:1 自动转化为通用共鸣碎片
     if (state.heroes[heroId].star >= STAR_MAX) {
-      nextResonance += SUMMON_CONFIG.shardsPerDupe;
+      nextInventory.resonance_shard = (nextInventory.resonance_shard || 0) + SUMMON_CONFIG.shardsPerDupe;
     } else {
-      nextSoulShards[heroId] = (nextSoulShards[heroId] || 0) + SUMMON_CONFIG.shardsPerDupe;
+      const shardId = `shard_${heroId}`;
+      nextInventory[shardId] = (nextInventory[shardId] || 0) + SUMMON_CONFIG.shardsPerDupe;
     }
     // 硬保底已触发的场合（全拥有非满星兜底出重复英雄，或保底兑现）视为保底已兑现，重置计数
     if (isHardPity) nextPity = 0;
@@ -143,10 +150,8 @@ export const summonUpdate = (
   return {
     state: {
       ...state,
-      soulEchoes: state.soulEchoes - SUMMON_CONFIG.costPerSummon,
+      inventory: nextInventory,
       heroes: nextHeroes,
-      soulShards: nextSoulShards,
-      resonanceShards: nextResonance,
       summon: { pityCount: nextPity }
     },
     result: {
@@ -166,7 +171,7 @@ export const summonTenUpdate = (
   rng: () => number = Math.random
 ): UpdateResult<MultiSummonResult> => {
   const totalCost = SUMMON_CONFIG.costPerSummon * 10;
-  if ((state.soulEchoes || 0) < totalCost) {
+  if ((state.inventory.soul_echo || 0) < totalCost) {
     return {
       state,
       result: { outcomes: [], soulEchoesUsed: 0 }
