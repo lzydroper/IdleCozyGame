@@ -1,7 +1,7 @@
 // 资源（不可主动使用、被生产行为消耗）：生产原料、种子、货币（含灵魂残响）。
 import {
-  Apple, BatteryCharging, CircleDot, Cog, FlaskConical, Flame, Flower2, Gem, Layers,
-  Leaf, MoonStar, Orbit, Snowflake, Sparkles, Sprout, Wrench, Zap,
+  Apple, BatteryCharging, BatteryFull, CircleDot, Cog, FlaskConical, Flame, Flower2, Gem, Layers,
+  Leaf, MoonStar, Orbit, Radar, ScanSearch, Snowflake, Sparkles, Sprout, TowerControl, Wrench, Zap,
 } from 'lucide-react';
 import type { ItemMeta } from './types';
 
@@ -45,6 +45,12 @@ export const RESOURCE_ITEMS: Record<string, ItemMeta> = {
   seed_crystal_reed: { id: 'seed_crystal_reed', name: '水晶芦苇根茎', description: '莹白色半透明的坚硬芦苇根茎块', category: 'resource', sprite: { sheet: 'seeds', index: 13 }, icon: Sprout },
   seed_shadow_fern: { id: 'seed_shadow_fern', name: '暗影蕨孢子', description: '吞噬周围光线、呈黑雾气泡包裹的孢子团', category: 'resource', sprite: { sheet: 'seeds', index: 14 }, icon: Sprout },
   seed_chrono_vine: { id: 'seed_chrono_vine', name: '时光藤蔓种子', description: '呈双螺旋结构微弱旋转的发光翠绿色种子', category: 'resource', sprite: { sheet: 'seeds', index: 15 }, icon: Sprout },
+
+  // === 场景消耗装置（ADR-0016：需在特定场景/事件中消耗，非背包主动使用，归资源） ===
+  defensive_turret: { id: 'defensive_turret', name: '防御炮塔', description: '可部署的自动防御装置', category: 'resource', sprite: { sheet: 'supplies', index: 2 }, icon: TowerControl },
+  shield_battery: { id: 'shield_battery', name: '重载护盾电池', description: '用于部分高难地表救援任务的能量护盾电池。', category: 'resource', sprite: { sheet: 'supplies', index: 9 }, icon: BatteryFull },
+  geiger_counter: { id: 'geiger_counter', name: '盖革探测仪', description: '黄色外壳、带有科幻刻度表盘和雷达扫描的手持探测仪', category: 'resource', sprite: { sheet: 'supplies', index: 12 }, icon: Radar },
+  deflective_lens: { id: 'deflective_lens', name: '偏光魔导镜片', description: '折射七彩极光的六角形魔导透镜', category: 'resource', sprite: { sheet: 'supplies', index: 14 }, icon: ScanSearch },
 
   // === 货币（原顶层字段，ADR-0014 物品化） ===
   soul_echo: { id: 'soul_echo', name: '灵魂残响', description: '英雄召唤消耗的统一货币（战斗掉落/日常任务/特殊途径获取）', category: 'resource', icon: Gem },

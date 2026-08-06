@@ -50,7 +50,7 @@ const BASE_SAVE = {
 
 // 辅助组件，调用真实 useSupplyItem (单元测试)
 const TestUsageComponent: React.FC<{
-  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum';
+  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum' | 'sanity_capsule';
   onState: (state: GameState) => void;
 }> = ({ itemId, onState }) => {
   const { state, useSupplyItem } = useGame();
@@ -191,6 +191,37 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     expect(currentState!.inventory.purifying_serum).toBe(0);
     expect(currentState!.player.sanity).toBe(70);
     expect(currentState!.exploration.dreamPollution).toBe(20);
+  });
+
+  it('should not silently consume capsules whose charge effect is not wired yet (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      inventory: { sanity_capsule: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <TestUsageComponent
+          itemId="sanity_capsule"
+          onState={(s) => {
+            currentState = s;
+          }}
+        />
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-sanity_capsule');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    expect(currentState).not.toBeNull();
+    // 充能效果尚未接线：胶囊不消耗、充能次数不变化（防静默吞没）
+    expect(currentState!.inventory.sanity_capsule).toBe(2);
+    expect(currentState!.exploration.capsulesCharge.sanity_capsule).toBe(3);
   });
 });
 

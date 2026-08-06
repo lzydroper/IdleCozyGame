@@ -19,25 +19,36 @@ describe('物品注册表一致性', () => {
     }
   });
 
-  it('按映射表归类：15 道具 / 35 资源 / 14 装备 / 2+英雄数 碎片', () => {
+  it('按映射表归类：11 道具 / 39 资源 / 14 装备 / 2+英雄数 碎片', () => {
     const byCategory = (cat: string) =>
       Object.values(ITEMS_CONFIG).filter(m => m.category === cat).length;
-    expect(byCategory('item')).toBe(15);
-    expect(byCategory('resource')).toBe(35);
+    expect(byCategory('item')).toBe(11);
+    expect(byCategory('resource')).toBe(39);
     expect(byCategory('equipment')).toBe(14);
     expect(byCategory('shard')).toBe(2 + Object.keys(HEROES_CONFIG).length);
   });
 
   it('错标的消耗品归道具，不再混入装备页', () => {
-    for (const id of ['energy_refill', 'stimpack', 'canteen', 'defensive_turret', 'shield_battery', 'geiger_counter']) {
+    for (const id of ['energy_refill', 'stimpack', 'canteen']) {
       expect(ITEMS_CONFIG[id].category, id).toBe('item');
     }
   });
 
+  it('场景消耗装置归资源，道具仅限可主动使用（ADR-0016）', () => {
+    for (const id of ['defensive_turret', 'shield_battery', 'geiger_counter', 'deflective_lens']) {
+      expect(ITEMS_CONFIG[id].category, id).toBe('resource');
+    }
+  });
+
   it('食物与功能道具归道具', () => {
-    for (const id of ['ration', 'hot_stew', 'ration_deluxe', 'sanity_capsule', 'warp_capsule', 'nanite_injector', 'purifying_serum', 'deflective_lens', 'dream_lantern']) {
+    for (const id of ['ration', 'hot_stew', 'ration_deluxe', 'sanity_capsule', 'warp_capsule', 'nanite_injector', 'purifying_serum', 'dream_lantern']) {
       expect(ITEMS_CONFIG[id].category, id).toBe('item');
     }
+  });
+
+  it('稳定/跃迁胶囊含梦境充能效果（1 个 = +1 次，ADR-0016）', () => {
+    expect(ITEMS_CONFIG['sanity_capsule'].useEffect?.capsuleCharge?.sanity_capsule).toBe(1);
+    expect(ITEMS_CONFIG['warp_capsule'].useEffect?.capsuleCharge?.warp_capsule).toBe(1);
   });
 
   it('种子、生产原料与货币归资源（含梦境碎片/梦魇之泪/虚空核心）', () => {

@@ -99,6 +99,28 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     expect(screen.getByText('该分类暂无物资')).toBeDefined();
   });
 
+  it('files scene devices (turret/battery/counter/lens) under 资源, not 道具 (ADR-0016)', () => {
+    renderWithSave({
+      defensive_turret: 1,
+      shield_battery: 1,
+      geiger_counter: 1,
+      deflective_lens: 1,
+      ration: 1,
+    });
+
+    // 默认选中第一个非空分类（道具）：只显示口粮，装置不可见
+    expect(screen.getAllByText('压缩口粮').length).toBeGreaterThan(0);
+    expect(screen.queryByText('防御炮塔')).toBeNull();
+
+    // 切到资源 tab：4 个装置全部可见
+    fireEvent.click(screen.getByText('资源'));
+    expect(screen.getAllByText('防御炮塔').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('重载护盾电池').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('盖革探测仪').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('偏光魔导镜片').length).toBeGreaterThan(0);
+    expect(screen.queryByText('压缩口粮')).toBeNull();
+  });
+
   it('empty category tabs are clickable and show the empty state (no disabled tabs)', () => {
     renderWithSave({ scrap_metal: 5 });
 

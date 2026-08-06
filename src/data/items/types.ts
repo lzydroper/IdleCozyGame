@@ -24,5 +24,7 @@ export interface ItemMeta {
   useEffect?: {
     stats?: Partial<Record<'food' | 'energy' | 'sanity', number>>;
     pollution?: number;
+    /** 梦境充能（ADR-0016）：消耗 1 个物品 → 对应胶囊充能次数 +N */
+    capsuleCharge?: Partial<Record<'sanity_capsule' | 'warp_capsule', number>>;
   };
 }

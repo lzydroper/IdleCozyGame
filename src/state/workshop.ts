@@ -65,6 +65,11 @@ export const applySupplyItemUpdate = (state: GameState, itemId: string): UpdateR
 
   const meta = ITEMS_CONFIG[itemId];
   if (!meta?.useEffect) return NO_OP(state);
+  // ADR-0016 保护：capsuleCharge（梦境充能）效果尚未接线（批量使用切片接线），
+  // 仅含该效果的物品拒绝消耗，防止「物品被扣、充能未加」的静默吞没
+  if (meta.useEffect.capsuleCharge && !meta.useEffect.stats && meta.useEffect.pollution === undefined) {
+    return NO_OP(state);
+  }
 
   const newInventory = { ...state.inventory };
   newInventory[itemId] = currentQty - 1;
