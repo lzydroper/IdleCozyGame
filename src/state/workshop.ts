@@ -26,15 +26,15 @@ export const getRecipeDisplayName = (recipe: Recipe): string => {
   }
   if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) {
     const label = ITEMS_CONFIG[recipe.capsuleTarget]?.name || recipe.capsuleTarget;
-    return `合成 ${label}（充能）`;
+    return `合成 ${label}`;
   }
   return `合成 ${recipe.displayName || recipe.id}`;
 };
 
-// 描述：取主产物的物品描述；无 reward 配方无描述
+// 描述：取主产物的物品描述；无 reward 配方用显式 description 兜底（如建筑类温室扩建）
 export const getRecipeDescription = (recipe: Recipe): string => {
   const main = getRecipeMainReward(recipe);
-  return main ? ITEMS_CONFIG[main[0]]?.description || '' : '';
+  return main ? ITEMS_CONFIG[main[0]]?.description || '' : recipe.description || '';
 };
 
 // 分类：显式 category 优先，否则从 reward 主产物的物品类别推导

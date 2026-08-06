@@ -37,6 +37,7 @@ export interface Recipe {
   capsuleTarget?: string;          // 充能的胶囊 ID
   capsuleAmount?: number;          // 充能数量
   blueprintId?: string;            // 需要先解锁的图纸物品 ID（ticket 10：装备合成分层）
+  description?: string;            // 无 reward 配方兜底描述（如建筑类温室扩建；有 reward 配方由产物推导）
   facilityId?: FacilityType;       // 自动配方所属设施（手动配方缺省）
   duration?: number;               // 自动配方单次生产耗时（秒）
   category?: ItemCategory | 'building'; // 分类显式覆盖；默认从 reward 主产物类别推导

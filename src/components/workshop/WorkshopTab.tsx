@@ -35,7 +35,7 @@ const WorkshopTab: React.FC = () => {
       <div className="p-4 rounded-3xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-md">
         <h3 className="text-sm font-black text-white mb-4 flex items-center gap-1.5">
           <Hammer className="w-4 h-4 text-purple-400" />
-          魔导合成配方蓝图
+          工坊合成配方
         </h3>
         <WorkshopCategoryBar active={activeCategory} counts={counts} onChange={setActiveCategory} />
         {categoryRecipes.length === 0 ? (

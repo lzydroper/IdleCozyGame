@@ -29,15 +29,16 @@ describe('配方文案推导（ticket 01）', () => {
     expect(getRecipeDisplayName(r)).toBe('合成 生锈弹簧零件 ×2');
   });
 
-  it('充能配方用 capsuleTarget 产物名（充能）', () => {
+  it('充能配方显示 capsuleTarget 产物名（无"充能"后缀，产出在产出区注明次数）', () => {
     const r = RECIPES_CONFIG['sanity_capsule'];
-    expect(getRecipeDisplayName(r)).toBe('合成 稳定胶囊（充能）');
+    expect(getRecipeDisplayName(r)).toBe('合成 稳定胶囊');
     expect(getRecipeDescription(r)).toBe('');
   });
 
-  it('无产出配方用显式 displayName 兜底', () => {
+  it('无产出配方用显式 displayName 兜底，描述用显式 description', () => {
     const r = RECIPES_CONFIG['greenhouse_expansion'];
     expect(getRecipeDisplayName(r)).toBe('合成 温室智能扩展坞');
+    expect(getRecipeDescription(r)).toContain('解锁额外 2 个高阶培养槽');
   });
 
   it('自动配方同样推导显示名', () => {

@@ -58,7 +58,8 @@ export const RECIPES_CONFIG: Record<string, Recipe> = {
     reward: {},
     special: 'greenhouse_expansion',
     category: 'building', // 无产物建筑类配方，显式归「建筑」
-    displayName: '温室智能扩展坞'
+    displayName: '温室智能扩展坞',
+    description: '使用合金与电芯建造的扩展槽位模块，能解锁额外 2 个高阶培养槽。最高支持扩展至 8 槽。'
   },
 
   // === 新材料配方 ===

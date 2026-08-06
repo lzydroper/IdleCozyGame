@@ -65,11 +65,6 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
           <h4 className="font-black text-sm text-white flex items-center gap-1.5">
             <GameIcon type="item" id={getRecipeIconId(recipe)} className="w-4 h-4 mr-0.5" />
             {getRecipeDisplayName(recipe)}
-            {recipe.id === 'sanity_capsule' && (
-              <span className="text-[9px] text-purple-400 font-extrabold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/30">
-                [当前充能: {state.exploration.capsulesCharge.sanity_capsule || 0}次]
-              </span>
-            )}
           </h4>
           <div className="flex gap-1.5">
             <button
@@ -99,19 +94,26 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
           {renderCostText(recipe.cost)}
         </div>
       </div>
-      {Object.keys(recipe.reward).length > 0 && (
+      {(Object.keys(recipe.reward).length > 0 || recipe.special === 'capsule_charge') && (
         <div>
           <h5 className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><Zap className="w-2.5 h-2.5" /> 产出:</h5>
           <div className="flex flex-wrap gap-1">
-            {Object.entries(recipe.reward).map(([item, qty]) => {
-              const label = ITEMS_CONFIG[item]?.name || item;
-              return (
-                <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">
-                  <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
-                  {label} x{qty}
-                </span>
-              );
-            })}
+            {recipe.special === 'capsule_charge' ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">
+                <GameIcon type="item" id={getRecipeIconId(recipe)} className="w-3.5 h-3.5" />
+                梦境充能 +{recipe.capsuleAmount || 3} 次
+              </span>
+            ) : (
+              Object.entries(recipe.reward).map(([item, qty]) => {
+                const label = ITEMS_CONFIG[item]?.name || item;
+                return (
+                  <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">
+                    <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
+                    {label} x{qty}
+                  </span>
+                );
+              })
+            )}
           </div>
         </div>
       )}
