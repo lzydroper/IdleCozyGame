@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { ITEMS_CONFIG } from '../data/items';
 import ItemGridItem from './ItemGridItem';
+import ItemDetailModal from './ItemDetailModal';
 import { BookOpen, Package, Clock, Settings, Compass, Cog, MoonStar, Swords, Save, CookingPot, Shield, Layers, Gem } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ItemCategory } from '../data/items';
@@ -29,6 +30,8 @@ const LOG_TYPE_ICONS: Record<string, LucideIcon> = {
 const LogTab: React.FC = () => {
   const { state } = useGame();
   const [logFilter, setLogFilter] = useState<'all' | 'event' | 'harvest' | 'combat' | 'dream' | 'system'>('all');
+  // 选中物品详情弹窗（ADR-0016）：null = 关闭
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const { inventory, logs } = state;
 
@@ -103,7 +106,7 @@ const LogTab: React.FC = () => {
                   id={item.id}
                   qty={item.qty}
                   name={item.name}
-                  description={item.description}
+                  onClick={() => setSelectedItemId(item.id)}
                 />
               ))}
             </div>
@@ -173,6 +176,11 @@ const LogTab: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* 物品详情弹窗（ADR-0016）：点击背包物品打开，使用区由后续票据接入 */}
+      {selectedItemId && (
+        <ItemDetailModal itemId={selectedItemId} onClose={() => setSelectedItemId(null)} />
+      )}
     </div>
   );
 };

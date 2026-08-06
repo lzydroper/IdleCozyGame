@@ -214,7 +214,6 @@ const WorkshopTab: React.FC = () => {
                 id={cfg.id}
                 qty={qty}
                 name={meta.name}
-                description={meta.description}
                 actionButton={
                   <button
                     onClick={() => handleUseItem(cfg.id)}

@@ -121,6 +121,28 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     expect(screen.queryByText('压缩口粮')).toBeNull();
   });
 
+  it('opens item detail modal on item click and closes via backdrop (ticket 02)', () => {
+    renderWithSave({ ration: 3 });
+
+    // 点击物品格 → 详情弹窗出现（描述文本仅在弹窗内）
+    fireEvent.click(screen.getByText('压缩口粮'));
+    expect(screen.getByText('高热量压缩食物')).toBeDefined();
+
+    // 点击遮罩 → 弹窗关闭
+    fireEvent.click(screen.getByTestId('item-detail-backdrop'));
+    expect(screen.queryByText('高热量压缩食物')).toBeNull();
+  });
+
+  it('removes hover tooltip (native title and bubble) from item tiles (ticket 02)', () => {
+    renderWithSave({ ration: 3 });
+
+    // 气泡移除：物品名只渲染一次（格子），不再有 tooltip 副本
+    expect(screen.getAllByText('压缩口粮')).toHaveLength(1);
+    // 原生 title 移除
+    const tile = screen.getByText('压缩口粮').closest('div') as HTMLElement;
+    expect(tile.hasAttribute('title')).toBe(false);
+  });
+
   it('empty category tabs are clickable and show the empty state (no disabled tabs)', () => {
     renderWithSave({ scrap_metal: 5 });
 
