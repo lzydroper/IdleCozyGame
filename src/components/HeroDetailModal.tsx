@@ -11,7 +11,7 @@ import { STAR_MAX, starUpShardCost } from '../data/awakening';
 import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
-import { getHeroEquipmentBonus, equipItemUpdate } from '../state/equipment';
+import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp } from '../state/combat';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats } from '../state/statSystem';
@@ -51,7 +51,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   onSelectHero,
   onClose
 }) => {
-  const { state, setState, unequipItem, starUpHero, awakenHero } = useGame();
+  const { state, setState, starUpHero, awakenHero } = useGame();
   const { showToast } = useToast();
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
@@ -119,12 +119,22 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const handleToggleEquipAll = () => {
     if (hasAnyEquip) {
       const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
-      slots.forEach(slot => {
-        if (heroEquip[slot]) {
-          unequipItem(heroId, slot);
-        }
+      let removedCount = 0;
+      // 单个 setState 内链式卸下（避免多次 setState 批处理仅最后一次生效，ADR-0017 修订）
+      setState(prev => {
+        let next = prev;
+        slots.forEach(slot => {
+          if (next.equipment?.[heroId]?.[slot]) {
+            const r = unequipItemUpdate(next, heroId, slot);
+            if (r.state !== next) {
+              next = r.state;
+              removedCount++;
+            }
+          }
+        });
+        return next;
       });
-      showToast(`已卸下【${config.name}】的全部装备！`, 'success');
+      showToast(`已卸下【${config.name}】的 ${removedCount} 件装备！`, 'success');
     } else {
       let equippedCount = 0;
       const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
