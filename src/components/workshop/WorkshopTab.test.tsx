@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { GameProvider } from '../context/GameContext';
-import { ToastProvider } from './ToastSystem';
+import { GameProvider } from '../../context/GameContext';
+import { ToastProvider } from '../ToastSystem';
 import WorkshopTab from './WorkshopTab';
 
 describe('WorkshopTab Component', () => {

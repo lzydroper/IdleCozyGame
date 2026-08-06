@@ -3,7 +3,7 @@ import { useGame } from './context/GameContext';
 import { addItemRewards, isWearableEquipment } from './state/equipment';
 import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
-import WorkshopTab from './components/WorkshopTab';
+import WorkshopTab from './components/workshop/WorkshopTab';
 import LogTab from './components/LogTab';
 import ShelterTab from './components/ShelterTab';
 import HeroTab from './components/HeroTab';
