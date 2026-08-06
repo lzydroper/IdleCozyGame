@@ -44,6 +44,15 @@ export const getRecipeCategory = (recipe: Recipe): ItemCategory | 'building' => 
   return (main ? ITEMS_CONFIG[main[0]]?.category : undefined) ?? 'resource';
 };
 
+// 批量上限（ticket 04）：每种 cost 材料可支撑的份数取最小；温室扩建固定 1；
+// 配方是否可见由 isRecipeVisible 负责，此函数仅计算批量滑条上限
+export const computeMaxBatch = (state: GameState, recipe: Recipe): number => {
+  if (recipe.special === 'greenhouse_expansion') return 1;
+  const costEntries = Object.entries(recipe.cost);
+  if (costEntries.length === 0) return 1;
+  return Math.min(...costEntries.map(([item, qty]) => Math.floor((state.inventory[item] || 0) / qty)));
+};
+
 // 配方可见性（ticket 03）：配方可见 ⟺ 存在合成可能性——
 // 蓝图锁定（未获得图纸）与温室扩建已达上限 → 隐藏；材料不足不影响可见性
 export const isRecipeVisible = (state: GameState, recipe: Recipe): boolean => {
@@ -57,13 +66,14 @@ export const isRecipeVisible = (state: GameState, recipe: Recipe): boolean => {
   return true;
 };
 
-// 工坊制造：校验材料后扣费，处理胶囊充能/温室扩建等特殊配方
-export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResult<boolean> => {
+// 工坊制造：校验材料后扣费，处理胶囊充能/温室扩建等特殊配方；count 支持原子批量（ticket 04）
+export const craftItemUpdate = (state: GameState, recipeId: string, count = 1): UpdateResult<boolean> => {
   const recipe = RECIPES_CONFIG[recipeId];
-  if (!recipe) return NO_OP(state);
+  if (!recipe || count <= 0) return NO_OP(state);
 
-  if (recipe.special === 'greenhouse_expansion' && state.greenhouse.unlockedSlotsCount >= GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS) {
-    return NO_OP(state);
+  if (recipe.special === 'greenhouse_expansion') {
+    if (state.greenhouse.unlockedSlotsCount >= GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS) return NO_OP(state);
+    if (count !== 1) return NO_OP(state); // 禁批量（ticket 04）
   }
 
   // 图纸解锁（ticket 10）：配方需先获得对应图纸（背包持有，知识类物品不消耗）
@@ -71,20 +81,20 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
     return NO_OP(state);
   }
 
-  // 校验材料
-  const hasEnough = Object.entries(recipe.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
+  // 校验材料（批量按 cost × count，不足则整体拒绝、无部分扣料）
+  const hasEnough = Object.entries(recipe.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty * count);
   if (!hasEnough) return NO_OP(state);
 
   // 执行更新
   const newInventory = { ...state.inventory };
   const newEquipmentInventory = { ...state.equipmentInventory };
-  Object.entries(recipe.cost).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) - qty; });
+  Object.entries(recipe.cost).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) - qty * count; });
 
   const newExploration = { ...state.exploration };
   if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) {
     newExploration.capsulesCharge = {
       ...state.exploration.capsulesCharge,
-      [recipe.capsuleTarget]: (state.exploration.capsulesCharge[recipe.capsuleTarget] || 0) + (recipe.capsuleAmount || 3)
+      [recipe.capsuleTarget]: (state.exploration.capsulesCharge[recipe.capsuleTarget] || 0) + (recipe.capsuleAmount || 3) * count
     };
   } else if (recipe.special === 'greenhouse_expansion') {
     const currentCount = state.greenhouse.unlockedSlotsCount;
@@ -103,7 +113,11 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
       result: true
     };
   } else {
-    const rewards = addItemRewards(newInventory, newEquipmentInventory, recipe.reward);
+    // 批量产出：reward 各项 ×count 后一次入账（装备实例化由 addItemRewards 处理）
+    const scaledReward = Object.fromEntries(
+      Object.entries(recipe.reward).map(([k, v]) => [k, v * count])
+    );
+    const rewards = addItemRewards(newInventory, newEquipmentInventory, scaledReward);
     return {
       state: { ...state, inventory: rewards.inventory, equipmentInventory: rewards.equipmentInventory, exploration: newExploration },
       result: true

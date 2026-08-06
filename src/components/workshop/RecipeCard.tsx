@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
 import { ITEMS_CONFIG } from '../../data/items';
 import type { Recipe } from '../../types/config';
 import { getRecipeDisplayName, getRecipeDescription } from '../../state/workshop';
 import GameIcon from '../GameIcon';
+import CraftBatchModal from './CraftBatchModal';
 import { WORKSHOP_TOASTS } from './constants';
 import { Zap } from 'lucide-react';
 
@@ -17,10 +18,11 @@ const getRecipeIconId = (recipe: Recipe): string => {
   return recipe.id;
 };
 
-// 配方卡片（ticket 02 拆分）：图标/名称/描述/消耗/产出 + 制造合成按钮
+// 配方卡片（ticket 02 拆分）：图标/名称/描述/消耗/产出 + 「合成」x1 + 「批量」弹窗入口（ticket 04）
 const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
   const { state, craftItem } = useGame();
   const { showToast } = useToast();
+  const [batchOpen, setBatchOpen] = useState(false);
   const inventory = state.inventory;
 
   // 可见性过滤（ticket 03）保证进入本组件的配方已解锁；此处仅判断材料是否充足
@@ -69,13 +71,25 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
               </span>
             )}
           </h4>
-          <button
-            onClick={handleCraft}
-            disabled={!canCraft}
-            className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-black rounded-lg transition-colors cursor-pointer"
-          >
-            制造合成
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              onClick={handleCraft}
+              disabled={!canCraft}
+              className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-black rounded-lg transition-colors cursor-pointer"
+            >
+              合成
+            </button>
+            {/* 温室扩建禁批量（ticket 04）：不显示「批量」入口 */}
+            {recipe.special !== 'greenhouse_expansion' && (
+              <button
+                onClick={() => setBatchOpen(true)}
+                disabled={!canCraft}
+                className="px-3.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none text-zinc-200 text-xs font-black rounded-lg transition-colors cursor-pointer"
+              >
+                批量
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{getRecipeDescription(recipe)}</p>
       </div>
@@ -101,6 +115,9 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
           </div>
         </div>
       )}
+
+      {/* 批量合成弹窗（ticket 04） */}
+      {batchOpen && <CraftBatchModal recipe={recipe} onClose={() => setBatchOpen(false)} />}
     </div>
   );
 };

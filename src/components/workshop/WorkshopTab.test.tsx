@@ -65,7 +65,7 @@ describe('WorkshopTab Component', () => {
 
     // 默认存档无荧光草纤维/以太果肉 → 防化口粮包材料不足，但配方仍可见（按钮禁用）
     const card = screen.getByText('合成 压缩口粮 ×1').closest('div');
-    const craftBtn = within(card as HTMLElement).getByText('制造合成');
+    const craftBtn = within(card as HTMLElement).getByText('合成');
     expect((craftBtn as HTMLButtonElement).disabled).toBe(true);
   });
 });

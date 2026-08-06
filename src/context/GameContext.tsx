@@ -81,7 +81,7 @@ interface GameContextType {
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
   batchHarvestAndReplant: (cropId: string) => { harvested: Record<string, number> | null, replantedCount: number };
-  craftItem: (recipeId: string) => boolean;
+  craftItem: (recipeId: string, count?: number) => boolean;
   addLog: (text: string, type: 'event' | 'logistics' | 'combat' | 'dream' | 'system') => void;
   resetGame: () => void;
   currentUser: string | null;
@@ -443,10 +443,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // === 工坊 ===
-  const craftItem = (recipeId: string): boolean => {
+  const craftItem = (recipeId: string, count = 1): boolean => {
     let ok = false;
     setState(prev => {
-      const r = craftItemUpdate(prev, recipeId);
+      const r = craftItemUpdate(prev, recipeId, count);
       ok = r.result;
       return r.state;
     });

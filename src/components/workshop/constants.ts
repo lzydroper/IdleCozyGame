@@ -2,4 +2,5 @@
 export const WORKSHOP_TOASTS = {
   craftSuccess: '合成成功！',
   craftFail: '合成失败：原料不足。',
+  batchSuccess: '批量合成成功！',
 } as const;
