@@ -14,7 +14,7 @@ export const PROPS_ITEMS: Record<string, ItemMeta> = {
   canteen: { id: 'canteen', name: '军用水壶', description: '带迷彩保温护套和电子屏显示的科技感军用大水壶', category: 'item', sprite: { sheet: 'supplies', index: 13 }, icon: CupSoda, useEffect: { stats: { food: 15 } } },
   sanity_capsule: { id: 'sanity_capsule', name: '稳定胶囊', description: '维持精神稳定的胶囊药物', category: 'item', sprite: { sheet: 'supplies', index: 3 }, icon: Pill, useEffect: { capsuleCharge: { sanity_capsule: 1 } } },
   warp_capsule: { id: 'warp_capsule', name: '跃迁胶囊', description: '梦境中的传送工具', category: 'item', sprite: { sheet: 'supplies', index: 4 }, icon: Orbit, useEffect: { capsuleCharge: { warp_capsule: 1 } } },
-  nanite_injector: { id: 'nanite_injector', name: '纳米修复注射针', description: '纳米修复剂：治愈战斗中重伤的英雄（在英雄面板使用）。', category: 'item', sprite: { sheet: 'supplies', index: 7 }, icon: Syringe },
+  nanite_injector: { id: 'nanite_injector', name: '纳米修复注射针', description: '治愈战斗中重伤的英雄，使其恢复至满状态。', category: 'item', sprite: { sheet: 'supplies', index: 7 }, icon: Syringe },
   purifying_serum: { id: 'purifying_serum', name: '心灵净化血清', description: '清除大量心灵污染度，稳定理智的净化血清。', category: 'item', sprite: { sheet: 'supplies', index: 8 }, icon: FlaskConical, useEffect: { stats: { sanity: 30 }, pollution: -30 } },
   dream_lantern: { id: 'dream_lantern', name: '引梦魔灯', description: '散发深蓝色星光光晕、带有魔导浮雕的复古手提挂灯', category: 'item', sprite: { sheet: 'supplies', index: 15 }, icon: Lamp, useEffect: { stats: { sanity: 10 } } },
 };

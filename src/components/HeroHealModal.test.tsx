@@ -43,6 +43,13 @@ describe('HeroHealModal Component (纳米修复剂治愈重伤, ticket 05)', () 
     expect(screen.queryByText('巴斯特')).toBeNull(); // 健康英雄不列出
   });
 
+  it('shows empty state when no wounded heroes exist', () => {
+    renderModal({ nova: { ...createInitialHero('nova'), hp: 100, wounded: false } });
+
+    expect(screen.getByText(/当前没有重伤英雄/)).toBeDefined();
+    expect(screen.queryByText('诺娃')).toBeNull();
+  });
+
   it('confirms with nothing selected are disabled', () => {
     renderModal({ nova: woundedHero('nova') });
 

@@ -33,6 +33,10 @@ describe('ItemDetailModal Component', () => {
     );
   };
 
+  const slider = () => screen.getByTestId('use-count-slider') as HTMLInputElement;
+  const useButton = () => screen.getByTestId('use-item-button') as HTMLButtonElement;
+  const effectText = () => screen.getByTestId('use-effect-text').textContent ?? '';
+
   it('renders item name, held quantity and description', () => {
     renderModal('ration');
 
@@ -83,62 +87,70 @@ describe('ItemDetailModal Component', () => {
 
   // === 使用区（ticket 03：恢复类道具批量使用） ===
 
+  it('starts slider at 0 and keeps use button disabled until a count is selected', () => {
+    renderModal('ration', () => {}, { player: { food: 10 }, inventory: { ration: 2 } });
+
+    expect(slider().value).toBe('0');
+    expect(slider().max).toBe('2');
+    expect(useButton().disabled).toBe(true);
+    expect(effectText()).toContain('请选择使用数量');
+  });
+
   it('shows use slider for restorative items with capacity-capped max (ticket 03)', () => {
     // 饱食度 81/100、口粮 +30、拥有 20 → 容量 = ceil(19/30) = 1（最后一个部分生效 +19 到满）
-    // 上限 = min(20, 1) = 1（用户原例）
     renderModal('ration', () => {}, { player: { food: 81 }, inventory: { ration: 20 } });
-    const slider = screen.getByTestId('use-count-slider') as HTMLInputElement;
-    expect(slider).toBeDefined();
-    expect(slider.max).toBe('1');
+    expect(slider().max).toBe('1');
   });
 
   it('caps slider max by owned qty when capacity allows more (ticket 03)', () => {
-    // 饱食度 10/100、口粮 +30、拥有 2 → 容量 floor(90/30)=3 → 上限 = min(2, 3) = 2
+    // 饱食度 10/100、口粮 +30、拥有 2 → 容量 ceil(90/30)=3 → 上限 = min(2, 3) = 2
     renderModal('ration', () => {}, { player: { food: 10 }, inventory: { ration: 2 } });
-    const slider = screen.getByTestId('use-count-slider') as HTMLInputElement;
-    expect(slider.max).toBe('2');
+    expect(slider().max).toBe('2');
   });
 
   it('shows actual effective value with cap instead of nominal (ticket 03)', () => {
     // 81/100 + 30 → 实际 +19（已满 100）
     renderModal('ration', () => {}, { player: { food: 81 }, inventory: { ration: 20 } });
-    const text = screen.getByTestId('use-effect-text').textContent ?? '';
-    expect(text).toContain('+19');
-    expect(text).toContain('已满');
-    expect(text).not.toContain('+30');
+    fireEvent.change(slider(), { target: { value: '1' } });
+
+    expect(effectText()).toContain('+19');
+    expect(effectText()).toContain('已满');
+    expect(effectText()).not.toContain('+30');
   });
 
   it('uses batch qty, stays open and updates slider in real time (ticket 03)', () => {
     // 10/100 + 口粮×2 = 70；拥有 3 → 用 2 剩 1
     renderModal('ration', () => {}, { player: { food: 10 }, inventory: { ration: 3 } });
-    fireEvent.change(screen.getByTestId('use-count-slider'), { target: { value: '2' } });
-    // 滑到 2 时预览：+60（10+60=70 未满）
-    expect(screen.getByTestId('use-effect-text').textContent).toContain('+60');
+    fireEvent.change(slider(), { target: { value: '2' } });
+    expect(effectText()).toContain('+60'); // 滑到 2 预览：+60
 
-    fireEvent.click(screen.getByTestId('use-item-button'));
+    fireEvent.click(useButton());
 
-    // 弹窗停留、持有数量实时更新为 1（3-2）
+    // 弹窗停留、持有数量实时更新为 1（3-2）、滑条上限收窄为 1、计数重置为未选
     expect(screen.getByText('持有 ×1')).toBeDefined();
-    // 滑条上限实时更新为 min(1, ceil(30/30)=1) = 1，预览变为剩余 1 个的效果 +30（70→100）
-    expect((screen.getByTestId('use-count-slider') as HTMLInputElement).max).toBe('1');
-    expect(screen.getByTestId('use-effect-text').textContent).toContain('+30');
+    expect(slider().max).toBe('1');
+    expect(slider().value).toBe('0');
+    expect(effectText()).toContain('请选择使用数量');
   });
 
   it('disables use button when qty runs out (ticket 03)', () => {
-    // 拥有 1，用完 → qty 0 → 按钮禁用
+    // 拥有 1：滑到 1 使用 → qty 0 → 按钮禁用
     renderModal('ration', () => {}, { player: { food: 10 }, inventory: { ration: 1 } });
-    fireEvent.click(screen.getByTestId('use-item-button'));
+    fireEvent.change(slider(), { target: { value: '1' } });
+    fireEvent.click(useButton());
 
     expect(screen.getByText('持有 ×0')).toBeDefined();
-    expect((screen.getByTestId('use-item-button') as HTMLButtonElement).disabled).toBe(true);
+    expect(useButton().disabled).toBe(true);
+    expect(effectText()).toContain('物品已用完');
   });
 
   it('shows combined effect text for multi-effect items (ticket 03)', () => {
     // 血清：理智 +30、污染 -30（dreamPollution 50）
     renderModal('purifying_serum', () => {}, { player: { sanity: 40 }, inventory: { purifying_serum: 2 }, dreamPollution: 50 });
-    const text = screen.getByTestId('use-effect-text').textContent ?? '';
-    expect(text).toContain('理智 +30');
-    expect(text).toContain('污染 -30');
+    fireEvent.change(slider(), { target: { value: '1' } });
+
+    expect(effectText()).toContain('理智 +30');
+    expect(effectText()).toContain('污染 -30');
   });
 
   it('hides use area for non-restorative items (ticket 03)', () => {
@@ -152,24 +164,20 @@ describe('ItemDetailModal Component', () => {
   it('shows capsule charge slider capped by owned qty without stat cap (ticket 04)', () => {
     renderModal('sanity_capsule', () => {}, { inventory: { sanity_capsule: 5 } });
 
-    const slider = screen.getByTestId('use-count-slider') as HTMLInputElement;
-    expect(slider.max).toBe('5');
-    // 效果文本：梦境充能 +1 次（无属性封顶）
-    expect(screen.getByTestId('use-effect-text').textContent).toContain('梦境充能 +1 次');
+    expect(slider().max).toBe('5');
+    fireEvent.change(slider(), { target: { value: '1' } });
+    expect(effectText()).toContain('梦境充能 +1 次');
   });
 
   it('uses capsules in batch and updates held qty in real time (ticket 04)', () => {
     renderModal('sanity_capsule', () => {}, { inventory: { sanity_capsule: 3 } });
-    fireEvent.change(screen.getByTestId('use-count-slider'), { target: { value: '2' } });
+    fireEvent.change(slider(), { target: { value: '2' } });
+    expect(effectText()).toContain('梦境充能 +2 次');
 
-    // 滑到 2：预览「梦境充能 +2 次」
-    expect(screen.getByTestId('use-effect-text').textContent).toContain('梦境充能 +2 次');
+    fireEvent.click(useButton());
 
-    fireEvent.click(screen.getByTestId('use-item-button'));
-
-    // 弹窗停留、持有数量实时更新为 1（3-2）、滑条上限收窄为 1
     expect(screen.getByText('持有 ×1')).toBeDefined();
-    expect((screen.getByTestId('use-count-slider') as HTMLInputElement).max).toBe('1');
+    expect(slider().max).toBe('1');
   });
 
   // === 纳米修复剂治愈（ticket 05） ===
@@ -177,19 +185,22 @@ describe('ItemDetailModal Component', () => {
   it('shows heal use button for nanite_injector without slider (ticket 05)', () => {
     renderModal('nanite_injector', () => {}, { inventory: { nanite_injector: 2 } });
 
-    // 无数量滑条、有效果预览
     expect(screen.queryByTestId('use-count-slider')).toBeNull();
     expect(screen.queryByTestId('use-effect-text')).toBeNull();
-    // 使用按钮存在且为治愈入口
-    const btn = screen.getByTestId('use-item-button');
-    expect(btn.textContent).toContain('治愈');
+    expect(useButton().textContent).toBe('治愈重伤英雄');
   });
 
-  it('disables heal button when no wounded hero exists (ticket 05)', () => {
-    // 默认 heroes（INITIAL_STATE 的诺娃）未重伤
+  it('disables heal button without injectors (ticket 05)', () => {
+    renderModal('nanite_injector', () => {}, { inventory: { nanite_injector: 0 } });
+    expect(useButton().disabled).toBe(true);
+  });
+
+  it('enables heal button with injectors even without wounded heroes, opening empty state', () => {
     renderModal('nanite_injector', () => {}, { inventory: { nanite_injector: 2 } });
 
-    expect((screen.getByTestId('use-item-button') as HTMLButtonElement).disabled).toBe(true);
+    expect(useButton().disabled).toBe(false);
+    fireEvent.click(useButton());
+    expect(screen.getByText(/当前没有重伤英雄/)).toBeDefined();
   });
 
   it('opens hero heal modal on use click when wounded heroes exist (ticket 05)', () => {
@@ -202,12 +213,33 @@ describe('ItemDetailModal Component', () => {
       }
     );
 
-    const btn = screen.getByTestId('use-item-button') as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
-
-    fireEvent.click(btn);
-    // 选择界面打开：重伤英雄卡（HeroHealModal）可见
+    expect(useButton().disabled).toBe(false);
+    fireEvent.click(useButton());
     expect(screen.getByTestId('heal-hero-nova')).toBeDefined();
     expect(screen.getByText('诺娃')).toBeDefined();
+  });
+
+  // === 装备信息（反馈 4：装备类显示槽位/系列/属性/套装特效/获取途径） ===
+
+  it('shows equipment info (slot/set/stats/enhance/set-tiers/source) for equipment items', () => {
+    renderModal('wasteland_weapon', () => {}, { inventory: { wasteland_weapon: 1 } });
+
+    // 槽位 · 系列 · 阵营
+    expect(screen.getByText(/武器 · 废土系列/)).toBeDefined();
+    // 基础属性与每级强化（span 标签与数值为相邻文本节点，分开断言）
+    expect(screen.getByText(/基础属性：/)).toBeDefined();
+    expect(screen.getByText('攻击 +10')).toBeDefined();
+    expect(screen.getByText(/每 \+1 强化：/)).toBeDefined();
+    expect(screen.getByText('攻击 +1')).toBeDefined();
+    // 套装特效档位
+    expect(screen.getByText(/套装 \+10：攻击 \+5%/)).toBeDefined();
+    // 获取途径
+    expect(screen.getByText(/获取：工坊合成/)).toBeDefined();
+  });
+
+  it('does not show equipment info for non-equipment items', () => {
+    renderModal('ration');
+    expect(screen.queryByText(/基础属性：/)).toBeNull();
+    expect(screen.queryByText(/获取：/)).toBeNull();
   });
 });

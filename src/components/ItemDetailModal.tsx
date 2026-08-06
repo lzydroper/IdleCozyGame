@@ -4,6 +4,8 @@ import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { UI_TOKENS } from '../data/uiConstants';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS, EQUIPMENT_SLOT_LABELS } from '../data/equipment';
+import type { EquipmentStats } from '../data/equipment';
 import GameIcon from './GameIcon';
 import HeroHealModal from './HeroHealModal';
 import { X } from 'lucide-react';
@@ -25,14 +27,31 @@ const STAT_LABEL: Record<string, string> = {
   energy: '魔能',
   sanity: '理智',
 };
+// 装备属性 / 获取途径标签（ticket 10 装备生态）
+const EQUIP_STAT_LABEL: Record<string, string> = {
+  attack: '攻击',
+  defense: '防御',
+  maxHp: '生命',
+};
+const EQUIP_SOURCE_LABEL: Record<string, string> = {
+  workshop: '工坊合成',
+  blueprint: '图纸解锁',
+  dreamscape: '梦境探险掉落',
+  boss: '区域 BOSS 掉落',
+};
+
+const fmtEquipStats = (s: EquipmentStats): string =>
+  Object.entries(s)
+    .map(([k, v]) => `${EQUIP_STAT_LABEL[k] ?? k} +${v}`)
+    .join(' ｜ ') || '—';
 
 // 物品详情弹窗（ADR-0016）：固定尺寸（复用 UI_TOKENS.modalContainerStandard），
-// 展示图标/名称/持有数量/介绍；恢复类道具（useEffect.stats）显示使用滑条，
-// 上限 = min(拥有数, 主效果属性剩余容量可支撑次数)，显示实际生效值（含封顶）。
+// 顶部统一展示图标/名称/持有数量/介绍（装备类附属性信息），底部使用区按类型：
+// 恢复类/充能类 = 数量滑条（0 起步）+ 效果预览 + 「使用」；治愈类 = 「治愈重伤英雄」。
 const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) => {
   const { state, supplyItem } = useGame();
   const { showToast } = useToast();
-  const [useCount, setUseCount] = useState(1);
+  const [useCount, setUseCount] = useState(0);
   const [healModalOpen, setHealModalOpen] = useState(false);
 
   const meta = ITEMS_CONFIG[itemId];
@@ -44,8 +63,9 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
   const isCapsule = !!capsuleEffect && Object.keys(capsuleEffect).length > 0;
   // 治愈类道具（ADR-0016）：当前唯一为纳米修复剂，使用 → 重伤英雄多选界面
   const isHealItem = itemId === 'nanite_injector';
-  const hasWounded = Object.values(state.heroes).some(h => h.wounded);
   const hasUseArea = isRestorative || isCapsule || isHealItem;
+  const equipCfg = EQUIPMENT_CONFIG[itemId];
+  const equipSet = equipCfg ? EQUIPMENT_SETS[equipCfg.set] : undefined;
 
   const name = meta?.name || itemId;
   const description = meta?.description || '';
@@ -94,8 +114,8 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
     if (maxUse <= 0 || safeCount <= 0) return;
     const ok = supplyItem(itemId, safeCount);
     if (ok) showToast(`使用 ${safeCount} 个${name}成功`, 'success');
-    // 弹窗停留：数量/滑条由 state 驱动实时更新，计数重置为 1
-    setUseCount(1);
+    // 弹窗停留：数量/滑条由 state 驱动实时更新，计数重置为未选
+    setUseCount(0);
   };
 
   return createPortal(
@@ -121,56 +141,90 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
           </button>
         </header>
 
-        {/* 内容区：大图标 + 持有数量 + 描述（可滚动） */}
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-3">
-          <GameIcon type="item" id={itemId} className="w-16 h-16" />
-          <span className="text-[10px] font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-2 py-0.5 rounded-md">
+        {/* 内容区（顶部统一排列，随内容滚动）：大图标 + 持有数量 + 描述 + 装备信息 */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-3 pt-5">
+          <GameIcon type="item" id={itemId} className="w-20 h-20" />
+          <span className="text-xs font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-2.5 py-1 rounded-md">
             持有 ×{qty}
           </span>
-          <p className="text-[11px] text-zinc-300 leading-relaxed text-center px-2">
+          <p className="text-xs text-zinc-300 leading-relaxed text-center px-3">
             {description || '暂无介绍'}
           </p>
+
+          {/* 装备类：槽位/系列/基础属性/强化成长/套装特效/获取途径（ticket 10 装备生态） */}
+          {equipCfg && (
+            <div className="w-full mt-2 p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 space-y-1.5 text-left">
+              <p className="text-[11px] font-black text-amber-300">
+                {EQUIPMENT_SLOT_LABELS[equipCfg.slot]} · {equipSet?.name ?? equipCfg.set}
+                {equipSet?.factionLabel ? ` ${equipSet.factionLabel}` : ''}
+              </p>
+              <p className="text-[11px] text-zinc-300">
+                <span className="text-zinc-500">基础属性：</span>
+                {fmtEquipStats(equipCfg.baseStats)}
+              </p>
+              <p className="text-[11px] text-zinc-300">
+                <span className="text-zinc-500">每 +1 强化：</span>
+                {fmtEquipStats(equipCfg.statPerEnhance)}
+              </p>
+              {equipSet?.tierEffects.map(t => (
+                <p key={t.threshold} className="text-[10px] text-zinc-400">
+                  套装 +{t.threshold}：{t.description}
+                </p>
+              ))}
+              {equipSet?.mythicAffixText && (
+                <p className="text-[10px] text-purple-300">{equipSet.mythicAffixText}</p>
+              )}
+              <p className="text-[10px] text-zinc-500">
+                获取：{EQUIP_SOURCE_LABEL[equipCfg.source] ?? equipCfg.source}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* 使用区：恢复类/充能类道具显示滑条 + 效果预览 + 使用按钮（ticket 03/04）；
-            治愈类显示治愈按钮（ticket 05，无滑条） */}
+        {/* 使用区：恢复类/充能类 = 数量滑条（0 起步）+ 效果预览 + 「使用」；治愈类 = 「治愈重伤英雄」 */}
         {hasUseArea ? (
           <div className="shrink-0 border-t border-zinc-800 pt-3 mt-3 flex flex-col gap-2">
             {isHealItem ? (
               <button
                 data-testid="use-item-button"
                 onClick={() => setHealModalOpen(true)}
-                disabled={qty <= 0 || !hasWounded}
-                className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
+                disabled={qty <= 0}
+                className="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-sm rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
               >
-                治愈重伤英雄（持有 {qty}）
+                治愈重伤英雄
               </button>
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-400 font-bold">使用数量</span>
-                  <span className="text-[10px] font-black text-emerald-400">{safeCount} / {maxUse}</span>
+                  <span className="text-xs text-zinc-400 font-bold">使用数量</span>
+                  <span className="text-xs font-black text-emerald-400">{safeCount} / {maxUse}</span>
                 </div>
                 <input
                   data-testid="use-count-slider"
                   type="range"
-                  min={1}
+                  min={0}
                   max={Math.max(1, maxUse)}
                   value={safeCount}
                   disabled={maxUse <= 0}
                   onChange={(e) => setUseCount(Number(e.target.value))}
                   className="w-full accent-emerald-500"
                 />
-                <p data-testid="use-effect-text" className="text-[10px] text-zinc-300 text-center">
-                  {qty <= 0 ? '物品已用完' : !isCapsule && maxUse <= 0 ? '属性已满，无法使用' : effectText(safeCount)}
+                <p data-testid="use-effect-text" className="text-[11px] text-zinc-300 text-center">
+                  {qty <= 0
+                    ? '物品已用完'
+                    : maxUse <= 0
+                      ? '属性已满，无法使用'
+                      : safeCount <= 0
+                        ? '请选择使用数量'
+                        : effectText(safeCount)}
                 </p>
                 <button
                   data-testid="use-item-button"
                   onClick={handleUse}
-                  disabled={maxUse <= 0}
-                  className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
+                  disabled={maxUse <= 0 || safeCount <= 0}
+                  className="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-sm rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
                 >
-                  使用 ×{safeCount}
+                  使用
                 </button>
               </>
             )}
