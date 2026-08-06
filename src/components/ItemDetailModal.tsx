@@ -5,6 +5,7 @@ import { useToast } from './ToastSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { UI_TOKENS } from '../data/uiConstants';
 import GameIcon from './GameIcon';
+import HeroHealModal from './HeroHealModal';
 import { X } from 'lucide-react';
 import type { PlayerStats } from '../types/game';
 
@@ -32,6 +33,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
   const { state, supplyItem } = useGame();
   const { showToast } = useToast();
   const [useCount, setUseCount] = useState(1);
+  const [healModalOpen, setHealModalOpen] = useState(false);
 
   const meta = ITEMS_CONFIG[itemId];
   const qty = state.inventory[itemId] || 0;
@@ -40,7 +42,10 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
   const capsuleEffect = meta?.useEffect?.capsuleCharge;
   const isRestorative = !!statsEffect && Object.keys(statsEffect).length > 0;
   const isCapsule = !!capsuleEffect && Object.keys(capsuleEffect).length > 0;
-  const hasUseArea = isRestorative || isCapsule;
+  // 治愈类道具（ADR-0016）：当前唯一为纳米修复剂，使用 → 重伤英雄多选界面
+  const isHealItem = itemId === 'nanite_injector';
+  const hasWounded = Object.values(state.heroes).some(h => h.wounded);
+  const hasUseArea = isRestorative || isCapsule || isHealItem;
 
   const name = meta?.name || itemId;
   const description = meta?.description || '';
@@ -127,39 +132,56 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
           </p>
         </div>
 
-        {/* 使用区：恢复类/充能类道具显示滑条 + 效果预览 + 使用按钮（ticket 03/04） */}
+        {/* 使用区：恢复类/充能类道具显示滑条 + 效果预览 + 使用按钮（ticket 03/04）；
+            治愈类显示治愈按钮（ticket 05，无滑条） */}
         {hasUseArea ? (
           <div className="shrink-0 border-t border-zinc-800 pt-3 mt-3 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-zinc-400 font-bold">使用数量</span>
-              <span className="text-[10px] font-black text-emerald-400">{safeCount} / {maxUse}</span>
-            </div>
-            <input
-              data-testid="use-count-slider"
-              type="range"
-              min={1}
-              max={Math.max(1, maxUse)}
-              value={safeCount}
-              disabled={maxUse <= 0}
-              onChange={(e) => setUseCount(Number(e.target.value))}
-              className="w-full accent-emerald-500"
-            />
-            <p data-testid="use-effect-text" className="text-[10px] text-zinc-300 text-center">
-              {qty <= 0 ? '物品已用完' : !isCapsule && maxUse <= 0 ? '属性已满，无法使用' : effectText(safeCount)}
-            </p>
-            <button
-              data-testid="use-item-button"
-              onClick={handleUse}
-              disabled={maxUse <= 0}
-              className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
-            >
-              使用 ×{safeCount}
-            </button>
+            {isHealItem ? (
+              <button
+                data-testid="use-item-button"
+                onClick={() => setHealModalOpen(true)}
+                disabled={qty <= 0 || !hasWounded}
+                className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
+              >
+                治愈重伤英雄（持有 {qty}）
+              </button>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-400 font-bold">使用数量</span>
+                  <span className="text-[10px] font-black text-emerald-400">{safeCount} / {maxUse}</span>
+                </div>
+                <input
+                  data-testid="use-count-slider"
+                  type="range"
+                  min={1}
+                  max={Math.max(1, maxUse)}
+                  value={safeCount}
+                  disabled={maxUse <= 0}
+                  onChange={(e) => setUseCount(Number(e.target.value))}
+                  className="w-full accent-emerald-500"
+                />
+                <p data-testid="use-effect-text" className="text-[10px] text-zinc-300 text-center">
+                  {qty <= 0 ? '物品已用完' : !isCapsule && maxUse <= 0 ? '属性已满，无法使用' : effectText(safeCount)}
+                </p>
+                <button
+                  data-testid="use-item-button"
+                  onClick={handleUse}
+                  disabled={maxUse <= 0}
+                  className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
+                >
+                  使用 ×{safeCount}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="shrink-0" />
         )}
       </div>
+
+      {/* 治愈类：重伤英雄多选界面（ticket 05） */}
+      {healModalOpen && <HeroHealModal onClose={() => setHealModalOpen(false)} />}
     </div>,
     document.body
   );

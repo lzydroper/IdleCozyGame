@@ -4,8 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import ItemDetailModal from './ItemDetailModal';
-import { INITIAL_STATE } from '../data/initialState';
-import type { PlayerStats } from '../types/game';
+import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import type { HeroState, PlayerStats } from '../types/game';
 
 describe('ItemDetailModal Component', () => {
   beforeEach(() => {
@@ -16,12 +16,13 @@ describe('ItemDetailModal Component', () => {
   const renderModal = (
     itemId: string,
     onClose = () => {},
-    overrides?: { player?: Partial<PlayerStats>; inventory?: Record<string, number>; dreamPollution?: number }
+    overrides?: { player?: Partial<PlayerStats>; inventory?: Record<string, number>; dreamPollution?: number; heroes?: Record<string, HeroState> }
   ) => {
     const save = structuredClone(INITIAL_STATE) as typeof INITIAL_STATE;
     save.inventory = { ...save.inventory, ration: 5, ...overrides?.inventory };
     if (overrides?.player) save.player = { ...save.player, ...overrides.player };
     if (overrides?.dreamPollution !== undefined) save.exploration.dreamPollution = overrides.dreamPollution;
+    if (overrides?.heroes) save.heroes = overrides.heroes;
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
     render(
       <GameProvider>
@@ -169,5 +170,44 @@ describe('ItemDetailModal Component', () => {
     // 弹窗停留、持有数量实时更新为 1（3-2）、滑条上限收窄为 1
     expect(screen.getByText('持有 ×1')).toBeDefined();
     expect((screen.getByTestId('use-count-slider') as HTMLInputElement).max).toBe('1');
+  });
+
+  // === 纳米修复剂治愈（ticket 05） ===
+
+  it('shows heal use button for nanite_injector without slider (ticket 05)', () => {
+    renderModal('nanite_injector', () => {}, { inventory: { nanite_injector: 2 } });
+
+    // 无数量滑条、有效果预览
+    expect(screen.queryByTestId('use-count-slider')).toBeNull();
+    expect(screen.queryByTestId('use-effect-text')).toBeNull();
+    // 使用按钮存在且为治愈入口
+    const btn = screen.getByTestId('use-item-button');
+    expect(btn.textContent).toContain('治愈');
+  });
+
+  it('disables heal button when no wounded hero exists (ticket 05)', () => {
+    // 默认 heroes（INITIAL_STATE 的诺娃）未重伤
+    renderModal('nanite_injector', () => {}, { inventory: { nanite_injector: 2 } });
+
+    expect((screen.getByTestId('use-item-button') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('opens hero heal modal on use click when wounded heroes exist (ticket 05)', () => {
+    renderModal(
+      'nanite_injector',
+      () => {},
+      {
+        inventory: { nanite_injector: 2 },
+        heroes: { nova: { ...createInitialHero('nova'), hp: 0, wounded: true } }
+      }
+    );
+
+    const btn = screen.getByTestId('use-item-button') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+
+    fireEvent.click(btn);
+    // 选择界面打开：重伤英雄卡（HeroHealModal）可见
+    expect(screen.getByTestId('heal-hero-nova')).toBeDefined();
+    expect(screen.getByText('诺娃')).toBeDefined();
   });
 });

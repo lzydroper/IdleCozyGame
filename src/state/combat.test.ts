@@ -13,6 +13,7 @@ import {
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
+  healWoundedHeroesUpdate,
   heroToCombatant,
   type CombatantState
 } from './combat';
@@ -326,6 +327,71 @@ describe('healWoundedHeroUpdate (纳米修复剂治愈重伤)', () => {
     const { state: next, result } = healWoundedHeroUpdate(state, 'ghost');
     expect(result).toBe(false);
     expect(next).toBe(state);
+  });
+});
+
+describe('healWoundedHeroesUpdate (纳米修复剂批量治愈重伤, ADR-0016)', () => {
+  it('consumes one injector per selected hero and cures them all', () => {
+    const state = makeState({
+      inventory: { nanite_injector: 3 },
+      heroes: {
+        nova: { ...createInitialHero('nova'), hp: 0, wounded: true },
+        buster: { ...createInitialHero('buster'), hp: 5, wounded: true },
+        soldier: { ...createInitialHero('soldier'), hp: 100, wounded: false }
+      }
+    });
+    const { state: next, result } = healWoundedHeroesUpdate(state, ['nova', 'buster']);
+    expect(result).toBe(true);
+    expect(next.inventory.nanite_injector).toBe(1); // 3 - 2
+    expect(next.heroes.nova.wounded).toBe(false);
+    expect(next.heroes.nova.hp).toBe(next.heroes.nova.maxHp);
+    expect(next.heroes.buster.wounded).toBe(false);
+    expect(next.heroes.buster.hp).toBe(next.heroes.buster.maxHp);
+    expect(next.heroes.soldier.wounded).toBe(false); // 未勾选不受影响
+  });
+
+  it('fails without enough injectors and leaves state unchanged', () => {
+    const state = makeState({
+      inventory: { nanite_injector: 1 },
+      heroes: {
+        nova: { ...createInitialHero('nova'), hp: 0, wounded: true },
+        buster: { ...createInitialHero('buster'), hp: 0, wounded: true }
+      }
+    });
+    const { state: next, result } = healWoundedHeroesUpdate(state, ['nova', 'buster']);
+    expect(result).toBe(false);
+    expect(next).toBe(state);
+  });
+
+  it('fails when a selected hero is not wounded', () => {
+    const state = makeState({
+      inventory: { nanite_injector: 2 },
+      heroes: {
+        nova: { ...createInitialHero('nova'), hp: 0, wounded: true },
+        buster: { ...createInitialHero('buster'), hp: 100, wounded: false }
+      }
+    });
+    const { state: next, result } = healWoundedHeroesUpdate(state, ['nova', 'buster']);
+    expect(result).toBe(false);
+    expect(next).toBe(state);
+  });
+
+  it('fails for empty selection', () => {
+    const state = makeState({ inventory: { nanite_injector: 1 } });
+    const { state: next, result } = healWoundedHeroesUpdate(state, []);
+    expect(result).toBe(false);
+    expect(next).toBe(state);
+  });
+
+  it('deduplicates repeated ids and consumes once per hero', () => {
+    const state = makeState({
+      inventory: { nanite_injector: 2 },
+      heroes: { nova: { ...createInitialHero('nova'), hp: 0, wounded: true } }
+    });
+    const { state: next, result } = healWoundedHeroesUpdate(state, ['nova', 'nova']);
+    expect(result).toBe(true);
+    expect(next.inventory.nanite_injector).toBe(1); // 重复 id 只消耗 1 支
+    expect(next.heroes.nova.wounded).toBe(false);
   });
 });
 

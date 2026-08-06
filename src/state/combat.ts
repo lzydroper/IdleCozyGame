@@ -789,6 +789,25 @@ export const healWoundedHeroUpdate = (state: GameState, heroId: string): UpdateR
   return { state: { ...state, inventory: nextInventory, heroes: nextHeroes }, result: true };
 };
 
+// 纳米修复剂批量治愈重伤英雄（ADR-0016）：消耗数量 = 勾选英雄数，全部校验通过才生效
+export const healWoundedHeroesUpdate = (state: GameState, heroIds: string[]): UpdateResult<boolean> => {
+  const ids = [...new Set(heroIds)]; // 去重防御（setPartyUpdate 先例）：重复 id 只治愈一次
+  if (ids.length === 0) return NO_OP(state);
+  if ((state.inventory.nanite_injector || 0) < ids.length) return NO_OP(state);
+  for (const id of ids) {
+    const hero = state.heroes[id];
+    if (!hero || !hero.wounded) return NO_OP(state);
+  }
+
+  const nextInventory = { ...state.inventory, nanite_injector: state.inventory.nanite_injector - ids.length };
+  const nextHeroes = { ...state.heroes };
+  for (const id of ids) {
+    const hero = state.heroes[id];
+    nextHeroes[id] = { ...hero, wounded: false, hp: hero.maxHp };
+  }
+  return { state: { ...state, inventory: nextInventory, heroes: nextHeroes }, result: true };
+};
+
 // 体力恢复（tick 与离线结算共用）：随时间线性恢复，封顶体力上限
 export const recoverStamina = (stamina: number, maxStamina: number, elapsedSeconds: number): number =>
   Math.min(maxStamina, stamina + elapsedSeconds / COMBAT_CONFIG.staminaRegenSeconds);

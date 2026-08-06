@@ -54,6 +54,7 @@ import {
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
+  healWoundedHeroesUpdate,
   resolveEncounterBattleUpdate,
   fleeEncounterUpdate,
   startBossBattleUpdate,
@@ -119,6 +120,7 @@ interface GameContextType {
   startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
+  healWoundedHeroes: (heroIds: string[]) => boolean;
   resolveEncounterBattle: (encounterId: string) => EncounterBattleOutcome;
   fleeEncounter: () => boolean;
   startBossBattle: (zoneId: string) => BossBattleOutcome;
@@ -669,6 +671,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  const healWoundedHeroes = (heroIds: string[]): boolean => {
+    const r = healWoundedHeroesUpdate(stateRef.current, heroIds);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   const resolveEncounterBattle = (encounterId: string): EncounterBattleOutcome => {
     const r = resolveEncounterBattleUpdate(stateRef.current, encounterId);
     if (r.state !== stateRef.current) {
@@ -793,6 +803,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startCombat,
       setParty,
       healWoundedHero,
+      healWoundedHeroes,
       resolveEncounterBattle,
       fleeEncounter,
       startBossBattle,
