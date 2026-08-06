@@ -7,11 +7,15 @@ interface ItemGridItemProps {
   name: string;
   onClick?: () => void;
   actionButton?: React.ReactNode;
+  /** 装备实例（ADR-0017）：不可堆叠，右上角显示强化/神话徽章替代数量 */
+  enhance?: number;
+  mythic?: boolean;
 }
 
 // 物品格（ADR-0016）：移除悬浮提示（原生 title 与气泡），可点击时通过 onClick 打开详情弹窗
-const ItemGridItem: React.FC<ItemGridItemProps> = ({ id, qty, name, onClick, actionButton }) => {
+const ItemGridItem: React.FC<ItemGridItemProps> = ({ id, qty, name, onClick, actionButton, enhance, mythic }) => {
   const clickable = !!onClick;
+  const isEquipInstance = enhance !== undefined;
   return (
     <div
       onClick={onClick}
@@ -27,10 +31,22 @@ const ItemGridItem: React.FC<ItemGridItemProps> = ({ id, qty, name, onClick, act
         {name}
       </span>
 
-      {/* 数量标志 - 绝对定位贴在右上角 */}
-      <span className="absolute top-1.5 right-2 text-[9px] font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-1.5 py-0.2 rounded-md shadow">
-        x{qty}
-      </span>
+      {/* 右上角徽章：装备实例显示强化/神话（不可堆叠，无数量）；计数物品显示 xN */}
+      {isEquipInstance ? (
+        (mythic || (enhance ?? 0) > 0) && (
+          <span
+            className={`absolute top-1.5 right-2 text-[9px] font-black bg-zinc-900/90 border px-1.5 py-0.2 rounded-md shadow ${
+              mythic ? 'text-purple-300 border-purple-500/40' : 'text-amber-300 border-amber-500/30'
+            }`}
+          >
+            {mythic ? '神话' : `+${enhance}`}
+          </span>
+        )
+      ) : (
+        <span className="absolute top-1.5 right-2 text-[9px] font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-1.5 py-0.2 rounded-md shadow">
+          x{qty}
+        </span>
+      )}
 
       {/* 动作按钮插槽（阻止冒泡：避免未来与 onClick 并存时点按钮误开弹窗） */}
       {actionButton && (

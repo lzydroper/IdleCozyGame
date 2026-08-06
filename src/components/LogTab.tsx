@@ -35,16 +35,20 @@ const LogTab: React.FC = () => {
 
   const { inventory, equipmentInventory, logs } = state;
 
-  // Items in backpack with quantity > 0（ADR-0014 修订：装备实例数并入背包列表）
-  const inventoryEntries = Object.entries(inventory).filter(([, qty]) => qty > 0);
-  const equipmentEntries = Object.entries(equipmentInventory || {})
-    .map(([itemId, instances]) => [itemId, instances.length] as const)
-    .filter(([, qty]) => qty > 0);
-  const backpackItems = [...inventoryEntries, ...equipmentEntries]
+  // 背囊物品：计数物品聚合数量；装备不可堆叠（ADR-0017）——每件实例独立一格（含强化/神话徽章）
+  const countedItems = Object.entries(inventory)
+    .filter(([, qty]) => qty > 0)
     .map(([itemId, qty]) => {
       const meta = ITEMS_CONFIG[itemId] || { id: itemId, name: itemId, description: '', category: 'special' as const };
-      return { qty, ...meta };
+      return { kind: 'counted' as const, key: itemId, qty, ...meta };
     });
+  const equipItems = Object.entries(equipmentInventory || {}).flatMap(([itemId, instances]) =>
+    instances.map((instance, i) => {
+      const meta = ITEMS_CONFIG[itemId] || { id: itemId, name: itemId, description: '', category: 'special' as const };
+      return { kind: 'equip' as const, key: `${itemId}#${i}`, qty: 1, enhance: instance.enhance, mythic: instance.mythic, ...meta };
+    })
+  );
+  const backpackItems = [...countedItems, ...equipItems];
 
   // 无「全部」分类：默认选中第一个非空分类，避免开局看到空列表；
   // 空分类不禁用（用户可点击查看空状态），故无自动回退逻辑
@@ -105,10 +109,12 @@ const LogTab: React.FC = () => {
             <div className="grid grid-cols-4 gap-2.5 h-full overflow-y-auto pr-1">
               {visibleBackpackItems.map(item => (
                 <ItemGridItem
-                  key={item.id}
+                  key={item.key}
                   id={item.id}
                   qty={item.qty}
                   name={item.name}
+                  enhance={item.kind === 'equip' ? item.enhance : undefined}
+                  mythic={item.kind === 'equip' ? item.mythic : undefined}
                   onClick={() => setSelectedItemId(item.id)}
                 />
               ))}

@@ -144,7 +144,7 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     expect(tile.hasAttribute('title')).toBe(false);
   });
 
-  it('shows equipment category from instance inventory with count (ADR-0014 修订)', () => {
+  it('shows equipment as non-stackable instances - one tile per instance with enhance badge (ADR-0017 修订)', () => {
     renderWithSave(
       { scrap_metal: 5 },
       {
@@ -158,10 +158,11 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     // 默认资源分类：装备不在其中
     expect(screen.queryByText('废土利刃')).toBeNull();
 
-    // 装备分类：实例数汇总为 2
+    // 装备分类：两件实例 → 两个独立格子（不可堆叠，无 xN 数量），+10 强化徽章可见
     fireEvent.click(screen.getByText('装备'));
-    expect(screen.getAllByText('废土利刃').length).toBeGreaterThan(0);
-    expect(screen.getByText('x2')).toBeDefined();
+    expect(screen.getAllByText('废土利刃').length).toBe(2);
+    expect(screen.getByText('+10')).toBeDefined();
+    expect(screen.queryByText('x2')).toBeNull();
   });
 
   it('empty category tabs are clickable and show the empty state (no disabled tabs)', () => {

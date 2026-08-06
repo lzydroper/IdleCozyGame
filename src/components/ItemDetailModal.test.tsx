@@ -247,7 +247,7 @@ describe('ItemDetailModal Component', () => {
     expect(screen.queryByText(/获取：/)).toBeNull();
   });
 
-  it('shows held instance summary and worn instance stats with enhance (ADR-0014 修订)', () => {
+  it('shows held instances one-by-one and worn instance stats with enhance (ADR-0017 修订)', () => {
     renderModal('wasteland_weapon', () => {}, {
       inventory: { wasteland_weapon: 1 }, // 经迁移成为 +0 背包实例
       heroes: { nova: { ...createInitialHero('nova'), hp: 100, wounded: false } },
@@ -256,8 +256,9 @@ describe('ItemDetailModal Component', () => {
       }
     });
 
-    // 背包持有实例概要（+0）
-    expect(screen.getByText(/背包持有：未强化 ×1/)).toBeDefined();
+    // 背包持有实例逐件列出（不可堆叠）：未强化 · 攻击 +10
+    expect(screen.getByText(/背包持有实例：/)).toBeDefined();
+    expect(screen.getByText(/未强化 · 攻击 \+10/)).toBeDefined();
     // 已穿戴实例：诺娃 · +10 · 强化后属性（10 + 1×10 = 20，诺娃同机械阵营 ×1.3 = 26）
     expect(document.body.textContent).toContain('诺娃 · +10 · 攻击 +26');
   });

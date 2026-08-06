@@ -47,19 +47,6 @@ const fmtEquipStats = (s: EquipmentStats): string =>
     .map(([k, v]) => `${EQUIP_STAT_LABEL[k] ?? k} +${v}`)
     .join(' ｜ ') || '—';
 
-// 背包持有实例概要：按强化等级聚合（+10 ×1 ｜ 未强化 ×2）
-const summarizeInstances = (instances: EquippedItem[]): string => {
-  const counts = new Map<number, { count: number; mythic: boolean }>();
-  instances.forEach(i => {
-    const cur = counts.get(i.enhance) || { count: 0, mythic: false };
-    counts.set(i.enhance, { count: cur.count + 1, mythic: cur.mythic || i.mythic });
-  });
-  return [...counts.entries()]
-    .sort((a, b) => b[0] - a[0])
-    .map(([enhance, { count, mythic }]) => `${enhance > 0 ? `+${enhance}` : '未强化'}${mythic ? '（神话）' : ''} ×${count}`)
-    .join(' ｜ ');
-};
-
 // 物品详情弹窗（ADR-0016）：固定尺寸（复用 UI_TOKENS.modalContainerStandard），
 // 顶部统一展示图标/名称/持有数量/介绍（装备类附属性信息），底部使用区按类型：
 // 恢复类/充能类 = 数量滑条（0 起步）+ 效果预览 + 「使用」；治愈类 = 「治愈重伤英雄」。
@@ -204,9 +191,17 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
               <p className="text-[10px] text-zinc-500">
                 获取：{EQUIP_SOURCE_LABEL[equipCfg.source] ?? equipCfg.source}
               </p>
-              {/* 背包持有实例与已穿戴实例（ADR-0014 修订） */}
+              {/* 背包持有实例与已穿戴实例（ADR-0017 修订：装备不可堆叠，逐实例列出） */}
               {heldInstances.length > 0 && (
-                <p className="text-[10px] text-zinc-400">背包持有：{summarizeInstances(heldInstances)}</p>
+                <div className="pt-1 border-t border-zinc-800/80 space-y-1">
+                  <p className="text-[10px] font-black text-emerald-400">背包持有实例：</p>
+                  {heldInstances.map((inst, i) => (
+                    <p key={i} className="text-[10px] text-zinc-400">
+                      {inst.mythic ? '神话' : inst.enhance > 0 ? `+${inst.enhance}` : '未强化'} ·{' '}
+                      {fmtEquipStats(getEquippedItemStats(inst, undefined))}
+                    </p>
+                  ))}
+                </div>
               )}
               {wornInstances.length > 0 && (
                 <div className="pt-1 border-t border-zinc-800/80 space-y-1">
