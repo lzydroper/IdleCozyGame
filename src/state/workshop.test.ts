@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { getRecipeDisplayName, getRecipeDescription, getRecipeCategory } from './workshop';
+import { getRecipeDisplayName, getRecipeDescription, getRecipeCategory, isRecipeVisible } from './workshop';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
+import { INITIAL_STATE } from '../data/initialState';
+import { GAME_CONSTANTS } from '../data/gameConstants';
+import type { GameState } from '../types/game';
+
+const makeState = (overrides?: Partial<GameState>): GameState =>
+  structuredClone({ ...INITIAL_STATE, ...overrides });
 
 // 配方文案/分类推导（ticket 01：删除 name/description，从产出物完全推导）
 describe('配方文案推导（ticket 01）', () => {
@@ -43,5 +49,28 @@ describe('配方分类推导（ticket 01）', () => {
   it('无产出配方用显式 category 覆盖', () => {
     expect(getRecipeCategory(RECIPES_CONFIG['sanity_capsule'])).toBe('item');
     expect(getRecipeCategory(RECIPES_CONFIG['greenhouse_expansion'])).toBe('building');
+  });
+});
+
+describe('配方可见性（ticket 03：蓝图锁定/已达上限隐藏，材料不足不影响）', () => {
+  it('蓝图未获得时配方隐藏，获得图纸后可见', () => {
+    const state = makeState(); // 默认无余烬军械图纸
+    expect(isRecipeVisible(state, RECIPES_CONFIG['ember_weapon_recipe'])).toBe(false);
+    const withBlueprint = makeState({ inventory: { ...INITIAL_STATE.inventory, blueprint_ember_armory: 1 } });
+    expect(isRecipeVisible(withBlueprint, RECIPES_CONFIG['ember_weapon_recipe'])).toBe(true);
+  });
+
+  it('温室扩建未达上限可见，已达上限隐藏', () => {
+    const state = makeState();
+    expect(isRecipeVisible(state, RECIPES_CONFIG['greenhouse_expansion'])).toBe(true);
+    const full = makeState({
+      greenhouse: { ...INITIAL_STATE.greenhouse, unlockedSlotsCount: GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS }
+    });
+    expect(isRecipeVisible(full, RECIPES_CONFIG['greenhouse_expansion'])).toBe(false);
+  });
+
+  it('材料不足不影响可见性（显示但不可合成）', () => {
+    const state = makeState({ inventory: {} });
+    expect(isRecipeVisible(state, RECIPES_CONFIG['ration_pack'])).toBe(true);
   });
 });

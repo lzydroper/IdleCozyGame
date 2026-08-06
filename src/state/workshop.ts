@@ -44,6 +44,19 @@ export const getRecipeCategory = (recipe: Recipe): ItemCategory | 'building' => 
   return (main ? ITEMS_CONFIG[main[0]]?.category : undefined) ?? 'resource';
 };
 
+// 配方可见性（ticket 03）：配方可见 ⟺ 存在合成可能性——
+// 蓝图锁定（未获得图纸）与温室扩建已达上限 → 隐藏；材料不足不影响可见性
+export const isRecipeVisible = (state: GameState, recipe: Recipe): boolean => {
+  if (recipe.blueprintId && (state.inventory[recipe.blueprintId] || 0) < 1) return false;
+  if (
+    recipe.special === 'greenhouse_expansion' &&
+    state.greenhouse.unlockedSlotsCount >= GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS
+  ) {
+    return false;
+  }
+  return true;
+};
+
 // 工坊制造：校验材料后扣费，处理胶囊充能/温室扩建等特殊配方
 export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResult<boolean> => {
   const recipe = RECIPES_CONFIG[recipeId];

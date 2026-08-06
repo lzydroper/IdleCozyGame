@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import WorkshopTab from './WorkshopTab';
@@ -18,8 +18,8 @@ describe('WorkshopTab Component', () => {
     expect(screen.getAllByText(/合成 能量补充剂 ×1/i).length).toBeGreaterThan(0);
   });
 
-  it('locks blueprint-gated equipment recipes until the blueprint is obtained (ticket 10)', () => {
-    // 默认存档没有余烬军械图纸 → 余烬配方锁定
+  it('hides blueprint-gated recipes until the blueprint is obtained (ticket 03)', () => {
+    // 默认存档没有余烬军械图纸 → 余烬配方从列表隐藏（不渲染"未解锁"标记）
     render(
       <GameProvider>
         <ToastProvider>
@@ -28,9 +28,44 @@ describe('WorkshopTab Component', () => {
       </GameProvider>
     );
 
-    expect(screen.getAllByText(/未解锁/).length).toBeGreaterThanOrEqual(3); // 余烬三件套
-    expect(screen.getAllByText(/需要图纸：余烬军械图纸/).length).toBeGreaterThanOrEqual(3);
+    // 装备配方在「装备」分类下
+    fireEvent.click(screen.getByText('装备'));
+    expect(screen.queryByText(/合成 余烬长刃/)).toBeNull();
+    expect(screen.queryByText(/未解锁/)).toBeNull();
     // 废土系列无图纸门槛，可直接合成
     expect(screen.getByText(/合成 废土利刃 ×1/)).toBeDefined();
+  });
+
+  it('renders 5 category tabs and shows empty state for the shard category (ticket 03)', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WorkshopTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    ['道具', '资源', '碎片', '装备', '建筑'].forEach(label => {
+      expect(screen.getByText(label)).toBeDefined();
+    });
+
+    // 碎片分类在工坊无产出配方 → 空态
+    fireEvent.click(screen.getByText('碎片'));
+    expect(screen.getByText(/碎片分类暂无配方/)).toBeDefined();
+  });
+
+  it('shows recipes with insufficient materials but disables crafting (ticket 03)', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WorkshopTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 默认存档无荧光草纤维/以太果肉 → 防化口粮包材料不足，但配方仍可见（按钮禁用）
+    const card = screen.getByText('合成 压缩口粮 ×1').closest('div');
+    const craftBtn = within(card as HTMLElement).getByText('制造合成');
+    expect((craftBtn as HTMLButtonElement).disabled).toBe(true);
   });
 });

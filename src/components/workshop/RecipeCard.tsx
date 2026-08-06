@@ -6,7 +6,7 @@ import type { Recipe } from '../../types/config';
 import { getRecipeDisplayName, getRecipeDescription } from '../../state/workshop';
 import GameIcon from '../GameIcon';
 import { WORKSHOP_TOASTS } from './constants';
-import { Zap, Lock } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 // 配方显示图标：取 reward 主产物；充能配方取 capsuleTarget；温室扩建回退电芯
 const getRecipeIconId = (recipe: Recipe): string => {
@@ -23,11 +23,8 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
   const { showToast } = useToast();
   const inventory = state.inventory;
 
-  // 图纸解锁（ticket 10）：未获得图纸的配方锁定（背包持有即解锁，不消耗）
-  const locked = !!recipe.blueprintId && (inventory[recipe.blueprintId] || 0) < 1;
-  const blueprintMeta = recipe.blueprintId ? ITEMS_CONFIG[recipe.blueprintId] : null;
-  // 判断是否材料充足
-  const canCraft = !locked && Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty);
+  // 可见性过滤（ticket 03）保证进入本组件的配方已解锁；此处仅判断材料是否充足
+  const canCraft = Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty);
 
   const handleCraft = () => {
     const success = craftItem(recipe.id);
@@ -71,11 +68,6 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
                 [当前充能: {state.exploration.capsulesCharge.sanity_capsule || 0}次]
               </span>
             )}
-            {locked && (
-              <span className="text-[9px] text-red-400 font-extrabold bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800/30" title={`需先在背包获得「${blueprintMeta?.name || recipe.blueprintId}」`}>
-                <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />未解锁
-              </span>
-            )}
           </h4>
           <button
             onClick={handleCraft}
@@ -86,11 +78,6 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
           </button>
         </div>
         <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{getRecipeDescription(recipe)}</p>
-        {locked && blueprintMeta && (
-          <p className="text-[9px] text-red-400/80 mt-1 font-bold leading-relaxed">
-            <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />需要图纸：{blueprintMeta.name}（旧城废墟 BOSS 掉落）
-          </p>
-        )}
       </div>
       <div>
         <h5 className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider mb-1">所需消耗:</h5>
