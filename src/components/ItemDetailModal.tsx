@@ -165,12 +165,15 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
           </button>
         </header>
 
-        {/* 内容区（顶部统一排列，随内容滚动）：大图标 + 持有数量 + 描述 + 装备信息 */}
+        {/* 内容区（顶部统一排列，随内容滚动）：大图标 + 持有数量（仅计数物品）+ 描述 + 装备信息 */}
         <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-3 pt-5">
           <GameIcon type="item" id={itemId} className="w-20 h-20" />
-          <span className="text-xs font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-2.5 py-1 rounded-md">
-            持有 ×{qty}
-          </span>
+          {/* 装备不可堆叠（ADR-0017 实例化）：不显示「持有 ×N」数量徽章，持有信息由装备区实例概要承担 */}
+          {!equipCfg && (
+            <span className="text-xs font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-2.5 py-1 rounded-md">
+              持有 ×{qty}
+            </span>
+          )}
           <p className="text-xs text-zinc-300 leading-relaxed text-center px-3">
             {description || '暂无介绍'}
           </p>

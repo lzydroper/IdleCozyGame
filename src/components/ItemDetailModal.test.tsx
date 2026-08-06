@@ -226,6 +226,8 @@ describe('ItemDetailModal Component', () => {
   it('shows equipment info (slot/set/stats/enhance/set-tiers/source) for equipment items', () => {
     renderModal('wasteland_weapon', () => {}, { inventory: { wasteland_weapon: 1 } });
 
+    // 装备不可堆叠：不显示「持有 ×N」数量徽章（ADR-0017 实例化）
+    expect(screen.queryByText(/持有 ×/)).toBeNull();
     // 槽位 · 系列 · 阵营
     expect(screen.getByText(/武器 · 废土系列/)).toBeDefined();
     // 基础属性与每级强化（span 标签与数值为相邻文本节点，分开断言）
