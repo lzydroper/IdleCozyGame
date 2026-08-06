@@ -1,25 +1,93 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
+import { useToast } from './ToastSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { UI_TOKENS } from '../data/uiConstants';
 import GameIcon from './GameIcon';
 import { X } from 'lucide-react';
+import type { PlayerStats } from '../types/game';
 
 interface ItemDetailModalProps {
   itemId: string;
   onClose: () => void;
 }
 
+// 属性名 → 最大属性字段 / 显示标签（ADR-0016）
+const STAT_MAX_KEY: Record<string, keyof PlayerStats> = {
+  food: 'maxFood',
+  energy: 'maxEnergy',
+  sanity: 'maxSanity',
+};
+const STAT_LABEL: Record<string, string> = {
+  food: '饱食度',
+  energy: '魔能',
+  sanity: '理智',
+};
+
 // 物品详情弹窗（ADR-0016）：固定尺寸（复用 UI_TOKENS.modalContainerStandard），
-// 展示图标/名称/持有数量/介绍，描述区可滚动；使用区由后续票据按类型接入。
+// 展示图标/名称/持有数量/介绍；恢复类道具（useEffect.stats）显示使用滑条，
+// 上限 = min(拥有数, 主效果属性剩余容量可支撑次数)，显示实际生效值（含封顶）。
 const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) => {
-  const { state } = useGame();
+  const { state, supplyItem } = useGame();
+  const { showToast } = useToast();
+  const [useCount, setUseCount] = useState(1);
+
   const meta = ITEMS_CONFIG[itemId];
   const qty = state.inventory[itemId] || 0;
+  const statsEffect = meta?.useEffect?.stats;
+  const pollutionEffect = meta?.useEffect?.pollution;
+  const isRestorative = !!statsEffect && Object.keys(statsEffect).length > 0;
 
   const name = meta?.name || itemId;
   const description = meta?.description || '';
+
+  // 主效果（首个 stats key）决定滑条上限；容量 = ceil(剩余/单次)，最后一个可部分生效
+  let maxUse = qty;
+  const mainEntry = statsEffect ? Object.entries(statsEffect)[0] : undefined;
+  if (mainEntry) {
+    const [stat, val] = mainEntry;
+    if (val > 0) {
+      const current = state.player[stat as keyof PlayerStats] as number;
+      const max = state.player[STAT_MAX_KEY[stat]] as number;
+      const capacity = Math.max(0, Math.ceil((max - current) / val));
+      maxUse = Math.min(maxUse, capacity);
+    }
+  }
+  const safeCount = maxUse > 0 ? Math.min(useCount, maxUse) : 0;
+
+  // 实际生效值（含封顶）：如 81/100 + 30 → +19（已满 100）
+  const effectText = (n: number): string => {
+    const parts: string[] = [];
+    if (statsEffect) {
+      for (const [stat, val] of Object.entries(statsEffect)) {
+        const current = state.player[stat as keyof PlayerStats] as number;
+        const max = state.player[STAT_MAX_KEY[stat]] as number;
+        const rawTarget = current + val * n;
+        const target = val > 0 ? Math.min(max, rawTarget) : Math.max(0, rawTarget);
+        const delta = target - current;
+        const capped = target !== rawTarget;
+        parts.push(`${STAT_LABEL[stat] ?? stat} ${delta > 0 ? '+' : ''}${delta}${capped ? '（已满）' : ''}`);
+      }
+    }
+    if (pollutionEffect !== undefined) {
+      const current = state.exploration.dreamPollution;
+      const rawTarget = current + pollutionEffect * n;
+      const target = Math.max(0, rawTarget);
+      const delta = target - current;
+      const capped = target !== rawTarget;
+      parts.push(`污染 ${delta}${capped ? '（已为 0）' : ''}`);
+    }
+    return parts.join('｜');
+  };
+
+  const handleUse = () => {
+    if (maxUse <= 0 || safeCount <= 0) return;
+    const ok = supplyItem(itemId, safeCount);
+    if (ok) showToast(`使用 ${safeCount} 个${name}成功`, 'success');
+    // 弹窗停留：数量/滑条由 state 驱动实时更新，计数重置为 1
+    setUseCount(1);
+  };
 
   return createPortal(
     <div
@@ -55,8 +123,38 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
           </p>
         </div>
 
-        {/* 底部占位（使用区由 ticket 03/04/05 按类型接入） */}
-        <div className="shrink-0" />
+        {/* 使用区：恢复类道具显示滑条 + 实际生效值 + 使用按钮（ticket 03） */}
+        {isRestorative ? (
+          <div className="shrink-0 border-t border-zinc-800 pt-3 mt-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-zinc-400 font-bold">使用数量</span>
+              <span className="text-[10px] font-black text-emerald-400">{safeCount} / {maxUse}</span>
+            </div>
+            <input
+              data-testid="use-count-slider"
+              type="range"
+              min={1}
+              max={Math.max(1, maxUse)}
+              value={safeCount}
+              disabled={maxUse <= 0}
+              onChange={(e) => setUseCount(Number(e.target.value))}
+              className="w-full accent-emerald-500"
+            />
+            <p data-testid="use-effect-text" className="text-[10px] text-zinc-300 text-center">
+              {qty <= 0 ? '物品已用完' : maxUse <= 0 ? '属性已满，无法使用' : effectText(safeCount)}
+            </p>
+            <button
+              data-testid="use-item-button"
+              onClick={handleUse}
+              disabled={maxUse <= 0}
+              className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
+            >
+              使用 ×{safeCount}
+            </button>
+          </div>
+        ) : (
+          <div className="shrink-0" />
+        )}
       </div>
     </div>,
     document.body

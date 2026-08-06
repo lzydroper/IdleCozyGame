@@ -93,7 +93,7 @@ interface GameContextType {
   syncCloudCharacters: (userId: string) => Promise<void>;
   fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number }>>;
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
-  useSupplyItem: (itemId: string) => boolean;
+  supplyItem: (itemId: string, qty?: number) => boolean;
   assignHeroJob: (heroId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
   enqueueRecipe: (facilityType: FacilityType, unitIndex: number, recipeId: string) => boolean;
   removeQueueEntry: (facilityType: FacilityType, unitIndex: number, queueIndex: number) => boolean;
@@ -451,10 +451,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
-  const useSupplyItem = (itemId: string): boolean => {
+  const supplyItem = (itemId: string, qty = 1): boolean => {
     let ok = false;
     setState(prev => {
-      const r = applySupplyItemUpdate(prev, itemId);
+      const r = applySupplyItemUpdate(prev, itemId, qty);
       ok = r.result;
       return r.state;
     });
@@ -766,7 +766,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncCloudCharacters,
       fetchCloudCharacterSummaries,
       downloadCloudCharacter,
-      useSupplyItem,
+      supplyItem,
       batchWater,
       assignHeroJob,
       enqueueRecipe,

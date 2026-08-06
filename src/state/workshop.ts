@@ -58,39 +58,43 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
   };
 };
 
-// 使用生存补给品：应用其 useEffect（恢复属性/调整污染度）
-export const applySupplyItemUpdate = (state: GameState, itemId: string): UpdateResult<boolean> => {
+// 使用生存补给品：应用其 useEffect（恢复属性/调整污染度）；qty 支持批量（ADR-0016）
+export const applySupplyItemUpdate = (state: GameState, itemId: string, qty = 1): UpdateResult<boolean> => {
   const currentQty = state.inventory[itemId] || 0;
-  if (currentQty <= 0) return NO_OP(state);
+  if (currentQty <= 0 || qty <= 0) return NO_OP(state);
 
   const meta = ITEMS_CONFIG[itemId];
   if (!meta?.useEffect) return NO_OP(state);
-  // ADR-0016 保护：capsuleCharge（梦境充能）效果尚未接线（批量使用切片接线），
-  // 仅含该效果的物品拒绝消耗，防止「物品被扣、充能未加」的静默吞没
+  // ADR-0016 保护：capsuleCharge（梦境充能）效果由 ticket 04 接线，在此之前拒绝消耗
   if (meta.useEffect.capsuleCharge && !meta.useEffect.stats && meta.useEffect.pollution === undefined) {
     return NO_OP(state);
   }
 
+  const useQty = Math.min(qty, currentQty);
+
   const newInventory = { ...state.inventory };
-  newInventory[itemId] = currentQty - 1;
+  newInventory[itemId] = currentQty - useQty;
 
   const newPlayer = { ...state.player };
   const newExploration = { ...state.exploration };
 
-  const isNovaPresent = !!state.heroes.nova;
-  const currentMaxEnergy = isNovaPresent ? 130 : 100;
-  const STAT_MAX: Record<string, number> = { food: 100, energy: currentMaxEnergy, sanity: 100 };
+  // 属性上限统一读角色最大属性（ADR-0016，消除 isNovaPresent 硬编码的 100/130）
+  const STAT_MAX: Record<string, number> = {
+    food: state.player.maxFood,
+    energy: state.player.maxEnergy,
+    sanity: state.player.maxSanity
+  };
 
   if (meta.useEffect.stats) {
     Object.entries(meta.useEffect.stats).forEach(([stat, val]) => {
       const key = stat as keyof PlayerStats;
       const max = STAT_MAX[stat] ?? 100;
-      newPlayer[key] = Math.min(max, Math.max(0, (newPlayer[key] as number) + val)) as never;
+      newPlayer[key] = Math.min(max, Math.max(0, (newPlayer[key] as number) + val * useQty)) as never;
     });
   }
 
   if (meta.useEffect.pollution !== undefined) {
-    newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution + meta.useEffect.pollution);
+    newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution + meta.useEffect.pollution * useQty);
   }
 
   return {

@@ -18,7 +18,7 @@ const getRecipeIconId = (recipe: any) => {
 };
 
 const WorkshopTab: React.FC = () => {
-  const { state, craftItem, useSupplyItem, defendDreamLeak } = useGame();
+  const { state, craftItem, supplyItem, defendDreamLeak } = useGame();
   const { showToast } = useToast();
 
   const inventory = state.inventory;
@@ -49,7 +49,7 @@ const WorkshopTab: React.FC = () => {
 
   // 使用背包物品补给
   const handleUseItem = (itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum') => {
-    const success = useSupplyItem(itemId);
+    const success = supplyItem(itemId);
     if (!success) {
       showToast("储备不足！请先在工坊合成制造该物品。", "error");
       return;

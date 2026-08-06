@@ -48,15 +48,16 @@ const BASE_SAVE = {
   logs: []
 };
 
-// 辅助组件，调用真实 useSupplyItem (单元测试)
+// 辅助组件，调用真实 supplyItem (单元测试)
 const TestUsageComponent: React.FC<{
   itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum' | 'sanity_capsule';
+  qty?: number;
   onState: (state: GameState) => void;
-}> = ({ itemId, onState }) => {
-  const { state, useSupplyItem } = useGame();
+}> = ({ itemId, qty, onState }) => {
+  const { state, supplyItem } = useGame();
 
   const handleUseItem = () => {
-    useSupplyItem(itemId);
+    supplyItem(itemId, qty ?? 1);
   };
 
   React.useEffect(() => {
@@ -64,8 +65,8 @@ const TestUsageComponent: React.FC<{
   }, [state, onState]);
 
   return (
-    <button data-testid={`use-${itemId}`} onClick={handleUseItem}>
-      Use {itemId}
+    <button data-testid={`use-${itemId}${qty !== undefined ? `-x${qty}` : ''}`} onClick={handleUseItem}>
+      Use {itemId}{qty !== undefined ? ` x${qty}` : ''}
     </button>
   );
 };
@@ -143,7 +144,7 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       </GameProvider>
     );
 
-    // 直接调用底层 useSupplyItem 也无法消耗纳米修复剂（已无 useEffect 补给效果）
+    // 直接调用底层 supplyItem 也无法消耗纳米修复剂（已无 useEffect 补给效果）
     await act(async () => {
       fireEvent.click(screen.getByTestId('use-purifying_serum'));
     });
@@ -222,6 +223,122 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     // 充能效果尚未接线：胶囊不消耗、充能次数不变化（防静默吞没）
     expect(currentState!.inventory.sanity_capsule).toBe(2);
     expect(currentState!.exploration.capsulesCharge.sanity_capsule).toBe(3);
+  });
+
+  it('should apply batch qty and clamp stats at max without overflow (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      player: {
+        ...BASE_SAVE.player,
+        food: 81
+      },
+      inventory: { ration: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <TestUsageComponent
+            itemId="ration"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-ration-x2');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // 消耗 2 个、属性封顶 100（81+60 → 100，无溢出）
+    expect(currentState!.inventory.ration).toBe(0);
+    expect(currentState!.player.food).toBe(100);
+  });
+
+  it('should apply batch qty partially and keep stats within max (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      player: {
+        ...BASE_SAVE.player,
+        food: 10
+      },
+      inventory: { ration: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <TestUsageComponent
+            itemId="ration"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-ration-x2');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // 10 + 60 = 70，未达上限
+    expect(currentState!.inventory.ration).toBe(0);
+    expect(currentState!.player.food).toBe(70);
+  });
+
+  it('should batch pollution reduction with clamp at 0 (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      player: {
+        ...BASE_SAVE.player,
+        sanity: 40
+      },
+      exploration: {
+        ...BASE_SAVE.exploration,
+        dreamPollution: 50
+      },
+      inventory: { purifying_serum: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <TestUsageComponent
+            itemId="purifying_serum"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-purifying_serum-x2');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // 理智 40+60 → 100；污染 50-60 → 0（clamp）
+    expect(currentState!.inventory.purifying_serum).toBe(0);
+    expect(currentState!.player.sanity).toBe(100);
+    expect(currentState!.exploration.dreamPollution).toBe(0);
   });
 });
 
