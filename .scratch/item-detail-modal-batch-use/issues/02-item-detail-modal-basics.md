@@ -4,9 +4,20 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 点击背包物品弹出详情，点击遮罩或关闭按钮可关闭
-- [ ] 物品格不再有悬浮提示（原生 title 与气泡均移除）
-- [ ] 工坊补给面板交互不变（快捷使用按钮仍可用）
-- [ ] 组件测试覆盖弹窗开关与内容渲染
+- [x] 点击背包物品弹出详情，点击遮罩或关闭按钮可关闭
+- [x] 物品格不再有悬浮提示（原生 title 与气泡均移除）
+- [x] 工坊补给面板交互不变（快捷使用按钮仍可用）
+- [x] 组件测试覆盖弹窗开关与内容渲染
+
+## Answer
+
+已在分支 `hero-ehco` 完成（commit `62891c4`），全量 341 测试通过（+7）、tsc/vite build 绿、oxlint 与基线一致（4 错误 7 警告均为基线遗留，零新增）。
+
+**实施要点**：
+- 新建 `ItemDetailModal`：createPortal + `UI_TOKENS.modalContainerStandard`（380×460 固定），header（物品名 + aria-label「关闭详情」按钮）+ 内容区（大图标、持有 ×N、描述可滚动）+ 底部占位（使用区归 ticket 03/04/05）；遮罩点击关闭、容器 `stopPropagation`；未知物品 id 回退显示原始 id；
+- `ItemGridItem`：移除原生 `title` 与气泡 tooltip；新增可选 `onClick`（cursor-pointer + active:scale-95）；`actionButton` 容器加 `stopPropagation` 防未来与 onClick 并存时误开弹窗；
+- `LogTab`：新增 `selectedItemId` 状态，点击背包物品打开弹窗；`WorkshopTab` 清理已无用的 `description` prop（补给面板不弹窗、快捷使用按钮保持原样）；
+- 测试：`ItemDetailModal.test.tsx` 5 例（渲染/关闭按钮/遮罩/容器内不关闭/未知物品回退）；`LogTab.test.tsx` 新增 2 例（点击开弹窗 + 遮罩关闭、title/气泡移除断言：物品名仅渲染一次且无 title 属性）。
+
