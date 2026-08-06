@@ -50,7 +50,7 @@ const BASE_SAVE = {
 
 // 辅助组件，调用真实 supplyItem (单元测试)
 const TestUsageComponent: React.FC<{
-  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum' | 'sanity_capsule';
+  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum' | 'sanity_capsule' | 'warp_capsule';
   qty?: number;
   onState: (state: GameState) => void;
 }> = ({ itemId, qty, onState }) => {
@@ -194,10 +194,10 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     expect(currentState!.exploration.dreamPollution).toBe(20);
   });
 
-  it('should not silently consume capsules whose charge effect is not wired yet (ADR-0016)', async () => {
+  it('should charge dream capsules on batch use (ADR-0016)', async () => {
     const initialSave = {
       ...BASE_SAVE,
-      inventory: { sanity_capsule: 2 }
+      inventory: { sanity_capsule: 3 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
 
@@ -207,6 +207,7 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       <GameProvider>
         <TestUsageComponent
           itemId="sanity_capsule"
+            qty={2}
           onState={(s) => {
             currentState = s;
           }}
@@ -214,15 +215,15 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       </GameProvider>
     );
 
-    const button = screen.getByTestId('use-sanity_capsule');
+    const button = screen.getByTestId('use-sanity_capsule-x2');
     await act(async () => {
       fireEvent.click(button);
     });
 
     expect(currentState).not.toBeNull();
-    // 充能效果尚未接线：胶囊不消耗、充能次数不变化（防静默吞没）
-    expect(currentState!.inventory.sanity_capsule).toBe(2);
-    expect(currentState!.exploration.capsulesCharge.sanity_capsule).toBe(3);
+    // 背包 -2、稳定胶囊充能 +2（BASE_SAVE 初始 3）
+    expect(currentState!.inventory.sanity_capsule).toBe(1);
+    expect(currentState!.exploration.capsulesCharge.sanity_capsule).toBe(5);
   });
 
   it('should apply batch qty and clamp stats at max without overflow (ADR-0016)', async () => {
@@ -339,6 +340,39 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     expect(currentState!.inventory.purifying_serum).toBe(0);
     expect(currentState!.player.sanity).toBe(100);
     expect(currentState!.exploration.dreamPollution).toBe(0);
+  });
+
+  it('should charge warp capsule on use (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      inventory: { warp_capsule: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <TestUsageComponent
+            itemId="warp_capsule"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-warp_capsule-x2');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // 背包 -2、跃迁胶囊充能 +2（初始 0）
+    expect(currentState!.inventory.warp_capsule).toBe(0);
+    expect(currentState!.exploration.capsulesCharge.warp_capsule).toBe(2);
   });
 });
 

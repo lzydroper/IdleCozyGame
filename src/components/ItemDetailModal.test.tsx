@@ -145,4 +145,29 @@ describe('ItemDetailModal Component', () => {
     expect(screen.queryByTestId('use-count-slider')).toBeNull();
     expect(screen.queryByTestId('use-item-button')).toBeNull();
   });
+
+  // === 胶囊充能（ticket 04） ===
+
+  it('shows capsule charge slider capped by owned qty without stat cap (ticket 04)', () => {
+    renderModal('sanity_capsule', () => {}, { inventory: { sanity_capsule: 5 } });
+
+    const slider = screen.getByTestId('use-count-slider') as HTMLInputElement;
+    expect(slider.max).toBe('5');
+    // 效果文本：梦境充能 +1 次（无属性封顶）
+    expect(screen.getByTestId('use-effect-text').textContent).toContain('梦境充能 +1 次');
+  });
+
+  it('uses capsules in batch and updates held qty in real time (ticket 04)', () => {
+    renderModal('sanity_capsule', () => {}, { inventory: { sanity_capsule: 3 } });
+    fireEvent.change(screen.getByTestId('use-count-slider'), { target: { value: '2' } });
+
+    // 滑到 2：预览「梦境充能 +2 次」
+    expect(screen.getByTestId('use-effect-text').textContent).toContain('梦境充能 +2 次');
+
+    fireEvent.click(screen.getByTestId('use-item-button'));
+
+    // 弹窗停留、持有数量实时更新为 1（3-2）、滑条上限收窄为 1
+    expect(screen.getByText('持有 ×1')).toBeDefined();
+    expect((screen.getByTestId('use-count-slider') as HTMLInputElement).max).toBe('1');
+  });
 });

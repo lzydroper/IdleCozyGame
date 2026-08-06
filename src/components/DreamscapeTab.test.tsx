@@ -39,6 +39,21 @@ describe('DreamscapeTab Component', () => {
     expect(screen.getByText(/当前精神污染/i)).toBeDefined();
   });
 
+  it('shows capsule charge counts from state in dreamscape entry view (ticket 04)', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <DreamscapeTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 未入梦时的「心灵药剂与胶囊储备」区直接读 state（INITIAL_STATE：稳定胶囊 3 次、跃迁 0 次）；
+    // 该显示由 state.exploration.capsulesCharge 驱动，背包使用胶囊（supplyItem）更新该字段后此处自动同步
+    expect(screen.getByText(/稳定胶囊 \[拥有: 3次\]/)).toBeDefined();
+    expect(screen.getByText(/折跃胶囊 \[拥有: 0次\]/)).toBeDefined();
+  });
+
   it('梦境封锁期间无法进入梦境（ticket 14）', () => {
     const save = structuredClone(INITIAL_STATE) as typeof INITIAL_STATE;
     save.exploration.dreamLockdownUntil = Date.now() + 600_000; // 封锁 10 分钟

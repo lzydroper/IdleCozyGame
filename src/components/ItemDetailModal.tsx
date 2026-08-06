@@ -37,14 +37,17 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
   const qty = state.inventory[itemId] || 0;
   const statsEffect = meta?.useEffect?.stats;
   const pollutionEffect = meta?.useEffect?.pollution;
+  const capsuleEffect = meta?.useEffect?.capsuleCharge;
   const isRestorative = !!statsEffect && Object.keys(statsEffect).length > 0;
+  const isCapsule = !!capsuleEffect && Object.keys(capsuleEffect).length > 0;
+  const hasUseArea = isRestorative || isCapsule;
 
   const name = meta?.name || itemId;
   const description = meta?.description || '';
 
-  // 主效果（首个 stats key）决定滑条上限；容量 = ceil(剩余/单次)，最后一个可部分生效
+  // 滑条上限：恢复类 = min(拥有数, 主效果容量)；充能类 = 拥有数（无属性封顶，ADR-0016）
   let maxUse = qty;
-  const mainEntry = statsEffect ? Object.entries(statsEffect)[0] : undefined;
+  const mainEntry = isRestorative && statsEffect ? Object.entries(statsEffect)[0] : undefined;
   if (mainEntry) {
     const [stat, val] = mainEntry;
     if (val > 0) {
@@ -56,8 +59,9 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
   }
   const safeCount = maxUse > 0 ? Math.min(useCount, maxUse) : 0;
 
-  // 实际生效值（含封顶）：如 81/100 + 30 → +19（已满 100）
+  // 实际生效值（含封顶）：如 81/100 + 30 → +19（已满 100）；胶囊显示梦境充能次数
   const effectText = (n: number): string => {
+    if (isCapsule) return `梦境充能 +${n} 次`;
     const parts: string[] = [];
     if (statsEffect) {
       for (const [stat, val] of Object.entries(statsEffect)) {
@@ -123,8 +127,8 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
           </p>
         </div>
 
-        {/* 使用区：恢复类道具显示滑条 + 实际生效值 + 使用按钮（ticket 03） */}
-        {isRestorative ? (
+        {/* 使用区：恢复类/充能类道具显示滑条 + 效果预览 + 使用按钮（ticket 03/04） */}
+        {hasUseArea ? (
           <div className="shrink-0 border-t border-zinc-800 pt-3 mt-3 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-zinc-400 font-bold">使用数量</span>
@@ -141,7 +145,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
               className="w-full accent-emerald-500"
             />
             <p data-testid="use-effect-text" className="text-[10px] text-zinc-300 text-center">
-              {qty <= 0 ? '物品已用完' : maxUse <= 0 ? '属性已满，无法使用' : effectText(safeCount)}
+              {qty <= 0 ? '物品已用完' : !isCapsule && maxUse <= 0 ? '属性已满，无法使用' : effectText(safeCount)}
             </p>
             <button
               data-testid="use-item-button"

@@ -65,10 +65,6 @@ export const applySupplyItemUpdate = (state: GameState, itemId: string, qty = 1)
 
   const meta = ITEMS_CONFIG[itemId];
   if (!meta?.useEffect) return NO_OP(state);
-  // ADR-0016 保护：capsuleCharge（梦境充能）效果由 ticket 04 接线，在此之前拒绝消耗
-  if (meta.useEffect.capsuleCharge && !meta.useEffect.stats && meta.useEffect.pollution === undefined) {
-    return NO_OP(state);
-  }
 
   const useQty = Math.min(qty, currentQty);
 
@@ -95,6 +91,16 @@ export const applySupplyItemUpdate = (state: GameState, itemId: string, qty = 1)
 
   if (meta.useEffect.pollution !== undefined) {
     newExploration.dreamPollution = Math.max(0, newExploration.dreamPollution + meta.useEffect.pollution * useQty);
+  }
+
+  // 梦境充能（ADR-0016）：消耗 1 个胶囊 → 对应 capsulesCharge +1 次（不可变更新，防共享引用污染）
+  if (meta.useEffect.capsuleCharge) {
+    Object.entries(meta.useEffect.capsuleCharge).forEach(([key, val]) => {
+      newExploration.capsulesCharge = {
+        ...newExploration.capsulesCharge,
+        [key]: (newExploration.capsulesCharge[key] || 0) + val * useQty
+      };
+    });
   }
 
   return {
