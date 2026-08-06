@@ -440,4 +440,18 @@ describe('存档迁移归一化（mergeSavedState）', () => {
     const r2 = equipItemUpdate(state, 'nova', 'weapon', 'wasteland_weapon');
     expect(r2.state.equipment.nova.weapon?.enhance).toBe(10);
   });
+
+  it('rejects equip with an out-of-range instance index (ADR-0017 修订)', () => {
+    const state = {
+      ...makeState(),
+      equipmentInventory: {
+        wasteland_weapon: [{ itemId: 'wasteland_weapon', enhance: 0, mythic: false }]
+      }
+    };
+    // 仅 1 件实例，index 5 越界 → 拒绝且不消耗
+    const r = equipItemUpdate(state, 'nova', 'weapon', 'wasteland_weapon', 5);
+    expect(r.result).toBe(false);
+    expect(r.state.equipment.nova.weapon).toBeNull();
+    expect(r.state.equipmentInventory.wasteland_weapon).toHaveLength(1);
+  });
 });
