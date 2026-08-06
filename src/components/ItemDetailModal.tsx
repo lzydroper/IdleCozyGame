@@ -191,7 +191,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
                 disabled={qty <= 0}
                 className="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-extrabold text-sm rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
               >
-                治愈重伤英雄
+                使用
               </button>
             ) : (
               <>

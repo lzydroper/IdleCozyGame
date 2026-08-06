@@ -187,7 +187,8 @@ describe('ItemDetailModal Component', () => {
 
     expect(screen.queryByTestId('use-count-slider')).toBeNull();
     expect(screen.queryByTestId('use-effect-text')).toBeNull();
-    expect(useButton().textContent).toBe('治愈重伤英雄');
+    // 按钮文本与其他道具统一为「使用」
+    expect(useButton().textContent).toBe('使用');
   });
 
   it('disables heal button without injectors (ticket 05)', () => {
