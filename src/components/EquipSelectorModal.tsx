@@ -34,25 +34,28 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
   const { showToast } = useToast();
 
   const heroConfig = HEROES_CONFIG[heroId];
-  const inventory = state.inventory || {};
+  const equipmentInventory = state.equipmentInventory || {};
 
-  // 背包中符合槽位条件的未穿戴装备候选列表 (Memoized 提升渲染效率)
+  // 背包中符合槽位条件的未穿戴装备实例候选列表（ADR-0014 修订：按实例逐条列出，含强化等级）
   const candidates = useMemo(
     () =>
-      Object.entries(inventory)
-        .filter(([itemId, qty]) => qty > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
-        .sort(([a], [b]) => {
-          const setA = EQUIPMENT_CONFIG[a]?.set || '';
-          const setB = EQUIPMENT_CONFIG[b]?.set || '';
-          return setA.localeCompare(setB);
+      Object.entries(equipmentInventory)
+        .filter(([itemId, instances]) => EQUIPMENT_CONFIG[itemId]?.slot === slot && instances.length > 0)
+        .flatMap(([itemId, instances]) =>
+          instances.map((instance, index) => ({ itemId, instance, index }))
+        )
+        .sort((a, b) => {
+          const setA = EQUIPMENT_CONFIG[a.itemId]?.set || '';
+          const setB = EQUIPMENT_CONFIG[b.itemId]?.set || '';
+          return setA.localeCompare(setB) || b.instance.enhance - a.instance.enhance;
         }),
-    [inventory, slot]
+    [equipmentInventory, slot]
   );
 
   if (!isOpen) return null;
 
-  const handleEquip = (itemId: string) => {
-    const ok = equipItem(heroId, slot, itemId);
+  const handleEquip = (itemId: string, index?: number) => {
+    const ok = equipItem(heroId, slot, itemId, index);
     if (ok) {
       const itemCfg = ITEMS_CONFIG[itemId];
       showToast(`【${heroConfig?.name || '英雄'}】已装备【${itemCfg?.name || itemId}】！`, 'success');
@@ -109,10 +112,10 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
               </p>
             </div>
           ) : (
-            candidates.map(([itemId, qty]) => {
+            candidates.map(({ itemId, instance, index }) => {
               const eqCfg = EQUIPMENT_CONFIG[itemId];
               const setCfg = EQUIPMENT_SETS[eqCfg.set];
-              const stats = getEquippedItemStats({ itemId, enhance: 0, mythic: false }, heroConfig?.faction);
+              const stats = getEquippedItemStats(instance, heroConfig?.faction);
 
               const statSummary = [
                 stats.attack ? `攻击 +${stats.attack}` : null,
@@ -122,7 +125,7 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
 
               return (
                 <div
-                  key={itemId}
+                  key={`${itemId}-${index}`}
                   className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex items-center justify-between gap-2 transition-all shadow-sm"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -134,6 +137,16 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
                         <span className="text-xs font-black text-amber-200 truncate">
                           {eqCfg.name}
                         </span>
+                        {instance.enhance > 0 && (
+                          <span className="text-[9px] font-black text-amber-300 bg-amber-950/40 px-1 rounded border border-amber-500/30 shrink-0">
+                            +{instance.enhance}
+                          </span>
+                        )}
+                        {instance.mythic && (
+                          <span className="text-[9px] font-black text-purple-300 bg-purple-950/40 px-1 rounded border border-purple-500/30 shrink-0">
+                            神话
+                          </span>
+                        )}
                         <span className="text-[9px] font-bold text-amber-500/90 bg-amber-950/40 px-1 rounded border border-amber-500/20 shrink-0">
                           {setCfg.name}
                         </span>
@@ -141,12 +154,11 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
                       <span className="text-[10px] font-semibold text-zinc-400 mt-0.5 truncate">
                         {statSummary || '基础装备'}
                       </span>
-                      <span className="text-[8.5px] text-zinc-500">拥有数量：×{qty}</span>
                     </div>
                   </div>
 
                   <button
-                    onClick={() => handleEquip(itemId)}
+                    onClick={() => handleEquip(itemId, index)}
                     className="px-3 py-1.5 rounded-lg text-xs font-black text-zinc-950 bg-amber-400 hover:bg-amber-300 border border-amber-300 shadow active:scale-95 cursor-pointer shrink-0"
                   >
                     装备

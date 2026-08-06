@@ -155,6 +155,7 @@ export interface GameState {
   };
   heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
   equipment: Record<string, HeroEquipment>; // 英雄装备栏：hero id -> 三槽装备（ticket 10）
+  equipmentInventory: Record<string, EquippedItem[]>; // 背包装备实例（ADR-0014 修订）：装备id -> 持有实例（含强化/神话），卸下保留强化
   summon: SummonState;                 // 召唤进度（软保底）
   stamina: number;                     // 体力：自动战斗消耗的独立资源，随时间恢复
   maxStamina: number;                  // 体力上限

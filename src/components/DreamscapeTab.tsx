@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
+import { addItemRewards, isWearableEquipment } from '../state/equipment';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import type { DreamChoice } from '../data/dreamEvents';
@@ -160,10 +161,15 @@ const DreamscapeTab: React.FC = () => {
       const forceWakeUp = isPollutionFull || isSanityZero;
 
       const newInventory = { ...prev.inventory };
+      let newEquipmentInventory = { ...prev.equipmentInventory };
       if (forceWakeUp) {
-        // 强制唤醒：梦境碎片并入避难所库存，不因失败清空
+        // 强制唤醒：梦境碎片并入避难所库存，不因失败清空（可穿戴装备实例化，ADR-0014 修订）
         Object.entries(newDreamBag).forEach(([item, qty]) => {
-          newInventory[item] = (newInventory[item] || 0) + qty;
+          if (qty > 0 && isWearableEquipment(item)) {
+            newEquipmentInventory = addItemRewards(newInventory, newEquipmentInventory, { [item]: qty }).equipmentInventory;
+          } else {
+            newInventory[item] = (newInventory[item] || 0) + qty;
+          }
         });
       }
 
@@ -171,6 +177,7 @@ const DreamscapeTab: React.FC = () => {
         ...prev,
         player: newPlayer,
         inventory: newInventory,
+        equipmentInventory: newEquipmentInventory,
         activeAlert: isPollutionFull
           ? { type: "dream_leak", hp: NIGHTMARE_CONFIG.dreamLeakDamage }
           : prev.activeAlert,

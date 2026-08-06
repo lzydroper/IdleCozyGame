@@ -215,8 +215,7 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
 });
 
 describe('calculateDetailedOfflineProgress + 挂机 (重连结算)', () => {
-  it('settles idle battles and reports drops/exp in the offline report', () => {
-    const state = makeState({
+  it('settles idle battles and reports drops/exp in the offline report', () => {    const state = makeState({
       ...armed('wasteland_entrance'),
       party: ['nova', 'soldier'],
       heroes: {
@@ -250,6 +249,22 @@ describe('calculateDetailedOfflineProgress + 挂机 (重连结算)', () => {
     // 200 总经验/英雄：升 2 级消耗 100，余 100
     expect(updatedState.heroes.nova.exp).toBe(100);
     expect(updatedState.heroes.nova.level).toBe(2);
+  });
+
+  it('keeps equipmentInventory through offline settlement (ADR-0017 修订)', () => {
+    const state = makeState({
+      ...armed('wasteland_entrance'),
+      stamina: 100,
+      inventory: { scrap_metal: 0, glow_fiber: 0 },
+      equipmentInventory: { wasteland_weapon: [{ itemId: 'wasteland_weapon', enhance: 0, mythic: false }] }
+    });
+    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
+    const { updatedState } = calculateDetailedOfflineProgress(state, 1000, rng);
+
+    // 挂机结算后背包装备实例透传保留（离线掉落装备同样实例化入账，不落入计数背包）
+    expect(updatedState.equipmentInventory.wasteland_weapon).toEqual([
+      { itemId: 'wasteland_weapon', enhance: 0, mythic: false }
+    ]);
   });
 
   it('produces no combat settlement when idle is not armed', () => {

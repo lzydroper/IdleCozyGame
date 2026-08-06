@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './context/GameContext';
+import { addItemRewards, isWearableEquipment } from './state/equipment';
 import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/WorkshopTab';
@@ -148,13 +149,20 @@ const App: React.FC = () => {
       onConfirm: () => {
         setState(prev => {
           const newInventory = { ...prev.inventory };
+          let newEquipmentInventory = { ...prev.equipmentInventory };
+          // 背囊合并（ADR-0014 修订）：可穿戴装备计数 → 实例化；其余保持原合并语义（含负 qty 防护）
           Object.entries(prev.exploration.realityBag).forEach(([item, qty]) => {
-            newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+            if (qty > 0 && isWearableEquipment(item)) {
+              newEquipmentInventory = addItemRewards(newInventory, newEquipmentInventory, { [item]: qty }).equipmentInventory;
+            } else {
+              newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+            }
           });
 
           return {
             ...prev,
             inventory: newInventory,
+            equipmentInventory: newEquipmentInventory,
             exploration: {
               ...prev.exploration,
               inRealityExploration: false,
@@ -174,13 +182,20 @@ const App: React.FC = () => {
   const handleWakeUp = () => {
     setState(prev => {
       const newInventory = { ...prev.inventory };
+      let newEquipmentInventory = { ...prev.equipmentInventory };
+      // 梦境背囊合并（ADR-0014 修订）：可穿戴装备计数 → 实例化
       Object.entries(prev.exploration.dreamBag).forEach(([item, qty]) => {
-        newInventory[item] = (newInventory[item] || 0) + qty;
+        if (qty > 0 && isWearableEquipment(item)) {
+          newEquipmentInventory = addItemRewards(newInventory, newEquipmentInventory, { [item]: qty }).equipmentInventory;
+        } else {
+          newInventory[item] = (newInventory[item] || 0) + qty;
+        }
       });
 
       return {
         ...prev,
         inventory: newInventory,
+        equipmentInventory: newEquipmentInventory,
         exploration: {
           ...prev.exploration,
           inDreamExploration: false,

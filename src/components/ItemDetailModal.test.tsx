@@ -16,13 +16,14 @@ describe('ItemDetailModal Component', () => {
   const renderModal = (
     itemId: string,
     onClose = () => {},
-    overrides?: { player?: Partial<PlayerStats>; inventory?: Record<string, number>; dreamPollution?: number; heroes?: Record<string, HeroState> }
+    overrides?: { player?: Partial<PlayerStats>; inventory?: Record<string, number>; dreamPollution?: number; heroes?: Record<string, HeroState>; equipment?: Record<string, { weapon: import('../types/game').EquippedItem | null; armor: import('../types/game').EquippedItem | null; trinket: import('../types/game').EquippedItem | null }> }
   ) => {
     const save = structuredClone(INITIAL_STATE) as typeof INITIAL_STATE;
     save.inventory = { ...save.inventory, ration: 5, ...overrides?.inventory };
     if (overrides?.player) save.player = { ...save.player, ...overrides.player };
     if (overrides?.dreamPollution !== undefined) save.exploration.dreamPollution = overrides.dreamPollution;
     if (overrides?.heroes) save.heroes = overrides.heroes;
+    if (overrides?.equipment) save.equipment = overrides.equipment;
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
     render(
       <GameProvider>
@@ -242,5 +243,20 @@ describe('ItemDetailModal Component', () => {
     renderModal('ration');
     expect(screen.queryByText(/基础属性：/)).toBeNull();
     expect(screen.queryByText(/获取：/)).toBeNull();
+  });
+
+  it('shows held instance summary and worn instance stats with enhance (ADR-0014 修订)', () => {
+    renderModal('wasteland_weapon', () => {}, {
+      inventory: { wasteland_weapon: 1 }, // 经迁移成为 +0 背包实例
+      heroes: { nova: { ...createInitialHero('nova'), hp: 100, wounded: false } },
+      equipment: {
+        nova: { weapon: { itemId: 'wasteland_weapon', enhance: 10, mythic: false }, armor: null, trinket: null }
+      }
+    });
+
+    // 背包持有实例概要（+0）
+    expect(screen.getByText(/背包持有：未强化 ×1/)).toBeDefined();
+    // 已穿戴实例：诺娃 · +10 · 强化后属性（10 + 1×10 = 20，诺娃同机械阵营 ×1.3 = 26）
+    expect(document.body.textContent).toContain('诺娃 · +10 · 攻击 +26');
   });
 });

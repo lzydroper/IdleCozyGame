@@ -1,4 +1,4 @@
-import type { GameState, HeroState, HeroEquipment, LogEntry, BattleResult, BattleHpEntry, CombatSettlement, CombatIdleState } from '../types/game';
+import type { GameState, HeroState, HeroEquipment, EquippedItem, LogEntry, BattleResult, BattleHpEntry, CombatSettlement, CombatIdleState } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
@@ -9,7 +9,7 @@ import type { CombatBonus } from '../data/bonds';
 import type { AwakenSkillConfig } from '../data/awakening';
 import { aggregateBonus } from './bonds';
 import type { EquipmentStats } from '../data/equipment';
-import { getHeroEquipmentBonus } from './equipment';
+import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenSkill } from './awakening';
 import type { UpdateResult } from './types';
@@ -255,6 +255,7 @@ interface BattleSettleConfig {
 interface BattleSettlement {
   nextStamina: number;
   nextInventory: Record<string, number>;
+  nextEquipmentInventory: Record<string, EquippedItem[]>;
   nextBag: Record<string, number>;
   nextHeroes: Record<string, HeroState>;
   soulEchoesGained: number;
@@ -270,7 +271,8 @@ const settleBattle = (
   rng: () => number
 ): BattleSettlement => {
   const nextStamina = state.stamina - cfg.staminaCost;
-  const nextInventory = { ...state.inventory };
+  let nextInventory = { ...state.inventory };
+  const nextEquipmentInventory = { ...state.equipmentInventory };
   const nextBag = { ...(state.exploration.realityBag || {}) };
   const nextHeroes = { ...state.heroes };
   const drops: Record<string, number> = {};
@@ -283,8 +285,15 @@ const settleBattle = (
       if (rng() <= drop.chance) {
         const qty = drop.minQty + Math.floor(rng() * (drop.maxQty - drop.minQty + 1));
         drops[drop.itemId] = (drops[drop.itemId] || 0) + qty;
-        const target = cfg.lootTo === 'bag' ? nextBag : nextInventory;
-        target[drop.itemId] = (target[drop.itemId] || 0) + qty;
+        if (cfg.lootTo === 'bag') {
+          // 探索遭遇：bag 保持计数（装备 +0），折返合并时实例化
+          nextBag[drop.itemId] = (nextBag[drop.itemId] || 0) + qty;
+        } else {
+          // 直入背包：可穿戴装备实例化（ADR-0014 修订）
+          const r = addItemRewards(nextInventory, nextEquipmentInventory, { [drop.itemId]: qty });
+          nextInventory = r.inventory;
+          Object.assign(nextEquipmentInventory, r.equipmentInventory);
+        }
       }
     });
     // 灵魂残响掉落（落账进背包，结算报告保留 soulEchoesGained）
@@ -307,7 +316,7 @@ const settleBattle = (
   }
   // 平局（回合上限双方均未全灭）：无掉落、无经验、无重伤，仅消耗体力
 
-  return { nextStamina, nextInventory, nextBag, nextHeroes, soulEchoesGained, drops, woundedHeroIds };
+  return { nextStamina, nextInventory, nextEquipmentInventory, nextBag, nextHeroes, soulEchoesGained, drops, woundedHeroIds };
 };
 
 /**
@@ -365,6 +374,7 @@ export const startCombatUpdate = (
       ...state,
       stamina: settled.nextStamina,
       inventory: settled.nextInventory,
+      equipmentInventory: settled.nextEquipmentInventory,
       heroes: settled.nextHeroes,
       combat: { zoneId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [], idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
@@ -416,15 +426,17 @@ export const resolveEncounterBattleUpdate = (
   }, rng);
 
   const nextHeroes = settled.nextHeroes;
-  const nextInventory = { ...settled.nextInventory };
+  let nextInventory = { ...settled.nextInventory };
+  let nextEquipmentInventory = { ...settled.nextEquipmentInventory };
   const nextBag = settled.nextBag;
   const expPerHero = battle.victory ? battleConfig.expReward : 0;
 
   if (battle.partyWiped) {
     // 战利品保留：临时背囊并入避难所库存（探索终止但掉落不丢失，ADR-0006）
-    Object.entries(nextBag).forEach(([item, qty]) => {
-      if (qty > 0) nextInventory[item] = (nextInventory[item] || 0) + qty;
-    });
+    // 背囊中的可穿戴装备计数 → 实例化（ADR-0014 修订）
+    const merged = addItemRewards(nextInventory, nextEquipmentInventory, nextBag);
+    nextInventory = merged.inventory;
+    nextEquipmentInventory = merged.equipmentInventory;
     Object.keys(nextBag).forEach(item => { delete nextBag[item]; });
   }
 
@@ -469,6 +481,7 @@ export const resolveEncounterBattleUpdate = (
       stamina: settled.nextStamina,
       heroes: nextHeroes,
       inventory: nextInventory,
+      equipmentInventory: nextEquipmentInventory,
       exploration: nextExploration,
       combat: { zoneId: encounterId, lastSettlement: settlement, zonesCleared: state.combat?.zonesCleared || [], idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
@@ -720,6 +733,7 @@ export const settleIdleUpdate = (
       ...next,
       stamina: settled.nextStamina,
       inventory: settled.nextInventory,
+      equipmentInventory: settled.nextEquipmentInventory,
       heroes: settled.nextHeroes
     };
     outcome.battlesFought++;

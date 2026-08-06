@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../context/GameContext';
+import { addItemRewards, isWearableEquipment } from '../state/equipment';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { RealityEvent, EventChoice } from '../data/realityEvents';
@@ -182,6 +183,7 @@ const WildernessTab: React.FC = () => {
     setState(prev => {
       const newPlayer = { ...prev.player };
       const newInventory = { ...prev.inventory };
+      let newEquipmentInventory = { ...prev.equipmentInventory };
       
       // 扣除 requirements 的物资（主要针对救援扣除 defensive_turret 或 ration）
       if (choice.requirements) {
@@ -226,14 +228,20 @@ const WildernessTab: React.FC = () => {
 
       // 救援成功：结束探险并将临时背包并入避难所库存（战利品永不因失败丢失，ticket 14）
       if (isRescueComplete) {
+        // 可穿戴装备实例化（ADR-0014 修订）
         Object.entries(newRealityBag).forEach(([item, qty]) => {
-          newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+          if (qty > 0 && isWearableEquipment(item)) {
+            newEquipmentInventory = addItemRewards(newInventory, newEquipmentInventory, { [item]: qty }).equipmentInventory;
+          } else {
+            newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+          }
         });
         
         return {
           ...prev,
           player: newPlayer,
           inventory: newInventory,
+          equipmentInventory: newEquipmentInventory,
           heroes: newHeroes,
           exploration: {
             ...prev.exploration,

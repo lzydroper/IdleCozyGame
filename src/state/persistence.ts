@@ -3,6 +3,7 @@ import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
 import { getQueueCapacity, getActualDuration } from './facility';
+import { isWearableEquipment } from './equipment';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 
@@ -160,6 +161,25 @@ const normalizeFacilities = (
   return out;
 };
 
+// 背包装备实例化迁移（ADR-0014 修订）：旧存档 inventory 中的可穿戴装备计数 → +0 实例，
+// 并入 equipmentInventory；生态物品（强化魔晶/图纸）保持计数
+const migrateEquipmentInstances = (
+  inventory: Record<string, number>,
+  equipmentInventory: Record<string, EquippedItem[]> = {}
+): { inventory: Record<string, number>; equipmentInventory: Record<string, EquippedItem[]> } => {
+  const nextInventory = { ...inventory };
+  const nextEquipmentInventory: Record<string, EquippedItem[]> = { ...equipmentInventory };
+  for (const [id, qty] of Object.entries(nextInventory)) {
+    if (qty > 0 && isWearableEquipment(id)) {
+      const list = nextEquipmentInventory[id] ? [...nextEquipmentInventory[id]] : [];
+      for (let i = 0; i < qty; i++) list.push({ itemId: id, enhance: 0, mythic: false });
+      nextEquipmentInventory[id] = list;
+      delete nextInventory[id];
+    }
+  }
+  return { inventory: nextInventory, equipmentInventory: nextEquipmentInventory };
+};
+
 // 将旧存档与初始状态深度合并，保证新字段有默认值
 export const mergeSavedState = (parsed: GameState, initialState: GameState): GameState => {
   // 玩家属性（ticket 14）：全局 HP 体系废除，旧存档残留的 hp/maxHp 一并剥离
@@ -173,21 +193,26 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     delete (parsed.exploration as unknown as Record<string, unknown>).survivorResonance;
   }
 
-  return {
-  ...initialState,
-  ...parsed,
-  player: mergedPlayer,
   // 经济实体物品化（ADR-0014）：仅补物品化新增条目（soul_echo/resonance_shard/shard_*）的默认值，
   // 其余物品以存档为准（缺键视为 0），避免初始物品在精简/空背包存档上“复活”。
   // 注意：物品化前的旧存档其经济余额（顶层 soulEchoes 等）按 ADR-0014 alpha 决策直接舍弃，不迁移。
-  inventory: {
+  const mergedInventory = {
     ...(parsed.inventory || {}),
     ...Object.fromEntries(
       Object.entries(initialState.inventory)
         .filter(([k]) => k === 'soul_echo' || k === 'resonance_shard' || k.startsWith('shard_'))
         .map(([k, v]) => [k, parsed.inventory && parsed.inventory[k] !== undefined ? parsed.inventory[k] : v])
     )
-  },
+  };
+  // 背包装备实例化（ADR-0014 修订）：可穿戴装备计数 → +0 实例
+  const migrated = migrateEquipmentInstances(mergedInventory, parsed.equipmentInventory);
+
+  return {
+  ...initialState,
+  ...parsed,
+  player: mergedPlayer,
+  inventory: migrated.inventory,
+  equipmentInventory: migrated.equipmentInventory,
   greenhouse: {
     ...initialState.greenhouse,
     ...(parsed.greenhouse || {})

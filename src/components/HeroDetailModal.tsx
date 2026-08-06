@@ -11,7 +11,7 @@ import { STAR_MAX, starUpShardCost } from '../data/awakening';
 import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
-import { getHeroEquipmentBonus } from '../state/equipment';
+import { getHeroEquipmentBonus, equipItemUpdate } from '../state/equipment';
 import { applyHeroExp } from '../state/combat';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats } from '../state/statSystem';
@@ -51,7 +51,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   onSelectHero,
   onClose
 }) => {
-  const { state, setState, equipItem, unequipItem, starUpHero, awakenHero } = useGame();
+  const { state, setState, unequipItem, starUpHero, awakenHero } = useGame();
   const { showToast } = useToast();
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
@@ -128,15 +128,26 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     } else {
       let equippedCount = 0;
       const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
-      const inv = state.inventory || {};
-      slots.forEach(slot => {
-        if (!heroEquip[slot]) {
-          const matchItemId = Object.keys(inv).find(itemId => (inv[itemId] || 0) > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot);
-          if (matchItemId) {
-            equipItem(heroId, slot, matchItemId);
-            equippedCount++;
+      // ADR-0014 修订：从背包装备实例中取同槽位强化最高者自动穿戴；
+      // 单个 setState 内链式应用（避免多次 setState 批处理仅最后一次生效）
+      setState(prev => {
+        let next = prev;
+        slots.forEach(slot => {
+          if (!next.equipment?.[heroId]?.[slot]) {
+            const match = Object.entries(next.equipmentInventory || {})
+              .filter(([itemId, instances]) => instances.length > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
+              .flatMap(([itemId, instances]) => instances.map((instance, index) => ({ itemId, instance, index })))
+              .sort((a, b) => b.instance.enhance - a.instance.enhance)[0];
+            if (match) {
+              const r = equipItemUpdate(next, heroId, slot, match.itemId, match.index);
+              if (r.state !== next) {
+                next = r.state;
+                equippedCount++;
+              }
+            }
           }
-        }
+        });
+        return next;
       });
       if (equippedCount > 0) {
         showToast(`已为【${config.name}】自动穿戴装备！`, 'success');

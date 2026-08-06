@@ -12,11 +12,12 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
   });
 
-  const renderWithSave = (inventory: Record<string, number>) => {
+  const renderWithSave = (inventory: Record<string, number>, equipmentInventory?: Record<string, import('../types/game').EquippedItem[]>) => {
     const save = structuredClone(INITIAL_STATE) as typeof INITIAL_STATE;
     // 背包以传入 inventory 为准：初始默认物品清零（避免 mergeSavedState 的默认值补齐干扰分类断言）
     save.inventory = Object.fromEntries(Object.keys(INITIAL_STATE.inventory).map(k => [k, 0]));
     Object.assign(save.inventory, inventory);
+    if (equipmentInventory) save.equipmentInventory = equipmentInventory;
     save.logs = [];
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
     render(
@@ -141,6 +142,26 @@ describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () 
     // 原生 title 移除
     const tile = screen.getByText('压缩口粮').closest('div') as HTMLElement;
     expect(tile.hasAttribute('title')).toBe(false);
+  });
+
+  it('shows equipment category from instance inventory with count (ADR-0014 修订)', () => {
+    renderWithSave(
+      { scrap_metal: 5 },
+      {
+        wasteland_weapon: [
+          { itemId: 'wasteland_weapon', enhance: 0, mythic: false },
+          { itemId: 'wasteland_weapon', enhance: 10, mythic: false }
+        ]
+      }
+    );
+
+    // 默认资源分类：装备不在其中
+    expect(screen.queryByText('废土利刃')).toBeNull();
+
+    // 装备分类：实例数汇总为 2
+    fireEvent.click(screen.getByText('装备'));
+    expect(screen.getAllByText('废土利刃').length).toBeGreaterThan(0);
+    expect(screen.getByText('x2')).toBeDefined();
   });
 
   it('empty category tabs are clickable and show the empty state (no disabled tabs)', () => {

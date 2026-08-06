@@ -10,6 +10,7 @@ import { COMBAT_ZONES } from '../data/combatZones';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
 import { recoverStamina, settleIdleUpdate } from './combat';
+import { addItemRewards } from './equipment';
 
 // 纯函数：计算离线或Tick生长时间扣减
 export function calculateOfflineProgress(
@@ -46,6 +47,7 @@ export function calculateDetailedOfflineProgress(
   const recoveredItems: Record<string, number> = {};
 
   let currentInventory = { ...state.inventory };
+  let currentEquipmentInventory = { ...state.equipmentInventory };
   let currentEnergy = state.player.energy;
 
   // 1. 体力离线恢复（随时间恢复，封顶体力上限）
@@ -71,6 +73,7 @@ export function calculateDetailedOfflineProgress(
     );
     finalStamina = afterIdle.stamina;
     currentInventory = afterIdle.inventory;
+    currentEquipmentInventory = afterIdle.equipmentInventory;
     currentHeroes = afterIdle.heroes;
     currentCombat = afterIdle.combat;
 
@@ -188,8 +191,11 @@ export function calculateDetailedOfflineProgress(
         });
       }
 
+      // 派遣入账（ADR-0017 修订）：可穿戴装备实例化，其余计数
       Object.entries(scavengedCount).forEach(([itemId, qty]) => {
-        currentInventory[itemId] = (currentInventory[itemId] || 0) + qty;
+        const r = addItemRewards(currentInventory, currentEquipmentInventory, { [itemId]: qty });
+        currentInventory = r.inventory;
+        currentEquipmentInventory = r.equipmentInventory;
         recoveredItems[itemId] = (recoveredItems[itemId] || 0) + qty;
       });
 
@@ -252,6 +258,7 @@ export function calculateDetailedOfflineProgress(
     player: { ...state.player, energy: currentEnergy },
     stamina: finalStamina,
     inventory: currentInventory,
+    equipmentInventory: currentEquipmentInventory,
     heroes: currentHeroes,
     combat: currentCombat,
     greenhouse: { ...state.greenhouse, slots: updatedSlots },

@@ -25,26 +25,11 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
 
   const equip = state.equipment?.[heroId] || { weapon: null, armor: null, trinket: null };
   const inventory = state.inventory;
+  const equipmentInventory = state.equipmentInventory || {};
   const stoneCount = inventory.enhance_stone || 0;
-  // 卸下确认：强化 >0 或神话装备卸下会重置强化等级（背包为计数模型），需二次确认
-  const [confirmUnequip, setConfirmUnequip] = useState<EquipmentSlot | null>(null);
-  const confirmTimer = React.useRef<number | null>(null);
 
-  // 组件卸载时清理卸下确认定时器
-  React.useEffect(() => {
-    return () => {
-      if (confirmTimer.current) window.clearTimeout(confirmTimer.current);
-    };
-  }, []);
-
-  const armConfirm = (slot: EquipmentSlot) => {
-    setConfirmUnequip(slot);
-    if (confirmTimer.current) window.clearTimeout(confirmTimer.current);
-    confirmTimer.current = window.setTimeout(() => setConfirmUnequip(null), 3000);
-  };
-
-  const handleEquip = (slot: EquipmentSlot, itemId: string) => {
-    const ok = equipItem(heroId, slot, itemId);
+  const handleEquip = (slot: EquipmentSlot, itemId: string, index?: number) => {
+    const ok = equipItem(heroId, slot, itemId, index);
     if (ok) {
       showToast(`已穿戴【${ITEMS_CONFIG[itemId]?.name || itemId}】`, 'success');
       setOpenSlot(null);
@@ -54,15 +39,9 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   };
 
   const handleUnequip = (slot: EquipmentSlot) => {
-    const item = equip[slot];
-    const valuable = item && (item.enhance > 0 || item.mythic);
-    if (valuable && confirmUnequip !== slot) {
-      armConfirm(slot);
-      return;
-    }
-    setConfirmUnequip(null);
+    // ADR-0014 修订：卸下保留强化等级与神话状态，直接卸下无需确认
     if (unequipItem(heroId, slot)) {
-      showToast('已卸下装备，返回背包。', 'success');
+      showToast('已卸下装备，返回背包（强化保留）。', 'success');
     }
   };
 
@@ -96,11 +75,17 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
     }
   };
 
-  // 背包中可穿戴的候选装备（同槽位）
+  // 背包中可穿戴的候选装备实例（同槽位，ADR-0014 修订：按实例逐条列出，含强化等级）
   const candidatesFor = (slot: EquipmentSlot) =>
-    Object.entries(inventory)
-      .filter(([itemId, qty]) => qty > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
-      .sort(([a], [b]) => EQUIPMENT_SETS[EQUIPMENT_CONFIG[a].set].name.localeCompare(EQUIPMENT_SETS[EQUIPMENT_CONFIG[b].set].name));
+    Object.entries(equipmentInventory)
+      .filter(([itemId, instances]) => instances.length > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
+      .flatMap(([itemId, instances]) => instances.map((instance, index) => ({ itemId, instance, index })))
+      .sort(
+        (a, b) =>
+          EQUIPMENT_SETS[EQUIPMENT_CONFIG[a.itemId].set].name.localeCompare(
+            EQUIPMENT_SETS[EQUIPMENT_CONFIG[b.itemId].set].name
+          ) || b.instance.enhance - a.instance.enhance
+      );
 
   // 套装特效进度展示
   const setProgress = getSetEnhanceProgress(equip);
@@ -142,14 +127,10 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                     </span>
                     <button
                       onClick={() => handleUnequip(slot)}
-                      className={`text-[8px] font-bold px-1.5 py-0.5 rounded border shrink-0 cursor-pointer ${
-                        confirmUnequip === slot
-                          ? 'border-red-500/60 bg-red-950/60 text-red-300 animate-pulse'
-                          : 'border-zinc-700 text-zinc-400 hover:bg-zinc-800'
-                      }`}
-                      title={item.enhance > 0 || item.mythic ? '卸下会重置强化等级与神话状态（需确认）' : '卸下装备返回背包'}
+                      className="text-[8px] font-bold px-1.5 py-0.5 rounded border shrink-0 cursor-pointer border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                      title="卸下装备返回背包（强化等级保留）"
                     >
-                      {confirmUnequip === slot ? '确认卸下？' : '卸下'}
+                      卸下
                     </button>
                   </>
                 ) : (
@@ -221,17 +202,20 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                       背包中暂无该槽位装备 —— 工坊合成、梦境探索或区域 BOSS 掉落获取。
                     </span>
                   ) : (
-                    candidatesFor(slot).map(([itemId, qty]) => {
+                    candidatesFor(slot).map(({ itemId, instance, index }) => {
                       const c = EQUIPMENT_CONFIG[itemId];
                       return (
                         <button
-                          key={itemId}
-                          onClick={() => handleEquip(slot, itemId)}
+                          key={`${itemId}-${index}`}
+                          onClick={() => handleEquip(slot, itemId, index)}
                           className="text-left text-[9px] font-bold px-2 py-1 rounded border border-zinc-800 bg-zinc-900/60 hover:border-amber-500/40 text-zinc-300 cursor-pointer flex items-center gap-1.5"
                         >
                           <GameIcon type="item" id={itemId} className="w-4 h-4 shrink-0" />
                           <span className="flex-1">{c.name}</span>
-                          <span className="text-[8px] text-zinc-500">[{EQUIPMENT_SETS[c.set].name}] ×{qty}</span>
+                          {instance.enhance > 0 && (
+                            <span className="text-[8px] font-black text-amber-300 shrink-0">+{instance.enhance}</span>
+                          )}
+                          <span className="text-[8px] text-zinc-500">[{EQUIPMENT_SETS[c.set].name}]</span>
                         </button>
                       );
                     })

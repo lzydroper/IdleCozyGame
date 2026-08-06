@@ -13,6 +13,32 @@ import type { CombatBonus } from '../data/bonds';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
+// 可穿戴装备判定（ADR-0014 修订）：EQUIPMENT_CONFIG 中定义的系列装备才实例化；
+// 强化魔晶/图纸等装备生态物品仍为计数物品。
+export const isWearableEquipment = (itemId: string): boolean => !!EQUIPMENT_CONFIG[itemId];
+
+// 物品入账（ADR-0014 修订）：可穿戴装备 → equipmentInventory 追加 +0 实例；其余 → inventory 计数。
+// 返回新的 inventory 与 equipmentInventory，供调用方 spread 进 state。
+export const addItemRewards = (
+  inventory: Record<string, number>,
+  equipmentInventory: Record<string, EquippedItem[]>,
+  items: Record<string, number>
+): { inventory: Record<string, number>; equipmentInventory: Record<string, EquippedItem[]> } => {
+  const nextInventory = { ...inventory };
+  const nextEquipmentInventory = { ...equipmentInventory };
+  for (const [id, qty] of Object.entries(items)) {
+    if (qty === 0) continue;
+    if (isWearableEquipment(id)) {
+      const list = nextEquipmentInventory[id] ? [...nextEquipmentInventory[id]] : [];
+      for (let i = 0; i < qty; i++) list.push({ itemId: id, enhance: 0, mythic: false });
+      nextEquipmentInventory[id] = list;
+    } else {
+      nextInventory[id] = (nextInventory[id] || 0) + qty;
+    }
+  }
+  return { inventory: nextInventory, equipmentInventory: nextEquipmentInventory };
+};
+
 // === 装备系统（ticket 10）：穿戴 / 强化 / 神话锻造 / 套装特效 ===
 // 装备实例只存「配置 id + 强化等级 + 神话标记」，属性全部由配置计算（数据驱动）。
 
@@ -111,35 +137,83 @@ const writeEquipment = (state: GameState, heroId: string, equip: HeroEquipment):
   equipment: { ...(state.equipment || {}), [heroId]: equip }
 });
 
-// 穿戴装备：从库存消耗 1 件对应槽位装备，原装备（若有）返回库存。
-// 注意：背包为计数模型，卸下/换装会重置强化等级 —— 同物品重复穿戴直接拒绝（防误操作损失强化）
-export const equipItemUpdate = (state: GameState, heroId: string, slot: EquipmentSlot, itemId: string): UpdateResult<boolean> => {
+// === 背包装备实例（ADR-0014 修订） ===
+
+// 从背包装备实例中取出一件（index 提供时按索引取；缺省取强化最高者），返回新实例表与被取实例
+const takeInstance = (
+  equipmentInventory: Record<string, EquippedItem[]>,
+  itemId: string,
+  index?: number
+): { equipmentInventory: Record<string, EquippedItem[]>; instance: EquippedItem | null } => {
+  const list = equipmentInventory[itemId] || [];
+  if (list.length === 0) return { equipmentInventory, instance: null };
+  // 显式非法 index（越界/非整数）→ 返回失败，暴露调用方状态漂移
+  if (index !== undefined && (!Number.isInteger(index) || index < 0 || index >= list.length)) {
+    return { equipmentInventory, instance: null };
+  }
+  const sorted = [...list].sort((a, b) => b.enhance - a.enhance || Number(b.mythic) - Number(a.mythic));
+  const bestIndex = list.indexOf(sorted[0]);
+  const pickIndex = index !== undefined ? index : bestIndex;
+  const instance = list[pickIndex];
+  const nextList = [...list];
+  nextList.splice(pickIndex, 1);
+  const next = { ...equipmentInventory };
+  if (nextList.length > 0) next[itemId] = nextList;
+  else delete next[itemId];
+  return { equipmentInventory: next, instance };
+};
+
+// 把一件装备实例放回背包（卸下/换装时保留强化等级与神话状态）
+const addInstanceBack = (
+  equipmentInventory: Record<string, EquippedItem[]>,
+  instance: EquippedItem
+): Record<string, EquippedItem[]> => {
+  const next = { ...equipmentInventory };
+  const list = next[instance.itemId] ? [...next[instance.itemId]] : [];
+  list.push({ ...instance });
+  next[instance.itemId] = list;
+  return next;
+};
+
+// 穿戴装备（ADR-0014 修订）：从背包实例表取一件（index 缺省取最高强化）并穿戴，
+// 原槽位装备（若有）连强化等级一并返回背包；同物品换装允许（强化随实例保留）
+export const equipItemUpdate = (
+  state: GameState,
+  heroId: string,
+  slot: EquipmentSlot,
+  itemId: string,
+  index?: number
+): UpdateResult<boolean> => {
   const cfg = EQUIPMENT_CONFIG[itemId];
   if (!cfg || cfg.slot !== slot) return NO_OP(state);
   if (!state.heroes[heroId]) return NO_OP(state);
-  if ((state.inventory[itemId] || 0) < 1) return NO_OP(state);
+
+  const taken = takeInstance(state.equipmentInventory || {}, itemId, index);
+  if (!taken.instance) return NO_OP(state); // 背包无该装备实例
 
   const equip = state.equipment?.[heroId] || emptyEquipment();
   const prev = equip[slot];
-  if (prev?.itemId === itemId) return NO_OP(state); // 同物品已在槽位：拒绝重复穿戴
-  const nextInventory = { ...state.inventory, [itemId]: (state.inventory[itemId] || 0) - 1 };
-  if (prev) nextInventory[prev.itemId] = (nextInventory[prev.itemId] || 0) + 1;
+  let nextEquipmentInventory = taken.equipmentInventory;
+  if (prev) nextEquipmentInventory = addInstanceBack(nextEquipmentInventory, prev);
 
   return {
-    state: { ...writeEquipment(state, heroId, { ...equip, [slot]: { itemId, enhance: 0, mythic: false } }), inventory: nextInventory },
+    state: {
+      ...writeEquipment(state, heroId, { ...equip, [slot]: taken.instance }),
+      equipmentInventory: nextEquipmentInventory
+    },
     result: true
   };
 };
 
-// 卸下装备：装备返回库存
+// 卸下装备（ADR-0014 修订）：装备实例（含强化/神话）返回背包，不丢失强化
 export const unequipItemUpdate = (state: GameState, heroId: string, slot: EquipmentSlot): UpdateResult<boolean> => {
   const equip = state.equipment?.[heroId];
   const item = equip?.[slot];
   if (!item) return NO_OP(state);
 
-  const nextInventory = { ...state.inventory, [item.itemId]: (state.inventory[item.itemId] || 0) + 1 };
+  const nextEquipmentInventory = addInstanceBack(state.equipmentInventory || {}, item);
   return {
-    state: { ...writeEquipment(state, heroId, { ...equip, [slot]: null }), inventory: nextInventory },
+    state: { ...writeEquipment(state, heroId, { ...equip, [slot]: null }), equipmentInventory: nextEquipmentInventory },
     result: true
   };
 };

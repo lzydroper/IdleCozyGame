@@ -108,7 +108,7 @@ interface GameContextType {
   isSummonOpen: boolean;
   openSummonModal: () => void;
   closeSummonModal: () => void;
-  equipItem: (heroId: string, slot: EquipmentSlot, itemId: string) => boolean;
+  equipItem: (heroId: string, slot: EquipmentSlot, itemId: string, index?: number) => boolean;
   unequipItem: (heroId: string, slot: EquipmentSlot) => boolean;
   enhanceItem: (heroId: string, slot: EquipmentSlot) => EnhanceFailure | true;
   forgeMythic: (heroId: string, slot: EquipmentSlot) => ForgeFailure | true;
@@ -572,8 +572,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const closeSummonModal = () => setIsSummonOpen(false);
 
   // === 装备系统（ticket 10） ===
-  const equipItem = (heroId: string, slot: EquipmentSlot, itemId: string): boolean => {
-    const r = equipItemUpdate(stateRef.current, heroId, slot, itemId);
+  const equipItem = (heroId: string, slot: EquipmentSlot, itemId: string, index?: number): boolean => {
+    const r = equipItemUpdate(stateRef.current, heroId, slot, itemId, index);
     if (r.state !== stateRef.current) {
       setState(r.state);
     }

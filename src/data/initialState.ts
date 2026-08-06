@@ -59,6 +59,7 @@ export const INITIAL_STATE: GameState = {
   },
   heroes: INITIAL_HEROES,
   equipment: {}, // 英雄装备栏：开局无装备（ticket 10）
+  equipmentInventory: {}, // 背包装备实例（ADR-0014 修订）：开局无持有
   // 召唤经济（ADR-0014）：新手起始灵魂残响 500（= 5 抽），后续由战斗掉落/日常补充
   summon: { pityCount: 0 },
   // 战斗核心：开局满体力，初始小队 = 初始英雄诺娃

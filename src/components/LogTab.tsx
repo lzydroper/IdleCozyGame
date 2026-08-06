@@ -33,11 +33,14 @@ const LogTab: React.FC = () => {
   // 选中物品详情弹窗（ADR-0016）：null = 关闭
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
-  const { inventory, logs } = state;
+  const { inventory, equipmentInventory, logs } = state;
 
-  // Items in backpack with quantity > 0
-  const backpackItems = Object.entries(inventory)
-    .filter(([_, qty]) => qty > 0)
+  // Items in backpack with quantity > 0（ADR-0014 修订：装备实例数并入背包列表）
+  const inventoryEntries = Object.entries(inventory).filter(([, qty]) => qty > 0);
+  const equipmentEntries = Object.entries(equipmentInventory || {})
+    .map(([itemId, instances]) => [itemId, instances.length] as const)
+    .filter(([, qty]) => qty > 0);
+  const backpackItems = [...inventoryEntries, ...equipmentEntries]
     .map(([itemId, qty]) => {
       const meta = ITEMS_CONFIG[itemId] || { id: itemId, name: itemId, description: '', category: 'special' as const };
       return { qty, ...meta };

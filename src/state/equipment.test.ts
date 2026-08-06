@@ -45,6 +45,15 @@ const wear = (state: GameState, slot: EquipmentSlot, itemId: string, enhance = 0
   return { ...state, equipment: { ...(state.equipment || {}), nova: equip } };
 };
 
+// 便捷：背包持有 N 件装备实例（ADR-0014 修订）
+const holdEquip = (state: GameState, itemId: string, n = 1, enhance = 0, mythic = false): GameState => ({
+  ...state,
+  equipmentInventory: {
+    ...(state.equipmentInventory || {}),
+    [itemId]: Array.from({ length: n }, () => ({ itemId, enhance, mythic }))
+  }
+});
+
 describe('装备配置完整性（ticket 10）', () => {
   it('每个装备配置都有对应物品定义且类别为 equipment', () => {
     EQUIPMENT_LIST.forEach(cfg => {
@@ -109,46 +118,48 @@ describe('装备配置完整性（ticket 10）', () => {
 });
 
 describe('穿戴 / 卸下', () => {
-  it('穿戴消耗 1 件背包装备，槽位以 0 强化实例落位', () => {
-    let state = makeState({ inventory: { ...INITIAL_STATE.inventory, ember_weapon: 2 } });
+  it('穿戴消耗 1 件背包装备实例，槽位以该实例落位', () => {
+    let state = holdEquip(makeState(), 'ember_weapon', 2);
     const r = equipItemUpdate(state, 'nova', 'weapon', 'ember_weapon');
     expect(r.result).toBe(true);
-    expect(r.state.inventory.ember_weapon).toBe(1);
+    expect(r.state.equipmentInventory.ember_weapon.length).toBe(1);
     expect(r.state.equipment.nova.weapon).toEqual({ itemId: 'ember_weapon', enhance: 0, mythic: false });
   });
 
-  it('换装：旧装备返回背包，新装备入槽', () => {
+  it('换装：旧装备（含强化）返回背包，新装备入槽', () => {
     let state = wear(makeState(), 'weapon', 'wasteland_weapon', 5);
-    state = { ...state, inventory: { ...state.inventory, ember_weapon: 1 } };
+    state = holdEquip(state, 'ember_weapon', 1);
     const r = equipItemUpdate(state, 'nova', 'weapon', 'ember_weapon');
     expect(r.result).toBe(true);
     expect(r.state.equipment.nova.weapon?.itemId).toBe('ember_weapon');
-    expect(r.state.inventory.wasteland_weapon).toBe(1);
-    expect(r.state.inventory.ember_weapon).toBe(0);
+    // 旧装备带强化等级返回背包（ADR-0014 修订）
+    expect(r.state.equipmentInventory.wasteland_weapon).toEqual([{ itemId: 'wasteland_weapon', enhance: 5, mythic: false }]);
+    expect(r.state.equipmentInventory.ember_weapon?.length ?? 0).toBe(0);
   });
 
   it('拒绝：槽位不符 / 未知装备 / 背包无货 / 未知英雄', () => {
     expect(equipItemUpdate(makeState(), 'nova', 'weapon', 'ember_armor').result).toBe(false);
     expect(equipItemUpdate(makeState(), 'nova', 'weapon', 'not_a_gear').result).toBe(false);
     expect(equipItemUpdate(makeState(), 'nova', 'weapon', 'ember_weapon').result).toBe(false);
-    const state = makeState({ inventory: { ...INITIAL_STATE.inventory, ember_weapon: 1 } });
+    const state = holdEquip(makeState(), 'ember_weapon', 1);
     expect(equipItemUpdate(state, 'ghost', 'weapon', 'ember_weapon').result).toBe(false);
   });
 
-  it('拒绝重复穿戴同物品：防止误操作把已强化装备重置回背包', () => {
-    const state = wear(makeState({ inventory: { ...INITIAL_STATE.inventory, wasteland_weapon: 1 } }), 'weapon', 'wasteland_weapon', 12);
+  it('同物品换装允许：新实例入槽，旧强化实例回背包（ADR-0014 修订）', () => {
+    const state = holdEquip(wear(makeState(), 'weapon', 'wasteland_weapon', 12), 'wasteland_weapon', 1);
     const r = equipItemUpdate(state, 'nova', 'weapon', 'wasteland_weapon');
-    expect(r.result).toBe(false);
-    expect(r.state.equipment.nova.weapon?.enhance).toBe(12);
-    expect(r.state.inventory.wasteland_weapon).toBe(1);
+    expect(r.result).toBe(true);
+    expect(r.state.equipment.nova.weapon?.enhance).toBe(0); // 新 +0 实例入槽
+    expect(r.state.equipmentInventory.wasteland_weapon).toEqual([{ itemId: 'wasteland_weapon', enhance: 12, mythic: false }]); // 旧 +12 回背包
   });
 
-  it('卸下：装备返回背包，槽位清空；空槽卸下无操作', () => {
+  it('卸下：装备实例（含强化）返回背包，槽位清空；空槽卸下无操作', () => {
     const state = wear(makeState(), 'armor', 'wasteland_armor', 3);
     const r = unequipItemUpdate(state, 'nova', 'armor');
     expect(r.result).toBe(true);
     expect(r.state.equipment.nova.armor).toBeNull();
-    expect(r.state.inventory.wasteland_armor).toBe(1);
+    // 强化等级随实例保留（ADR-0014 修订）
+    expect(r.state.equipmentInventory.wasteland_armor).toEqual([{ itemId: 'wasteland_armor', enhance: 3, mythic: false }]);
     expect(unequipItemUpdate(r.state, 'nova', 'armor').result).toBe(false);
   });
 });
@@ -345,11 +356,11 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
 });
 
 describe('获取分层：工坊合成与图纸解锁', () => {
-  it('废土系列无需图纸即可合成', () => {
+  it('废土系列无需图纸即可合成（产出进装备实例背包，ADR-0014 修订）', () => {
     const state = makeState({ inventory: { ...INITIAL_STATE.inventory, scrap_metal: 20, alloy_plate: 10 } });
     const r = craftItemUpdate(state, 'wasteland_weapon_recipe');
     expect(r.result).toBe(true);
-    expect(r.state.inventory.wasteland_weapon).toBe(1);
+    expect(r.state.equipmentInventory.wasteland_weapon).toEqual([{ itemId: 'wasteland_weapon', enhance: 0, mythic: false }]);
   });
 
   it('余烬系列未获得图纸时拒绝合成，获得图纸后解锁', () => {
@@ -359,7 +370,7 @@ describe('获取分层：工坊合成与图纸解锁', () => {
     const withBlueprint = makeState({ inventory: { ...rich.inventory, blueprint_ember_armory: 1 } });
     const r = craftItemUpdate(withBlueprint, 'ember_weapon_recipe');
     expect(r.result).toBe(true);
-    expect(r.state.inventory.ember_weapon).toBe(1);
+    expect(r.state.equipmentInventory.ember_weapon).toEqual([{ itemId: 'ember_weapon', enhance: 0, mythic: false }]);
     // 图纸是知识类物品，不消耗
     expect(r.state.inventory.blueprint_ember_armory).toBe(1);
   });
@@ -393,5 +404,40 @@ describe('存档迁移归一化（mergeSavedState）', () => {
     delete (save as unknown as Record<string, unknown>).equipment;
     const merged = mergeSavedState(save, INITIAL_STATE);
     expect(merged.equipment).toEqual({});
+  });
+
+  it('旧存档 inventory 中的可穿戴装备计数迁移为 +0 实例（ADR-0014 修订）', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as GameState;
+    save.inventory = { ...save.inventory, wasteland_weapon: 2, ember_weapon: 1, scrap_metal: 5, enhance_stone: 3 };
+    const merged = mergeSavedState(save, INITIAL_STATE);
+
+    expect(merged.equipmentInventory.wasteland_weapon).toHaveLength(2);
+    expect(merged.equipmentInventory.wasteland_weapon[0]).toEqual({ itemId: 'wasteland_weapon', enhance: 0, mythic: false });
+    expect(merged.equipmentInventory.ember_weapon).toHaveLength(1);
+    expect(merged.inventory.wasteland_weapon).toBeUndefined(); // 已移出计数背包
+    expect(merged.inventory.ember_weapon).toBeUndefined();
+    expect(merged.inventory.scrap_metal).toBe(5);   // 非装备保持计数
+    expect(merged.inventory.enhance_stone).toBe(3); // 生态物品保持计数
+  });
+
+  it('按 index 穿戴指定强化实例；缺省取最高强化（ADR-0014 修订）', () => {
+    const state = {
+      ...makeState(),
+      equipmentInventory: {
+        wasteland_weapon: [
+          { itemId: 'wasteland_weapon', enhance: 0, mythic: false },
+          { itemId: 'wasteland_weapon', enhance: 10, mythic: false }
+        ]
+      }
+    };
+
+    // 指定 index 1 → 穿 +10，背包剩 +0
+    const r = equipItemUpdate(state, 'nova', 'weapon', 'wasteland_weapon', 1);
+    expect(r.state.equipment.nova.weapon?.enhance).toBe(10);
+    expect(r.state.equipmentInventory.wasteland_weapon).toEqual([{ itemId: 'wasteland_weapon', enhance: 0, mythic: false }]);
+
+    // 缺省 index → 取强化最高者（+10）
+    const r2 = equipItemUpdate(state, 'nova', 'weapon', 'wasteland_weapon');
+    expect(r2.state.equipment.nova.weapon?.enhance).toBe(10);
   });
 });

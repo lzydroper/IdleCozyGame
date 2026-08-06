@@ -6,10 +6,12 @@ import { ITEMS_CONFIG } from '../data/items';
 import { UI_TOKENS } from '../data/uiConstants';
 import { EQUIPMENT_CONFIG, EQUIPMENT_SETS, EQUIPMENT_SLOT_LABELS } from '../data/equipment';
 import type { EquipmentStats } from '../data/equipment';
+import { HEROES_CONFIG } from '../data/heroes';
+import { getEquippedItemStats } from '../state/equipment';
 import GameIcon from './GameIcon';
 import HeroHealModal from './HeroHealModal';
 import { X } from 'lucide-react';
-import type { PlayerStats } from '../types/game';
+import type { EquippedItem, EquipmentSlot, PlayerStats } from '../types/game';
 
 interface ItemDetailModalProps {
   itemId: string;
@@ -45,6 +47,19 @@ const fmtEquipStats = (s: EquipmentStats): string =>
     .map(([k, v]) => `${EQUIP_STAT_LABEL[k] ?? k} +${v}`)
     .join(' ｜ ') || '—';
 
+// 背包持有实例概要：按强化等级聚合（+10 ×1 ｜ 未强化 ×2）
+const summarizeInstances = (instances: EquippedItem[]): string => {
+  const counts = new Map<number, { count: number; mythic: boolean }>();
+  instances.forEach(i => {
+    const cur = counts.get(i.enhance) || { count: 0, mythic: false };
+    counts.set(i.enhance, { count: cur.count + 1, mythic: cur.mythic || i.mythic });
+  });
+  return [...counts.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([enhance, { count, mythic }]) => `${enhance > 0 ? `+${enhance}` : '未强化'}${mythic ? '（神话）' : ''} ×${count}`)
+    .join(' ｜ ');
+};
+
 // 物品详情弹窗（ADR-0016）：固定尺寸（复用 UI_TOKENS.modalContainerStandard），
 // 顶部统一展示图标/名称/持有数量/介绍（装备类附属性信息），底部使用区按类型：
 // 恢复类/充能类 = 数量滑条（0 起步）+ 效果预览 + 「使用」；治愈类 = 「治愈重伤英雄」。
@@ -66,6 +81,15 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
   const hasUseArea = isRestorative || isCapsule || isHealItem;
   const equipCfg = EQUIPMENT_CONFIG[itemId];
   const equipSet = equipCfg ? EQUIPMENT_SETS[equipCfg.set] : undefined;
+  // 背包装备实例与已穿戴实例（ADR-0014 修订）：详情展示强化等级与强化后属性
+  const heldInstances = equipCfg ? state.equipmentInventory?.[itemId] || [] : [];
+  const wornInstances = equipCfg
+    ? Object.entries(state.equipment || {}).flatMap(([heroId, heroEquip]) =>
+        (['weapon', 'armor', 'trinket'] as EquipmentSlot[])
+          .filter(slot => heroEquip?.[slot]?.itemId === itemId)
+          .map(slot => ({ heroId, item: heroEquip[slot] as EquippedItem }))
+      )
+    : [];
 
   const name = meta?.name || itemId;
   const description = meta?.description || '';
@@ -177,6 +201,21 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
               <p className="text-[10px] text-zinc-500">
                 获取：{EQUIP_SOURCE_LABEL[equipCfg.source] ?? equipCfg.source}
               </p>
+              {/* 背包持有实例与已穿戴实例（ADR-0014 修订） */}
+              {heldInstances.length > 0 && (
+                <p className="text-[10px] text-zinc-400">背包持有：{summarizeInstances(heldInstances)}</p>
+              )}
+              {wornInstances.length > 0 && (
+                <div className="pt-1 border-t border-zinc-800/80 space-y-1">
+                  <p className="text-[10px] font-black text-cyan-300">已穿戴实例（强化后属性）：</p>
+                  {wornInstances.map(({ heroId, item }) => (
+                    <p key={heroId} className="text-[10px] text-zinc-400">
+                      {HEROES_CONFIG[heroId]?.name || heroId} · {item.mythic ? '神话' : item.enhance > 0 ? `+${item.enhance}` : '未强化'} ·{' '}
+                      {fmtEquipStats(getEquippedItemStats(item, HEROES_CONFIG[heroId]?.faction))}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

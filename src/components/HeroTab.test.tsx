@@ -91,9 +91,9 @@ describe('HeroTab Component', () => {
     expect(screen.getAllByText(/诺娃/).length).toBeGreaterThan(0);
   });
 
-  it('equips a weapon from inventory into the weapon slot via HeroDetailModal (ticket 10)', () => {
+  it('equips a weapon from equipment inventory into the weapon slot via HeroDetailModal (ticket 10)', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.inventory.ember_weapon = 1;
+    save.equipmentInventory = { ember_weapon: [{ itemId: 'ember_weapon', enhance: 0, mythic: false }] };
     save.equipment = { nova: { weapon: null, armor: null, trinket: null } };
     localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
 
@@ -111,7 +111,7 @@ describe('HeroTab Component', () => {
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.equipment.nova.weapon).toEqual({ itemId: 'ember_weapon', enhance: 0, mythic: false });
-    expect(saved.inventory.ember_weapon).toBe(0);
+    expect(saved.equipmentInventory.ember_weapon?.length ?? 0).toBe(0);
   });
 
   it('unequips all equipped items via HeroDetailModal (ticket 10)', () => {
@@ -133,7 +133,8 @@ describe('HeroTab Component', () => {
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.equipment.nova.weapon).toBeNull();
-    expect(saved.inventory.wasteland_weapon).toBe(1);
+    // 卸下后装备实例（含强化）返回背包（ADR-0014 修订）
+    expect(saved.equipmentInventory.wasteland_weapon).toEqual([{ itemId: 'wasteland_weapon', enhance: 0, mythic: false }]);
   });
 
   it('allocates a talent point into the class trunk via the panel (ticket 11)', () => {

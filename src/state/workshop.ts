@@ -2,6 +2,7 @@ import type { GameState, PlayerStats } from '../types/game';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
+import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -25,6 +26,7 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
 
   // 执行更新
   const newInventory = { ...state.inventory };
+  const newEquipmentInventory = { ...state.equipmentInventory };
   Object.entries(recipe.cost).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) - qty; });
 
   const newExploration = { ...state.exploration };
@@ -44,16 +46,21 @@ export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResul
       state: {
         ...state,
         inventory: newInventory,
+        equipmentInventory: newEquipmentInventory,
         greenhouse: { ...state.greenhouse, unlockedSlotsCount: nextCount, slots: newSlots }
       },
       result: true
     };
   } else {
-    Object.entries(recipe.reward).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) + qty; });
+    const rewards = addItemRewards(newInventory, newEquipmentInventory, recipe.reward);
+    return {
+      state: { ...state, inventory: rewards.inventory, equipmentInventory: rewards.equipmentInventory, exploration: newExploration },
+      result: true
+    };
   }
 
   return {
-    state: { ...state, inventory: newInventory, exploration: newExploration },
+    state: { ...state, inventory: newInventory, equipmentInventory: newEquipmentInventory, exploration: newExploration },
     result: true
   };
 };
