@@ -451,7 +451,7 @@ describe('存档迁移归一化（mergeSavedState）', () => {
     // 仅 1 件实例，index 5 越界 → 拒绝且不消耗
     const r = equipItemUpdate(state, 'nova', 'weapon', 'wasteland_weapon', 5);
     expect(r.result).toBe(false);
-    expect(r.state.equipment.nova.weapon).toBeNull();
+    expect(r.state.equipment.nova?.weapon ?? null).toBeNull();
     expect(r.state.equipmentInventory.wasteland_weapon).toHaveLength(1);
   });
 });
