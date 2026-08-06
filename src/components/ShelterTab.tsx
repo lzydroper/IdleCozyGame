@@ -33,6 +33,7 @@ import {
   X
 } from 'lucide-react';
 import { SmelterCard, AssemblerCard } from './FacilityCard';
+import DreamLeakAlertPanel from './DreamLeakAlertPanel';
 
 const getUpgradeIcon = (id: string) => {
   switch (id) {
@@ -351,6 +352,9 @@ const ShelterTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 梦魇入侵警报控制台（ticket 05：迁出工坊 → 避难所运营页顶部） */}
+      <DreamLeakAlertPanel />
 
       {/* 1. 避难所基建与挂机控制 */}
       <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40 relative overflow-hidden">

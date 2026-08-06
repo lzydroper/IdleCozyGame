@@ -786,9 +786,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {state.activeAlert.type === 'dream_leak' && activeTab !== 'workshop' && (
+      {state.activeAlert.type === 'dream_leak' && activeTab !== 'shelter' && (
         <div
-          onClick={() => handleTabClick('workshop')}
+          onClick={() => handleTabClick('shelter')}
           className="mx-4 mt-3 p-3 bg-red-950/80 border border-red-500/30 rounded-2xl flex items-center justify-between text-xs text-red-300 font-bold cursor-pointer animate-pulse"
         >
           <span className="flex items-center gap-1.5">
