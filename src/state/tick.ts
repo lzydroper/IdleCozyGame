@@ -2,6 +2,7 @@ import type { GameState, LogEntry } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility } from './facility';
+import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
@@ -97,7 +98,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       Object.entries(r.completed).forEach(([recipeId, count]) => {
         const recipe = AUTO_RECIPES[recipeId];
         logsToAdd.push({
-          text: `${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe?.name || recipeId} 的加工${count > 1 ? ` ×${count}` : ''}。`,
+          text: `${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe ? getRecipeDisplayName(recipe) : recipeId} 的加工${count > 1 ? ` ×${count}` : ''}。`,
           type: 'logistics'
         });
       });

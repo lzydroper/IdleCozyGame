@@ -376,5 +376,45 @@ describe('配方队列（ticket 13）', () => {
       expect(merged.shelter.facilities.assembler[0].queue).toEqual(['assemble_ration']);
       expect(merged.shelter.facilities.assembler[0].active).toBe(false);
     });
+
+    it('ticket 01 去重：被删除的自动配方 id 从设施队列清出（迁移映射目标为工坊侧手动配方，不再可自动生产）', () => {
+      const saved = {
+        ...baseState(),
+        shelter: {
+          ...baseState().shelter,
+          facilities: {
+            smelter: [
+              {
+                id: 'smelter',
+                name: '魔导冶炼炉',
+                level: 1,
+                queue: ['craft_nanite_slurry', 'smelt_alloy'], // craft_nanite_slurry 已被删除
+                currentProgress: 0,
+                timeLeft: 0,
+                active: true
+              }
+            ],
+            assembler: [
+              {
+                id: 'assembler',
+                name: '微型芯片组装台',
+                level: 2,
+                queue: ['craft_rusted_spring', 'assemble_ration'], // craft_rusted_spring 已被删除
+                currentProgress: 0,
+                timeLeft: 0,
+                active: true
+              }
+            ]
+          }
+        }
+      } as unknown as GameState;
+
+      const merged = mergeSavedState(saved, INITIAL_STATE);
+
+      expect(merged.shelter.facilities.smelter[0].queue).toEqual(['smelt_alloy']);
+      expect(merged.shelter.facilities.smelter[0].queue).not.toContain('craft_nanite_slurry');
+      expect(merged.shelter.facilities.assembler[0].queue).toEqual(['assemble_ration']);
+      expect(merged.shelter.facilities.assembler[0].queue).not.toContain('craft_rusted_spring');
+    });
   });
 });

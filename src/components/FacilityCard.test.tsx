@@ -36,17 +36,17 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
       </GameProvider>
     );
 
-    // 找到冶炼炉的配方下拉框（含"提炼合金金属板"选项）
+    // 找到冶炼炉的配方下拉框（含"合成 合金金属板 ×1"选项，ticket 01 文案推导）
     const smelterSelect = screen
       .getAllByRole('combobox')
-      .find(s => Array.from(s.querySelectorAll('option')).some(o => o.textContent?.includes('提炼合金金属板')));
+      .find(s => Array.from(s.querySelectorAll('option')).some(o => o.textContent?.includes('合成 合金金属板 ×1')));
     expect(smelterSelect).toBeDefined();
 
     fireEvent.change(smelterSelect!, { target: { value: 'smelt_alloy' } });
     fireEvent.click(screen.getAllByText('入队')[0]);
 
     // 队列中出现该配方条目（选项文本带耗时后缀，此处精确匹配到的即队列条目），且处于"等待启动"
-    expect(screen.getByText('提炼合金金属板')).toBeDefined();
+    expect(screen.getByText('合成 合金金属板 ×1')).toBeDefined();
     expect(screen.getByText('等待启动')).toBeDefined();
   });
 });

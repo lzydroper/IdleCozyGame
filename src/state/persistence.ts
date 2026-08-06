@@ -103,6 +103,18 @@ export const createFreshState = (initialState: GameState, now: number): GameStat
 });
 
 // 产线设施实例归一化（ticket 13）：旧存档（单设施对象 + activeRecipeId）→ 多台数组 + FIFO 队列
+// ticket 01 去重：被删除的自动配方 id 先经迁移映射（目标为工坊侧保留配方 id），
+// 映射后仍按 AUTO_RECIPES + facilityId 校验——目标为手动配方不在自动表，条目被清出而非触发未知 id 异常路径
+const RECIPE_ID_MIGRATIONS: Record<string, string> = {
+  craft_rusted_spring: 'rusted_spring_craft',
+  craft_nanite_slurry: 'nanite_slurry_recipe',
+  craft_plasma_arc: 'plasma_arc_craft',
+  craft_ration_deluxe: 'ration_deluxe_recipe',
+  assemble_energy: 'filter_refill',
+};
+
+export const migrateRecipeId = (id: string): string => RECIPE_ID_MIGRATIONS[id] ?? id;
+
 const normalizeFacilityUnit = (
   type: FacilityType,
   saved: any,
@@ -117,13 +129,14 @@ const normalizeFacilityUnit = (
     : typeof saved?.activeRecipeId === 'string' && saved.activeRecipeId
       ? [saved.activeRecipeId]
       : [];
+  const migratedQueue = rawQueue.map((id: unknown) => (typeof id === 'string' ? migrateRecipeId(id) : id));
   // 队首是否有效须看过滤前的原队首：若原队首已失效（在制进度作废），
   // 其 timeLeft 不得转嫁给后续有效配方
   const headWasValid =
-    typeof rawQueue[0] === 'string' &&
-    !!AUTO_RECIPES[rawQueue[0]] &&
-    AUTO_RECIPES[rawQueue[0]].facilityId === type;
-  const queue = rawQueue
+    typeof migratedQueue[0] === 'string' &&
+    !!AUTO_RECIPES[migratedQueue[0]] &&
+    AUTO_RECIPES[migratedQueue[0]].facilityId === type;
+  const queue = migratedQueue
     .filter((id: unknown) => typeof id === 'string' && AUTO_RECIPES[id]?.facilityId === type)
     .slice(0, getQueueCapacity(level));
   // 防御损坏存档：在制进度仅在队首配方仍有效时保留，并钳制到该配方单次耗时以内；

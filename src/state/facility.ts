@@ -15,14 +15,14 @@ export const getQueueCapacity = (level: number): number => Math.max(1, Math.floo
 export const getActualDuration = (recipeId: string, level: number): number => {
   const recipe = AUTO_RECIPES[recipeId];
   if (!recipe) return 0;
-  return Math.max(1, Math.floor(recipe.duration / (1 + level * 0.1)));
+  return Math.max(1, Math.floor((recipe.duration ?? 0) / (1 + level * 0.1)));
 };
 
-const canAfford = (recipe: { input: Record<string, number> }, inventory: Record<string, number>): boolean =>
-  Object.entries(recipe.input).every(([itemId, qty]) => (inventory[itemId] || 0) >= qty);
+const canAfford = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>): boolean =>
+  Object.entries(recipe.cost).every(([itemId, qty]) => (inventory[itemId] || 0) >= qty);
 
-const consumeInputs = (recipe: { input: Record<string, number> }, inventory: Record<string, number>): void => {
-  Object.entries(recipe.input).forEach(([itemId, qty]) => {
+const consumeInputs = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>): void => {
+  Object.entries(recipe.cost).forEach(([itemId, qty]) => {
     inventory[itemId] = (inventory[itemId] || 0) - qty;
   });
 };
@@ -78,7 +78,7 @@ export function processFacility(
       if (timeLeft > 0) break; // 本轮未完成，剩余进度保留到下次
 
       // 一轮完成：产出并入账，队首出队
-      Object.entries(head.output).forEach(([itemId, qty]) => {
+      Object.entries(head.reward).forEach(([itemId, qty]) => {
         inventory[itemId] = (inventory[itemId] || 0) + qty;
         produced[itemId] = (produced[itemId] || 0) + qty;
       });
@@ -175,7 +175,7 @@ export const removeQueueEntryUpdate = (
   if (removingHead && fac.timeLeft > 0) {
     const recipe = AUTO_RECIPES[fac.queue[0]];
     if (recipe) {
-      Object.entries(recipe.input).forEach(([itemId, qty]) => {
+      Object.entries(recipe.cost).forEach(([itemId, qty]) => {
         updatedInventory[itemId] = (updatedInventory[itemId] || 0) + qty;
       });
     }

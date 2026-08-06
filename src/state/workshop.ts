@@ -1,10 +1,48 @@
 import type { GameState, PlayerStats } from '../types/game';
+import type { Recipe } from '../types/config';
+import type { ItemCategory } from '../data/items';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
+
+// === 配方文案/分类推导（ticket 01：name/description 已删除，从产出物完全推导） ===
+
+// reward 主产物：数量最大者（现有配方均为单产物）
+export const getRecipeMainReward = (recipe: Recipe): [string, number] | null => {
+  const entries = Object.entries(recipe.reward || {});
+  if (entries.length === 0) return null;
+  return entries.reduce((a, b) => (b[1] > a[1] ? b : a));
+};
+
+// 显示名：「合成 {主产物名} ×N」；无 reward 配方兜底（充能 → capsuleTarget 产物名；其他 → displayName）
+export const getRecipeDisplayName = (recipe: Recipe): string => {
+  const main = getRecipeMainReward(recipe);
+  if (main) {
+    const label = ITEMS_CONFIG[main[0]]?.name || main[0];
+    return `合成 ${label} ×${main[1]}`;
+  }
+  if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) {
+    const label = ITEMS_CONFIG[recipe.capsuleTarget]?.name || recipe.capsuleTarget;
+    return `合成 ${label}（充能）`;
+  }
+  return `合成 ${recipe.displayName || recipe.id}`;
+};
+
+// 描述：取主产物的物品描述；无 reward 配方无描述
+export const getRecipeDescription = (recipe: Recipe): string => {
+  const main = getRecipeMainReward(recipe);
+  return main ? ITEMS_CONFIG[main[0]]?.description || '' : '';
+};
+
+// 分类：显式 category 优先，否则从 reward 主产物的物品类别推导
+export const getRecipeCategory = (recipe: Recipe): ItemCategory | 'building' => {
+  if (recipe.category) return recipe.category;
+  const main = getRecipeMainReward(recipe);
+  return (main ? ITEMS_CONFIG[main[0]]?.category : undefined) ?? 'resource';
+};
 
 // 工坊制造：校验材料后扣费，处理胶囊充能/温室扩建等特殊配方
 export const craftItemUpdate = (state: GameState, recipeId: string): UpdateResult<boolean> => {

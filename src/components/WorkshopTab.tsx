@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
+import { getRecipeDisplayName, getRecipeDescription } from '../state/workshop';
 import GameIcon from './GameIcon';
 import ItemGridItem from './ItemGridItem';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
@@ -250,7 +251,7 @@ const WorkshopTab: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <h4 className="font-black text-sm text-white flex items-center gap-1.5">
                       <GameIcon type="item" id={getRecipeIconId(recipe)} className="w-4 h-4 mr-0.5" />
-                      {recipe.name}
+                      {getRecipeDisplayName(recipe)}
                       {recipe.id === 'sanity_capsule' && (
                         <span className="text-[9px] text-purple-400 font-extrabold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/30">
                           [当前充能: {state.exploration.capsulesCharge.sanity_capsule || 0}次]
@@ -270,7 +271,7 @@ const WorkshopTab: React.FC = () => {
                       制造合成
                     </button>
                   </div>
-                  <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{recipe.description}</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{getRecipeDescription(recipe)}</p>
                   {locked && blueprintMeta && (
                     <p className="text-[9px] text-red-400/80 mt-1 font-bold leading-relaxed">
                       <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />需要图纸：{blueprintMeta.name}（旧城废墟 BOSS 掉落）

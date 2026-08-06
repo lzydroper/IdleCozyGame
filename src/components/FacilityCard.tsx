@@ -5,6 +5,7 @@ import { AUTO_RECIPES } from '../data/autoRecipes';
 import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
 import { getQueueCapacity, getActualDuration } from '../state/facility';
+import { getRecipeDisplayName } from '../state/workshop';
 import GameIcon from './GameIcon';
 import type { AutomationFacility, FacilityType } from '../types/game';
 import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers } from 'lucide-react';
@@ -109,7 +110,7 @@ function FacilityUnitCard({
 
   const headRecipe = fac.queue.length > 0 ? AUTO_RECIPES[fac.queue[0]] : null;
   const isPaused = !!headRecipe && fac.timeLeft === 0 &&
-    !Object.entries(headRecipe.input).every(([itemId, qty]) => getInvQty(itemId) >= qty);
+    !Object.entries(headRecipe.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty);
   const isRunning = fac.active !== false && fac.queue.length > 0;
   const progress = fac.currentProgress || 0;
   const cycleTime = headRecipe ? getActualDuration(headRecipe.id, level) : 0;
@@ -202,7 +203,7 @@ function FacilityUnitCard({
               <option value="">— 选择配方 —</option>
               {recipes.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.name} ({getActualDuration(r.id, level)}s)
+                  {getRecipeDisplayName(r)} ({getActualDuration(r.id, level)}s)
                 </option>
               ))}
             </select>
@@ -250,11 +251,11 @@ function FacilityUnitCard({
                         : 'bg-zinc-900/40 border-zinc-800/60'
                     }`}
                   >
-                    <GameIcon type="item" id={Object.keys(r.output)[0] || recipeId} className="w-3.5 h-3.5 flex-shrink-0" title={r.name} />
+                    <GameIcon type="item" id={Object.keys(r.reward)[0] || recipeId} className="w-3.5 h-3.5 flex-shrink-0" title={getRecipeDisplayName(r)} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[9px] font-bold truncate ${isHead ? 'text-zinc-200' : 'text-zinc-400'}`}>
-                          {r.name}
+                          {getRecipeDisplayName(r)}
                         </span>
                         {isHead ? (
                           headPaused ? (
@@ -312,7 +313,7 @@ function FacilityUnitCard({
               : isPaused
               ? '材料不足 · 自动暂停'
               : fac.timeLeft > 0
-              ? `${headRecipe?.name || '加工'}中 ${fac.timeLeft}s`
+              ? `${headRecipe ? getRecipeDisplayName(headRecipe) : '加工'}中 ${fac.timeLeft}s`
               : '正在启动…'}
           </div>
           <button
@@ -341,11 +342,11 @@ function FacilityUnitCard({
         {/* ── 当前队首配方详情 ── */}
         {headRecipe && (
           <div className="space-y-1.5 pt-1 border-t border-zinc-800/50">
-            <RecipeRow label="消耗" items={headRecipe.input} getInvQty={getInvQty} accent="rose" />
-            <RecipeRow label="产出" items={headRecipe.output} getInvQty={getInvQty} accent="emerald" />
+            <RecipeRow label="消耗" items={headRecipe.cost} getInvQty={getInvQty} accent="rose" />
+            <RecipeRow label="产出" items={headRecipe.reward} getInvQty={getInvQty} accent="emerald" />
             <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
               <TrendingUp className="w-2.5 h-2.5" />
-              {Object.entries(headRecipe.output).map(([id, qty]) => (
+              {Object.entries(headRecipe.reward).map(([id, qty]) => (
                 <span key={id} className="flex items-center gap-0.5">
                   <GameIcon type="item" id={id} className="w-2.5 h-2.5" />
                   {(qty * (cycleTime > 0 ? 60 / cycleTime : 0)).toFixed(1)}/min

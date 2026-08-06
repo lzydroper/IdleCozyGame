@@ -195,15 +195,6 @@ export interface GameState {
 // 设施类型：冶炼炉 / 组装台（ticket 13 每种设施可扩建多台并行）
 export type FacilityType = 'smelter' | 'assembler';
 
-export interface AutoRecipe {
-  id: string;
-  name: string;
-  input: Record<string, number>;
-  output: Record<string, number>;
-  duration: number; // 单次生产耗时（秒）
-  facilityId: FacilityType;
-}
-
 // 产线设施实例（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级
 export interface AutomationFacility {
   id: FacilityType;               // 设施类型 id: 'smelter' | 'assembler'
