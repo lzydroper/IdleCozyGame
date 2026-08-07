@@ -26,5 +26,7 @@ export interface ItemMeta {
     pollution?: number;
     /** 梦境充能（ADR-0016）：消耗 1 个物品 → 对应胶囊充能次数 +N */
     capsuleCharge?: Partial<Record<'sanity_capsule' | 'warp_capsule', number>>;
+    /** 英雄经验（15 号）：消耗 1 个物品 → 英雄获得 N 经验（经验手册） */
+    heroExp?: number;
   };
 }

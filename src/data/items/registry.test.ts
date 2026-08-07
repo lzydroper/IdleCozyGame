@@ -19,10 +19,10 @@ describe('物品注册表一致性', () => {
     }
   });
 
-  it('按映射表归类：11 道具 / 39 资源 / 14 装备 / 2+英雄数 碎片', () => {
+  it('按映射表归类：12 道具 / 39 资源 / 14 装备 / 2+英雄数 碎片', () => {
     const byCategory = (cat: string) =>
       Object.values(ITEMS_CONFIG).filter(m => m.category === cat).length;
-    expect(byCategory('item')).toBe(11);
+    expect(byCategory('item')).toBe(12);
     expect(byCategory('resource')).toBe(39);
     expect(byCategory('equipment')).toBe(14);
     expect(byCategory('shard')).toBe(2 + Object.keys(HEROES_CONFIG).length);

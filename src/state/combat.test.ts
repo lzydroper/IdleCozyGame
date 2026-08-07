@@ -8,7 +8,9 @@ import { applyTick } from './tick';
 import {
   heroMaxHp,
   heroAttack,
+  heroDefense,
   applyHeroExp,
+  consumeExpTomesUpdate,
   simulateBattle,
   startCombatUpdate,
   setPartyUpdate,
@@ -35,12 +37,20 @@ const unit = (id: string, hp: number, attack: number, defense: number, name = id
   id, name, hp, maxHp: hp, attack, defense
 });
 
-describe('Hero stat scaling (等级成长)', () => {
-  it('scales maxHp and attack with level', () => {
-    const cfg = HEROES_CONFIG.nova;
+describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)', () => {
+  it('scales maxHp / attack / defense with level by class growth', () => {
+    const cfg = HEROES_CONFIG.nova; // attacker：每级 生命 +6 / 攻击 +4 / 防御 +1
     expect(heroMaxHp(cfg, 1)).toBe(cfg.baseHp);
-    expect(heroMaxHp(cfg, 5)).toBe(cfg.baseHp + 4 * COMBAT_CONFIG.hpPerLevel);
-    expect(heroAttack(cfg, 5)).toBe(cfg.baseAttack + 4 * COMBAT_CONFIG.attackPerLevel);
+    expect(heroMaxHp(cfg, 5)).toBe(cfg.baseHp + 4 * 6);
+    expect(heroAttack(cfg, 5)).toBe(cfg.baseAttack + 4 * 4);
+    expect(heroDefense(cfg, 5)).toBe(cfg.baseDefense + 4 * 1);
+  });
+
+  it('applies level milestones once the level is reached (英雄级微调)', () => {
+    const cfg = HEROES_CONFIG.nova; // { 10: { attack: 5 }, 20: { critRate: 0.02 } }
+    expect(heroAttack(cfg, 9)).toBe(cfg.baseAttack + 8 * 4);
+    expect(heroAttack(cfg, 10)).toBe(cfg.baseAttack + 9 * 4 + 5);
+    expect(heroAttack(cfg, 25)).toBe(cfg.baseAttack + 24 * 4 + 5);
   });
 
   it('applies exp and levels up, growing maxHp and keeping hp delta', () => {
@@ -403,5 +413,40 @@ describe('Stamina regen (体力随时间恢复)', () => {
 
     const full = applyTick(makeState({ stamina: COMBAT_CONFIG.maxStamina }), state.lastTick + 3000);
     expect(full.stamina).toBe(COMBAT_CONFIG.maxStamina);
+  });
+});
+
+describe('consumeExpTomesUpdate（15 号：经验手册升级）', () => {
+  // 每本经验 = ITEMS_CONFIG.exp_tome.useEffect.heroExp = 100
+
+  it('消耗 1 本 → 100 经验 → Lv.1 升到 Lv.2，天赋点 +1', () => {
+    const state = makeState({ inventory: { exp_tome: 1 }, heroes: { nova: createInitialHero('nova') } });
+    const r = consumeExpTomesUpdate(state, 'nova', 1);
+
+    expect(r.result).toBe(true);
+    expect(r.state.inventory.exp_tome).toBe(0);
+    expect(r.state.heroes.nova.level).toBe(2);
+    expect(r.state.heroes.nova.exp).toBe(0); // 100 经验正好升一级
+    expect(r.state.heroes.nova.talentPoints).toBe(1);
+  });
+
+  it('消耗 2 本 → 200 经验 → Lv.2 剩 100（溢出自动累计）', () => {
+    const state = makeState({ inventory: { exp_tome: 2 }, heroes: { nova: createInitialHero('nova') } });
+    const r = consumeExpTomesUpdate(state, 'nova', 2);
+
+    expect(r.state.heroes.nova.level).toBe(2);
+    expect(r.state.heroes.nova.exp).toBe(100);
+    expect(r.state.inventory.exp_tome).toBe(0);
+  });
+
+  it('手册不足 / 无手册 / 未知英雄 → 状态不变', () => {
+    const s1 = makeState({ inventory: { exp_tome: 1 }, heroes: { nova: createInitialHero('nova') } });
+    expect(consumeExpTomesUpdate(s1, 'nova', 2).state).toBe(s1);
+
+    const s2 = makeState({ inventory: {}, heroes: { nova: createInitialHero('nova') } });
+    expect(consumeExpTomesUpdate(s2, 'nova', 1).state).toBe(s2);
+
+    const s3 = makeState();
+    expect(consumeExpTomesUpdate(s3, 'ghost', 1).state).toBe(s3);
   });
 });

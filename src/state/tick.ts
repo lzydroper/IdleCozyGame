@@ -19,6 +19,21 @@ interface TickLogEntry {
 
 // 游戏全局 Tick：推进发电机/回收站/温室/流水线/挂机探索/天数
 export const applyTick = (prev: GameState, now: number): GameState => {
+  // 13 号 R3：无活跃系统且无需推进时返回原引用（React setState bailout，消除每秒整树重渲染）。
+  // 活跃系统 = 发电机/回收站/温室作物/流水线设施/挂机探索/梦魇冻结；另需推进天数或体力未满。
+  const hasActiveSystems =
+    prev.shelter.generatorLevel > 0 ||
+    prev.shelter.recyclerLevel > 0 ||
+    prev.greenhouse.slots.some(s => s.cropId) ||
+    Object.values(prev.shelter.facilities).some(units => units.some(u => (u.queue?.length ?? 0) > 0)) ||
+    (prev.shelter.expedition.locationId != null && prev.shelter.assignedExplorerId != null) ||
+    prev.activeAlert.type === 'dream_leak';
+  const needsStaminaTick = (prev.stamina ?? 0) < (prev.maxStamina || COMBAT_CONFIG.maxStamina);
+  const needsDayTick = now - prev.dayStartTime >= GAME_CONSTANTS.GAME_DAY_SECONDS * 1000;
+  if (!hasActiveSystems && !needsStaminaTick && !needsDayTick) {
+    return prev;
+  }
+
   // 梦魇入侵时冻结温室
   if (prev.activeAlert.type === 'dream_leak') {
     return { ...prev, lastTick: now };

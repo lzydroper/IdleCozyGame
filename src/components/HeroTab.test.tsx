@@ -231,4 +231,56 @@ describe('HeroTab Component', () => {
     expect(saved.inventory.arcane_orb).toBe(0);
     expect(screen.getAllByText(/觉醒·诺娃/).length).toBeGreaterThan(0);
   });
+
+  it('opens the hero dossier from the duty card (ticket 10)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
+
+    // 后勤驻守特长卡片 → 英雄档案弹窗
+    fireEvent.click(screen.getByText('后勤驻守特长'));
+    expect(screen.getByText('英雄档案')).toBeDefined();
+    expect(screen.getByText(/职阶 · 进攻者/)).toBeDefined();
+    expect(screen.getByText(/阵营 · 机械/)).toBeDefined();
+
+    // 关闭
+    fireEvent.click(screen.getByTitle('关闭'));
+    expect(screen.queryByText('英雄档案')).toBeNull();
+  });
+
+  it('level-up consumes one exp_tome instead of free leveling (ticket 15)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.inventory.exp_tome = 1;
+    localStorage.setItem(HERO_SAVE_KEY, JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <HeroTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText('英雄列表'));
+    fireEvent.click(screen.getByTestId('hero-card-nova'));
+
+    const before = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
+    expect(before.heroes.nova.level).toBe(1);
+
+    fireEvent.click(screen.getByText('升级'));
+
+    const after = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
+    expect(after.heroes.nova.level).toBe(2);
+    expect(after.inventory.exp_tome).toBe(0);
+  });
 });

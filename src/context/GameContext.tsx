@@ -29,6 +29,7 @@ import {
 } from '../state/facility';
 import { applyTick } from '../state/tick';
 import { summonUpdate, summonBatchUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
+import { consumeExpTomesUpdate } from '../state/combat';
 import {
   equipItemUpdate,
   unequipItemUpdate,
@@ -117,6 +118,7 @@ interface GameContextType {
   resetTalents: (heroId: string) => boolean;
   starUpHero: (heroId: string) => StarUpFailure | true;
   awakenHero: (heroId: string) => AwakenFailure | true;
+  levelUpWithTome: (heroId: string, count: number) => boolean;
   startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
@@ -568,6 +570,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  // 消耗经验手册提升英雄等级（15 号）
+  const levelUpWithTome = (heroId: string, count: number): boolean => {
+    const r = consumeExpTomesUpdate(stateRef.current, heroId, count);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result === true;
+  };
+
   const [isSummonOpen, setIsSummonOpen] = useState(false);
   const openSummonModal = () => setIsSummonOpen(true);
   const closeSummonModal = () => setIsSummonOpen(false);
@@ -789,6 +800,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stopExpedition,
       summonHero,
       summonBatch,
+      levelUpWithTome,
       isSummonOpen,
       openSummonModal,
       closeSummonModal,

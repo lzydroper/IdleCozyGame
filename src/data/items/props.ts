@@ -1,6 +1,6 @@
 // 道具（可主动使用）：食物、药剂、可部署装置等（ADR-0014 分类语义）。
 import {
-  Cross, CupSoda, FlaskConical, Lamp, Orbit, Package, PackageOpen, Pill,
+  BookOpen, Cross, CupSoda, FlaskConical, Lamp, Orbit, Package, PackageOpen, Pill,
   Soup, Syringe, Zap,
 } from 'lucide-react';
 import type { ItemMeta } from './types';
@@ -17,4 +17,5 @@ export const PROPS_ITEMS: Record<string, ItemMeta> = {
   nanite_injector: { id: 'nanite_injector', name: '纳米修复注射针', description: '治愈战斗中重伤的英雄，使其恢复至满状态。', category: 'item', sprite: { sheet: 'supplies', index: 7 }, icon: Syringe },
   purifying_serum: { id: 'purifying_serum', name: '心灵净化血清', description: '清除大量心灵污染度，稳定理智的净化血清。', category: 'item', sprite: { sheet: 'supplies', index: 8 }, icon: FlaskConical, useEffect: { stats: { sanity: 30 }, pollution: -30 } },
   dream_lantern: { id: 'dream_lantern', name: '引梦魔灯', description: '散发深蓝色星光光晕、带有魔导浮雕的复古手提挂灯', category: 'item', sprite: { sheet: 'supplies', index: 15 }, icon: Lamp, useEffect: { stats: { sanity: 10 } } },
+  exp_tome: { id: 'exp_tome', name: '经验手册', description: '记载战斗心得的战术手册，使用后为英雄提供 100 点经验。', category: 'item', icon: BookOpen, useEffect: { heroExp: 100 } },
 };

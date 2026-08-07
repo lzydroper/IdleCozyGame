@@ -12,14 +12,19 @@ import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
 import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
-import { applyHeroExp } from '../state/combat';
+import { applyHeroExp, heroMaxHp, heroAttack, heroDefense } from '../state/combat';
 import { COMBAT_CONFIG } from '../data/combatConfig';
-import { calculateEntityStats } from '../state/statSystem';
+import { calculateEntityStats, type CalculatedEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
 import HeroTalentPanel from './HeroTalentPanel';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
+import HeroDossierModal from './HeroDossierModal';
+import ExpLevelUpModal from './ExpLevelUpModal';
+
+// 空装备默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，13 号 R2）
+const EMPTY_EQUIP = { weapon: null, armor: null, trinket: null } as const;
 import { UI_TOKENS } from '../data/uiConstants';
 import GameIcon from './GameIcon';
 import {
@@ -52,7 +57,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   onSelectHero,
   onClose
 }) => {
-  const { state, setState, starUpHero, awakenHero } = useGame();
+  const { state, setState, starUpHero, awakenHero, levelUpWithTome } = useGame();
   const { showToast } = useToast();
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
@@ -60,39 +65,46 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const [selectedEquipSlot, setSelectedEquipSlot] = useState<EquipmentSlot | null>(null);
   const [showEquipDetailModal, setShowEquipDetailModal] = useState(false);
   const [showEquipSelectorModal, setShowEquipSelectorModal] = useState(false);
+  const [showDossierModal, setShowDossierModal] = useState(false);
+  const [showExpLevelUpModal, setShowExpLevelUpModal] = useState(false);
 
-  if (!isOpen || !heroId) return null;
-
-  const heroIds = Object.keys(state.heroes);
-  const currentIndex = heroIds.indexOf(heroId);
-  const config = HEROES_CONFIG[heroId];
-  const hero = state.heroes[heroId];
-  if (!config || !hero) return null;
-
-  const heroEquip = state.equipment?.[heroId] || { weapon: null, armor: null, trinket: null };
-  const awakenedName = getAwakenedName(heroId, hero) || config.name;
+  // hooks 前置（13 号 R2：useMemo 必须无条件调用，修复 rules-of-hooks；EMPTY_EQUIP 常量稳定依赖）
+  const hero = state.heroes[heroId ?? ''];
+  const config = heroId ? HEROES_CONFIG[heroId] : undefined;
+  const heroEquip = (heroId && state.equipment?.[heroId]) || EMPTY_EQUIP;
+  const awakenedName = hero && config ? getAwakenedName(heroId || '', hero) || config.name : '';
 
   // 装备加成属性（含同阵营 30% 穿戴加成）
   const { flat: equipFlat } = useMemo(
-    () => getHeroEquipmentBonus(heroEquip, config.faction),
-    [heroEquip, config.faction]
+    () => getHeroEquipmentBonus(heroEquip, config?.faction ?? 'mechanical'),
+    [heroEquip, config?.faction]
   );
 
-  // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)
+  // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)：统一走职阶成长 + 里程碑 + 装备加成，元属性增益首次实装（16 号）
   const calculatedStats = useMemo(
     () =>
-      calculateEntityStats({
-        baseAttributes: {
-          attack: config.baseAttack + (hero.level - 1) * 3 + (equipFlat.attack || 0),
-          defense: config.baseDefense + (hero.level - 1) * 1 + (equipFlat.defense || 0),
-          maxHp: config.baseHp + (hero.level - 1) * 10 + (equipFlat.maxHp || 0),
-          maxMp: 50,
-          critRate: 0.05,
-          critDmg: 1.50
-        }
-      }),
-    [config.baseAttack, config.baseDefense, config.baseHp, hero.level, equipFlat]
+      config && hero
+        ? calculateEntityStats({
+            baseAttributes: {
+              attack: heroAttack(config, hero.level) + (equipFlat.attack || 0),
+              defense: heroDefense(config, hero.level) + (equipFlat.defense || 0),
+              maxHp: heroMaxHp(config, hero.level) + (equipFlat.maxHp || 0),
+              maxMp: 50,
+              critRate: 0.05,
+              critDmg: 1.50
+            },
+            primaryAttributes: config.primaryAttributes
+          })
+        : null,
+    [config, hero, equipFlat]
   );
+
+  if (!isOpen || !heroId || !hero || !config) return null;
+  // early return 已保证 config/hero 非空，calculatedStats 必非空
+  const stats = calculatedStats as CalculatedEntityStats;
+
+  const heroIds = Object.keys(state.heroes);
+  const currentIndex = heroIds.indexOf(heroId);
 
   const soulCount = state.inventory[`shard_${heroId}`] || 0;
   const resonanceCount = state.inventory.resonance_shard || 0;
@@ -167,21 +179,17 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     }
   };
 
-  // 2. 【升级】
+  // 2. 【升级】（15 号：消耗 1 本经验手册，不再无消耗直升）
   const handleLevelUp = () => {
-    setState(prev => {
-      const h = prev.heroes[heroId];
-      if (!h) return prev;
-      const leveled = applyHeroExp(h, config, h.level * COMBAT_CONFIG.expPerLevel);
-      return {
-        ...prev,
-        heroes: {
-          ...prev.heroes,
-          [heroId]: leveled
-        }
-      };
-    });
-    showToast(`【${config.name}】升级到 Lv.${hero.level + 1}！`, 'success');
+    const ok = levelUpWithTome(heroId, 1);
+    if (!ok) {
+      showToast('需要【经验手册】才能升级 —— 战斗 / 探险掉落可获得。', 'warning');
+      return;
+    }
+    const expPerTome = ITEMS_CONFIG.exp_tome?.useEffect?.heroExp ?? 0;
+    const h = state.heroes[heroId];
+    const leveled = h ? applyHeroExp(h, config, expPerTome) : null;
+    showToast(`【${config.name}】消耗 1 本经验手册，升至 Lv.${leveled?.level ?? '?'}！`, 'success');
   };
 
   // 3. 【升星 / 觉醒】
@@ -363,31 +371,28 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
 
               {/* 中间新增：经验进度条 & 后勤驻守/传记卡片 */}
               <div className="w-full flex flex-col gap-1 px-0.5 my-auto">
-                {/* 经验进度条 */}
+                {/* 经验数值（11 号：删除进度条直接显示数值，消除切换英雄时的宽度重算与视觉跳动） */}
                 <div className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 flex flex-col gap-0.5 text-left shadow-inner">
                   <div className="flex items-center justify-between text-[7.5px] font-bold text-zinc-400 px-0.5">
                     <span className="text-amber-400/90 font-medium">经验值</span>
                     <span className="text-amber-300 font-mono">
-                      {hero.exp}/{hero.level * COMBAT_CONFIG.expPerLevel}
+                      {hero.exp} / {hero.level * COMBAT_CONFIG.expPerLevel}
                     </span>
-                  </div>
-                  <div className="w-full h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-850">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, (hero.exp / (hero.level * COMBAT_CONFIG.expPerLevel)) * 100))}%`
-                      }}
-                    />
                   </div>
                 </div>
 
-                {/* 后勤驻守特长 / 英雄背景 */}
-                <div className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 text-left flex flex-col gap-0.5 shadow-sm">
+                {/* 后勤驻守特长 / 英雄背景 —— 点击打开英雄档案（10 号） */}
+                <div
+                  onClick={() => setShowDossierModal(true)}
+                  className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 text-left flex flex-col gap-0.5 shadow-sm cursor-pointer hover:border-amber-500/50 transition-colors group"
+                  title="查看英雄档案"
+                >
                   {config.dutyMeta ? (
                     <>
                       <div className="text-[7.5px] font-black text-amber-400/90 flex items-center gap-1">
                         <Award className="w-2.5 h-2.5 text-amber-400" />
                         后勤驻守特长
+                        <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
                       </div>
                       <div className="text-[7.5px] font-semibold text-zinc-300 leading-tight">
                         {config.dutyMeta.facilitySpeedMultiplier && `生产速度 +${Math.round(config.dutyMeta.facilitySpeedMultiplier * 100)}%`}
@@ -400,6 +405,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                       <div className="text-[7.5px] font-black text-zinc-400 flex items-center gap-1">
                         <Award className="w-2.5 h-2.5 text-zinc-400" />
                         英雄简述
+                        <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
                       </div>
                       <p className="text-[7.5px] text-zinc-400 leading-tight italic line-clamp-2">
                         "{config.backstory}"
@@ -409,10 +415,18 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* 中列底部按钮: 升级 */}
+              {/* 中列底部按钮: 批量升级 + 升级（15 号：升级消耗经验手册） */}
+              <button
+                onClick={() => setShowExpLevelUpModal(true)}
+                className="w-full py-1 rounded-lg text-[7.5px] font-bold text-amber-300/80 bg-amber-950/30 hover:bg-amber-900/60 hover:border-amber-500/40 border border-amber-500/30 cursor-pointer active:scale-95 truncate mt-0.5"
+                title={`批量升级（持有经验手册 ×${state.inventory.exp_tome || 0}）`}
+              >
+                批量升级
+              </button>
               <button
                 onClick={handleLevelUp}
                 className="w-full py-1.5 rounded-lg text-[8.5px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-0.5"
+                title="消耗 1 本经验手册升级"
               >
                 升级
               </button>
@@ -503,7 +517,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1">
                     <Heart className="w-3 h-3 text-rose-400" /> 生命
                   </span>
-                  <span className="font-black text-rose-300">{calculatedStats.maxHp}</span>
+                  <span className="font-black text-rose-300">{stats.maxHp}</span>
                 </div>
 
                 {/* 2. 攻击 */}
@@ -511,7 +525,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1">
                     <Sword className="w-3 h-3 text-amber-400" /> 攻击
                   </span>
-                  <span className="font-black text-amber-300">{calculatedStats.attack}</span>
+                  <span className="font-black text-amber-300">{stats.attack}</span>
                 </div>
 
                 {/* 3. 防御 */}
@@ -519,7 +533,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1">
                     <Shield className="w-3 h-3 text-sky-400" /> 防御
                   </span>
-                  <span className="font-black text-sky-300">{calculatedStats.defense}</span>
+                  <span className="font-black text-sky-300">{stats.defense}</span>
                 </div>
 
                 {/* 4. 魔力 */}
@@ -527,7 +541,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1">
                     <Wand2 className="w-3 h-3 text-cyan-400" /> 魔力
                   </span>
-                  <span className="font-black text-cyan-300">{calculatedStats.maxMp}</span>
+                  <span className="font-black text-cyan-300">{stats.maxMp}</span>
                 </div>
 
                 {/* 5. 暴击 */}
@@ -536,7 +550,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                     <Sparkles className="w-3 h-3 text-purple-400" /> 暴击
                   </span>
                   <span className="font-black text-purple-300">
-                    {(calculatedStats.critRate * 100).toFixed(0)}%
+                    {(stats.critRate * 100).toFixed(0)}%
                   </span>
                 </div>
 
@@ -546,7 +560,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                     <Flame className="w-3 h-3 text-amber-500" /> 暴伤
                   </span>
                   <span className="font-black text-amber-200">
-                    {(calculatedStats.critDmg * 100).toFixed(0)}%
+                    {(stats.critDmg * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
@@ -559,7 +573,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       <DetailedStatsModal
         isOpen={showDetailedStats}
         heroName={awakenedName}
-        stats={calculatedStats}
+        stats={stats}
         onClose={() => setShowDetailedStats(false)}
       />
 
@@ -609,6 +623,16 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           onSelectSuccess={() => setShowEquipSelectorModal(false)}
         />
       )}
+
+      {/* 英雄档案弹窗（10 号）：后勤驻守特长卡片入口 */}
+      <HeroDossierModal isOpen={showDossierModal} heroId={heroId} onClose={() => setShowDossierModal(false)} />
+
+      {/* 批量升级弹窗（15 号）：消耗经验手册 */}
+      <ExpLevelUpModal
+        isOpen={showExpLevelUpModal}
+        heroId={heroId}
+        onClose={() => setShowExpLevelUpModal(false)}
+      />
     </div>
   );
 

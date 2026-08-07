@@ -10,6 +10,8 @@ import type { AwakenSkillConfig } from '../data/awakening';
 import { aggregateBonus } from './bonds';
 import type { EquipmentStats } from '../data/equipment';
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
+import { ITEMS_CONFIG } from '../data/items';
+import { getHeroGrowth, getLevelMilestoneBonus } from '../data/heroGrowth';
 import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenSkill } from './awakening';
 import type { UpdateResult } from './types';
@@ -35,11 +37,24 @@ export interface CombatOutcome {  settlement: CombatSettlement | null;
 }
 
 // 英雄属性成长：随等级线性提升（装备/天赋见 ticket 10/11）
-export const heroMaxHp = (config: HeroConfig, level: number): number =>
-  config.baseHp + (level - 1) * COMBAT_CONFIG.hpPerLevel;
+// 等级成长（16 号，08 决策 D1）：读职阶基础成长系数 + 英雄级里程碑加成（每级唯一真相源，详情面板共用）
+export const heroMaxHp = (config: HeroConfig, level: number): number => {
+  const g = getHeroGrowth(config);
+  const bonus = getLevelMilestoneBonus(config, level);
+  return config.baseHp + (level - 1) * g.hpPerLevel + (bonus.maxHp ?? 0);
+};
 
-export const heroAttack = (config: HeroConfig, level: number): number =>
-  config.baseAttack + (level - 1) * COMBAT_CONFIG.attackPerLevel;
+export const heroAttack = (config: HeroConfig, level: number): number => {
+  const g = getHeroGrowth(config);
+  const bonus = getLevelMilestoneBonus(config, level);
+  return config.baseAttack + (level - 1) * g.attackPerLevel + (bonus.attack ?? 0);
+};
+
+export const heroDefense = (config: HeroConfig, level: number): number => {
+  const g = getHeroGrowth(config);
+  const bonus = getLevelMilestoneBonus(config, level);
+  return config.baseDefense + (level - 1) * g.defensePerLevel + (bonus.defense ?? 0);
+};
 
 // 经验入账：累计经验并升级（升到下一级所需经验 = 当前等级 * expPerLevel）；
 // 每次升级获得 1 天赋点（ticket 11：天赋点仅来自战斗经验）
@@ -820,6 +835,26 @@ export const healWoundedHeroesUpdate = (state: GameState, heroIds: string[]): Up
     nextHeroes[id] = { ...hero, wounded: false, hp: hero.maxHp };
   }
   return { state: { ...state, inventory: nextInventory, heroes: nextHeroes }, result: true };
+};
+
+// 经验手册使用（15 号）：消耗 exp_tome × count，为英雄增加 count × 每本经验（applyHeroExp 复用，升级发天赋点；溢出自动累计）。
+// 每本经验值读自 ITEMS_CONFIG（useEffect.heroExp，数据驱动）。数量不足 / 无手册 / 未知英雄 → NO_OP。
+export const consumeExpTomesUpdate = (state: GameState, heroId: string, count: number): UpdateResult<boolean> => {
+  if (count <= 0) return NO_OP(state);
+  const hero = state.heroes[heroId];
+  const config = HEROES_CONFIG[heroId];
+  if (!hero || !config) return NO_OP(state);
+  const held = state.inventory.exp_tome || 0;
+  if (held < count) return NO_OP(state);
+  const expPerTome = ITEMS_CONFIG.exp_tome?.useEffect?.heroExp ?? 0;
+  if (expPerTome <= 0) return NO_OP(state);
+
+  const leveled = applyHeroExp(hero, config, expPerTome * count);
+  const nextInventory = { ...state.inventory, exp_tome: held - count };
+  return {
+    state: { ...state, inventory: nextInventory, heroes: { ...state.heroes, [heroId]: leveled } },
+    result: true
+  };
 };
 
 // 体力恢复（tick 与离线结算共用）：随时间线性恢复，封顶体力上限

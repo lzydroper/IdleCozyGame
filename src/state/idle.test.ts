@@ -115,8 +115,8 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
       stamina: 100,
       inventory: { scrap_metal: 0, glow_fiber: 0 }
     });
-    // 每场：scrap 命中取 max(2) + glow_fiber 命中取 max(2) + enhance_stone 命中取 max(2) + 灵魂残响取 max(4)
-    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
+    // 每场：scrap 命中取 max(2) + glow_fiber 命中取 max(2) + enhance_stone 命中取 max(2) + exp_tome 命中取 1 + 灵魂残响取 max(4)
+    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
     // 1000s / 20s = 50 场（时间允许），但体力 100 / 10 = 10 场 → 体力受限
     const { state: next, result } = settleIdleUpdate(state, 1000, rng);
 
@@ -129,13 +129,15 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
     expect(result.autoStopped).toBe(true);
     expect(result.stopReason).toBe('stamina');
     expect(next.combat.idle.zoneId).toBeNull();
-    // 掉落累计入账（10 场 × scrap 2 / glow_fiber 2 / enhance_stone 2）
+    // 掉落累计入账（10 场 × scrap 2 / glow_fiber 2 / enhance_stone 2 / exp_tome 1）
     expect(result.drops.scrap_metal).toBe(20);
     expect(result.drops.glow_fiber).toBe(20);
     expect(result.drops.enhance_stone).toBe(20);
+    expect(result.drops.exp_tome).toBe(10);
     expect(next.inventory.scrap_metal).toBe(20);
     expect(next.inventory.glow_fiber).toBe(20);
     expect(next.inventory.enhance_stone).toBe(20);
+    expect(next.inventory.exp_tome).toBe(10);
     // 灵魂残响与经验累计
     expect(result.soulEchoesGained).toBe(40);
     expect(next.inventory.soul_echo).toBe(40);
@@ -225,7 +227,7 @@ describe('calculateDetailedOfflineProgress + 挂机 (重连结算)', () => {
       stamina: 100,
       inventory: { scrap_metal: 0, glow_fiber: 0 }
     });
-    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
+    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.1, 0.99, 0.99]);
     const { updatedState, report } = calculateDetailedOfflineProgress(state, 1000, rng);
 
     expect(report.idleCombat).not.toBeNull();
@@ -235,6 +237,7 @@ describe('calculateDetailedOfflineProgress + 挂机 (重连结算)', () => {
     expect(report.idleCombat!.victories).toBe(10);
     expect(report.idleCombat!.drops.scrap_metal).toBe(20);
     expect(report.idleCombat!.drops.enhance_stone).toBe(20);
+    expect(report.idleCombat!.drops.exp_tome).toBe(10);
     expect(report.idleCombat!.soulEchoesGained).toBe(40);
     expect(report.idleCombat!.expPerHero).toBe(200);
     expect(report.idleCombat!.autoStopped).toBe(true);
