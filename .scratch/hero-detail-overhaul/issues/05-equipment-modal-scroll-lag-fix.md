@@ -1,6 +1,6 @@
 # 装备详情滚动卡顿修复：移除弹窗 backdrop blur + 滚动容器优化
 
-Status: claimed
+Status: resolved
 Type: task
 Blocked by:
 
@@ -21,3 +21,15 @@ Blocked by:
 3. 验证：`npx vitest run` 全量通过；`npm run build` 通过；`npx oxlint` 无新增；肉眼确认装备详情/装备选择滚动流畅。
 
 范围外：tick 重渲染的彻底消除（context 拆分，01 测量已列为后续）、App.tsx 中非弹窗滚动场景的 backdrop-blur（离线报告/角色创建/梦魇警报，固定不滚动）。
+
+## Answer：实施完成（2026-08-07）
+
+改动（提交 `bc38254`）：
+
+1. **`src/data/uiConstants.ts`**：`modalBackdrop`/`modalBackdropSub` 移除 `backdrop-blur-sm`/`backdrop-blur-md`（保留 bg-black/75-80 透明度）；`modalContainerEquipment` 加 `overscroll-contain`。一次性覆盖全部走统一 token 的弹窗（装备详情/装备选择/批量升级/英雄详情/治疗）。
+2. **`src/components/ShelterTab.tsx`**（code-review 补漏）：播种选择模态框移除全屏 `backdrop-blur-sm`（容器 max-h-[75vh] + 内部滚动列表），滚动列表加 `overscroll-contain`。
+3. **`src/App.tsx`**（code-review 补漏）：离线结算弹窗移除全屏 `backdrop-blur-sm`（容器 max-h-[85vh] overflow-y-auto），加 `overscroll-contain`。
+
+验证：全量 `npx vitest run` → **429/429**；`npm run build` 通过；oxlint 仅 1 条既有警告（App.tsx:221，非本次引入）。
+
+范围确认：其余 backdrop-blur 用法（LogTab/WorkshopTab/SummonTab/SwipeCard/ToastSystem/App 头部底栏/PartySlotModal 1px）均为小面积面板或固定导航，非全屏滚动压力源，不动。
