@@ -3,7 +3,7 @@ import type { GameState, EquipmentSlot, FacilityType } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
-import { getAccountsList, saveState, loadOrCreateState, createFreshState, createNewAccountState } from '../state/persistence';
+import { getAccountsList, saveState, loadOrCreateState, createFreshState, createNewAccountState, createSaveThrottle, AUTO_SAVE_INTERVAL_MS } from '../state/persistence';
 import { addLogUpdate } from '../state/logs';
 import {
   plantCropUpdate,
@@ -163,12 +163,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const stateRef = useRef<GameState>(state);
   stateRef.current = state; // 每次渲染时同步更新
 
-  // 1. 自动存盘 Effect
+  // 1. 自动存盘 Effect（04 号 04a：节流——窗口内最多一次全量写盘，消除每秒序列化+同步写盘；
+  // 显式 saveState 调用如切换/创建/删除账号不受影响。测试环境不节流（间隔 0），
+  // 避免组件测试断言「操作后立即落盘」被节流窗口拦截；节流行为由 persistence.test 纯函数覆盖）
+  const saveThrottleRef = useRef(createSaveThrottle(isTestEnv() ? 0 : AUTO_SAVE_INTERVAL_MS));
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && saveThrottleRef.current(Date.now())) {
       saveState(currentUser, state);
     }
   }, [state, currentUser]);
+
+  // 页面关闭/隐藏兑底（04 号 04a）：节流窗口内未落盘的变更在关闭时强制写入，避免丢失最近操作
+  useEffect(() => {
+    const flush = () => {
+      const user = localStorage.getItem('aether_garden_save_current_user');
+      if (user) saveState(user, stateRef.current);
+    };
+    window.addEventListener('beforeunload', flush);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []);
 
   // 2. 初始化 Effect
   useEffect(() => {

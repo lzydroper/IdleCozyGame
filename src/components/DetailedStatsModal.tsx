@@ -145,4 +145,6 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   return createPortal(modalContent, document.body);
 };
 
-export default DetailedStatsModal;
+// 04 号 04c：纯 props 展示组件，React.memo 直接有效（内部无 context 订阅）——
+// HeroDetailModal 每秒重渲染时（04b 后已消除）props 引用稳定则跳过。
+export default React.memo(DetailedStatsModal);

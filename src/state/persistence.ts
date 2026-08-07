@@ -91,6 +91,23 @@ export const getAccountsList = (): string[] => {
 
 export const getSaveKey = (username: string): string => `aether_garden_save_${username}`;
 
+// 04 号 04a：自动存盘节流间隔（ms）——避免每秒 tick 触发全量序列化 + 同步写盘（主线程阻塞）。
+// 显式 saveState 调用（切换/创建/删除账号等关键路径）不受节流影响。
+export const AUTO_SAVE_INTERVAL_MS = 5000;
+
+// 节流器：intervalMs 窗口内最多放行一次（返回 true 表示本次应写盘）。
+// 首次调用（lastSave 为 null）必然放行，保证挂载/切换后立即落盘一次。
+export const createSaveThrottle = (intervalMs: number): ((now: number) => boolean) => {
+  let lastSave: number | null = null;
+  return (now: number) => {
+    if (lastSave === null || now - lastSave >= intervalMs) {
+      lastSave = now;
+      return true;
+    }
+    return false;
+  };
+};
+
 export const saveState = (username: string, state: GameState): void => {
   localStorage.setItem(getSaveKey(username), JSON.stringify(state));
 };

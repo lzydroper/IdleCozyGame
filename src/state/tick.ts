@@ -19,8 +19,10 @@ interface TickLogEntry {
 
 // 游戏全局 Tick：推进发电机/回收站/温室/流水线/挂机探索/天数
 export const applyTick = (prev: GameState, now: number): GameState => {
-  // 13 号 R3：无活跃系统且无需推进时返回原引用（React setState bailout，消除每秒整树重渲染）。
-  // 活跃系统 = 发电机/回收站/温室作物/流水线设施/挂机探索/梦魇冻结；另需推进天数或体力未满。
+  // 13 号 R3 + 04 号 04b：无活跃系统且无需推进时返回原引用（React setState bailout，消除每秒整树重渲染）。
+  // 活跃系统 = 发电机/回收站/温室作物/流水线设施/挂机探索/梦魇冻结；另需推进天数。
+  // 体力每 staminaRegenSeconds 秒恢复 1 点：仅当体力**跨整点**（floor 进位）时才需推进，
+  // 未跨整点的亚秒级恢复不触发渲染（recoverStamina 按 elapsedSeconds 累计，跳过不丢进度）。
   const hasActiveSystems =
     prev.shelter.generatorLevel > 0 ||
     prev.shelter.recyclerLevel > 0 ||
@@ -28,9 +30,16 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     Object.values(prev.shelter.facilities).some(units => units.some(u => (u.queue?.length ?? 0) > 0)) ||
     (prev.shelter.expedition.locationId != null && prev.shelter.assignedExplorerId != null) ||
     prev.activeAlert.type === 'dream_leak';
-  const needsStaminaTick = (prev.stamina ?? 0) < (prev.maxStamina || COMBAT_CONFIG.maxStamina);
+  const staminaNotFull = (prev.stamina ?? 0) < (prev.maxStamina || COMBAT_CONFIG.maxStamina);
+  const elapsedSeconds = Math.max(0, Math.floor((now - prev.lastTick) / 1000));
+  const nextStamina = recoverStamina(
+    prev.stamina ?? 0,
+    prev.maxStamina || COMBAT_CONFIG.maxStamina,
+    elapsedSeconds
+  );
+  const staminaCrossedInteger = Math.floor(nextStamina) > Math.floor(prev.stamina ?? 0);
   const needsDayTick = now - prev.dayStartTime >= GAME_CONSTANTS.GAME_DAY_SECONDS * 1000;
-  if (!hasActiveSystems && !needsStaminaTick && !needsDayTick) {
+  if (!hasActiveSystems && !(staminaNotFull && staminaCrossedInteger) && !needsDayTick) {
     return prev;
   }
 
@@ -46,13 +55,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   let nextAccumulatedEnergy = prev.shelter.accumulatedEnergy ?? 0;
   let nextAccumulatedScrap = prev.shelter.accumulatedScrap ?? 0;
 
-  // 0. 体力随时间恢复（战斗资源，独立于魔能/食物）
-  const elapsedSeconds = Math.max(0, Math.floor((now - prev.lastTick) / 1000));
-  const nextStamina = recoverStamina(
-    prev.stamina ?? 0,
-    prev.maxStamina || COMBAT_CONFIG.maxStamina,
-    elapsedSeconds
-  );
+  // 0. 体力随时间恢复（战斗资源，独立于魔能/食物）——elapsedSeconds/nextStamina 已在短路判定前置计算
 
   // 1. 发电机与回收站自动产出
   if (prev.shelter.generatorLevel > 0) {

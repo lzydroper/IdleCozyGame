@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import {
@@ -61,6 +61,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const { showToast } = useToast();
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [showTalentModal, setShowTalentModal] = useState(false);
+  // 04 号 04c：稳定回调引用，使 DetailedStatsModal 的 onClose props 稳定（React.memo 才生效）
+  const handleCloseDetailedStats = useCallback(() => setShowDetailedStats(false), []);
 
   const [selectedEquipSlot, setSelectedEquipSlot] = useState<EquipmentSlot | null>(null);
   const [showEquipDetailModal, setShowEquipDetailModal] = useState(false);
@@ -574,7 +576,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         isOpen={showDetailedStats}
         heroName={awakenedName}
         stats={stats}
-        onClose={() => setShowDetailedStats(false)}
+        onClose={handleCloseDetailedStats}
       />
 
       {/* 天赋树弹窗 */}
@@ -639,4 +641,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   return createPortal(modalContent, document.body);
 };
 
-export default HeroDetailModal;
+// 04 号 04c：memo 包裹——props（isOpen/heroId/onSelectHero/onClose）稳定时跳过重渲染；
+// 注意组件内部 useGame() 订阅 context，其收益在 04b（每秒 tick 短路）后生效。
+const MemoizedHeroDetailModal = React.memo(HeroDetailModal);
+export default MemoizedHeroDetailModal;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useGame } from '../context/GameContext';
 import { HEROES_CONFIG } from '../data/heroes';
 import { COMBAT_CONFIG } from '../data/combatConfig';
@@ -28,6 +28,11 @@ const HeroTab: React.FC = () => {
     setParty(newParty);
     showToast('小队上阵阵容调整已保存！', 'success');
   };
+
+  // 04 号 04c：稳定回调引用（useCallback），使 HeroDetailModal 的 props 在 HeroTab 重渲染时不变，
+  // 配合 HeroDetailModal 的 React.memo 跳过无关重渲染
+  const handleOpenHeroDetail = useCallback((id: string) => setDetailModalHeroId(id), []);
+  const handleCloseHeroDetail = useCallback(() => setDetailModalHeroId(null), []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -148,9 +153,7 @@ const HeroTab: React.FC = () => {
       <HeroListModal
         isOpen={showHeroListModal}
         heroes={state.heroes}
-        onSelectHero={(id) => {
-          setDetailModalHeroId(id);
-        }}
+        onSelectHero={handleOpenHeroDetail}
         onClose={() => setShowHeroListModal(false)}
       />
 
@@ -159,8 +162,8 @@ const HeroTab: React.FC = () => {
         <HeroDetailModal
           isOpen={detailModalHeroId !== null}
           heroId={detailModalHeroId}
-          onSelectHero={(id) => setDetailModalHeroId(id)}
-          onClose={() => setDetailModalHeroId(null)}
+          onSelectHero={handleOpenHeroDetail}
+          onClose={handleCloseHeroDetail}
         />
       )}
     </div>
