@@ -4,7 +4,7 @@ import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SUMMON_CONFIG } from '../data/summonConfig';
 import { STAR_MAX } from '../data/awakening';
-import { computeHeroChance, rollHeroId, summonUpdate, summonTenUpdate } from './summon';
+import { computeHeroChance, rollHeroId, summonUpdate, summonTenUpdate, summonBatchUpdate } from './summon';
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
@@ -203,6 +203,53 @@ describe('summonTenUpdate', () => {
     expect(next.summon.pityCount).toBe(5);
     expect(next.inventory.soul_echo).toBe(3000 - 1000);
     expect(next.heroes[lastId]).toBeDefined();
+  });
+});
+
+describe('summonBatchUpdate (批量 N 连抽，10/100 切换)', () => {
+  it('fails if soul echoes are less than the batch cost', () => {
+    const state = makeState({ inventory: { soul_echo: 9999 } });
+    const { state: next, result } = summonBatchUpdate(state, 100);
+
+    expect(result.outcomes).toHaveLength(0);
+    expect(result.soulEchoesUsed).toBe(0);
+    expect(next).toBe(state);
+  });
+
+  it('executes 100 pulls and consumes 10000 soul echoes', () => {
+    const state = makeState({ inventory: { soul_echo: 10050 } });
+    const { state: next, result } = summonBatchUpdate(state, 100);
+
+    expect(result.outcomes).toHaveLength(100);
+    expect(result.soulEchoesUsed).toBe(10000);
+    expect(next.inventory.soul_echo).toBe(50);
+  });
+
+  it('100-pull guarantees an unowned hero on the last pull via hard pity', () => {
+    const ids = Object.keys(HEROES_CONFIG);
+    const lastId = ids[ids.length - 1];
+    // 已拥有除末位外的全部英雄 → 前 99 抽出重复英雄（pity 0→99），第 100 抽硬保底必出末位未拥有英雄
+    const heroes: Record<string, any> = {};
+    ids.slice(0, -1).forEach(id => {
+      heroes[id] = createInitialHero(id);
+    });
+
+    const state = makeState({
+      inventory: { soul_echo: 100000 },
+      heroes,
+      summon: { pityCount: 0 }
+    });
+    // 前 99 抽：rolled=0 必出英雄 + rollHeroId=0 选中首个已拥有英雄；第 100 抽硬保底忽略 rolled，roll=0.99 → 末位未拥有
+    const rngValues = [...Array(99 * 2).fill(0), 0.99];
+    const { state: next, result } = summonBatchUpdate(state, 100, sequenceRng(rngValues));
+
+    expect(result.outcomes).toHaveLength(100);
+    expect(result.outcomes[99].heroId).toBe(lastId);
+    expect(result.outcomes[99].isNew).toBe(true);
+    expect(next.heroes[lastId]).toBeDefined();
+    // 硬保底兑现后保底计数重置
+    expect(next.summon.pityCount).toBe(0);
+    expect(next.inventory.soul_echo).toBe(100000 - 10000);
   });
 });
 

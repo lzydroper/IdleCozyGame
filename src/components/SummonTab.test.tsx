@@ -115,6 +115,53 @@ describe('SummonTab Component (ticket 20)', () => {
     expect(screen.getByText('500')).toBeDefined();
   });
 
+  it('toggles the batch button between 10x and 100x via the switch button', () => {
+    const testSave = {
+      ...INITIAL_STATE,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 10000 },
+      summon: { pityCount: 0 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
+
+    renderWithProviders(<SummonTab isOpen={true} onClose={() => {}} />);
+
+    // 默认 10 连模式
+    expect(screen.getByText('招募 10 次')).toBeDefined();
+    expect(screen.getByText(/切换至 100 抽/)).toBeDefined();
+
+    // 点击切换 → 100 连模式
+    fireEvent.click(screen.getByText(/切换至 100 抽/));
+    expect(screen.getByText('招募 100 次')).toBeDefined();
+    expect(screen.getByText(/切换至 10 抽/)).toBeDefined();
+
+    // 再切回 10 连
+    fireEvent.click(screen.getByText(/切换至 10 抽/));
+    expect(screen.getByText('招募 10 次')).toBeDefined();
+  });
+
+  it('executes a 100x pull, deducts 10000 soul echoes, and shows 100 results', () => {
+    const testSave = {
+      ...INITIAL_STATE,
+      inventory: { ...INITIAL_STATE.inventory, soul_echo: 10050 },
+      summon: { pityCount: 0 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(testSave));
+
+    renderWithProviders(<SummonTab isOpen={true} onClose={() => {}} />);
+
+    fireEvent.click(screen.getByText(/切换至 100 抽/));
+    fireEvent.click(screen.getByText('招募 100 次'));
+
+    expect(screen.getByText('100 连招募获得')).toBeDefined();
+
+    const confirmBtn = screen.getByText('收下');
+    fireEvent.click(confirmBtn);
+
+    expect(screen.queryByText('100 连招募获得')).toBeNull();
+    // 10050 - 10000 = 50
+    expect(screen.getByText('50')).toBeDefined();
+  });
+
   it('opens SummonTab from HeroTab when clicking recruit button', () => {
     const testSave = {
       ...INITIAL_STATE,
