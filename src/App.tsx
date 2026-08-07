@@ -853,8 +853,8 @@ const App: React.FC = () => {
 
       {/* 离线结算弹窗 */}
       {state.lastOfflineReport && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-850 rounded-3xl p-5 max-w-sm w-full shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-850 rounded-3xl p-5 max-w-sm w-full shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto overscroll-contain">
             
             {/* 头部 */}
             <div className="text-center">

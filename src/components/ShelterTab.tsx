@@ -951,7 +951,7 @@ const ShelterTab: React.FC = () => {
             setShowSeedSelector(false);
             setSelectedSlotId(null);
           }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -972,7 +972,7 @@ const ShelterTab: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 pt-1 pb-1">
+            <div className="space-y-2.5 overflow-y-auto overscroll-contain pr-1 flex-1 pt-1 pb-1">
               {Object.values(CROPS_CONFIG).map(crop => {
                 const seedId = Object.keys(crop.seedCost)[0];
                 const seedCount = state.inventory[seedId] || 0;
