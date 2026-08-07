@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { TALENT_TRUNKS, HERO_TALENTS } from '../data/talents';
+import { TALENT_TRUNKS, HERO_TALENTS, buildTalentTree } from '../data/talents';
 import {
   getTalentNodes,
   getTalentBonus,
@@ -218,5 +218,43 @@ describe('存档迁移（ticket 11）', () => {
     } as never;
     const merged = mergeSavedState(save, INITIAL_STATE);
     expect(merged.heroes.nova.talents).toEqual({ [EDGE]: 3, [OVERDRIVE]: 1 });
+  });
+});
+
+describe('buildTalentTree（09 树形组装：pos + children）', () => {
+  it('把英雄专属节点挂到其 requires 父节点的 children 末尾（主干链子在前）', () => {
+    const tree = buildTalentTree('nova');
+    const byId = new Map(tree.map(n => [n.id, n]));
+    // 锋芒毕露（根）：2 个子 → 连环攻势（链子在前）+ 过载引擎（专属在后）→ 槽位 左下 / 右下
+    expect(byId.get(EDGE)?.children).toEqual([FLURRY, OVERDRIVE]);
+    // 连环攻势唯一子 → 破甲重击（正下直线）
+    expect(byId.get(FLURRY)?.children).toEqual(['trunk_attacker_armor_break']);
+    // 根节点 pos 为第 0 行第 0 个；专属与链子同属第 1 行
+    expect(byId.get(EDGE)?.pos).toEqual({ row: 0, col: 0 });
+    expect(byId.get(FLURRY)?.pos.row).toBe(1);
+    expect(byId.get(OVERDRIVE)?.pos.row).toBe(1);
+    // 树节点 id 不重复
+    expect(new Set(tree.map(n => n.id)).size).toBe(tree.length);
+  });
+
+  it('9 位英雄的树都包含职阶主干三节点与各自专属节点，且专属挂在主干入口下', () => {
+    Object.keys(HEROES_CONFIG).forEach(heroId => {
+      const tree = buildTalentTree(heroId);
+      const cls = HEROES_CONFIG[heroId].heroClass;
+      const trunkIds = TALENT_TRUNKS[cls].map(n => n.id);
+      const ownIds = HERO_TALENTS[heroId].map(n => n.id);
+      const treeIds = tree.map(n => n.id);
+      trunkIds.forEach(tid => expect(treeIds).toContain(tid));
+      ownIds.forEach(oid => expect(treeIds).toContain(oid));
+      // 专属节点必须挂到主干入口（trunk[0]）children
+      const root = tree.find(n => n.id === trunkIds[0]);
+      ownIds.forEach(oid => expect(root?.children).toContain(oid));
+      // 每个节点都有相对坐标
+      tree.forEach(n => {
+        expect(n.pos).toBeDefined();
+        expect(Number.isInteger(n.pos.row)).toBe(true);
+        expect(Number.isInteger(n.pos.col)).toBe(true);
+      });
+    });
   });
 });

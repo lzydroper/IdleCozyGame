@@ -5,6 +5,7 @@ import { useToast } from './ToastSystem';
 import { HEROES_CONFIG } from '../data/heroes';
 import { UI_TOKENS } from '../data/uiConstants';
 import { X, Check, HeartCrack } from 'lucide-react';
+import GameIcon from './GameIcon';
 
 interface HeroHealModalProps {
   onClose: () => void;
@@ -92,8 +93,8 @@ const HeroHealModal: React.FC<HeroHealModalProps> = ({ onClose }) => {
                     }`}
                   >
                     <div className="aspect-square relative w-full overflow-hidden bg-zinc-950 border-b border-zinc-800/80 flex items-center justify-center">
-                      {cfg?.avatar ? (
-                        <img src={cfg.avatar} alt={cfg.name} className="w-full h-full object-cover" />
+                      {cfg ? (
+                        <GameIcon type="hero" id={cfg.id} className="w-full h-full" />
                       ) : (
                         <span className="text-3xl font-black text-amber-300">{firstChar}</span>
                       )}

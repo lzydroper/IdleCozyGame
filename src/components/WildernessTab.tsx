@@ -541,7 +541,7 @@ const EncounterPanel: React.FC<{
                   ? 'border-red-500/40 bg-red-950/40 text-red-400'
                   : 'border-zinc-700 bg-zinc-950/60 text-zinc-300'
               }`}>
-                <GameIcon type="survivor" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
+                <GameIcon type="hero" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
                 {hero.wounded && '（重伤）'}
               </span>
             );
@@ -706,7 +706,7 @@ const CombatPanel: React.FC = () => {
                     ? 'border-red-500/40 bg-red-950/40 text-red-400'
                     : `border-zinc-700 bg-zinc-950/60 text-zinc-300`
                 }`}>
-                  <GameIcon type="survivor" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
+                  <GameIcon type="hero" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
                   {hero.wounded && '（重伤）'}
                 </span>
               );

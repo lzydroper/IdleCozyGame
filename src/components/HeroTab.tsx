@@ -9,6 +9,7 @@ import PartySlotModal from './PartySlotModal';
 import HeroListModal from './HeroListModal';
 import HeroDetailModal from './HeroDetailModal';
 import { Sparkles, Users, Plus, Shield, Handshake } from 'lucide-react';
+import GameIcon from './GameIcon';
 
 const HeroTab: React.FC = () => {
   const { state, setParty, openSummonModal } = useGame();
@@ -72,7 +73,6 @@ const HeroTab: React.FC = () => {
             const heroId = party[i];
             const config = heroId ? HEROES_CONFIG[heroId] : null;
             const hero = heroId ? state.heroes[heroId] : null;
-            const firstChar = config?.name ? config.name[0] : '';
 
             return (
               <div
@@ -91,17 +91,7 @@ const HeroTab: React.FC = () => {
                   }`}
                 >
                   {config ? (
-                    config.avatar ? (
-                      <img
-                        src={config.avatar}
-                        alt={config.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-2xl font-black text-amber-300">
-                        {firstChar}
-                      </span>
-                    )
+                    <GameIcon type="hero" id={config.id} className="w-full h-full" />
                   ) : (
                     <Plus className="w-6 h-6 text-zinc-600" />
                   )}

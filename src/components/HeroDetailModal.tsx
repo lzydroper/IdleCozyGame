@@ -21,6 +21,7 @@ import HeroTalentPanel from './HeroTalentPanel';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
 import { UI_TOKENS } from '../data/uiConstants';
+import GameIcon from './GameIcon';
 import {
   X,
   Shield,
@@ -69,7 +70,6 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   if (!config || !hero) return null;
 
   const heroEquip = state.equipment?.[heroId] || { weapon: null, armor: null, trinket: null };
-  const firstChar = config.name ? config.name[0] : '?';
   const awakenedName = getAwakenedName(heroId, hero) || config.name;
 
   // 装备加成属性（含同阵营 30% 穿戴加成）
@@ -332,11 +332,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               <div className="flex flex-col items-center gap-0.5 w-full">
                 {/* 正方形大头像 (w-18 h-18) */}
                 <div className="w-18 h-18 aspect-square rounded-2xl bg-zinc-950 border-2 border-amber-500/40 flex items-center justify-center relative overflow-hidden shadow-lg shadow-amber-950/20">
-                  {config.avatar ? (
-                    <img src={config.avatar} alt={config.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-2xl font-black text-amber-300">{firstChar}</span>
-                  )}
+                  <GameIcon type="hero" id={config.id} className="w-full h-full" />
                   {hero.awakened && (
                     <div className="absolute top-0.5 left-0.5 bg-amber-500 text-zinc-950 text-[7px] font-black px-1 rounded shadow">
                       觉醒

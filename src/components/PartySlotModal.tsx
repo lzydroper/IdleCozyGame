@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { HeroState } from '../types/game';
 import { Shield, Check, X, Lock, Wrench, Star } from 'lucide-react';
+import GameIcon from './GameIcon';
 
 export interface PartySlotModalProps {
   isOpen: boolean;
@@ -51,7 +52,6 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
     return {
       id,
       name: config?.name || id,
-      avatar: config?.avatar,
       heroClass: config?.heroClass || 'guardian',
       level: heroState?.level || 1,
       star: heroState?.star || 1,
@@ -139,8 +139,6 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
         <div className="flex-1 overflow-y-auto p-3.5">
           <div className="grid grid-cols-3 gap-3">
             {heroItems.map((item) => {
-              const firstChar = item.name ? item.name[0] : '?';
-
               return (
                 <div
                   key={item.id}
@@ -155,17 +153,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
                 >
                   {/* 正方形头像区域 (Aspect Square) */}
                   <div className="aspect-square relative w-full overflow-hidden bg-zinc-950 border-b border-zinc-800/80 flex items-center justify-center">
-                    {item.avatar ? (
-                      <img
-                        src={item.avatar}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl font-black text-amber-300">
-                        {firstChar}
-                      </span>
-                    )}
+                    <GameIcon type="hero" id={item.id} className="w-full h-full" />
 
                     {/* 选中遮罩与大号勾选图标 */}
                     {item.isSelected && (

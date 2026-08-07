@@ -133,7 +133,7 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <span className="text-[9px] shrink-0 w-14 truncate text-right flex items-center justify-end gap-1">
           {entry.side === 'hero' ? (
-            <GameIcon type="survivor" id={entry.id} className="w-3.5 h-3.5" />
+            <GameIcon type="hero" id={entry.id} className="w-3.5 h-3.5" />
           ) : (
             <GameIcon type="enemy" id={entry.id} className="w-3.5 h-3.5" />
           )}
@@ -254,7 +254,7 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
                   }`}
                 >
                   {a.actorSide === 'hero' ? (
-                    <GameIcon type="survivor" id={a.actorId} className="w-3 h-3" />
+                    <GameIcon type="hero" id={a.actorId} className="w-3 h-3" />
                   ) : (
                     <GameIcon type="enemy" id={a.actorId} className="w-3 h-3" />
                   )}

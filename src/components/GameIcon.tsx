@@ -1,61 +1,90 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { ENEMY_ICON_MAP, ZONE_ICON_MAP } from './iconMaps';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
+import type { ItemSheet, ItemSprite } from '../data/items/types';
+
+export type GameIconType = 'item' | 'hero' | 'enemy' | 'zone';
 
 export interface GameIconProps extends React.HTMLAttributes<HTMLDivElement> {
   id: string;
-  type: 'item' | 'survivor' | 'enemy' | 'zone';
+  type: GameIconType;
 }
 
-// 纯渲染器（ADR-0015 单一真相源）：sprite 配置内聚于物品/英雄定义表，
-// 未命中 sprite 时以 Lucide 回退 + 「待补 sprite」标记表露，方便后续补图。
-const GameIcon: React.FC<GameIconProps> = ({ id, type, className = 'w-4 h-4', ...rest }) => {
-  // 敌人/区域：无雪碧图，直接渲染 Lucide 映射
-  if (type === 'enemy' || type === 'zone') {
-    const Icon = (type === 'enemy' ? ENEMY_ICON_MAP : ZONE_ICON_MAP)[id] || HelpCircle;
-    return (
-      <div
-        className={`inline-flex items-center justify-center select-none shrink-0 ${className}`}
-        title={id}
-        {...rest}
-      >
-        <Icon className="w-[72%] h-[72%]" />
-      </div>
-    );
-  }
+// 配置源（ADR-0015 单一真相源）：物品/英雄的 sprite 与 Lucide 回退内聚在各自配置表，
+// 敌人/区域为纯 Lucide 映射（iconMaps 数据层）。新增类型只需在注册表加一行。
+interface IconSource {
+  name?: string;        // 汉字回退来源（取 name[0]）
+  sprite?: ItemSprite;  // spritesheet 图块
+  icon?: LucideIcon;    // Lucide 回退
+}
 
-  // 物品 / 英雄立绘：从各自的单一配置表取 sprite 与 Lucide 回退
-  const meta = type === 'item' ? ITEMS_CONFIG[id] : type === 'survivor' ? HEROES_CONFIG[id] : undefined;
+const ICON_SOURCE_REGISTRY: Record<
+  GameIconType,
+  { source: (id: string) => IconSource | undefined; expectsSprite: boolean }
+> = {
+  hero: { source: (id) => HEROES_CONFIG[id], expectsSprite: true },
+  item: { source: (id) => ITEMS_CONFIG[id], expectsSprite: true },
+  enemy: { source: (id) => ({ icon: ENEMY_ICON_MAP[id] }), expectsSprite: false },
+  zone: { source: (id) => ({ icon: ZONE_ICON_MAP[id] }), expectsSprite: false },
+};
+
+// spritesheet 网格规格：英雄立绘（survivors）3x3，物品类（seeds/materials/supplies）4x4
+const SPRITE_GRID: Record<ItemSheet, { columns: number; rows: number }> = {
+  survivors: { columns: 3, rows: 3 },
+  seeds: { columns: 4, rows: 4 },
+  materials: { columns: 4, rows: 4 },
+  supplies: { columns: 4, rows: 4 },
+};
+
+// 纯渲染器（ADR-0015 单一真相源）：三级回退链 sprite → Lucide → 单字汉字。
+// 物品/英雄缺失 sprite 时以「待补 sprite」虚线框表露补图进度；敌人/区域无 sprite 概念，直接渲染 Lucide。
+const GameIcon: React.FC<GameIconProps> = ({ id, type, className = 'w-4 h-4', ...rest }) => {
+  const { source, expectsSprite } = ICON_SOURCE_REGISTRY[type];
+  const meta = source(id);
   const sprite = meta?.sprite;
 
   if (!sprite) {
-    // 雪碧图缺失：以 Lucide 映射 + 醒目「待补 sprite」标记表露，方便后续补充（最终目标是全 sprite 化）
     const Icon = meta?.icon || HelpCircle;
-    // 常态回退（Lucide 映射存在）用 debug 级别，避免高频渲染刷屏；仅完全无映射时告警
+    const fallbackChar = meta?.name?.[0] ?? '?';
+    if (!expectsSprite) {
+      // 敌人/区域：无雪碧图概念，直接渲染 Lucide 映射
+      return (
+        <div
+          className={`inline-flex items-center justify-center select-none shrink-0 ${className}`}
+          title={id}
+          {...rest}
+        >
+          <Icon className="w-[72%] h-[72%]" />
+        </div>
+      );
+    }
+    // 物品/英雄：Lucide 或汉字回退 + 「待补 sprite」标记
     if (!meta?.icon) {
-      console.warn(`[GameIcon] 缺少 sprite 与 Lucide 映射: "${id}"（type: "${type}"）`);
+      console.warn(`[GameIcon] 缺少 sprite 与 Lucide 映射: "${id}"（type: "${type}"），以汉字回退渲染`);
     } else {
       console.debug(`[GameIcon] 缺少 sprite 配置: "${id}"（type: "${type}"），以 Lucide 待补标记渲染`);
     }
     return (
       <div
         className={`inline-flex items-center justify-center bg-amber-950/30 border border-dashed border-amber-500/60 text-amber-300 rounded select-none shrink-0 ${className}`}
-        title={`[sprite 待补] ${id}`}
+        title={meta?.icon ? `[sprite 待补] ${id}` : id}
         {...rest}
       >
-        <Icon className="w-[72%] h-[72%]" />
+        {meta?.icon ? (
+          <Icon className="w-[72%] h-[72%]" />
+        ) : (
+          <span className="text-[60%] leading-none font-black select-none">{fallbackChar}</span>
+        )}
       </div>
     );
   }
 
-  // 英雄立绘（survivors 雪碧图）是 3x3，物品类雪碧图（seeds, materials, supplies）都是 4x4
-  const columns = sprite.sheet === 'survivors' ? 3 : 4;
-  const rowCount = sprite.sheet === 'survivors' ? 3 : 4;
-
-  const xPercent = columns > 1 ? (sprite.index % columns) * (100 / (columns - 1)) : 0;
-  const yPercent = rowCount > 1 ? Math.floor(sprite.index / columns) * (100 / (rowCount - 1)) : 0;
+  const grid = SPRITE_GRID[sprite.sheet];
+  const xPercent = grid.columns > 1 ? (sprite.index % grid.columns) * (100 / (grid.columns - 1)) : 0;
+  const yPercent = grid.rows > 1 ? Math.floor(sprite.index / grid.columns) * (100 / (grid.rows - 1)) : 0;
   const sheetUrl = `/assets/spritesheet_${sprite.sheet}.png`;
 
   return (
@@ -63,7 +92,7 @@ const GameIcon: React.FC<GameIconProps> = ({ id, type, className = 'w-4 h-4', ..
       className={`block select-none shrink-0 bg-no-repeat ${className}`}
       style={{
         backgroundImage: `url(${sheetUrl})`,
-        backgroundSize: `${columns * 100}% auto`,
+        backgroundSize: `${grid.columns * 100}% auto`,
         backgroundPosition: `${xPercent}% ${yPercent}%`,
       }}
       {...rest}

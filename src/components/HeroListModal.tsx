@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { HEROES_CONFIG } from '../data/heroes';
 import { X, Users, Star } from 'lucide-react';
+import GameIcon from './GameIcon';
 import type { HeroState } from '../types/game';
 
 export interface HeroListModalProps {
@@ -54,8 +55,6 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
             const hero = heroes[id];
             if (!config || !hero) return null;
 
-            const firstChar = config.name ? config.name[0] : '英';
-
             return (
               <div
                 key={id}
@@ -65,17 +64,7 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
               >
                 {/* 必须为正方形 1:1 头像框 */}
                 <div className="w-18 h-18 aspect-square rounded-2xl bg-zinc-950 border border-zinc-800 group-hover:border-amber-500/60 flex items-center justify-center relative overflow-hidden transition-all shadow-md">
-                  {config.avatar ? (
-                    <img
-                      src={config.avatar}
-                      alt={config.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-2xl font-black text-amber-300">
-                      {firstChar}
-                    </span>
-                  )}
+                  <GameIcon type="hero" id={config.id} className="w-full h-full" />
 
                   {hero.wounded && (
                     <div className="absolute inset-0 bg-red-950/75 flex items-center justify-center">

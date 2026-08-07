@@ -324,7 +324,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                       </span>
                     )}
 
-                    <GameIcon type="survivor" id={config.id} className="w-10 h-10 mb-1 rounded-xl" />
+                    <GameIcon type="hero" id={config.id} className="w-10 h-10 mb-1 rounded-xl" />
 
                     <span className="text-[11px] font-black text-zinc-100 max-w-full truncate">
                       {config.name}
