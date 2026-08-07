@@ -38,6 +38,12 @@
 - [经验手册与升级改造实施](issues/15-exp-tome-implementation.md) — 新物品 `exp_tome`（heroExp:100，数据驱动）；`consumeExpTomesUpdate` + GameContext `levelUpWithTome`；升级按钮消耗 1 本（修复免费直升 bug）、新增批量升级弹窗（滑条+预览，对齐 CraftBatchModal）；3 主线区域普通/BOSS 掉落接入（梦境不放）；ADR-0003 补充。新增 8 测试、适配 idle/registry 3 例，全量 422/422、build 通过。
 - [升级成长曲线与元属性实装实施](issues/16-growth-and-primary-implementation.md) — heroGrowth.ts 职阶成长系数（守护12/2/2、进攻6/4/1、协奏9/3/1）+ 里程碑 + 元属性说明；HeroConfig 加 primaryAttributes（9 英雄 D2 表）+ levelMilestones；heroMaxHp/heroAttack 统一来源、新增 heroDefense、退役 combatConfig 成长字段（消除 +10 vs +8 打架）；calculatedStats 传元属性（增益首实装）；DetailedStatsModal 三区。全量 423/423、build 通过。战斗数值暂未接入元属性（平衡决策，范围外）。
 - [英雄界面卡顿优化实施（范围决策 + 落地）](issues/13-hero-ui-perf-fix.md) — 范围选方案 A：**applyTick 短路**（无活跃系统 + 体力满 + 未跨天时返回原引用 → React bailout，全树不再每秒重渲染；设施活跃 = 队列非空）+ **HeroDetailModal hooks 结构修复**（useMemo 前置，清掉 3 条 pre-existing lint；EMPTY_EQUIP 常量）。新增 tick.test 4 例，全量 427/427、build 通过。App activeTab 渲染 / context 拆分 / actions useCallback 留作后续。
+- [派生弹窗滚动卡顿完整优化](issues/17-derived-modal-scroll-perf.md) — 用户反馈派生弹窗滚动卡顿：移除 7 处全屏 backdrop-blur（英雄档案/列表/上阵/招募结果/规则/Toast confirm，滚动合成压力主因）；transition-all → 精确过渡（天赋树节点/详情页按钮，滚动 hover 掉帧）；7 文件滚动容器加 overscroll-contain；天赋树 SVG pointer-events-none + crispEdges。全量 427/427、build 通过。遗留：活跃系统时每秒重渲染的 memo 隔离（可选后续）。
+- [英雄 tab 模块代码整理收尾](issues/12-hero-tab-code-cleanup.md) — lint 清理（EquipSelectorModal exhaustive-deps → 模块常量；全仓 6→5 warnings 均既有/非英雄模块）；注释审计（XX 号均准确指向本 map）；废弃引用与原型残留全清（glob 验证）；结构评估：子弹窗全独立组件，HeroDetailModal 主体三列耦合紧密不作拆分（记录说明）。build + 全量 427/427 + lint 0 errors。
+
+## 🏁 地图完成
+
+英雄模块修复改造（hero-module-overhaul）全部 14 张 tickets + 3 次反馈修复已完成：图标系统（03/14）、招募界面（04/05/06）、升级体系（07/08/15/16）、天赋树（09）、英雄档案（10）、经验条（11）、卡顿优化（13/17）、代码收尾（12）、研究（01/02）。全量测试 **427 passed / 43 files**，`npm run build` 通过。
 
 ## Not yet specified
 

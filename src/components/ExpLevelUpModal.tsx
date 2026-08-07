@@ -74,7 +74,7 @@ const ExpLevelUpModal: React.FC<ExpLevelUpModalProps> = ({ isOpen, heroId, onClo
         </header>
 
         {/* 预览区 */}
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pt-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-2.5 pt-4">
           <div>
             <h5 className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider mb-1">所需消耗:</h5>
             <div className="flex flex-wrap gap-1">

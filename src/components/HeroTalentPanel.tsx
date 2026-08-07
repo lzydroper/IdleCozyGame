@@ -132,7 +132,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
         <>
           {/* 树图：SVG 直线连线 + 绝对定位节点 */}
           <div className="relative" style={{ height: maxY }}>
-            <svg viewBox={`0 0 ${maxX} ${maxY}`} className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMin meet">
+            <svg viewBox={`0 0 ${maxX} ${maxY}`} className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="xMidYMin meet" shapeRendering="crispEdges">
               {placed.map(p =>
                 (p.node.children || []).map(cid => {
                   const c = placed.find(q => q.node.id === cid);
@@ -164,7 +164,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                   title={`${p.node.name}：${p.node.description}`}
                 >
                   <div
-                    className={`w-11 h-11 rounded-full border-2 flex items-center justify-center relative transition-all ${
+                    className={`w-11 h-11 rounded-full border-2 flex items-center justify-center relative transition-transform duration-150 ${
                       isSel
                         ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-950/40 scale-110'
                         : locked
@@ -202,7 +202,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 <button
                   onClick={() => handleUnallocate(selected.id)}
                   disabled={selLevel <= 0}
-                  className="w-4.5 h-4.5 rounded border text-[9px] font-black leading-none transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-25 border-rose-500/40 bg-rose-950/40 text-rose-300 shrink-0"
+                  className="w-4.5 h-4.5 rounded border text-[9px] font-black leading-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-25 border-rose-500/40 bg-rose-950/40 text-rose-300 shrink-0"
                   title="撤销 1 点"
                 >
                   −
@@ -210,7 +210,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 <button
                   onClick={() => handleAllocate(selected.id)}
                   disabled={selLocked || selLevel >= selected.maxLevel || points < 1}
-                  className="w-4.5 h-4.5 rounded border text-[9px] font-black leading-none transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-25 border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shrink-0"
+                  className="w-4.5 h-4.5 rounded border text-[9px] font-black leading-none transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-25 border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shrink-0"
                   title={selLocked ? `被【${selParents}】阻塞` : selLevel >= selected.maxLevel ? '已满级' : points < 1 ? '天赋点不足' : '投入 1 点'}
                 >
                   +

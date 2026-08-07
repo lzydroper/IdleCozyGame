@@ -212,7 +212,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
       {/* 规则与概率 Modal */}
       {showRulesModal && (
-        <div className="absolute inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="absolute inset-0 z-[60] bg-black/85 flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-amber-500/40 rounded-3xl p-5 max-w-xs w-full shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150">
             <header className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
               <h3 className="text-xs font-black text-amber-300 flex items-center gap-1.5">
@@ -264,7 +264,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
       {/* 召唤结果展示 Modal (Result Outcome) */}
       {resultOutcomes && resultOutcomes.length > 0 && (
-        <div className="absolute inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="absolute inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[85vh] p-4 flex flex-col gap-3 shadow-2xl animate-in zoom-in-95 duration-200">
             <header className="text-center">
               <h3 className="text-sm font-black text-zinc-100 flex items-center justify-center gap-1.5">

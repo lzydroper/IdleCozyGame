@@ -236,7 +236,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         title={item ? `查看【${itemConfig?.name || slotLabel}】装备详情` : `选择【${slotLabel}】装备`}
       >
         <div
-          className={`w-15 h-15 aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden transition-all ${
+          className={`w-15 h-15 aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden transition-[border-color,transform] ${
             item
               ? 'bg-zinc-950/90 border-amber-500/40 shadow-sm shadow-amber-950/30 group-hover:border-amber-400'
               : 'bg-zinc-950/40 border-zinc-800 border-dashed group-hover:border-amber-500/60'
@@ -446,7 +446,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <button
                     onClick={handleStarUp}
                     disabled={totalAvailableShards < shardCost}
-                    className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                    className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
                       totalAvailableShards >= shardCost
                         ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -463,7 +463,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 <button
                   onClick={handleAwaken}
                   disabled={!hasOrb}
-                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-all border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                  className={`w-full py-1.5 rounded-lg text-[8.5px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
                     hasOrb
                       ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 shadow-sm active:scale-95'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -487,7 +487,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
-              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-all h-full"
+              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-[border-color,transform] h-full"
             >
               <div className="w-8.5 h-8.5 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
                 <Sliders className="w-4 h-4" />
@@ -585,7 +585,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col gap-3 shadow-2xl overflow-y-auto"
+            className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col gap-3 shadow-2xl overflow-y-auto overscroll-contain"
           >
             <header className="flex items-center justify-between pb-2 border-b border-zinc-800">
               <h3 className="text-sm font-black text-amber-300 flex items-center gap-1.5">

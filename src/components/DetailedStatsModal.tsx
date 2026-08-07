@@ -65,7 +65,7 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
         </header>
 
         {/* 定高可滑动详细属性列表 (对齐点 7: 定高可滑动) */}
-        <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col gap-3 pr-1">
           {/* 基础属性 (Base Attributes)：16 号，已含职阶成长/里程碑/装备/元属性加成 */}
           <div className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-3 flex flex-col gap-2">
             <div className="text-xs font-black text-zinc-100 border-b border-zinc-850 pb-1.5 flex items-center gap-1.5">

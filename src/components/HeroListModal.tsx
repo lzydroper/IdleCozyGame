@@ -25,7 +25,7 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
   const modalContent = (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[9999] bg-black/40 flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
     >
       {/* 必须复用 PartySlotModal 的固定宽高尺寸标准: h-[460px] max-h-[68vh] w-[92%] max-w-[380px] */}
       <div
@@ -48,8 +48,8 @@ export const HeroListModal: React.FC<HeroListModalProps> = ({
           </button>
         </header>
 
-        {/* 内部可滑动区域: flex-1 overflow-y-auto 多列 3 槽 Hero Card 网格 */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-2.5 p-1 align-content-start">
+        {/* 内部可滑动区域: flex-1 overflow-y-auto overscroll-contain 多列 3 槽 Hero Card 网格 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain grid grid-cols-3 gap-2.5 p-1 align-content-start">
           {heroIds.map((id) => {
             const config = HEROES_CONFIG[id];
             const hero = heroes[id];

@@ -9,6 +9,9 @@ import {
   EQUIPMENT_SLOT_LABELS
 } from '../data/equipment';
 import { ITEMS_CONFIG } from '../data/items';
+
+// 空背包默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，12 号收尾）
+const EMPTY_EQUIPMENT_INVENTORY: Record<string, unknown[]> = {};
 import { getEquippedItemStats } from '../state/equipment';
 import { HEROES_CONFIG } from '../data/heroes';
 import { UI_TOKENS } from '../data/uiConstants';
@@ -34,7 +37,7 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
   const { showToast } = useToast();
 
   const heroConfig = HEROES_CONFIG[heroId];
-  const equipmentInventory = state.equipmentInventory || {};
+  const equipmentInventory = state.equipmentInventory || EMPTY_EQUIPMENT_INVENTORY;
 
   // 背包中符合槽位条件的未穿戴装备实例候选列表（ADR-0014 修订：按实例逐条列出，含强化等级）
   const candidates = useMemo(
@@ -100,7 +103,7 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
         </header>
 
         {/* 候选装备列表 */}
-        <div className="flex-1 overflow-y-auto py-3 flex flex-col gap-2 min-h-[160px] max-h-[50vh] pr-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain py-3 flex flex-col gap-2 min-h-[160px] max-h-[50vh] pr-1">
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center p-6 gap-2 my-auto">
               <PackageOpen className="w-10 h-10 text-zinc-600 animate-pulse" />

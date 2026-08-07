@@ -112,7 +112,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
        z-[9999] 全屏遮罩：100% 盖住顶部状态栏、底部 Tab 栏与整个视区 */
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[9999] bg-black/40 flex flex-col items-center justify-center p-4 animate-in fade-in duration-150 select-none"
     >
       {/* 矩形主容器：尺寸放大 h-[460px] max-h-[68vh] w-[92%] max-w-[380px]，居中展示 */}
       <div
@@ -136,7 +136,7 @@ export const PartySlotModal: React.FC<PartySlotModalProps> = ({
         </header>
 
         {/* 英雄网格内容区 (四周保留充足 p-3.5 边距，防止左右边框被 overflow 截断) */}
-        <div className="flex-1 overflow-y-auto p-3.5">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3.5">
           <div className="grid grid-cols-3 gap-3">
             {heroItems.map((item) => {
               return (

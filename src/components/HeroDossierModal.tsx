@@ -41,11 +41,11 @@ const HeroDossierModal: React.FC<HeroDossierModalProps> = ({ isOpen, heroId, onC
   const modalContent = (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[10002] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
+      className="fixed inset-0 z-[10002] bg-black/80 flex items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[85vh] p-4 flex flex-col gap-3 shadow-2xl overflow-y-auto"
+        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[85vh] p-4 flex flex-col gap-3 shadow-2xl overflow-y-auto overscroll-contain"
       >
         <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
