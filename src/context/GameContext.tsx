@@ -28,7 +28,7 @@ import {
   upgradeShelterStatUpdate
 } from '../state/facility';
 import { applyTick } from '../state/tick';
-import { summonUpdate, summonTenUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
+import { summonUpdate, summonBatchUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
 import {
   equipItemUpdate,
   unequipItemUpdate,
@@ -104,7 +104,7 @@ interface GameContextType {
   startExpedition: (heroId: string, locationId: string) => boolean;
   stopExpedition: () => boolean;
   summonHero: () => SummonOutcome;
-  summonTenHeroes: () => MultiSummonResult;
+  summonBatch: (count: number) => MultiSummonResult;
   isSummonOpen: boolean;
   openSummonModal: () => void;
   closeSummonModal: () => void;
@@ -559,8 +559,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  const summonTenHeroes = (): MultiSummonResult => {
-    const r = summonTenUpdate(stateRef.current);
+  const summonBatch = (count: number): MultiSummonResult => {
+    // 基于 stateRef 同步计算（绕开 setState 异步/批量更新下返回值不可靠的问题）
+    const r = summonBatchUpdate(stateRef.current, count);
     if (r.state !== stateRef.current) {
       setState(r.state);
     }
@@ -787,7 +788,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startExpedition,
       stopExpedition,
       summonHero,
-      summonTenHeroes,
+      summonBatch,
       isSummonOpen,
       openSummonModal,
       closeSummonModal,

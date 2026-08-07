@@ -164,13 +164,15 @@ export const summonUpdate = (
 };
 
 /**
- * 英雄召唤 10 连抽：消耗 1000 灵魂残响，连续执行 10 次召唤
+ * 英雄召唤批量 N 连抽：消耗 costPerSummon * count 灵魂残响，连续执行 count 次召唤。
+ * 100 连抽自然触发 100 抽硬保底（guaranteedAt: 100），保底/碎片规则与单抽一致（由 summonUpdate 逐次处理）。
  */
-export const summonTenUpdate = (
+export const summonBatchUpdate = (
   state: GameState,
+  count: number,
   rng: () => number = Math.random
 ): UpdateResult<MultiSummonResult> => {
-  const totalCost = SUMMON_CONFIG.costPerSummon * 10;
+  const totalCost = SUMMON_CONFIG.costPerSummon * count;
   if ((state.inventory.soul_echo || 0) < totalCost) {
     return {
       state,
@@ -181,7 +183,7 @@ export const summonTenUpdate = (
   let currentState = state;
   const outcomes: SummonOutcome[] = [];
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < count; i++) {
     const single = summonUpdate(currentState, rng);
     currentState = single.state;
     outcomes.push(single.result);
@@ -192,3 +194,11 @@ export const summonTenUpdate = (
     result: { outcomes, soulEchoesUsed: totalCost }
   };
 };
+
+/**
+ * 英雄召唤 10 连抽：消耗 1000 灵魂残响，批量召唤的 10 次特例
+ */
+export const summonTenUpdate = (
+  state: GameState,
+  rng: () => number = Math.random
+): UpdateResult<MultiSummonResult> => summonBatchUpdate(state, 10, rng);
