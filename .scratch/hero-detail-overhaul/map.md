@@ -32,6 +32,7 @@
 <!-- 每解决一个 ticket 追加一行：gist + 链接 -->
 
 - [英雄详情弹窗性能测量与优化范围](issues/01-hero-detail-perf-measurement.md) — 根因排序：R1 saveState 每秒全量写 localStorage 无节流（GameContext:167-171）；R2 体力未满（regen 3s/点 + 战斗消耗）使 13 号短路几乎不生效 → 每秒 tick 常态；R3 context value 无 memo + 全仓零 React.memo → 全 useGame 消费者每秒重渲染；R4 弹窗 useMemo 依赖均稳定（不重算，不动）；R5 DetailedStatsModal 是纯 props 组件（memo 有效）、其余 5 个订阅 context（memo 无效）。范围：04a saveState 节流 + 04b 体力跨整点才 tick + 04c 弹窗 memo（DetailedStatsModal/HeroDetailModal + HeroTab useCallback）；context 拆分留后续。已毕业出实施 ticket [英雄详情弹窗性能优化实施（存档节流 + tick 短路 + 弹窗 memo）](issues/04-hero-detail-perf-implementation.md)。
+- [英雄详情弹窗性能优化实施（存档节流 + tick 短路 + 弹窗 memo）](issues/04-hero-detail-perf-implementation.md) — 04a `createSaveThrottle`（5s 窗口 + 测试环境不节流）+ beforeunload/pagehide 关闭兑底（persistence.test 2 例）；04b applyTick 体力跨整点才 tick（无活跃系统时每秒重渲染 → 每 3 秒 1 次，tick.test 适配+新增跨整点用例）；04c DetailedStatsModal/HeroDetailModal React.memo + HeroDetailModal 内 onClose useCallback + HeroTab useCallback（code-review 修复 memo 恒失效问题）。全量 429/429、build 通过，提交 2a476af。
 
 ## Not yet specified
 
