@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后勤页面统一风格 + 基建数据结构原型 v2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .magic-blue { color: #6d8aff; }
+  .animate-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+  .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 min-h-screen p-4 max-w-md mx-auto">
+
+<div class="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3 mb-4 text-xs">
+  <p class="text-amber-400 font-bold mb-1">原型 v2（throwaway）</p>
+  <p class="text-zinc-400">① 统一产线风格 ② 基建可拓展数据结构（unlockRequirements 统一为 type/id/minValue）③ 可交互指派界面</p>
+</div>
+
+<div class="flex gap-1.5 mb-3" id="tabBar"></div>
+<div id="tab-base" class="tab-content space-y-4" style="display:none;"></div>
+<div id="tab-greenhouse" class="tab-content space-y-4" style="display:none;"></div>
+<div id="tab-facility" class="tab-content space-y-4" style="display:none;"></div>
+<div id="tab-expedition" class="tab-content space-y-4" style="display:none;"></div>
+
+<div class="mt-6 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+  <h3 class="text-sm font-bold text-amber-400 mb-2">基建数据结构原型</h3>
+  <p class="text-[10px] text-zinc-500 mb-3">unlockRequirements 统一为 type/id/minValue</p>
+  <div class="flex gap-1.5 mb-3 flex-wrap" id="schemaBtns"></div>
+  <pre id="schemaDisplay" class="text-[10px] text-emerald-300 bg-zinc-950/80 p-3 rounded-xl border border-zinc-900/50 overflow-x-auto font-mono leading-relaxed"></pre>
+</div>
+
+<script src="prototype.js"></script>
+<script src="prototype_tabs.js"></script>
+<script src="prototype_interact.js"></script>
+<script src="prototype_schema.js"></script>
+<!-- 指派选择器弹窗容器 -->
+<div id="heroPickerOverlay" style="display:none;"></div>
+</body>
+</html>
