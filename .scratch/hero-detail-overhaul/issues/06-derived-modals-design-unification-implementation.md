@@ -1,6 +1,6 @@
 # 相关子弹窗设计语言统一实施（UI_TOKENS 扩展 + 字号对齐 + z-index 规范）
 
-Status: open
+Status: resolved
 Type: task
 Blocked by: 03
 
@@ -60,3 +60,13 @@ modalBackdropChild: 'fixed inset-0 z-[10001] bg-black/75 flex items-center justi
 - `npx vitest run` 全量通过（现有弹窗测试断言文本/交互，不依赖 className）
 - `npm run build`（tsc -b && vite build）通过；`npx oxlint` 无新增
 - 肉眼：6 个子弹窗字号/容器/头部统一，无溢出、无回归
+
+## Answer：实施完成（2026-08-07，TDD 红绿 + code-review）
+
+提交 `a1c7213`。
+
+- **uiConstants 扩展**：字号阶梯 token（textBody 11px / textBodyDense 10px / textLabel 10px / textMini 9px）、sectionCard、modalHeader/Title/CloseButton、modalBackdropChild（z-10001）、modalContainerScroll；modalContainerEquipment/Compact 尺寸统一 380px/68vh（Equipment 保留滚动、Compact 隐藏）。
+- **弹窗迁移**：DetailedStatsModal 自绘→token（统一 backdrop + 定高容器 modalContainerStandard + 内部 flex-1 滚动，头部固定）+ text-xs→textBodyDense/textMini；HeroDossierModal 自绘→token（backdropChild + modalContainerScroll + 头部/区段 token + textBody/textLabel/textMini）；天赋树容器从 HeroDetailModal 内联外提为 **HeroTalentModal**（独立组件 + token）；EquipmentDetailModal/ExpLevelUpModal backdrop→modalBackdropChild（10001）+ <9px 字号补足；EquipSelectorModal 保持 modalBackdropSub（10002，三级替换路径）；HeroTalentPanel 7-8px→9px（≥9px 规范）。
+- **z-index 收口**：主弹窗 10000（modalBackdrop）/ 子弹窗 10001（modalBackdropChild）/ 三级 10002（modalBackdropSub）；全仓自绘 backdrop 残留清零。
+- **code-review 采纳**：DetailedStatsModal 统一 backdrop（消除与天赋树遮罩不一致）+ 恢复定高滚动（头部固定）；EquipSelectorModal z-index 回退 10002（EquipmentDetailModal 内三级替换路径需要）；HeroTalentPanel 字号补足。
+- **验证**：全量 429/429、build 通过、lint 0 警告。
