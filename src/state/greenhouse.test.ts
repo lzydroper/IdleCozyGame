@@ -166,6 +166,20 @@ describe('advanceGreenhouseAutomation（07 离线多轮自动收割播种）', (
     const r = advanceGreenhouseAutomation(state, 60, 'original');
     expect(r.result.harvested).toBeNull();
   });
+
+  it('离线开始时已成熟的作物先被收割（code-review should-fix）', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'glow_grass', growthProgress: 100, growthTimeLeft: 0, isWatered: true }]),
+      assignedWatererId: 'mei', // 无速度加成，专注收割轮次
+      inventory: { seed_glow_grass: 5 }
+    });
+    const r = advanceGreenhouseAutomation(state, 60, 'original');
+    // 初始成熟 1 轮 + 补种后 30 秒/轮 × 2 轮 = 3 轮 × (2/1)
+    expect(r.result.harvested).toEqual({ glow_fiber: 6, mana_dust: 3 });
+    expect(r.state.inventory.seed_glow_grass).toBe(2); // 5 - 3
+    const slot = r.state.greenhouse.slots[0];
+    expect(slot.cropId).toBe('glow_grass'); // 最后一轮补种后仍在
+  });
 });
 
 describe('挂机区域 actions（08）', () => {

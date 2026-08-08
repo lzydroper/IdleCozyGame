@@ -294,6 +294,17 @@ export const advanceGreenhouseAutomation = (
   const accumulated: Record<string, number> = {};
   const speedMult = resolveWatererBonus(state)?.facilitySpeedMultiplier ?? 0;
 
+  // 收割离线开始时就已成熟的槽位（code-review should-fix）：
+  // 在线按 growthProgress >= 100 收割，离线循环按 growthTimeLeft > 0 推进，
+  // 若离线开始时作物已成熟（growthTimeLeft=0）必须先收割，否则整段离线不结算
+  const initialR = autoHarvestAndReplantUpdate(cur, replantStrategy);
+  cur = initialR.state;
+  if (initialR.result.harvested) {
+    Object.entries(initialR.result.harvested).forEach(([itemId, qty]) => {
+      accumulated[itemId] = (accumulated[itemId] || 0) + qty;
+    });
+  }
+
   while (remaining > 0) {
     // 自动浇水（驻守免费）：有作物的未湿润槽位置 true（维持生长）
     cur = autoWaterGreenhouse(cur);
