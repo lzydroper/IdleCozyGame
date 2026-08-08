@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { CROPS_CONFIG } from '../data/crops';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
+import { getHeroName } from '../utils/gameUtils';
 import { useToast } from './ToastSystem';
 import GameIcon from './GameIcon';
 import DutyAssignModal from './DutyAssignModal';
@@ -38,9 +39,6 @@ const GreenhousePanel: React.FC = () => {
   const [seedModal, setSeedModal] = useState<{ mode: 'plant'; slotId: number } | { mode: 'autofarm' } | null>(null);
   const [showWatererPicker, setShowWatererPicker] = useState(false);
   const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
-
-  const getHeroName = (heroId: string): string =>
-    HEROES_CONFIG[heroId]?.name || heroId;
 
   // 触发飘字特效
   const triggerFlyingRewards = (yields: Record<string, number>, slotId: number) => {

@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../data/heroes';
 import { ITEMS_CONFIG } from '../data/items';
+import { getHeroName, getInvQty } from '../utils/gameUtils';
 import { useToast } from './ToastSystem';
 import DutyAssignModal from './DutyAssignModal';
 import { Compass, Rocket, Clock, LogOut, Search, Info, Play, ShieldAlert } from 'lucide-react';
@@ -28,18 +29,20 @@ const ExpeditionPanel: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 辅助：获取特定物品在背包里的数量
-  const getInvQty = (itemId: string) => state.inventory[itemId] || 0;
-
   // 英雄的职阶/阵营（ADR-0018：远征门槛迁移为 heroClass/faction）
   const getHeroClassLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_CLASS_LABELS[HEROES_CONFIG[heroId].heroClass] : '';
   const getHeroFactionLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_FACTION_LABELS[HEROES_CONFIG[heroId].faction] : '';
 
-  // 英雄显示名（heroes 状态无 name，从配置读取）
-  const getHeroName = (heroId: string): string =>
-    HEROES_CONFIG[heroId]?.name || heroId;
+  // 探索员与地点的职阶/阵营门槛匹配校验（ADR-0018）
+  const checkRequirementUnmatch = (locationId: string): boolean => {
+    const loc = EXPEDITION_LOCATIONS[locationId as keyof typeof EXPEDITION_LOCATIONS];
+    const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
+    const classUnmatch = loc?.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
+    const factionUnmatch = loc?.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
+    return !!(classUnmatch || factionUnmatch);
+  };
 
   // 4. 挂机探索状态与数据计算
   const exp = state.shelter.expedition;
@@ -218,10 +221,7 @@ const ExpeditionPanel: React.FC = () => {
                 const isSelected = selectedLocationId === key;
 
                 // 门槛校验（ADR-0018：heroClass/faction）
-                const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
-                const classUnmatch = loc.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
-                const factionUnmatch = loc.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
-                const requirementUnmatch = !!(classUnmatch || factionUnmatch);
+                const requirementUnmatch = checkRequirementUnmatch(key);
 
                 return (
                   <div
@@ -274,9 +274,9 @@ const ExpeditionPanel: React.FC = () => {
                 <Info className="w-3.5 h-3.5 text-zinc-500" />
                 派遣口粮消耗给养：
               </span>
-              <span className={getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
+              <span className={getInvQty(state.inventory, 'ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
                 {(EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) > 0
-                  ? `${getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty('ration')}/${EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})`
+                  ? `${getInvQty(state.inventory, 'ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty(state.inventory, 'ration')}/${EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})`
                   : '该地点无需口粮'}
               </span>
             </div>
@@ -288,12 +288,9 @@ const ExpeditionPanel: React.FC = () => {
           {/* 开始派遣按钮 */}
           {(() => {
             const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
-            const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
-            const classUnmatch = loc?.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
-            const factionUnmatch = loc?.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
-            const requirementUnmatch = !!(classUnmatch || factionUnmatch);
+            const requirementUnmatch = checkRequirementUnmatch(selectedLocationId);
             const rationCost = loc?.rationCost ?? 0;
-            const rationShortage = rationCost > 0 && getInvQty('ration') < rationCost;
+            const rationShortage = rationCost > 0 && getInvQty(state.inventory, 'ration') < rationCost;
             const isDisabled = !selectedExpExplorerId || requirementUnmatch || rationShortage;
 
             return (

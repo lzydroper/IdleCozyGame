@@ -7,6 +7,7 @@ import GameIcon from './GameIcon';
 import ShelterTabBar from './shelter/ShelterTabBar';
 import type { ShelterTabId } from './shelter/constants';
 import { Settings, Cpu } from 'lucide-react';
+import { getInvQty } from '../utils/gameUtils';
 import { SmelterCard, AssemblerCard } from './FacilityCard';
 import DreamLeakAlertPanel from './DreamLeakAlertPanel';
 import GreenhousePanel from './GreenhousePanel';
@@ -31,9 +32,6 @@ const ShelterTab: React.FC = () => {
 
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<ShelterTabId>('base');
-
-  // 辅助：获取特定物品在背包里的数量
-  const getInvQty = (itemId: string) => state.inventory[itemId] || 0;
 
   // 1. 避难所基建与挂机控制 (Base Upgrades) 属性计算
   const getUpgradeLevel = (id: string) => {
@@ -89,7 +87,7 @@ const ShelterTab: React.FC = () => {
               const isMax = currentLevel >= upgrade.maxLevel;
               const currentConfig = upgrade.levels.find((l) => l.level === currentLevel);
               const nextConfig = upgrade.levels.find((l) => l.level === currentLevel + 1);
-              const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([item, qty]) => getInvQty(item) >= qty) : false;
+              const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([item, qty]) => getInvQty(state.inventory, item) >= qty) : false;
 
               return (
                 <div key={upgrade.id} className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">

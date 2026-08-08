@@ -5,6 +5,7 @@ import { AUTO_RECIPES } from '../data/autoRecipes';
 import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
 import { HEROES_CONFIG } from '../data/heroes';
+import { getInvQty } from '../utils/gameUtils';
 import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../state/facility';
 import { getRecipeDisplayName } from '../state/workshop';
 import GameIcon from './GameIcon';
@@ -109,12 +110,11 @@ function FacilityUnitCard({
   const speedBonus = 1 + level * 0.1;
   const capacity = getQueueCapacity(level);
   const recipes = Object.values(AUTO_RECIPES).filter(r => r.facilityId === type);
-  const getInvQty = (id: string) => state.inventory[id] || 0;
-  const canAffordUpgrade = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
+  const canAffordUpgrade = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(state.inventory, itemId) >= qty) : false;
 
   const headRecipe = fac.queue.length > 0 ? AUTO_RECIPES[fac.queue[0]] : null;
   const isPaused = !!headRecipe && fac.timeLeft === 0 &&
-    !Object.entries(headRecipe.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty);
+    !Object.entries(headRecipe.cost).every(([itemId, qty]) => getInvQty(state.inventory, itemId) >= qty);
   const isRunning = fac.active !== false && fac.queue.length > 0;
   const progress = fac.currentProgress || 0;
   const dutyMeta = resolveDutyBonus(state, type, unitIndex);
@@ -412,8 +412,8 @@ function FacilityUnitCard({
         {/* ── 当前队首配方详情 ── */}
         {headRecipe && (
           <div className="space-y-1.5 pt-1 border-t border-zinc-800/50">
-            <RecipeRow label="消耗" items={headRecipe.cost} getInvQty={getInvQty} accent="rose" />
-            <RecipeRow label="产出" items={headRecipe.reward} getInvQty={getInvQty} accent="emerald" />
+            <RecipeRow label="消耗" items={headRecipe.cost} getInvQty={(id) => getInvQty(state.inventory, id)} accent="rose" />
+            <RecipeRow label="产出" items={headRecipe.reward} getInvQty={(id) => getInvQty(state.inventory, id)} accent="emerald" />
             <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
               <TrendingUp className="w-2.5 h-2.5" />
               {Object.entries(headRecipe.reward).map(([id, qty]) => (
@@ -447,11 +447,10 @@ function FacilityTypeSection({
   const { accent, iconBg } = theme;
   const units = state.shelter.facilities[type] || [];
   const cfg = FACILITY_EXPANSION[type];
-  const getInvQty = (id: string) => state.inventory[id] || 0;
 
   const canExpand = units.length < cfg.maxUnits;
   const cost = canExpand ? cfg.costs[units.length - 1] : null;
-  const canAfford = cost ? Object.entries(cost).every(([itemId, qty]) => getInvQty(itemId) >= qty) : false;
+  const canAfford = cost ? Object.entries(cost).every(([itemId, qty]) => getInvQty(state.inventory, itemId) >= qty) : false;
 
   return (
     <div className="space-y-3">
