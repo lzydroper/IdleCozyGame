@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { calculateEntityStats, DEFAULT_PRIMARY_ATTRIBUTES } from './statSystem';
-import { applyBuffsToStats, tickBuffs } from './buffSystem';
+import { collectBuffModifiers, tickBuffs } from './buffSystem';
 import type { ActiveBuff } from './buffSystem';
 
-describe('buffSystem - Buff/Debuff State Machine & Effect Engine', () => {
-  const baseCalculatedStats = calculateEntityStats({
+describe('buffSystem - 统一管道模式（stat-bonus-unification 07）', () => {
+  const baseParams = {
     baseAttributes: {
       attack: 100,
       defense: 50,
@@ -14,9 +14,9 @@ describe('buffSystem - Buff/Debuff State Machine & Effect Engine', () => {
       critDmg: 1.50
     },
     primaryAttributes: DEFAULT_PRIMARY_ATTRIBUTES
-  });
+  };
 
-  it('correctly applies flat attack buff and percent attack buff', () => {
+  it('buff 修饰符与常驻修饰符合并进统一管道：flat 先加、percent 后乘', () => {
     const buffs: ActiveBuff[] = [
       {
         id: 'buff_atk_flat',
@@ -24,9 +24,7 @@ describe('buffSystem - Buff/Debuff State Machine & Effect Engine', () => {
         type: 'buff',
         duration: 3,
         maxDuration: 3,
-        statModifiers: [
-          { stat: 'attack', kind: 'flat', value: 30 }
-        ]
+        statModifiers: [{ stat: 'attack', kind: 'flat', value: 30 }]
       },
       {
         id: 'buff_atk_percent',
@@ -34,34 +32,23 @@ describe('buffSystem - Buff/Debuff State Machine & Effect Engine', () => {
         type: 'buff',
         duration: 2,
         maxDuration: 2,
-        statModifiers: [
-          { stat: 'attack', kind: 'percent', value: 0.20 } // +20%
-        ]
+        statModifiers: [{ stat: 'attack', kind: 'percent', value: 0.20 }] // +20%
       }
     ];
 
-    const updatedStats = applyBuffsToStats(baseCalculatedStats, buffs);
-
-    // Attack = (Base 100 + Flat 30) * (1 + Percent 0.20) = 130 * 1.20 = 156
-    expect(updatedStats.attack).toBe(156);
+    const updated = calculateEntityStats(baseParams, collectBuffModifiers(buffs, 0));
+    // Attack = (Base 100 + Flat 30) * (1 + 0.20) = 156
+    expect(updated.attack).toBeCloseTo(156);
   });
 
-  it('applies Willpower effect reduction to Debuffs', () => {
+  it('debuff 按意志减免（effectReduction）调整数值', () => {
     // 20 Willpower = 10% effect reduction (20 * 0.5%)
-    const statsWithWillpower = calculateEntityStats({
-      baseAttributes: {
-        attack: 100,
-        defense: 50,
-        maxHp: 1000,
-        maxMp: 200,
-        critRate: 0.05,
-        critDmg: 1.50
-      },
-      primaryAttributes: {
-        ...DEFAULT_PRIMARY_ATTRIBUTES,
-        willpower: 20
-      }
-    });
+    const paramsWithWillpower = {
+      ...baseParams,
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, willpower: 20 }
+    };
+    // 意志减免来自基础面板（不含 buff），与旧 applyBuffsToStats 语义一致
+    const baseReduction = calculateEntityStats(paramsWithWillpower).effectReduction;
 
     const debuffs: ActiveBuff[] = [
       {
@@ -70,17 +57,29 @@ describe('buffSystem - Buff/Debuff State Machine & Effect Engine', () => {
         type: 'debuff',
         duration: 3,
         maxDuration: 3,
-        statModifiers: [
-          { stat: 'attack', kind: 'flat', value: -40 } // Base -40 ATK, but 10% reduced by willpower -> -36 ATK
-        ]
+        statModifiers: [{ stat: 'attack', kind: 'flat', value: -40 }] // 基础 -40，意志减免 10% → -36
       }
     ];
 
-    const updatedStats = applyBuffsToStats(statsWithWillpower, debuffs);
+    const updated = calculateEntityStats(paramsWithWillpower, collectBuffModifiers(debuffs, baseReduction));
+    expect(updated.attack).toBeCloseTo(64); // 100 - 36
+  });
 
-    // Debuff reduction = -40 * (1 - 0.10) = -36
-    // Final ATK = 100 - 36 = 64
-    expect(updatedStats.attack).toBe(64);
+  it('元属性 buff 经折算生效（修掉旧 applyBuffsToStats 元属性累积不生效缺陷）', () => {
+    const buffs: ActiveBuff[] = [
+      {
+        id: 'buff_str',
+        name: '巨力术',
+        type: 'buff',
+        duration: 2,
+        maxDuration: 2,
+        statModifiers: [{ stat: 'strength', kind: 'flat', value: 5 }]
+      }
+    ];
+
+    const updated = calculateEntityStats(baseParams, collectBuffModifiers(buffs, 0));
+    expect(updated.attack).toBeCloseTo(110); // 100 + 5 * 2
+    expect(updated.critDmg).toBeCloseTo(1.525); // 1.5 + 5 * 0.005
   });
 
   it('correctly ticks duration down and removes expired buffs', () => {
