@@ -24,9 +24,8 @@ export function calculateOfflineProgress(
     const config = cropsConfig[slot.cropId];
     if (!config) return slot;
 
-    // 浇水倍速增长 (生长速度翻倍，相当于扣减时间速度变2倍)
-    const speedMultiplier = slot.isWatered ? 2 : 1;
-    const timeReduced = elapsedSeconds * speedMultiplier;
+    // 浇水=维持生长（06）：湿润作物按基础 1x 扣减，未湿润作物停滞（不扣减）
+    const timeReduced = slot.isWatered ? elapsedSeconds : 0;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
 
@@ -259,8 +258,9 @@ export function calculateDetailedOfflineProgress(
     const config = (CROPS_CONFIG as any)[slot.cropId];
     if (!config) return slot;
 
-    let speedMultiplier = (slot.isWatered || isWateredOffline) ? 2 : 1;
-    const timeReduced = actualSeconds * speedMultiplier;
+    // 浇水=维持生长（06）：湿润作物按基础 1x 扣减，未湿润作物停滞；
+    // 驻守（isWateredOffline）强制湿润逻辑保留，07 正式化
+    const timeReduced = (slot.isWatered || isWateredOffline) ? actualSeconds : 0;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
 

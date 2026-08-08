@@ -15,38 +15,32 @@ const MOCK_CROPS_CONFIG: Record<string, { growthTime: number }> = {
 };
 
 describe('Game State Tick & Offline Calculation', () => {
-  it('should correctly advance plant growth based on elapsed seconds', () => {
+  it('未湿润作物离线停滞（不扣减生长时间）', () => {
     const initialSlots: GreenhouseSlot[] = [
       { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 100, isWatered: false }
     ];
-    
-    // 模拟过去 50 秒
+    // 浇水=维持生长（06）：未湿润作物停滞
     const updatedSlots = calculateOfflineProgress(initialSlots, 50, MOCK_CROPS_CONFIG);
-    
-    expect(updatedSlots[0].growthTimeLeft).toBe(50);
-    expect(updatedSlots[0].growthProgress).toBe(50);
+    expect(updatedSlots[0].growthTimeLeft).toBe(100);
+    expect(updatedSlots[0].growthProgress).toBe(0);
   });
 
-  it('should double growth speed if slot is watered', () => {
+  it('湿润作物离线按基础 1x 生长（不再 ×2）', () => {
     const initialSlots: GreenhouseSlot[] = [
       { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 100, isWatered: true }
     ];
-    
-    // 模拟过去 20 秒，浇水时 1 秒扣 2 秒
+    // 湿润 1x：20 秒扣 20
     const updatedSlots = calculateOfflineProgress(initialSlots, 20, MOCK_CROPS_CONFIG);
-    
-    expect(updatedSlots[0].growthTimeLeft).toBe(60);
-    expect(updatedSlots[0].growthProgress).toBe(40);
+    expect(updatedSlots[0].growthTimeLeft).toBe(80);
+    expect(updatedSlots[0].growthProgress).toBe(20);
   });
 
-  it('should cap growth progress at 100 and growthTimeLeft at 0', () => {
+  it('生长进度封顶 100 且生长时间不为负', () => {
     const initialSlots: GreenhouseSlot[] = [
-      { id: 1, cropId: 'glow_grass', growthProgress: 80, growthTimeLeft: 20, isWatered: false }
+      { id: 1, cropId: 'glow_grass', growthProgress: 80, growthTimeLeft: 20, isWatered: true }
     ];
-    
-    // 模拟过去 30 秒，超出生长所需剩余时间
+    // 湿润 30 秒超出剩余 20 秒
     const updatedSlots = calculateOfflineProgress(initialSlots, 30, MOCK_CROPS_CONFIG);
-    
     expect(updatedSlots[0].growthTimeLeft).toBe(0);
     expect(updatedSlots[0].growthProgress).toBe(100);
   });
@@ -327,55 +321,73 @@ describe('GameContext Integration', () => {
   });
 
   describe('calculateDetailedOfflineProgress - Greenhouse Watering and Crop Growth', () => {
-    it('should double growth speed and maintain watering status when a waterer is assigned', () => {
-      const mockState: GameState = {
-        player: {
-          food: 100, maxFood: 100,
-          energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
-        },
-        inventory: {},
-        greenhouse: {
-          slots: [
-            { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: false }
-          ],
-          unlockedSlotsCount: 4
-        },
-        heroes: {},
-        equipment: {},
-        equipmentInventory: {},
-        summon: { pityCount: 0 },
-        stamina: 100,
-        maxStamina: 100,
-        party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
-        exploration: {
-          inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
-          realityEncounterId: null,
-          inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
-        },
-        activeAlert: { type: null, hp: 0 },
-        lastTick: Date.now(),
-        dayStartTime: Date.now(),
-        logs: [],
-        shelter: {
-          maxOfflineDuration: 14400,
-          batteryLevel: 1,
-          generatorLevel: 0,
-          recyclerLevel: 0,
-          facilities: { smelter: [], assembler: [] },
-          assignedWatererId: 'nova',
-          assignedExplorerId: null,
-          expedition: { locationId: null, startTime: null, lastScavengeTime: null }
-        }
-      };
+    // 06 浇水=维持生长：湿润作物 1x 生长，未湿润作物停滞
+    const makeGreenhouseState = (overrides: { assignedWatererId?: string | null; isWatered?: boolean } = {}): GameState => ({
+      player: {
+        food: 100, maxFood: 100,
+        energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
+      },
+      inventory: {},
+      greenhouse: {
+        slots: [
+          { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: overrides.isWatered ?? false }
+        ],
+        unlockedSlotsCount: 4
+      },
+      heroes: {},
+      equipment: {},
+      equipmentInventory: {},
+      summon: { pityCount: 0 },
+      stamina: 100,
+      maxStamina: 100,
+      party: [],
+      combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
+      exploration: {
+        inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+        realityEncounterId: null,
+        inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
+        capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
+      },
+      activeAlert: { type: null, hp: 0 },
+      lastTick: Date.now(),
+      dayStartTime: Date.now(),
+      logs: [],
+      shelter: {
+        maxOfflineDuration: 14400,
+        batteryLevel: 1,
+        generatorLevel: 0,
+        recyclerLevel: 0,
+        facilities: { smelter: [], assembler: [] },
+        assignedWatererId: overrides.assignedWatererId ?? null,
+        assignedExplorerId: null,
+        expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+      }
+    });
 
-      const { updatedState } = calculateDetailedOfflineProgress(mockState, 10);
+    it('驻守时作物保持湿润并按基础 1x 生长', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({ assignedWatererId: 'nova' }), 10);
       const slot = updatedState.greenhouse.slots[0];
-      
-      expect(slot.growthTimeLeft).toBe(10);
-      expect(slot.growthProgress).toBe(67);
-      expect(slot.isWatered).toBe(true);
+
+      expect(slot.growthTimeLeft).toBe(20); // 30 - 10（1x，不再 ×2）
+      expect(slot.growthProgress).toBe(33); // (30-20)/30*100
+      expect(slot.isWatered).toBe(true);    // 驻守强制湿润保留（07 正式化）
+    });
+
+    it('无驻守且未湿润的作物离线停滞', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({}), 10);
+      const slot = updatedState.greenhouse.slots[0];
+
+      expect(slot.growthTimeLeft).toBe(30); // 停滞不扣减
+      expect(slot.growthProgress).toBe(0);
+      expect(slot.isWatered).toBe(false);
+    });
+
+    it('已湿润作物无驻守时离线按 1x 生长', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({ isWatered: true }), 10);
+      const slot = updatedState.greenhouse.slots[0];
+
+      expect(slot.growthTimeLeft).toBe(20);
+      expect(slot.growthProgress).toBe(33);
     });
   });
 });

@@ -3,7 +3,7 @@ import { INITIAL_STATE } from '../data/initialState';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { applyTick } from './tick';
-import type { GameState } from '../types/game';
+import type { GameState, GreenhouseSlot } from '../types/game';
 
 // 13 号 R3 + 04 号 04b：applyTick 短路 —— 无活跃系统 + 体力满/未跨整点 + 未跨天时返回原引用，
 // 使 GameContext 每秒 tick 触发 React bailout，消除整树重渲染。体力每 3 秒恢复 1 点（staminaRegenSeconds），
@@ -65,5 +65,34 @@ describe('applyTick 短路（13 号 R3 + 04 号 04b）', () => {
     };
     const next = applyTick(state, Date.now());
     expect(next).not.toBe(state);
+  });
+});
+
+// 06 浇水=维持生长：湿润作物按基础 1x 生长，未湿润作物停滞（不扣减）
+describe('applyTick 温室生长（06 浇水=维持生长）', () => {
+  const makeStateWithCrop = (slotOverrides: Partial<GreenhouseSlot>): GameState => ({
+    ...INITIAL_STATE,
+    stamina: COMBAT_CONFIG.maxStamina,
+    greenhouse: {
+      ...INITIAL_STATE.greenhouse,
+      slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+        i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, ...slotOverrides } : s
+      )
+    },
+    lastTick: Date.now() - 1000
+  });
+
+  it('未湿润作物停滞：growthTimeLeft 不扣减', () => {
+    const next = applyTick(makeStateWithCrop({ isWatered: false }), Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.growthTimeLeft).toBe(30);
+    expect(slot.growthProgress).toBe(0);
+  });
+
+  it('湿润作物按基础 1x 扣减生长时间', () => {
+    const next = applyTick(makeStateWithCrop({ isWatered: true }), Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.growthTimeLeft).toBe(29);
+    expect(slot.growthProgress).toBe(3); // (30-29)/30*100 ≈ 3.33 → round 3
   });
 });

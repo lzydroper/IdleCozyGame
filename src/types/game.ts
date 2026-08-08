@@ -29,7 +29,7 @@ export interface GreenhouseSlot {
   cropId: string | null;    // 种植的作物，null表示空闲
   growthProgress: number;   // 0 - 100
   growthTimeLeft: number;   // 剩余秒数
-  isWatered: boolean;       // 浇水状态（生长速度翻倍）
+  isWatered: boolean;       // 湿润状态（维持生长：未浇水则作物不生长，浇水后 1x 生长）
 }
 
 // === 英雄（Hero）系统：Melvor 式改造新增 ===

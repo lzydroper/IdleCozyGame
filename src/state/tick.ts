@@ -91,8 +91,9 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     const config = (CROPS_CONFIG as any)[slot.cropId];
     if (!config) return slot;
 
-    let speedMultiplier = (slot.isWatered || isWateredOnline) ? 2 : 1;
-    const timeReduced = 1 * speedMultiplier;
+    // 浇水=维持生长（06）：湿润作物按基础 1x 扣减，未湿润作物停滞（不扣减）；
+    // 驻守（isWateredOnline）强制湿润逻辑保留，07 正式化
+    const timeReduced = (slot.isWatered || isWateredOnline) ? 1 : 0;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
 
