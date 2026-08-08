@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 - 派生属性贡献计算, 03 - 四来源产出函数打 source 标签, 04 - 里程碑加成转 StatModifier, 05 - HeroDetailModal 补齐完整 modifier 接入
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `DetailedStatsModal` props 扩展：接收 `modifiers: StatModifier[]`（来源分解数据）和派生属性贡献数据（02 号产出）
 - [ ] 属性行顺序：攻击/防御/生命/魔力/暴击率/暴击倍率（Base 6）→ 力量/体质/敏捷/智慧/意志/超越（Primary 6）→ 奥术增幅/奥术抵抗/机械负荷/机械进化/梦魇侵蚀/虚无灵体/英灵鼓舞/星界引导/魂印驱动（Special 9）→ 派生属性（减伤率/免暴击率/冷却缩减/伤害豁免等）
