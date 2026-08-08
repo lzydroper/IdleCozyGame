@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 - 四来源产出函数打 source 标签, 04 - 里程碑加成转 StatModifier
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `HeroDetailModal.tsx` 的 `calculatedStats` useMemo 中，组装完整 `permanentModifiers`：装备 `getHeroEquipmentBonus` + 天赋 `getTalentBonus` + 觉醒 `getAwakenBonus` + 里程碑 `getMilestoneModifiers` + 羁绊（需从队伍阵容计算 `aggregateBonus`，或面板场景下无羁绊则传空数组）
 - [ ] 装备 flat 不再手动塞进 `baseAttributes`，改为通过 `getHeroEquipmentBonus` 走 modifier 管道
