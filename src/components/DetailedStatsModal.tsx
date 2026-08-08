@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Zap, Shield, Award, Swords } from 'lucide-react';
-import type { CalculatedEntityStats } from '../state/statSystem';
+import type { CalculatedEntityStats, StatModifier } from '../state/statSystem';
 import { PRIMARY_STAT_DESCRIPTIONS } from '../data/heroGrowth';
 import { UI_TOKENS } from '../data/uiConstants';
 
@@ -9,6 +9,7 @@ export interface DetailedStatsModalProps {
   isOpen: boolean;
   heroName: string;
   stats: CalculatedEntityStats;
+  modifiers?: StatModifier[];
   onClose: () => void;
 }
 
@@ -16,9 +17,13 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   isOpen,
   heroName,
   stats,
+  modifiers,
   onClose
 }) => {
   if (!isOpen) return null;
+
+  // modifiers 供 06 号可展开折叠列表使用（来源分解）；当前面板仍用旧布局
+  void modifiers;
 
   const { primaryAttributes: primary, specialAttributes: special } = stats;
 

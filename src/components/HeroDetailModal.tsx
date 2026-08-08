@@ -8,15 +8,17 @@ import {
   HERO_CLASS_COLORS
 } from '../data/heroes';
 import { STAR_MAX, starUpShardCost } from '../data/awakening';
-import { getAwakenedName } from '../state/awakening';
+import { getAwakenedName, getAwakenBonus } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
-import { getEquippedFlatStats, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
+import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp } from '../state/combat';
+import { getTalentBonus } from '../state/talents';
+import { aggregateBonus } from '../state/bonds';
 import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
 import { DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { COMBAT_CONFIG } from '../data/combatConfig';
-import { calculateEntityStats, type CalculatedEntityStats, type StatKey } from '../state/statSystem';
+import { calculateEntityStats, type CalculatedEntityStats, type StatModifier } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
 import HeroTalentModal from './HeroTalentModal';
@@ -78,39 +80,35 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const heroEquip = (heroId && state.equipment?.[heroId]) || EMPTY_EQUIP;
   const awakenedName = hero && config ? getAwakenedName(heroId || '', hero) || config.name : '';
 
-  // 装备平值加成（flat 修饰符，含同阵营 30% 穿戴加成）
-  const equipFlat = useMemo(
-    () => getEquippedFlatStats(heroEquip, config?.faction ?? 'mechanical'),
-    [heroEquip, config?.faction]
-  );
+  // 核心基础面板属性计算 (Memoized)：与 combat.ts heroToCombatant 同口径--
+  // 装备/天赋/觉醒/羁绊/里程碑全部走 StatModifier 管道（detailed-stats-panel-rework 05）
+  const permanentModifiers = useMemo<StatModifier[]>(() => {
+    if (!config || !hero) return [];
+    const party = state.party || [];
+    return [
+      ...aggregateBonus(party),
+      ...getMilestoneModifiers(config, hero.level),
+      ...getHeroEquipmentBonus(heroEquip, config.faction),
+      ...getTalentBonus(heroId || '', hero),
+      ...getAwakenBonus(heroId || '', hero)
+    ];
+  }, [config, hero, heroId, heroEquip, state.party]);
 
-  // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)：统一走 heroBaseAttributes（三层同口径，
-  // 含成长六项）+ 装备 flat + 里程碑 modifier + 元属性增益（stat-bonus-unification 统一实体）
-  // 里程碑加成已转为 StatModifier 走 modifier 管道（detailed-stats-panel-rework 04）
   const calculatedStats = useMemo(() => {
     if (!config || !hero) return null;
     const base = heroBaseAttributes(config, hero.level);
-    const milestoneMods = getMilestoneModifiers(config, hero.level);
-    const flatOf = (stat: StatKey): number => equipFlat.find(m => m.stat === stat)?.value ?? 0;
     return calculateEntityStats(
       {
-              baseAttributes: {
-                attack: base.attack + flatOf('attack'),
-                defense: base.defense + flatOf('defense'),
-                maxHp: base.maxHp + flatOf('maxHp'),
-                maxMp: base.maxMp,
-                critRate: base.critRate,
-                critDmg: base.critDmg
-              },
-              primaryAttributes: { ...config.primaryAttributes },
-              specialAttributes: {
-                ...DEFAULT_SPECIAL_ATTRIBUTES,
-                ...config.specialAttributes
-              }
-            },
-            milestoneMods
-          );
-  }, [config, hero, equipFlat]);
+        baseAttributes: base,
+        primaryAttributes: { ...config.primaryAttributes },
+        specialAttributes: {
+          ...DEFAULT_SPECIAL_ATTRIBUTES,
+          ...config.specialAttributes
+        }
+      },
+      permanentModifiers
+    );
+  }, [config, hero, permanentModifiers]);
 
   if (!isOpen || !heroId || !hero || !config) return null;
   // early return 已保证 config/hero 非空，calculatedStats 必非空
@@ -587,6 +585,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         isOpen={showDetailedStats}
         heroName={awakenedName}
         stats={stats}
+        modifiers={permanentModifiers}
         onClose={handleCloseDetailedStats}
       />
 
