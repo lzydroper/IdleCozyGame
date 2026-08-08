@@ -30,6 +30,7 @@ const novaWithPoints = (points: number, talents: Record<string, number> = {}): G
 const EDGE = 'trunk_attacker_edge';
 const FLURRY = 'trunk_attacker_flurry';
 const OVERDRIVE = 'hero_nova_overdrive';
+const BOOSTER = 'hero_nova_booster';
 
 describe('天赋树配置完整性（ticket 11）', () => {
   it('3 职阶各有一棵公共主干，主干按顺序递进', () => {
@@ -74,7 +75,7 @@ describe('天赋树配置完整性（ticket 11）', () => {
       allIds.add(n.id);
     });
     const nova = getTalentNodes('nova');
-    expect(nova.map(n => n.id)).toEqual([EDGE, FLURRY, 'trunk_attacker_armor_break', OVERDRIVE]);
+    expect(nova.map(n => n.id)).toEqual([EDGE, FLURRY, 'trunk_attacker_armor_break', OVERDRIVE, BOOSTER]);
   });
 });
 
@@ -319,7 +320,6 @@ describe('天赋门控 gate（07 号：觉醒/等级/天赋点等条件列表解
     const gated: TalentNodeConfig = {
       id: 'test_gated',
       name: '测试门控',
-      description: '',
       maxLevel: 1,
       effect: {},
       pos: { row: 0, col: 0 },
@@ -340,7 +340,6 @@ describe('天赋门控 gate（07 号：觉醒/等级/天赋点等条件列表解
     HERO_TALENTS.nova.push({
       id: 'hero_nova_test_gate',
       name: '测试·觉醒',
-      description: '攻击 +1%/级',
       maxLevel: 1,
       effect: { attackPercent: 1 },
       pos: { row: 2, col: 1 },

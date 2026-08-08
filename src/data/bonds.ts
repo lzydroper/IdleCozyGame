@@ -11,6 +11,14 @@ export interface CombatBonus {
   maxHpPercent?: number;    // 生命上限 +x%（战斗中按同比例缩放当前血量）
 }
 
+// 加成属性元数据（数据驱动）：新增属性 → `CombatBonus` 加字段后，TS 强制在本表补一行，
+// `formatBonus` 等文案函数自动覆盖——不再需要改 if 链
+export const COMBAT_BONUS_META: { [K in keyof CombatBonus]-?: { label: string; unit?: string } } = {
+  attackPercent: { label: '攻击', unit: '%' },
+  defensePercent: { label: '防御', unit: '%' },
+  maxHpPercent: { label: '生命', unit: '%' },
+};
+
 export interface BondConfig {
   id: string;
   name: string;
@@ -47,11 +55,9 @@ export const BONDS: BondConfig[] = [
   }
 ];
 
-// 加成数值 → 展示文案（UI 共用）
-export const formatBonus = (bonus: CombatBonus): string => {
-  const parts: string[] = [];
-  if (bonus.attackPercent) parts.push(`攻击 +${bonus.attackPercent}%`);
-  if (bonus.defensePercent) parts.push(`防御 +${bonus.defensePercent}%`);
-  if (bonus.maxHpPercent) parts.push(`生命 +${bonus.maxHpPercent}%`);
-  return parts.join('、');
-};
+// 加成数值 → 展示文案（UI 共用）：遍历属性元数据表生成，非硬编码 if 链
+export const formatBonus = (bonus: CombatBonus): string =>
+  (Object.keys(COMBAT_BONUS_META) as (keyof CombatBonus)[])
+    .filter(k => !!bonus[k])
+    .map(k => `${COMBAT_BONUS_META[k].label} +${bonus[k]!}${COMBAT_BONUS_META[k].unit ?? ''}`)
+    .join('、');

@@ -312,12 +312,9 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 </div>
               </div>
 
-              <p className="text-[10px] text-zinc-400 font-medium leading-normal">{selected.description}</p>
+              <p className="text-[10px] text-zinc-400 font-medium leading-normal">{formatTalentEffect(selected.effect)} / 级</p>
 
               <div className="flex items-center justify-between text-[10px] pt-1 border-t border-zinc-800/60">
-                <span className="font-bold text-emerald-400">
-                  效果：{formatTalentEffect(selected.effect)} / 级
-                </span>
                 {selLocked && (
                   <span className="font-bold">
                     {selGateTexts ? (
