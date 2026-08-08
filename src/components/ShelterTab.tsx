@@ -328,13 +328,13 @@ const ShelterTab: React.FC = () => {
 
       {/* 基建 tab */}
       {activeTab === 'base' && (
-      <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-4 backdrop-blur-md">
-        <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
-          <Settings className="w-4 h-4 text-cyan-400 animate-spin-slow" />
-          避难所基建与挂机控制 Core Upgrades
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+          <Settings className="w-4 h-4 text-cyan-400" />
+          避难所基建 Core Upgrades
         </h2>
 
-        <div className="space-y-3.5">
+        <div className="space-y-3">
           {Object.values(SHELTER_UPGRADES)
             .filter((upg) => upg.category === 'base')
             .filter((upg) => {
@@ -355,25 +355,31 @@ const ShelterTab: React.FC = () => {
               const nextConfig = upgrade.levels.find((l) => l.level === currentLevel + 1);
               const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([item, qty]) => getInvQty(item) >= qty) : false;
               const theme = getTheme(upgrade.theme?.glow);
+              const accentText = upgrade.theme?.glow === 'bg-cyan-500/30' ? 'text-cyan-400'
+                : upgrade.theme?.glow === 'bg-amber-500/30' ? 'text-amber-400'
+                : upgrade.theme?.glow === 'bg-emerald-500/30' ? 'text-emerald-400'
+                : upgrade.theme?.glow === 'bg-purple-500/30' ? 'text-purple-400'
+                : 'text-zinc-400';
 
               return (
-                <div key={upgrade.id} className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-emerald-500/20 transition-all">
-                  <div className="flex gap-2.5 items-center">
-                    <div className={`w-8 h-8 rounded-lg ${theme.iconBg} border ${theme.iconBorder} flex items-center justify-center`}>
-                      {getUpgradeIcon(upgrade.id)}
-                    </div>
-                    <div>
-                      <div className="font-bold text-zinc-200">
-                        {upgrade.name} (Lv.{currentLevel})
+                <div key={upgrade.id} className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+                  <div className={`h-0.5 w-full ${upgrade.theme?.glow || 'bg-zinc-500/30'}`} />
+                  <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-lg ${theme.iconBg} border ${theme.iconBorder} flex items-center justify-center`}>
+                        {getUpgradeIcon(upgrade.id)}
                       </div>
-                      <div className="text-[10px] text-zinc-400">
-                        {upgrade.effectLabel}：
-                        <span className={currentLevel > 0 ? 'text-zinc-200 font-bold' : 'text-zinc-500'}>
-                          {currentConfig ? currentConfig.effectText : '已停机'}
-                        </span>
+                      <div>
+                        <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
+                          {upgrade.name}
+                          <span className={`text-[9px] font-mono ${accentText} bg-white/5 px-1 py-0.5 rounded`}>Lv.{currentLevel}</span>
+                        </div>
+                        <div className="text-[9px] text-zinc-500">
+                          {upgrade.effectLabel}：<span className={currentLevel > 0 ? 'text-zinc-200 font-bold' : 'text-zinc-500'}>{currentConfig ? currentConfig.effectText : '已停机'}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   <button
                     onClick={() => {
                       if (isMax) return;
@@ -409,6 +415,12 @@ const ShelterTab: React.FC = () => {
                       </>
                     )}
                   </button>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
+                    <div className="flex justify-between"><span>当前效果</span><span className="text-zinc-200 font-bold">{currentConfig ? currentConfig.effectText : '已停机'}</span></div>
+                    {!isMax && nextConfig && <div className="flex justify-between mt-1"><span>下一级消耗</span><span className="text-amber-400">{Object.entries(nextConfig.cost).map(([item, qty]) => `${qty}×${item}`).join(', ')}</span></div>}
+                  </div>
+                  </div>
                 </div>
               );
             })}
@@ -418,15 +430,10 @@ const ShelterTab: React.FC = () => {
 
       {/* 温室 tab */}
       {activeTab === 'greenhouse' && (
-      <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-4 backdrop-blur-md">
-        <h2 className="text-sm font-bold text-emerald-400 flex items-center justify-between mb-3 border-b border-zinc-800/80 pb-2">
-          <span className="flex items-center gap-2">
-            <Sprout className="w-4 h-4 text-emerald-400" />
-            温室控制中心 Greenhouse Station
-          </span>
-          <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded-lg border border-zinc-800 text-zinc-400 whitespace-nowrap flex-shrink-0">
-            自动浇水托管中
-          </span>
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-emerald-400 flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+          <Sprout className="w-4 h-4 text-emerald-400" />
+          温室控制中心
         </h2>
 
         {/* 培养槽全功能监视网格 */}
@@ -551,70 +558,76 @@ const ShelterTab: React.FC = () => {
           </div>
         </div>
 
-        {/* 自动浇水托管岗位指派 */}
-        <div className="bg-zinc-950 border border-zinc-900 p-3 rounded-2xl mb-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-zinc-300 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-zinc-400" />
-              温室灌溉操作员 (自动浇水岗)
-            </span>
-            {state.shelter.assignedWatererId ? (
-              <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md font-semibold">
-                托管中
-              </span>
-            ) : (
-              <span className="text-[9px] px-1.5 py-0.5 bg-zinc-900 text-zinc-500 border border-zinc-800 rounded-md font-semibold">
-                无托管 (生长速度正常)
-              </span>
-            )}
-          </div>
-
-          <div className="flex gap-2 items-center">
-            <select
-              value={state.shelter.assignedWatererId || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '') {
-                  // 解雇当前浇水工
-                  if (state.shelter.assignedWatererId) {
-                    const oldName = getHeroName(state.shelter.assignedWatererId);
-                    assignHeroToDuty(state.shelter.assignedWatererId, null);
-                    addLog(`取消了 ${oldName} 在温室自动浇水岗的操作员指派`, 'logistics');
-                    showToast('已取消温室浇水托管。', 'info');
-                  }
-                } else {
-                  assignHeroToDuty(val, { type: 'waterer', targetId: 'greenhouse' });
-                  const name = getHeroName(val);
-                  addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
-                  showToast(`指派 ${name} 负责温室浇水！所有作物获得自动灌溉加成。`, 'success');
-                }
-              }}
-              className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-300 p-1.5 rounded-xl outline-none focus:border-emerald-500/50"
-            >
-              <option value="">-- 未指派操作员 --</option>
-              {heroesList.map(s => {
-                const statusStr = getHeroStatus(s);
-                const heroCfg = HEROES_CONFIG[s];
-                const dutyLabel = heroCfg ? `${HERO_CLASS_LABELS[heroCfg.heroClass]}/${HERO_FACTION_LABELS[heroCfg.faction]}` : '';
-                return (
-                  <option key={s} value={s}>
-                    {getHeroName(s)}{dutyLabel ? ` (${dutyLabel})` : ''} {statusStr}
-                  </option>
-                );
-              })}
-            </select>
-
-
-          </div>
-
-          <p className="text-[10px] text-zinc-500 leading-relaxed">
-            <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> <span className="text-zinc-400">托管效应：</span>指派任意英雄在岗，温室插槽将自动维持浇水状态（生长速度翻倍），离线也生效。
-
-          </p>
-        </div>
+        {/* 浇水操作员卡片（产线风格） */}
+        {(() => {
+          const watererId = state.shelter.assignedWatererId;
+          const watererHero = watererId ? state.heroes[watererId] : null;
+          const watererCfg = watererId ? HEROES_CONFIG[watererId] : null;
+          return (
+            <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+              <div className="h-0.5 w-full bg-emerald-500/30" />
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
+                        浇水操作员
+                        <span className="text-[9px] text-zinc-500">温室</span>
+                      </div>
+                      <div className="text-[9px] text-zinc-500">
+                        {watererHero ? `托管中 · ${watererCfg?.name || ''}` : '未指派'}
+                      </div>
+                    </div>
+                  </div>
+                  {watererHero ? (
+                    <button
+                      onClick={() => {
+                        const oldName = getHeroName(watererId!);
+                        assignHeroToDuty(watererId!, null);
+                        addLog(`取消了 ${oldName} 在温室自动浇水岗的操作员指派`, 'logistics');
+                        showToast('已取消温室浇水托管。', 'info');
+                      }}
+                      className="text-[9px] px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 cursor-pointer"
+                    >
+                      解除
+                    </button>
+                  ) : (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          assignHeroToDuty(val, { type: 'waterer', targetId: 'greenhouse' });
+                          const name = getHeroName(val);
+                          addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
+                          showToast(`指派 ${name} 负责温室浇水！`, 'success');
+                        }
+                      }}
+                      className="text-[9px] px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 cursor-pointer bg-zinc-950"
+                    >
+                      <option value="">驻守</option>
+                      {heroesList.filter(s => !state.heroes[s].logisticsFacilityId).map(s => {
+                        const cfg = HEROES_CONFIG[s];
+                        return <option key={s} value={s}>{cfg?.name || s}</option>;
+                      })}
+                    </select>
+                  )}
+                </div>
+                <div className="text-[10px] text-zinc-400 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
+                  {watererHero
+                    ? <>当前操作员：<b className="text-zinc-200">{watererCfg?.name}</b> · 指派后自动浇水（生长翻倍），离线也生效</>
+                    : '指派英雄后温室插槽自动维持浇水状态（生长速度翻倍），离线也生效'}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 控制按钮与循环播种配置 */}
-        <div className="grid grid-cols-2 gap-3.5 pt-1.5 border-t border-zinc-900">
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={handleBatchWater}
             className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
@@ -673,10 +686,10 @@ const ShelterTab: React.FC = () => {
 
       {/* 远征 tab */}
       {activeTab === 'expedition' && (
-      <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-4 backdrop-blur-md">
-        <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 border-b border-zinc-800/80 pb-2">
           <Compass className="w-4 h-4 text-cyan-400" />
-          挂机探索远征 Base Expeditions
+          挂机探索远征
         </h2>
 
         {exp.locationId && currentExplorer && expLocation ? (
