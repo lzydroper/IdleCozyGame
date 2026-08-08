@@ -485,7 +485,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           </div>
 
           {/* 下半部分左右布局 (定高 h-[125px] 紧凑面板) */}
-          <div className="grid grid-cols-3 gap-2 h-[104px] shrink-0">
+          <div className="grid grid-cols-3 gap-2 h-[92px] shrink-0">
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
@@ -513,9 +513,9 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 pt-1 flex-1 items-center min-h-0">
+              <div className="grid grid-cols-2 gap-1 pt-1 flex-1 items-center min-h-0">
                 {/* 1. 生命 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Heart className="w-4.5 h-4.5 text-rose-400" /> 生命
                   </span>
@@ -523,7 +523,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 2. 攻击 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Sword className="w-4.5 h-4.5 text-amber-400" /> 攻击
                   </span>
@@ -531,7 +531,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 3. 防御 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Shield className="w-4.5 h-4.5 text-sky-400" /> 防御
                   </span>
@@ -539,7 +539,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 4. 魔力 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Wand2 className="w-4.5 h-4.5 text-cyan-400" /> 魔力
                   </span>
@@ -547,7 +547,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 5. 暴击 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Sparkles className="w-4.5 h-4.5 text-purple-400" /> 暴击
                   </span>
@@ -557,7 +557,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 6. 暴伤 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Flame className="w-4.5 h-4.5 text-amber-500" /> 暴伤
                   </span>
