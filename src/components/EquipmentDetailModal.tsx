@@ -230,26 +230,48 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           </div>
 
           {isFactionMatched ? (
-            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
-                <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>
-                  【{HERO_FACTION_LABELS[cfg.faction]}】阵营加成已激活！同阵营英雄穿戴，装备属性 +{FACTION_EQUIPMENT_BONUS_PERCENT}%
-                </span>
+            /* 已激活状态 */
+            <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-2.5 flex items-start justify-between gap-2 shadow-sm">
+              <div className="flex items-start gap-2 min-w-0">
+                <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-black text-emerald-300">
+                      【{HERO_FACTION_LABELS[cfg.faction]}】阵营加成已激活
+                    </span>
+                    <span className="px-1.5 py-0.2 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30 font-mono">
+                      +{FACTION_EQUIPMENT_BONUS_PERCENT}%
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-emerald-400/70 mt-0.5">
+                    同阵营英雄穿戴，装备基础属性获得额外提升
+                  </p>
+                </div>
               </div>
-              <div className="w-5 h-5 rounded-full bg-emerald-900 border border-emerald-500 flex items-center justify-center text-emerald-300 shrink-0 ml-1">
+              <div className="w-5 h-5 rounded-full bg-emerald-900/80 border border-emerald-500/50 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
               </div>
             </div>
           ) : (
-            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm opacity-90">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400">
-                <Shield className="w-4 h-4 text-zinc-500 shrink-0" />
-                <span>
-                  【{HERO_FACTION_LABELS[cfg.faction]}】阵营装备（穿戴英雄：【{HERO_FACTION_LABELS[heroConfig.faction]}】），未激活 +{FACTION_EQUIPMENT_BONUS_PERCENT}% 加成
-                </span>
+            /* 未激活状态 */
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-2.5 flex items-start justify-between gap-2 shadow-sm">
+              <div className="flex items-start gap-2 min-w-0">
+                <Shield className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-zinc-300">
+                      【{HERO_FACTION_LABELS[cfg.faction]}】阵营装备
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      (未激活 +{FACTION_EQUIPMENT_BONUS_PERCENT}% 加成)
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                    需要【{HERO_FACTION_LABELS[cfg.faction]}】阵营英雄穿戴，当前：{HERO_FACTION_LABELS[heroConfig.faction]}
+                  </p>
+                </div>
               </div>
-              <div className="w-5 h-5 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center text-zinc-500 shrink-0 ml-1 text-[10px] font-mono">
+              <div className="w-5 h-5 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-600 shrink-0 mt-0.5">
                 <Lock className="w-3 h-3" />
               </div>
             </div>
@@ -265,16 +287,20 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             </div>
 
             <div className="text-[10px] text-zinc-400 bg-zinc-900/60 p-2 rounded-lg border border-zinc-800/70 leading-relaxed font-medium">
-              <Lightbulb className="w-3 h-3 inline-block mr-1 -mt-0.5 text-amber-400" /><span className="text-amber-300/90 font-bold">套装说明：</span>
+              <Lightbulb className="w-3 h-3 inline-block mr-1 -mt-0.5 text-amber-400 shrink-0" />
+              <span className="text-amber-300/90 font-bold">套装说明：</span>
               穿戴同系列装备并提升强化等级，强化等级总和达 10/20/30 级时解锁对应属性加成。
+
               <div className="mt-1 font-bold">
                 {activeTierDescriptions.length > 0 ? (
-                  <span className="text-amber-400 flex items-center gap-1">
-                    <Flame className="w-3 h-3" /> 当前已生效：{activeTierDescriptions.join('、')}
+                  <span className="text-amber-400 inline-flex items-center gap-1">
+                    <Flame className="w-3 h-3 shrink-0" />
+                    <span>当前已生效：{activeTierDescriptions.join('、')}</span>
                   </span>
                 ) : (
-                  <span className="text-zinc-500">
-                    <Snowflake className="w-3 h-3" /> 当前已生效：无（需强化等级总和 ≥ 10）
+                  <span className="text-zinc-500 inline-flex items-center gap-1">
+                    <Snowflake className="w-3 h-3 shrink-0" />
+                    <span>当前已生效：无（需强化等级总和 ≥ 10）</span>
                   </span>
                 )}
               </div>
