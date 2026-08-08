@@ -255,6 +255,7 @@ function FacilityUnitCard({
           onSelect={(id) => {
             if (assignHeroToDuty(id, { type: 'facility', targetId: `${type}_${unitIndex}` })) {
               showToast(`${HEROES_CONFIG[id]?.name || id} 已驻守 ${fac.name}。`, 'success');
+              setShowGarrisonPicker(false);
             }
           }}
           onClose={() => setShowGarrisonPicker(false)}

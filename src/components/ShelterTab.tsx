@@ -551,10 +551,12 @@ const ShelterTab: React.FC = () => {
           title="指派浇水操作员"
           heroes={state.heroes}
           onSelect={(id) => {
-            assignHeroToDuty(id, { type: 'waterer', targetId: 'greenhouse' });
-            const name = getHeroName(id);
-            addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
-            showToast(`指派 ${name} 负责温室浇水！`, 'success');
+            if (assignHeroToDuty(id, { type: 'waterer', targetId: 'greenhouse' })) {
+              const name = getHeroName(id);
+              addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
+              showToast(`指派 ${name} 负责温室浇水！`, 'success');
+              setShowWatererPicker(false);
+            }
           }}
           onClose={() => setShowWatererPicker(false)}
         />
@@ -804,7 +806,9 @@ const ShelterTab: React.FC = () => {
                   派遣口粮消耗给养：
                 </span>
                 <span className={getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
-                  {getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: {getInvQty('ration')}/{EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})
+                  {(EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) > 0
+                    ? `${getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty('ration')}/${EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})`
+                    : '该地点无需口粮'}
                 </span>
               </div>
               <p className="text-[9px] text-zinc-500 leading-normal">
@@ -851,6 +855,7 @@ const ShelterTab: React.FC = () => {
         heroes={state.heroes}
         onSelect={(id) => {
           setSelectedExpExplorerId(id);
+          setShowExplorerPicker(false);
         }}
         onClose={() => setShowExplorerPicker(false)}
       />

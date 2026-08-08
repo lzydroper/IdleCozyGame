@@ -30,7 +30,7 @@ const ICON_SOURCE_REGISTRY: Record<
   item: { source: (id) => ITEMS_CONFIG[id], expectsSprite: true },
   enemy: { source: (id) => ({ icon: ENEMY_ICON_MAP[id] }), expectsSprite: false },
   zone: { source: (id) => ({ icon: ZONE_ICON_MAP[id] }), expectsSprite: false },
-  upgrade: { source: (id) => SHELTER_UPGRADES[id], expectsSprite: false },
+  upgrade: { source: (id) => ({ icon: SHELTER_UPGRADES[id]?.icon }), expectsSprite: false },
 };
 
 // spritesheet 网格规格：英雄立绘（survivors）3x3，物品类（seeds/materials/supplies）4x4
