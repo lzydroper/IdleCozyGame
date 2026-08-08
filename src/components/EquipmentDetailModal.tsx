@@ -13,7 +13,7 @@ import {
 } from '../data/equipment';
 import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
 import { ITEMS_CONFIG } from '../data/items';
-import { getEquippedItemStats, getEquippedStatParts, getSetEnhanceProgress } from '../state/equipment';
+import { getEquippedStatParts, getSetEnhanceProgress } from '../state/equipment';
 import { formatModifiers, type StatKey } from '../state/statSystem';
 import EquipSelectorModal from './EquipSelectorModal';
 import { UI_TOKENS } from '../data/uiConstants';
@@ -30,7 +30,6 @@ import {
   Sparkles,
   Zap,
   Hammer,
-  Castle,
   Lock,
   Lightbulb,
   Flame,
@@ -73,10 +72,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
   const isFactionMatched = Boolean(heroConfig?.faction && cfg.faction === heroConfig.faction);
 
-  // 计算穿戴时装备属性（只有同阵营英雄穿戴才触发 30% 阵营加成）
-  const statsWithFaction = getEquippedItemStats(item, heroConfig?.faction);
-
-  // 套装强化进度计算
+  // 计算套装强化进度（阵营加成在 renderStatRow 中通过 getEquippedStatParts 处理）
   const setProgress = getSetEnhanceProgress(heroEquip);
   const currentSetProgress = setProgress[cfg.set] || 0;
 
@@ -91,13 +87,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const activeTierModifiers = setCfg.tierEffects
     .filter(t => currentSetProgress >= t.threshold)
     .map(t => formatModifiers(t.bonus));
-
-  // 装备总战力/分值（ATK + DEF*2 + HP/5）
-  const gearScore = Math.round(
-    (statsWithFaction.find(m => m.stat === 'attack')?.value ?? 0) * 10 +
-    (statsWithFaction.find(m => m.stat === 'defense')?.value ?? 0) * 15 +
-    (statsWithFaction.find(m => m.stat === 'maxHp')?.value ?? 0) * 2
-  );
 
   // 1. 【卸下】动作
   const handleUnequip = () => {
@@ -138,7 +127,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     }
   };
 
-  // 渲染属性行（base + 强化成长；数据源与聚合共用 getEquippedStatParts）
+  // 渲染属性行：显示最终属性值（base + 强化加成），强化部分括号标注
   const renderStatRow = (
     label: string,
     IconComp: React.ComponentType<{ className?: string }>,
@@ -147,7 +136,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   ) => {
     const { base, enhance } = getEquippedStatParts(item, stat, heroConfig?.faction);
     if (!base && !enhance) return null;
-    const baseDisp = Math.round(base * 10) / 10;
+    const total = Math.round((base + enhance) * 10) / 10;
     const enhanceDisp = Math.round(enhance * 10) / 10;
 
     return (
@@ -156,11 +145,11 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           <IconComp className={`w-3.5 h-3.5 ${colorClass}`} />
           <span>{label}</span>
         </div>
-        <div className="font-mono font-black text-right">
-          <span className="text-zinc-100">{baseDisp}</span>
+        <div className="font-mono font-black text-right flex items-center gap-1">
+          <span className="text-zinc-100">{total}</span>
           {enhanceDisp > 0 && (
-            <span className="text-emerald-400 text-[11px] ml-1">
-              +{enhanceDisp} <span className="text-[9px] text-zinc-500 font-normal">(强化)</span>
+            <span className="text-emerald-400/70 text-[10px] font-bold">
+              (+{enhanceDisp})
             </span>
           )}
         </div>
@@ -208,9 +197,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-zinc-400 font-bold">
                   Lv. {item.enhance}/{ENHANCE_MAX}
-                </span>
-                <span className="text-[10px] font-black text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                  <Castle className="w-3 h-3" /> {gearScore}
                 </span>
               </div>
             </div>
