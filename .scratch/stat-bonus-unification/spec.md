@@ -84,7 +84,7 @@ interface StatModifier {
 ### 3. 来源迁移（来源：加成来源迁移边界决策）
 
 - **数据层直接改修饰符形状**：羁绊、天赋（每级效果）、觉醒（星级/被动）、装备（套装特效/神话词条）四处配置全部改为 `StatModifier[]`，`CombatBonus` 类型删除，无转换层。机械映射：`attackPercent: 10 → [{ stat: 'attack', kind: 'percent', value: 0.10 }]`（percent 统一转小数）；天赋聚合的 ×等级逻辑保留。
-- **装备平值并入**：装备平值（含每级强化、神话 ×1.5、阵营 ×1.3 折算）输出 flat 型修饰符，与套装百分比合并为装备来源的完整修饰符数组；`EquipmentStats` 类型退役，`{flat, percent}` 双类型拼接消失。
+- **装备平值并入（D2 收尾：EquipmentStats 彻底删除）**：装备平值（含每级强化、神话 ×1.5、阵营 ×1.3 折算）输出 flat 型修饰符，与套装百分比合并为装备来源的完整修饰符数组；装备配置（baseStats/statPerEnhance）与全部输出统一为 `StatModifier[]`，**新增装备可加属性只需在配置追加一行修饰符，零代码改动**（无类型/遍历代码需要同步）。
 - **升级里程碑三层全覆盖**：`levelMilestones` 类型扩展为 `Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes>`（21 项），仍作为三层输入直接叠加、不进修饰符管道、不作为加成展示（升级成长是永久基础而非可触发加成）。顺带修复现状死配置：暴击率/暴击倍率/魔力里程碑未生效（详情面板硬编码默认值），扩展后须接通；现有配置中 2 处暴击率里程碑将真正生效（面板数值变化属预期修复）。primary 里程碑经 `calculateEntityStats` 自动折算。
 - **旧存档**：格式不变、无缝兼容（全部为配置层/计算层改动，存档字段结构不动）。
 
