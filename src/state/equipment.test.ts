@@ -215,10 +215,10 @@ describe('神话锻造（+30 装备）', () => {
     // 神话词条生效（余烬单件 +30 触发三档特效 8%/10%/15% + 神话生命 +5%）
     const mods = getSetBonuses(r.state.equipment.nova);
     expect(mods).toEqual([
-      { stat: 'attack', kind: 'percent', value: 0.08 },
-      { stat: 'defense', kind: 'percent', value: 0.10 },
-      { stat: 'maxHp', kind: 'percent', value: 0.15 },
-      { stat: 'maxHp', kind: 'percent', value: 0.05 }
+      { stat: 'attack', kind: 'percent', value: 0.08, source: '余烬系列·套装特效' },
+      { stat: 'defense', kind: 'percent', value: 0.10, source: '余烬系列·套装特效' },
+      { stat: 'maxHp', kind: 'percent', value: 0.15, source: '余烬系列·套装特效' },
+      { stat: 'maxHp', kind: 'percent', value: 0.05, source: '余烬系列·神话词条' }
     ]);
   });
 
@@ -238,11 +238,11 @@ describe('神话锻造（+30 装备）', () => {
 describe('属性与套装特效计算', () => {
   it('单件属性 = 基础 + 强化成长；神话整体 ×1.5（flat 修饰符形态）', () => {
     const base: EquippedItem = { itemId: 'ember_weapon', enhance: 0, mythic: false };
-    expect(getEquippedItemStats(base)).toEqual([{ stat: 'attack', kind: 'flat', value: 16 }]);
+    expect(getEquippedItemStats(base)).toEqual([{ stat: 'attack', kind: 'flat', value: 16, source: '余烬长刃' }]);
     const plus5: EquippedItem = { itemId: 'ember_weapon', enhance: 5, mythic: false };
-    expect(getEquippedItemStats(plus5)).toEqual([{ stat: 'attack', kind: 'flat', value: 23.5 }]); // 16 + 1.5*5
+    expect(getEquippedItemStats(plus5)).toEqual([{ stat: 'attack', kind: 'flat', value: 23.5, source: '余烬长刃' }]); // 16 + 1.5*5
     const mythic: EquippedItem = { itemId: 'ember_weapon', enhance: 30, mythic: true };
-    expect(getEquippedItemStats(mythic)).toEqual([{ stat: 'attack', kind: 'flat', value: Math.round((16 + 1.5 * 30) * 1.5 * 10) / 10 }]); // 91.5
+    expect(getEquippedItemStats(mythic)).toEqual([{ stat: 'attack', kind: 'flat', value: Math.round((16 + 1.5 * 30) * 1.5 * 10) / 10, source: '余烬长刃' }]); // 91.5
   });
 
   it('三槽平值属性汇总（flat 修饰符，同属性合并）', () => {
@@ -252,9 +252,9 @@ describe('属性与套装特效计算', () => {
       trinket: { itemId: 'wasteland_trinket', enhance: 0, mythic: false }  // maxHp 20
     };
     expect(getEquippedFlatStats(equip)).toEqual([
-      { stat: 'attack', kind: 'flat', value: 10 },
-      { stat: 'defense', kind: 'flat', value: 6 },
-      { stat: 'maxHp', kind: 'flat', value: 20 }
+      { stat: 'attack', kind: 'flat', value: 10, source: '废土利刃' },
+      { stat: 'defense', kind: 'flat', value: 6, source: '废土护甲' },
+      { stat: 'maxHp', kind: 'flat', value: 20, source: '废土挂饰' }
     ]);
     expect(getEquippedFlatStats(emptyEquipment())).toEqual([]);
   });
@@ -270,12 +270,12 @@ describe('属性与套装特效计算', () => {
 
   it('套装特效按 +10/+20/+30 阈值叠加触发', () => {
     const gear10: HeroEquipment = { weapon: { itemId: 'wasteland_weapon', enhance: 10, mythic: false }, armor: null, trinket: null };
-    expect(getSetBonuses(gear10)).toEqual([{ stat: 'attack', kind: 'percent', value: 0.05 }]);
+    expect(getSetBonuses(gear10)).toEqual([{ stat: 'attack', kind: 'percent', value: 0.05, source: '废土系列·套装特效' }]);
 
     const gear20: HeroEquipment = { weapon: { itemId: 'wasteland_weapon', enhance: 10, mythic: false }, armor: { itemId: 'wasteland_armor', enhance: 10, mythic: false }, trinket: null };
     expect(getSetBonuses(gear20)).toEqual([
-      { stat: 'attack', kind: 'percent', value: 0.05 },
-      { stat: 'defense', kind: 'percent', value: 0.08 }
+      { stat: 'attack', kind: 'percent', value: 0.05, source: '废土系列·套装特效' },
+      { stat: 'defense', kind: 'percent', value: 0.08, source: '废土系列·套装特效' }
     ]);
 
     const gear30: HeroEquipment = {
@@ -284,9 +284,9 @@ describe('属性与套装特效计算', () => {
       trinket: { itemId: 'wasteland_trinket', enhance: 10, mythic: false }
     };
     expect(getSetBonuses(gear30)).toEqual([
-      { stat: 'attack', kind: 'percent', value: 0.05 },
-      { stat: 'defense', kind: 'percent', value: 0.08 },
-      { stat: 'maxHp', kind: 'percent', value: 0.10 }
+      { stat: 'attack', kind: 'percent', value: 0.05, source: '废土系列·套装特效' },
+      { stat: 'defense', kind: 'percent', value: 0.08, source: '废土系列·套装特效' },
+      { stat: 'maxHp', kind: 'percent', value: 0.10, source: '废土系列·套装特效' }
     ]);
   });
 
@@ -298,11 +298,11 @@ describe('属性与套装特效计算', () => {
     };
     // 单件 +30 神话：触发全部阈值特效（攻击+10%、防御+12%、生命+18%）+ 神话词条（攻击+5%、防御+5%）
     expect(getSetBonuses(equip)).toEqual([
-      { stat: 'attack', kind: 'percent', value: 0.10 },
-      { stat: 'defense', kind: 'percent', value: 0.12 },
-      { stat: 'maxHp', kind: 'percent', value: 0.18 },
-      { stat: 'attack', kind: 'percent', value: 0.05 },
-      { stat: 'defense', kind: 'percent', value: 0.05 }
+      { stat: 'attack', kind: 'percent', value: 0.10, source: '星核系列·套装特效' },
+      { stat: 'defense', kind: 'percent', value: 0.12, source: '星核系列·套装特效' },
+      { stat: 'maxHp', kind: 'percent', value: 0.18, source: '星核系列·套装特效' },
+      { stat: 'attack', kind: 'percent', value: 0.05, source: '星核系列·神话词条' },
+      { stat: 'defense', kind: 'percent', value: 0.05, source: '星核系列·神话词条' }
     ]);
   });
 
@@ -314,11 +314,11 @@ describe('属性与套装特效计算', () => {
     };
     // 满编 90：特效攻击+10%、防御+12%、生命+18% + 词条攻击+5%、防御+5%（仅一次）
     expect(getSetBonuses(equip)).toEqual([
-      { stat: 'attack', kind: 'percent', value: 0.10 },
-      { stat: 'defense', kind: 'percent', value: 0.12 },
-      { stat: 'maxHp', kind: 'percent', value: 0.18 },
-      { stat: 'attack', kind: 'percent', value: 0.05 },
-      { stat: 'defense', kind: 'percent', value: 0.05 }
+      { stat: 'attack', kind: 'percent', value: 0.10, source: '星核系列·套装特效' },
+      { stat: 'defense', kind: 'percent', value: 0.12, source: '星核系列·套装特效' },
+      { stat: 'maxHp', kind: 'percent', value: 0.18, source: '星核系列·套装特效' },
+      { stat: 'attack', kind: 'percent', value: 0.05, source: '星核系列·神话词条' },
+      { stat: 'defense', kind: 'percent', value: 0.05, source: '星核系列·神话词条' }
     ]);
   });
 
@@ -329,8 +329,8 @@ describe('属性与套装特效计算', () => {
       trinket: null
     };
     expect(getHeroEquipmentBonus(equip)).toEqual([
-      { stat: 'attack', kind: 'flat', value: 20 },          // 10 + 1*10
-      { stat: 'attack', kind: 'percent', value: 0.05 }      // 废土 +10 档
+      { stat: 'attack', kind: 'flat', value: 20, source: '废土利刃' },          // 10 + 1*10
+      { stat: 'attack', kind: 'percent', value: 0.05, source: '废土系列·套装特效' }      // 废土 +10 档
     ]);
   });
 });

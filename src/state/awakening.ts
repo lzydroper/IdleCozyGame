@@ -84,15 +84,20 @@ export const awakenUpdate = (state: GameState, heroId: string): UpdateResult<Awa
 };
 
 // 星级属性加成：每颗星（1 星以上）× STAR_STATS_PER_STAR（修饰符）
+// 每条修饰符打 source 标注星级（detailed-stats-panel-rework 03）
 export const getStarBonus = (hero: HeroState): StatModifier[] => {
   const stars = Math.max(0, hero.star - 1);
   if (stars === 0) return [];
-  return STAR_STATS_PER_STAR.map(m => ({ ...m, value: m.value * stars }));
+  const source = `升星·${hero.star}星`;
+  return STAR_STATS_PER_STAR.map(m => ({ ...m, value: m.value * stars, source }));
 };
 
 // 觉醒强化被动（修饰符，仅觉醒后生效）
+// 每条修饰符打 source 标注“觉醒被动”（detailed-stats-panel-rework 03）
 export const getAwakenedPassive = (heroId: string, hero: HeroState): StatModifier[] =>
-  hero.awakened ? (AWAKEN_CONFIG[heroId]?.passive || []) : [];
+  hero.awakened
+    ? (AWAKEN_CONFIG[heroId]?.passive || []).map(m => ({ ...m, source: '觉醒被动' }))
+    : [];
 
 // 觉醒专属战斗技能（仅觉醒后返回配置）
 export const getAwakenSkill = (heroId: string, hero: HeroState): AwakenSkillConfig | undefined =>

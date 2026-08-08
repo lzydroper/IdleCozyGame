@@ -90,9 +90,9 @@ describe('getActiveBonds (触发与失效)', () => {
   });
 
   it('aggregateBonus collects modifiers of all active bonds', () => {
-    expect(aggregateBonus(['nova', 'roy'])).toEqual([{ stat: 'attack', kind: 'percent', value: 0.10 }]);
-    expect(aggregateBonus(['mei', 'healer'])).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10 }]);
-    expect(aggregateBonus(['buster', 'soldier'])).toEqual([{ stat: 'defense', kind: 'percent', value: 0.10 }]);
+    expect(aggregateBonus(['nova', 'roy'])).toEqual([{ stat: 'attack', kind: 'percent', value: 0.10, source: '机械搭档' }]);
+    expect(aggregateBonus(['mei', 'healer'])).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10, source: '奥术共鸣' }]);
+    expect(aggregateBonus(['buster', 'soldier'])).toEqual([{ stat: 'defense', kind: 'percent', value: 0.10, source: '废土守护' }]);
     expect(aggregateBonus(['nova'])).toEqual([]); // 无羁绊 → 空修饰符
   });
 });
@@ -150,7 +150,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     // 不手动注入加成：bonus 完全由羁绊表 + 触发判定得出
     const party = ['mei', 'healer'];
     const bonus = aggregateBonus(party);
-    expect(bonus).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10 }]);
+    expect(bonus).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10, source: '奥术共鸣' }]);
     const combatant = heroToCombatant('mei', createInitialHero('mei'), bonus);
     expect(combatant.maxHp).toBe(176); // (120 + 体质 4×10) × 1.1
     expect(combatant.hp).toBe(176);

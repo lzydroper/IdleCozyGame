@@ -29,6 +29,7 @@ export const getActiveBonds = (party: string[]): typeof BONDS => {
 
 /**
  * 聚合当前队伍全部激活羁绊的加成（百分比加算语义由 statSystem 管道统一处理）。
+ * 每条修饰符打 source 标注羁绊名（detailed-stats-panel-rework 03）
  */
 export const aggregateBonus = (party: string[]): StatModifier[] =>
-  getActiveBonds(party).flatMap(bond => bond.bonus);
+  getActiveBonds(party).flatMap(bond => bond.bonus.map(m => ({ ...m, source: bond.name })));

@@ -27,11 +27,12 @@ export const getInvestedPoints = (hero: HeroState): number =>
   Object.values(hero.talents || {}).reduce((sum, n) => sum + (Number.isFinite(n) ? n : 0), 0);
 
 // 天赋加成汇总：所有已投入节点的每级效果 × 投入点数（修饰符，战斗内生效）
+// 每条修饰符打 source 标注天赋节点名（detailed-stats-panel-rework 03）
 export const getTalentBonus = (heroId: string, hero: HeroState): StatModifier[] =>
   getTalentNodes(heroId).flatMap(node => {
     const level = getTalentLevel(hero, node.id);
     if (level <= 0) return [];
-    return node.effect.map(m => ({ ...m, value: m.value * level }));
+    return node.effect.map(m => ({ ...m, value: m.value * level, source: node.name }));
   });
 
 // 前置是否满足：所有 requires 节点均已投入 ≥1 点

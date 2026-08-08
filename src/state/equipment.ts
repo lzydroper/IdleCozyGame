@@ -62,28 +62,27 @@ export const getEquippedStatParts = (
 };
 
 // 单件装备的总属性（flat 修饰符数组）：基础 + 强化成长；神话锻造后整体 ×1.5；英雄穿戴同阵营装备时附带阵营加成 (+30%)
+// 每条修饰符打 source 标注装备名（detailed-stats-panel-rework 03）
 export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): StatModifier[] => {
   const cfg = EQUIPMENT_CONFIG[item.itemId];
   if (!cfg) return [];
   return cfg.baseStats.map(m => {
     const { base, enhance } = getEquippedStatParts(item, m.stat, heroFaction);
     const total = base + enhance;
-    return { stat: m.stat, kind: 'flat' as const, value: Math.round(total * 10) / 10 };
+    return { stat: m.stat, kind: 'flat' as const, value: Math.round(total * 10) / 10, source: cfg.name };
   });
 };
 
 // 三槽装备汇总的平值属性（flat 修饰符，战斗内直接作用于英雄面板）
+// 不预合并同属性修饰符：保留各装备独立 source 供 UI 来源分解（detailed-stats-panel-rework 03）
+// 聚合由 aggregateModifiers / aggregateModifiersBySource 在计算端统一执行
 export const getEquippedFlatStats = (equip: HeroEquipment | null, heroFaction?: HeroFaction): StatModifier[] => {
   const mods: StatModifier[] = [];
   if (!equip) return mods;
   (['weapon', 'armor', 'trinket'] as const).forEach(slot => {
     const item = equip[slot];
     if (!item) return;
-    getEquippedItemStats(item, heroFaction).forEach(m => {
-      const existing = mods.find(x => x.stat === m.stat);
-      if (existing) existing.value = Math.round((existing.value + m.value) * 10) / 10;
-      else mods.push({ ...m });
-    });
+    mods.push(...getEquippedItemStats(item, heroFaction));
   });
   return mods;
 };
@@ -103,6 +102,7 @@ export const getSetEnhanceProgress = (equip: HeroEquipment | null): Record<strin
 };
 
 // 百分比加成汇总：套装特效（达阈值叠加）+ 神话系列共有词条（任意神话装备生效）
+// 每条修饰符打 source 标注来源（detailed-stats-panel-rework 03）
 export const getSetBonuses = (equip: HeroEquipment | null): StatModifier[] => {
   const bonus: StatModifier[] = [];
   if (!equip) return bonus;
@@ -113,7 +113,9 @@ export const getSetBonuses = (equip: HeroEquipment | null): StatModifier[] => {
     if (!set) return;
     // 套装特效：同系列强化总和 ≥ 阈值即触发，多档叠加
     set.tierEffects.forEach(tier => {
-      if (total >= tier.threshold) bonus.push(...tier.bonus);
+      if (total >= tier.threshold) {
+        bonus.push(...tier.bonus.map(m => ({ ...m, source: `${set.name}·套装特效` })));
+      }
     });
   });
 
@@ -126,7 +128,7 @@ export const getSetBonuses = (equip: HeroEquipment | null): StatModifier[] => {
     const set = cfg && EQUIPMENT_SETS[cfg.set];
     if (set && !affixGranted.has(set.id)) {
       affixGranted.add(set.id);
-      bonus.push(...set.mythicAffix);
+      bonus.push(...set.mythicAffix.map(m => ({ ...m, source: `${set.name}·神话词条` })));
     }
   });
 

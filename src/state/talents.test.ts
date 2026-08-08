@@ -157,8 +157,8 @@ describe('天赋加成计算与战斗生效', () => {
   it('加成 = 各节点每级效果 × 投入点数（线性叠加）', () => {
     const hero = { ...createInitialHero('nova'), talents: { [EDGE]: 2, [OVERDRIVE]: 3 } };
     expect(getTalentBonus('nova', hero)).toEqual([
-      { stat: 'attack', kind: 'percent', value: 0.06 }, // 锋芒 3%×2
-      { stat: 'attack', kind: 'percent', value: 0.06 }  // 过载 2%×3
+      { stat: 'attack', kind: 'percent', value: 0.06, source: '锋芒毕露' }, // 锋芒 3%×2
+      { stat: 'attack', kind: 'percent', value: 0.06, source: '过载引擎' }  // 过载 2%×3
     ]);
     expect(getInvestedPoints(hero)).toBe(5);
   });
