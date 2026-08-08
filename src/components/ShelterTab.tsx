@@ -94,9 +94,7 @@ const ShelterTab: React.FC = () => {
   const {
     state,
     upgradeShelterStat,
-    assignHeroJob,
-    startExpedition,
-    stopExpedition,
+    assignHeroToDuty,
     batchWater,
     batchHarvestAndReplant,
     plantCrop,
@@ -310,7 +308,7 @@ const ShelterTab: React.FC = () => {
       return;
     }
 
-    const success = startExpedition(selectedExpExplorerId, selectedLocationId);
+    const success = assignHeroToDuty(selectedExpExplorerId, { type: 'explorer', targetId: selectedLocationId });
     if (success) {
       addLog(`探索员 ${getHeroName(selectedExpExplorerId) || '英雄'} 前往 ${loc.name} 开始挂机远征派遣`, 'logistics');
       showToast(`英雄 ${getHeroName(selectedExpExplorerId)} 已带足口粮前往 ${loc.name} 挂机派遣！`, 'success');
@@ -595,12 +593,12 @@ const ShelterTab: React.FC = () => {
                   // 解雇当前浇水工
                   if (state.shelter.assignedWatererId) {
                     const oldName = getHeroName(state.shelter.assignedWatererId);
-                    assignHeroJob(state.shelter.assignedWatererId, null);
+                    assignHeroToDuty(state.shelter.assignedWatererId, null);
                     addLog(`取消了 ${oldName} 在温室自动浇水岗的操作员指派`, 'logistics');
                     showToast('已取消温室浇水托管。', 'info');
                   }
                 } else {
-                  assignHeroJob(val, 'waterer');
+                  assignHeroToDuty(val, { type: 'waterer', targetId: 'greenhouse' });
                   const name = getHeroName(val);
                   addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
                   showToast(`指派 ${name} 负责温室浇水！所有作物获得自动灌溉加成。`, 'success');
@@ -626,7 +624,7 @@ const ShelterTab: React.FC = () => {
             {meiHero && state.shelter.assignedWatererId !== 'mei' && (
               <button
                 onClick={() => {
-                  assignHeroJob('mei', 'waterer');
+                  assignHeroToDuty('mei', { type: 'waterer', targetId: 'greenhouse' });
                   addLog(`指派 ${getHeroName('mei')} 负责温室自动浇水`, 'logistics');
                   showToast('阿梅 (Mei) 已快速就位自动浇水岗位！', 'success');
                 }}
@@ -778,7 +776,7 @@ const ShelterTab: React.FC = () => {
               onClick={() => {
                 const explorerName = getHeroName(state.shelter.assignedExplorerId || '');
                 const locName = expLocation?.name || '未知区域';
-                if (stopExpedition()) {
+                if (assignHeroToDuty(state.shelter.assignedExplorerId || '', null)) {
                   addLog(`远征探索员 ${explorerName} 已从 ${locName} 安全召回`, 'logistics');
                   showToast('远征探索员已成功安全召回，拾荒所得物资已全部存入避难所储藏箱！', 'success');
                 } else {

@@ -28,7 +28,7 @@ describe('PartySlotModal Component', () => {
       talentPoints: 0,
       talents: {},
       awakened: false,
-      logisticsFacilityId: 'smelter_1' // 后勤中
+      logisticsFacilityId: { type: 'facility', targetId: 'smelter_1' } // 后勤中
     },
     soldier: {
       level: 10,

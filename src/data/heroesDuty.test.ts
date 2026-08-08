@@ -20,9 +20,10 @@ describe('Facility Duty & Hero Meta Attributes', () => {
       talentPoints: 0,
       talents: {},
       awakened: false,
-      logisticsFacilityId: 'smelter_1'
+      logisticsFacilityId: { type: 'facility', targetId: 'smelter_1' }
     };
 
-    expect(heroState.logisticsFacilityId).toBe('smelter_1');
+    expect(heroState.logisticsFacilityId?.type).toBe('facility');
+    expect(heroState.logisticsFacilityId?.targetId).toBe('smelter_1');
   });
 });

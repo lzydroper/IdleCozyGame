@@ -51,7 +51,19 @@ export interface HeroState {
   talentPoints: number;     // 未分配天赋点（升级获得，ticket 11）
   talents: Record<string, number>; // 天赋树投入：节点 id -> 已投入点数（ticket 11）
   awakened: boolean;        // 觉醒标记：满星后消耗奥术星体觉醒（ticket 12）
-  logisticsFacilityId: string | null; // 设施后勤驻守 ID（null 表示未驻守后勤，非 null 时无法上阵战斗）
+  logisticsFacilityId: DutyAssignment | null; // 后勤指派（null = 未指派，非 null 时无法上阵战斗）
+}
+
+// === 后勤指派统一模型（ADR-0018：logisticsFacilityId 改为结构化对象） ===
+
+// 后勤职务类型：浇水操作员 / 远征探索员 / 设施驻守员
+export type DutyType = 'waterer' | 'explorer' | 'facility';
+
+// 后勤指派：统一表达浇水岗 / 探索岗 / 设施驻守三种语义
+// waterer: targetId = 'greenhouse'; explorer: targetId = locationId; facility: targetId = '${facilityType}_${unitIndex}'
+export interface DutyAssignment {
+  type: DutyType;
+  targetId: string;
 }
 
 // 召唤进度状态（100 抽保底计数）

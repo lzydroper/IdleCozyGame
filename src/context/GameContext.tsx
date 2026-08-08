@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState, EquipmentSlot, FacilityType } from '../types/game';
+import type { GameState, EquipmentSlot, FacilityType, DutyAssignment } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
@@ -16,9 +16,7 @@ import {
 } from '../state/greenhouse';
 import { craftItemUpdate, applySupplyItemUpdate } from '../state/workshop';
 import {
-  assignHeroJobUpdate,
-  startExpeditionUpdate,
-  stopExpeditionUpdate
+  assignHeroToDutyUpdate
 } from '../state/shelter';
 import {
   enqueueRecipeUpdate,
@@ -96,14 +94,13 @@ interface GameContextType {
   fetchCloudCharacterSummaries: (userId: string) => Promise<Array<{ id: string; username: string; days: number }>>;
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
   supplyItem: (itemId: string, qty?: number) => boolean;
-  assignHeroJob: (heroId: string, jobId: 'waterer' | 'explorer' | null) => boolean;
+  assignHeroToDuty: (heroId: string, duty: DutyAssignment | null) => boolean;
   enqueueRecipe: (facilityType: FacilityType, unitIndex: number, recipeId: string) => boolean;
   removeQueueEntry: (facilityType: FacilityType, unitIndex: number, queueIndex: number) => boolean;
   expandFacility: (facilityType: FacilityType) => boolean;
   setFacilityActive: (facilityType: FacilityType, unitIndex: number, active: boolean) => boolean;
   upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler', unitIndex?: number) => boolean;
-  startExpedition: (heroId: string, locationId: string) => boolean;
-  stopExpedition: () => boolean;
+  // 远征派遣/召回通过 assignHeroToDuty 统一接口完成（ADR-0018）
   summonHero: () => SummonOutcome;
   summonBatch: (count: number) => MultiSummonResult;
   isSummonOpen: boolean;
@@ -488,10 +485,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // === 避难所 ===
-  const assignHeroJob = (heroId: string, jobId: 'waterer' | 'explorer' | null): boolean => {
+  // 统一后勤指派（ADR-0018）：浇水 / 探索 / 设施驻守统一为 assignHeroToDuty
+  const assignHeroToDuty = (heroId: string, duty: DutyAssignment | null): boolean => {
     let ok = false;
     setState(prev => {
-      const r = assignHeroJobUpdate(prev, heroId, jobId);
+      const r = assignHeroToDutyUpdate(prev, heroId, duty);
       ok = r.result;
       return r.state;
     });
@@ -549,25 +547,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
-  const startExpedition = (heroId: string, locationId: string): boolean => {
-    let ok = false;
-    setState(prev => {
-      const r = startExpeditionUpdate(prev, heroId, locationId);
-      ok = r.result;
-      return r.state;
-    });
-    return ok;
-  };
-
-  const stopExpedition = (): boolean => {
-    let ok = false;
-    setState(prev => {
-      const r = stopExpeditionUpdate(prev);
-      ok = r.result;
-      return r.state;
-    });
-    return ok;
-  };
+  // 远征派遣/召回通过 assignHeroToDuty 统一接口完成（ADR-0018）
 
   const summonHero = (): SummonOutcome => {
     // 基于 stateRef 同步计算（绕开 setState 异步/批量更新下返回值不可靠的问题）
@@ -807,14 +787,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       downloadCloudCharacter,
       supplyItem,
       batchWater,
-      assignHeroJob,
+      assignHeroToDuty,
       enqueueRecipe,
       removeQueueEntry,
       expandFacility,
       setFacilityActive,
       upgradeShelterStat,
-      startExpedition,
-      stopExpedition,
+      // 远征派遣/召回通过 assignHeroToDuty 完成
       summonHero,
       summonBatch,
       levelUpWithTome,
