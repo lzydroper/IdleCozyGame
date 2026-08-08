@@ -5,10 +5,9 @@ import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
 import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
-import { toModifiers } from '../data/bonds';
 import type { AwakenSkillConfig } from '../data/awakening';
-import { aggregateBonus } from './bonds';
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
+import { aggregateBonus } from './bonds';
 import type { StatModifier } from './statSystem';
 import { calculateEntityStats } from './statSystem';
 import { ITEMS_CONFIG } from '../data/items';
@@ -221,7 +220,7 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
 
-  // 面板快照：统一聚合全部来源修饰符（装备来源已直连，羁绊/天赋/觉醒经 toModifiers 兼容）
+  // 面板快照：统一聚合全部来源修饰符（羁绊/装备/天赋/觉醒均已直连）
   const stats = calculateEntityStats(
     {
       baseAttributes: {
@@ -236,8 +235,8 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
     [
       ...bonus,
       ...(gear ? getHeroEquipmentBonus(gear) : []),
-      ...toModifiers(getTalentBonus(heroId, hero)),
-      ...toModifiers(getAwakenBonus(heroId, hero))
+      ...getTalentBonus(heroId, hero),
+      ...getAwakenBonus(heroId, hero)
     ]
   );
 
@@ -370,7 +369,7 @@ export const startCombatUpdate = (
   if ((state.stamina || 0) < zone.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
     enemiesToCombatants(zone.enemies)
   );
 
@@ -441,7 +440,7 @@ export const resolveEncounterBattleUpdate = (
   if ((state.stamina || 0) < COMBAT_CONFIG.encounterStaminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
     enemiesToCombatants(battleConfig.enemies)
   );
 
@@ -581,7 +580,7 @@ export const startBossBattleUpdate = (
 
   const boss = zone.boss;
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
+    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
     enemiesToCombatants(boss.enemies)
   );
 
@@ -747,7 +746,7 @@ export const settleIdleUpdate = (
 
   for (let i = 0; i < battleCount; i++) {
     const battle = simulateBattle(
-      party.map(id => heroToCombatant(id, next.heroes[id], toModifiers(aggregateBonus(party)), next.equipment?.[id] || null)),
+      party.map(id => heroToCombatant(id, next.heroes[id], aggregateBonus(party), next.equipment?.[id] || null)),
       enemiesToCombatants(zone.enemies)
     );
     const settled = settleBattle(next, battle, party, {

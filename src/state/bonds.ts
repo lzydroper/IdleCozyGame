@@ -1,10 +1,10 @@
 import { BONDS } from '../data/bonds';
-import type { CombatBonus } from '../data/bonds';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { HeroFaction } from '../types/game';
+import type { StatModifier } from './statSystem';
 
 // 羁绊判定（ticket 09）：上阵 3 人小队满足组合/阵营条件即触发，加成在战斗中生效。
-// 纯函数：getActiveBonds 返回命中的羁绊表项；aggregateBonus 聚合为单一 CombatBonus。
+// 纯函数：getActiveBonds 返回命中的羁绊表项；aggregateBonus 汇总为修饰符数组。
 
 /**
  * 计算当前上阵队伍命中的羁绊：
@@ -28,15 +28,7 @@ export const getActiveBonds = (party: string[]): typeof BONDS => {
 };
 
 /**
- * 聚合当前队伍全部激活羁绊的加成（百分比直接求和）。
- * 无羁绊或某项无加成时对应字段缺省（不写入 0 值）。
+ * 聚合当前队伍全部激活羁绊的加成（百分比加算语义由 statSystem 管道统一处理）。
  */
-export const aggregateBonus = (party: string[]): CombatBonus => {
-  const total: CombatBonus = {};
-  getActiveBonds(party).forEach(bond => {
-    if (bond.bonus.attackPercent) total.attackPercent = (total.attackPercent || 0) + bond.bonus.attackPercent;
-    if (bond.bonus.defensePercent) total.defensePercent = (total.defensePercent || 0) + bond.bonus.defensePercent;
-    if (bond.bonus.maxHpPercent) total.maxHpPercent = (total.maxHpPercent || 0) + bond.bonus.maxHpPercent;
-  });
-  return total;
-};
+export const aggregateBonus = (party: string[]): StatModifier[] =>
+  getActiveBonds(party).flatMap(bond => bond.bonus);

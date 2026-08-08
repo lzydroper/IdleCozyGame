@@ -26,7 +26,7 @@ export interface BondConfig {
   description: string;
   heroes: string[];                            // 必须同时上阵的英雄（可空：纯阵营条件）
   factions: Partial<Record<HeroFaction, number>>; // 阵营要求：该阵营至少 N 名上阵（可空：纯英雄组合）
-  bonus: CombatBonus;                          // 触发后给予的加成数值
+  bonus: StatModifier[];                      // 触发后给予的加成数值（修饰符）
 }
 
 export const BONDS: BondConfig[] = [
@@ -36,7 +36,7 @@ export const BONDS: BondConfig[] = [
     description: '诺娃与罗伊同为机械阵营，配合让魔导设施过载运转，攻势更凌厉。',
     heroes: ['nova', 'roy'],
     factions: {},
-    bonus: { attackPercent: 10 }
+    bonus: [{ stat: 'attack', kind: 'percent', value: 0.10 }]
   },
   {
     id: 'arcane_resonance',
@@ -44,7 +44,7 @@ export const BONDS: BondConfig[] = [
     description: '两名奥术阵营英雄的魔力同频共振，生命上限提升。',
     heroes: [],
     factions: { arcane: 2 },
-    bonus: { maxHpPercent: 10 }
+    bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.10 }]
   },
   {
     id: 'wasteland_guardians',
@@ -52,7 +52,7 @@ export const BONDS: BondConfig[] = [
     description: '星界清道夫与英灵铁卫并肩而立，构筑坚实的防线。',
     heroes: ['buster', 'soldier'],
     factions: {},
-    bonus: { defensePercent: 10 }
+    bonus: [{ stat: 'defense', kind: 'percent', value: 0.10 }]
   }
 ];
 

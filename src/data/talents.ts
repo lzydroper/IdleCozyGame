@@ -12,8 +12,8 @@
 // - `gate?: TalentGate[]` —— 通用解锁门控（07 号）：一组条件全部满足（AND）才可升级；只阻塞、不画线
 //   （与 requires 的画线语义解耦——独立竖线节点可写 gate 而不写 requires）。
 import type { HeroClass } from '../types/game';
-import type { CombatBonus } from './bonds';
-import { formatBonus } from './bonds';
+import type { StatModifier } from '../state/statSystem';
+import { formatModifiers } from '../state/statSystem';
 import { HEROES_CONFIG } from './heroes';
 
 // 天赋门控条件（07 号）：各条件均为布尔判定，全部满足才解锁节点。
@@ -31,7 +31,7 @@ export interface TalentNodeConfig {
   id: string;             // 全局唯一节点 id
   name: string;
   maxLevel: number;
-  effect: CombatBonus;    // 每级效果（百分比加成，按投入点数线性叠加）；描述由 formatBonus 自动导出，无需手写
+  effect: StatModifier[];  // 每级效果（修饰符，按投入点数线性叠加）；描述由 formatModifiers 自动导出，无需手写
   pos: { row: number; col: number }; // 相对坐标（09：row 行、col 行内序号 0 起）
   requires?: string[];    // 父节点（阻塞来源 + 画线来源）：需父节点已投入 ≥1 点
   children?: string[];    // 子节点列表（09：布局画线来源；顺序 = 槽位顺序）
@@ -45,7 +45,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_guardian_bulwark',
       name: '钢铁壁垒',
       maxLevel: 3,
-      effect: { maxHpPercent: 3 },
+      effect: [{ stat: 'maxHp', kind: 'percent', value: 0.03 }],
       pos: { row: 0, col: 0 },
       children: ['trunk_guardian_bedrock']
     },
@@ -53,7 +53,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_guardian_bedrock',
       name: '磐石身躯',
       maxLevel: 3,
-      effect: { defensePercent: 2 },
+      effect: [{ stat: 'defense', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 0 },
       requires: ['trunk_guardian_bulwark'],
       children: ['trunk_guardian_commander']
@@ -62,7 +62,10 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_guardian_commander',
       name: '战场统帅',
       maxLevel: 2,
-      effect: { maxHpPercent: 2, defensePercent: 1 },
+      effect: [
+        { stat: 'maxHp', kind: 'percent', value: 0.02 },
+        { stat: 'defense', kind: 'percent', value: 0.01 }
+      ],
       pos: { row: 2, col: 0 },
       requires: ['trunk_guardian_bedrock']
     }
@@ -72,7 +75,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_attacker_edge',
       name: '锋芒毕露',
       maxLevel: 3,
-      effect: { attackPercent: 3 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.03 }],
       pos: { row: 0, col: 0 },
       children: ['trunk_attacker_flurry']
     },
@@ -80,7 +83,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_attacker_flurry',
       name: '连环攻势',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 0 },
       requires: ['trunk_attacker_edge'],
       children: ['trunk_attacker_armor_break']
@@ -89,7 +92,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_attacker_armor_break',
       name: '破甲重击',
       maxLevel: 2,
-      effect: { attackPercent: 3 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.03 }],
       pos: { row: 2, col: 0 },
       requires: ['trunk_attacker_flurry']
     }
@@ -99,7 +102,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_conductor_resonance',
       name: '心灵共鸣',
       maxLevel: 3,
-      effect: { maxHpPercent: 2 },
+      effect: [{ stat: 'maxHp', kind: 'percent', value: 0.02 }],
       pos: { row: 0, col: 0 },
       children: ['trunk_conductor_inspire']
     },
@@ -107,7 +110,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_conductor_inspire',
       name: '鼓舞士气',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 0 },
       requires: ['trunk_conductor_resonance'],
       children: ['trunk_conductor_chord']
@@ -116,7 +119,7 @@ export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
       id: 'trunk_conductor_chord',
       name: '守护和弦',
       maxLevel: 2,
-      effect: { defensePercent: 2 },
+      effect: [{ stat: 'defense', kind: 'percent', value: 0.02 }],
       pos: { row: 2, col: 0 },
       requires: ['trunk_conductor_inspire']
     }
@@ -130,7 +133,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_nova_overdrive',
       name: '过载引擎',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 1 },
       // requires: ['trunk_attacker_edge'],
       gate: [
@@ -142,7 +145,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_nova_booster',
       name: '澎湃激发',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 2 },
       // requires: ['trunk_attacker_edge'],
       gate: [
@@ -156,7 +159,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_buster_hunter',
       name: '废土猎手',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 1 },
       requires: ['trunk_attacker_edge']
     }
@@ -166,7 +169,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_soldier_fortress',
       name: '阵地防御',
       maxLevel: 3,
-      effect: { defensePercent: 3 },
+      effect: [{ stat: 'defense', kind: 'percent', value: 0.03 }],
       pos: { row: 1, col: 1 },
       requires: ['trunk_guardian_bulwark']
     }
@@ -176,7 +179,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_catherine_radiation',
       name: '辐射抗性',
       maxLevel: 3,
-      effect: { maxHpPercent: 3 },
+      effect: [{ stat: 'maxHp', kind: 'percent', value: 0.03 }],
       pos: { row: 1, col: 1 },
       requires: ['trunk_guardian_bulwark']
     }
@@ -186,7 +189,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_roy_synergy',
       name: '机械协同',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 1 },
       requires: ['trunk_conductor_resonance']
     }
@@ -196,7 +199,10 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_mei_bounty',
       name: '自然馈赠',
       maxLevel: 3,
-      effect: { maxHpPercent: 2, defensePercent: 1 },
+      effect: [
+        { stat: 'maxHp', kind: 'percent', value: 0.02 },
+        { stat: 'defense', kind: 'percent', value: 0.01 }
+      ],
       pos: { row: 1, col: 1 },
       requires: ['trunk_conductor_resonance']
     }
@@ -206,7 +212,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_zero_seal',
       name: '魂印疾行',
       maxLevel: 3,
-      effect: { attackPercent: 2 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
       pos: { row: 1, col: 1 },
       requires: ['trunk_conductor_resonance']
     }
@@ -216,7 +222,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_healer_blessing',
       name: '净化祝福',
       maxLevel: 3,
-      effect: { maxHpPercent: 3 },
+      effect: [{ stat: 'maxHp', kind: 'percent', value: 0.03 }],
       pos: { row: 1, col: 1 },
       requires: ['trunk_conductor_resonance']
     }
@@ -226,7 +232,10 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       id: 'hero_apprentice_craft',
       name: '星野巧思',
       maxLevel: 3,
-      effect: { defensePercent: 2, attackPercent: 1 },
+      effect: [
+        { stat: 'defense', kind: 'percent', value: 0.02 },
+        { stat: 'attack', kind: 'percent', value: 0.01 }
+      ],
       pos: { row: 1, col: 1 },
       requires: ['trunk_conductor_resonance']
     }
@@ -235,7 +244,7 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
 
 // 效果文案（UI 共用）：复用数据驱动的 formatBonus（百分比加成 → 描述），单一描述来源
 // （手写 description 已移除——效果描述一律由 effect 数据导出，新增属性只需扩展 COMBAT_BONUS_META）
-export const formatTalentEffect = (effect: CombatBonus): string => formatBonus(effect);
+export const formatTalentEffect = (effect: StatModifier[]): string => formatModifiers(effect);
 
 // 门控可读文案（07 号，UI 选中节点展示）：nameOf 解析节点 id → 名称
 // talent 的 equal 0 渲染为「未投入」（互斥语义友好化）

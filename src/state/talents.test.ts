@@ -14,7 +14,7 @@ import {
   isTalentNodeUnlocked
 } from './talents';
 import type { TalentNodeConfig } from '../data/talents';
-import { toModifiers } from '../data/bonds';
+import type { StatModifier } from './statSystem';
 import { applyHeroExp, heroToCombatant } from './combat';
 import { mergeSavedState } from './persistence';
 
@@ -156,12 +156,15 @@ describe('加点 / 撤点 / 重置', () => {
 describe('天赋加成计算与战斗生效', () => {
   it('加成 = 各节点每级效果 × 投入点数（线性叠加）', () => {
     const hero = { ...createInitialHero('nova'), talents: { [EDGE]: 2, [OVERDRIVE]: 3 } };
-    expect(getTalentBonus('nova', hero)).toEqual({ attackPercent: 6 + 6 }); // 锋芒 3×2 + 过载 2×3
+    expect(getTalentBonus('nova', hero)).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.06 }, // 锋芒 3%×2
+      { stat: 'attack', kind: 'percent', value: 0.06 }  // 过载 2%×3
+    ]);
     expect(getInvestedPoints(hero)).toBe(5);
   });
 
   it('无投入时无加成', () => {
-    expect(getTalentBonus('nova', createInitialHero('nova'))).toEqual({});
+    expect(getTalentBonus('nova', createInitialHero('nova'))).toEqual([]);
   });
 
   it('天赋百分比与羁绊、装备加成叠加生效于战斗数值', () => {
@@ -171,8 +174,8 @@ describe('天赋加成计算与战斗生效', () => {
       armor: null,
       trinket: null
     };
-    const bond = { attackPercent: 10 };
-    const c = heroToCombatant('nova', hero, toModifiers(bond), gear);
+    const bond: StatModifier[] = [{ stat: 'attack', kind: 'percent', value: 0.10 }];
+    const c = heroToCombatant('nova', hero, bond, gear);
     // 攻击 = round((35 + 10) × 1.16) = round(52.2) = 52
     expect(c.attack).toBe(52);
   });
@@ -322,7 +325,7 @@ describe('天赋门控 gate（07 号：觉醒/等级/天赋点等条件列表解
       id: 'test_gated',
       name: '测试门控',
       maxLevel: 1,
-      effect: {},
+      effect: [],
       pos: { row: 0, col: 0 },
       gate: [{ type: 'awakened' }]
     };
@@ -342,7 +345,7 @@ describe('天赋门控 gate（07 号：觉醒/等级/天赋点等条件列表解
       id: 'hero_nova_test_gate',
       name: '测试·觉醒',
       maxLevel: 1,
-      effect: { attackPercent: 1 },
+      effect: [{ stat: 'attack', kind: 'percent', value: 0.01 }],
       pos: { row: 2, col: 1 },
       gate: [{ type: 'awakened' }]
     });

@@ -3,7 +3,6 @@ import type { CombatantState } from './combat';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { simulateBattle, heroToCombatant } from './combat';
 import { aggregateBonus } from './bonds';
-import { toModifiers } from '../data/bonds';
 import { addLogUpdate } from './logs';
 import type { UpdateResult } from './types';
 
@@ -75,7 +74,7 @@ export const defendDreamLeakUpdate = (
       defense: NIGHTMARE_CONFIG.leakDefense
     };
     battle = simulateBattle(
-      party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
+      party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
       [nightmare]
     );
   }

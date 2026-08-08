@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useGame } from '../context/GameContext';
 import { HEROES_CONFIG } from '../data/heroes';
 import { COMBAT_CONFIG } from '../data/combatConfig';
-import { formatBonus } from '../data/bonds';
+import { formatModifiers } from '../state/statSystem';
 import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';
 import PartySlotModal from './PartySlotModal';
@@ -125,7 +125,7 @@ const HeroTab: React.FC = () => {
           <div className="flex flex-wrap gap-1 pt-1">
             {activeBonds.map(bond => (
               <span key={bond.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300" title={bond.description}>
-                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatBonus(bond.bonus)}
+                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatModifiers(bond.bonus)}
               </span>
             ))}
             {activeBonds.length === 0 && (

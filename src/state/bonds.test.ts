@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
-import { BONDS, formatBonus, toModifiers } from '../data/bonds';
+import { BONDS } from '../data/bonds';
+import { formatModifiers } from './statSystem';
 import type { HeroFaction } from '../types/game';
 import { getActiveBonds, aggregateBonus } from './bonds';
 import { heroToCombatant, simulateBattle, startBossBattleUpdate, startCombatUpdate } from './combat';
@@ -27,10 +28,9 @@ describe('Bond data (羁绊表数据驱动配置)', () => {
       expect(bond.description).toBeTruthy();
       // 触发条件：英雄组合或阵营要求至少其一
       expect(bond.heroes.length > 0 || Object.keys(bond.factions).length > 0).toBe(true);
-      // 加成数值：至少一项有效
-      expect(
-        (bond.bonus.attackPercent || 0) + (bond.bonus.defensePercent || 0) + (bond.bonus.maxHpPercent || 0)
-      ).toBeGreaterThan(0);
+      // 加成数值：至少一项有效（修饰符）
+      expect(bond.bonus.length).toBeGreaterThan(0);
+      expect(bond.bonus.every(m => m.kind === 'percent' && m.value > 0)).toBe(true);
     });
   });
 
@@ -50,10 +50,10 @@ describe('Bond data (羁绊表数据驱动配置)', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('formatBonus renders the bonus values', () => {
-    expect(formatBonus(BONDS.find(b => b.id === 'mechanical_partners')!.bonus)).toBe('攻击 +10%');
-    expect(formatBonus(BONDS.find(b => b.id === 'arcane_resonance')!.bonus)).toBe('生命 +10%');
-    expect(formatBonus(BONDS.find(b => b.id === 'wasteland_guardians')!.bonus)).toBe('防御 +10%');
+  it('formatModifiers renders the bonus values', () => {
+    expect(formatModifiers(BONDS.find(b => b.id === 'mechanical_partners')!.bonus)).toBe('攻击 +10%');
+    expect(formatModifiers(BONDS.find(b => b.id === 'arcane_resonance')!.bonus)).toBe('生命 +10%');
+    expect(formatModifiers(BONDS.find(b => b.id === 'wasteland_guardians')!.bonus)).toBe('防御 +10%');
   });
 });
 
@@ -89,18 +89,22 @@ describe('getActiveBonds (触发与失效)', () => {
     expect(getActiveBonds([])).toEqual([]);
   });
 
-  it('aggregateBonus sums percent bonuses of all active bonds', () => {
-    expect(aggregateBonus(['nova', 'roy'])).toEqual({ attackPercent: 10 });
-    expect(aggregateBonus(['mei', 'healer'])).toEqual({ maxHpPercent: 10 });
-    expect(aggregateBonus(['buster', 'soldier'])).toEqual({ defensePercent: 10 });
-    expect(aggregateBonus(['nova'])).toEqual({}); // 无羁绊 → 空加成
+  it('aggregateBonus collects modifiers of all active bonds', () => {
+    expect(aggregateBonus(['nova', 'roy'])).toEqual([{ stat: 'attack', kind: 'percent', value: 0.10 }]);
+    expect(aggregateBonus(['mei', 'healer'])).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10 }]);
+    expect(aggregateBonus(['buster', 'soldier'])).toEqual([{ stat: 'defense', kind: 'percent', value: 0.10 }]);
+    expect(aggregateBonus(['nova'])).toEqual([]); // 无羁绊 → 空修饰符
   });
 });
 
 describe('Bond combat application (羁绊在战斗中生效)', () => {
   it('heroToCombatant applies attack/defense/maxHp percent bonuses', () => {
     const nova = createInitialHero('nova');
-    const boosted = heroToCombatant('nova', nova, toModifiers({ attackPercent: 10, defensePercent: 10, maxHpPercent: 10 }));
+    const boosted = heroToCombatant('nova', nova, [
+      { stat: 'attack', kind: 'percent', value: 0.10 },
+      { stat: 'defense', kind: 'percent', value: 0.10 },
+      { stat: 'maxHp', kind: 'percent', value: 0.10 }
+    ]);
     expect(boosted.attack).toBe(Math.round(HEROES_CONFIG.nova.baseAttack * 1.1)); // 39
     expect(boosted.defense).toBe(Math.round(HEROES_CONFIG.nova.baseDefense * 1.1)); // 9
     expect(boosted.maxHp).toBe(Math.round(nova.maxHp * 1.1)); // 110
@@ -134,7 +138,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const enemy = { id: 'e', name: '强敌', hp: 9999, maxHp: 9999, attack: 13, defense: 0 };
     const without = simulateBattle([heroToCombatant('healer', healer)], [enemy]);
     expect(without.partyWiped).toBe(true);
-    const withBond = simulateBattle([heroToCombatant('healer', healer, toModifiers({ maxHpPercent: 10 }))], [enemy]);
+    const withBond = simulateBattle([heroToCombatant('healer', healer, [{ stat: 'maxHp', kind: 'percent', value: 0.10 }])], [enemy]);
     expect(withBond.partyWiped).toBe(false);
     expect(withBond.victory).toBe(false); // 打不死 → 回合上限平局，说明是"存活"而非"反杀"
   });
@@ -143,8 +147,8 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     // 不手动注入加成：bonus 完全由羁绊表 + 触发判定得出
     const party = ['mei', 'healer'];
     const bonus = aggregateBonus(party);
-    expect(bonus).toEqual({ maxHpPercent: 10 });
-    const combatant = heroToCombatant('mei', createInitialHero('mei'), toModifiers(bonus));
+    expect(bonus).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10 }]);
+    const combatant = heroToCombatant('mei', createInitialHero('mei'), bonus);
     expect(combatant.maxHp).toBe(Math.round(120 * 1.1)); // 132
     expect(combatant.hp).toBe(Math.round(120 * 1.1));
   });

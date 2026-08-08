@@ -83,13 +83,9 @@ describe('升星', () => {
   });
 
   it('星级属性加成：每颗星（1 星以上）× 配置百分比', () => {
-    expect(getStarBonus(createInitialHero('nova'))).toEqual({}); // 1 星无加成
+    expect(getStarBonus(createInitialHero('nova'))).toEqual([]); // 1 星无加成
     const star3: HeroState = { ...createInitialHero('nova'), star: 3 };
-    expect(getStarBonus(star3)).toEqual({
-      attackPercent: STAR_STATS_PER_STAR.attackPercent! * 2,
-      defensePercent: STAR_STATS_PER_STAR.defensePercent! * 2,
-      maxHpPercent: STAR_STATS_PER_STAR.maxHpPercent! * 2
-    });
+    expect(getStarBonus(star3)).toEqual(STAR_STATS_PER_STAR.map(m => ({ ...m, value: m.value * 2 })));
   });
 });
 
@@ -125,7 +121,7 @@ describe('觉醒', () => {
 
   it('觉醒强化被动与专属技能仅在觉醒后生效', () => {
     const before = createInitialHero('nova');
-    expect(getAwakenedPassive('nova', before)).toEqual({});
+    expect(getAwakenedPassive('nova', before)).toEqual([]);
     expect(getAwakenSkill('nova', before)).toBeUndefined();
 
     const after: HeroState = { ...before, star: STAR_MAX, awakened: true };
@@ -136,7 +132,13 @@ describe('觉醒', () => {
   it('总加成 = 星级加成 + 觉醒被动', () => {
     const hero: HeroState = { ...createInitialHero('nova'), star: STAR_MAX, awakened: true };
     const bonus = getAwakenBonus('nova', hero);
-    expect(bonus.attackPercent).toBe(STAR_STATS_PER_STAR.attackPercent! * 4 + AWAKEN_CONFIG.nova.passive.attackPercent!);
+    // 4 星：攻击 +8%、防御 +8%、生命 +16%；觉醒被动：攻击 +10%
+    expect(bonus).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.08 },
+      { stat: 'defense', kind: 'percent', value: 0.08 },
+      { stat: 'maxHp', kind: 'percent', value: 0.16 },
+      { stat: 'attack', kind: 'percent', value: 0.10 }
+    ]);
   });
 });
 

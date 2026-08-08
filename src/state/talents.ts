@@ -3,7 +3,7 @@ import type { HeroClass } from '../types/game';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { TalentNodeConfig, TalentGate } from '../data/talents';
 import { TALENT_TRUNKS, HERO_TALENTS } from '../data/talents';
-import type { CombatBonus } from '../data/bonds';
+import type { StatModifier } from './statSystem';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -26,18 +26,13 @@ export const getTalentLevel = (hero: HeroState, nodeId: string): number => hero.
 export const getInvestedPoints = (hero: HeroState): number =>
   Object.values(hero.talents || {}).reduce((sum, n) => sum + (Number.isFinite(n) ? n : 0), 0);
 
-// 天赋加成汇总：所有已投入节点的每级效果 × 投入点数（百分比，战斗内生效）
-export const getTalentBonus = (heroId: string, hero: HeroState): CombatBonus => {
-  const bonus: CombatBonus = {};
-  getTalentNodes(heroId).forEach(node => {
+// 天赋加成汇总：所有已投入节点的每级效果 × 投入点数（修饰符，战斗内生效）
+export const getTalentBonus = (heroId: string, hero: HeroState): StatModifier[] =>
+  getTalentNodes(heroId).flatMap(node => {
     const level = getTalentLevel(hero, node.id);
-    if (level <= 0) return;
-    if (node.effect.attackPercent) bonus.attackPercent = (bonus.attackPercent || 0) + node.effect.attackPercent * level;
-    if (node.effect.defensePercent) bonus.defensePercent = (bonus.defensePercent || 0) + node.effect.defensePercent * level;
-    if (node.effect.maxHpPercent) bonus.maxHpPercent = (bonus.maxHpPercent || 0) + node.effect.maxHpPercent * level;
+    if (level <= 0) return [];
+    return node.effect.map(m => ({ ...m, value: m.value * level }));
   });
-  return bonus;
-};
 
 // 前置是否满足：所有 requires 节点均已投入 ≥1 点
 const prereqsMet = (hero: HeroState, node: TalentNodeConfig): boolean =>

@@ -1,5 +1,5 @@
 import type { GameState, HeroState } from '../types/game';
-import type { CombatBonus } from '../data/bonds';
+import type { StatModifier } from './statSystem';
 import {
   STAR_MAX,
   starUpShardCost,
@@ -83,20 +83,16 @@ export const awakenUpdate = (state: GameState, heroId: string): UpdateResult<Awa
   };
 };
 
-// 星级属性加成：每颗星（1 星以上）× STAR_STATS_PER_STAR（百分比）
-export const getStarBonus = (hero: HeroState): CombatBonus => {
+// 星级属性加成：每颗星（1 星以上）× STAR_STATS_PER_STAR（修饰符）
+export const getStarBonus = (hero: HeroState): StatModifier[] => {
   const stars = Math.max(0, hero.star - 1);
-  if (stars === 0) return {};
-  const bonus: CombatBonus = {};
-  if (STAR_STATS_PER_STAR.attackPercent) bonus.attackPercent = STAR_STATS_PER_STAR.attackPercent * stars;
-  if (STAR_STATS_PER_STAR.defensePercent) bonus.defensePercent = STAR_STATS_PER_STAR.defensePercent * stars;
-  if (STAR_STATS_PER_STAR.maxHpPercent) bonus.maxHpPercent = STAR_STATS_PER_STAR.maxHpPercent * stars;
-  return bonus;
+  if (stars === 0) return [];
+  return STAR_STATS_PER_STAR.map(m => ({ ...m, value: m.value * stars }));
 };
 
-// 觉醒强化被动（百分比，仅觉醒后生效）
-export const getAwakenedPassive = (heroId: string, hero: HeroState): CombatBonus =>
-  hero.awakened ? (AWAKEN_CONFIG[heroId]?.passive || {}) : {};
+// 觉醒强化被动（修饰符，仅觉醒后生效）
+export const getAwakenedPassive = (heroId: string, hero: HeroState): StatModifier[] =>
+  hero.awakened ? (AWAKEN_CONFIG[heroId]?.passive || []) : [];
 
 // 觉醒专属战斗技能（仅觉醒后返回配置）
 export const getAwakenSkill = (heroId: string, hero: HeroState): AwakenSkillConfig | undefined =>
@@ -106,13 +102,8 @@ export const getAwakenSkill = (heroId: string, hero: HeroState): AwakenSkillConf
 export const getAwakenedName = (heroId: string, hero: HeroState): string | null =>
   hero.awakened ? (AWAKEN_CONFIG[heroId]?.awakenedName || null) : null;
 
-// 升星 + 觉醒被动的总百分比加成（战斗内生效）
-export const getAwakenBonus = (heroId: string, hero: HeroState): CombatBonus => {
-  const star = getStarBonus(hero);
-  const passive = getAwakenedPassive(heroId, hero);
-  const bonus: CombatBonus = {};
-  if (star.attackPercent || passive.attackPercent) bonus.attackPercent = (star.attackPercent || 0) + (passive.attackPercent || 0);
-  if (star.defensePercent || passive.defensePercent) bonus.defensePercent = (star.defensePercent || 0) + (passive.defensePercent || 0);
-  if (star.maxHpPercent || passive.maxHpPercent) bonus.maxHpPercent = (star.maxHpPercent || 0) + (passive.maxHpPercent || 0);
-  return bonus;
-};
+// 升星 + 觉醒被动的总加成（修饰符，战斗内生效）
+export const getAwakenBonus = (heroId: string, hero: HeroState): StatModifier[] => [
+  ...getStarBonus(hero),
+  ...getAwakenedPassive(heroId, hero)
+];

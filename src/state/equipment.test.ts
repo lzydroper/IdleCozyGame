@@ -10,7 +10,7 @@ import {
 } from '../data/equipment';
 import { ITEMS_CONFIG } from '../data/items';
 import { RECIPES_CONFIG } from '../data/recipes';
-import { toModifiers } from '../data/bonds';
+import type { StatModifier } from './statSystem';
 import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import {
@@ -361,8 +361,8 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
       armor: null,
       trinket: null
     };
-    const bond = { attackPercent: 10 }; // 羁绊攻击 +10%
-    const c = heroToCombatant('nova', novaLv1(), toModifiers(bond), gear);
+    const bond: StatModifier[] = [{ stat: 'attack', kind: 'percent', value: 0.10 }]; // 羁绊攻击 +10%
+    const c = heroToCombatant('nova', novaLv1(), bond, gear);
     // 攻击 = round((35 + 20) × 1.15) = round(63.25) = 63
     expect(c.attack).toBe(63);
   });

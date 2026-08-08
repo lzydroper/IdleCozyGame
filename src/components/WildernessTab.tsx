@@ -20,7 +20,7 @@ import { SURVIVORS_CONFIG } from '../data/survivors';
 import { createInitialHero } from '../data/initialState';
 import { isZoneUnlocked } from '../state/combat';
 import { getActiveBonds } from '../state/bonds';
-import { formatBonus } from '../data/bonds';
+import { formatModifiers } from '../state/statSystem';
 import type { CombatSettlement } from '../types/game';
 import CombatPlaybackView from './CombatPlaybackView';
 
@@ -733,7 +733,7 @@ const CombatPanel: React.FC = () => {
                 title={bond.description}
                 className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300"
               >
-                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatBonus(bond.bonus)}
+                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatModifiers(bond.bonus)}
               </span>
             ))}
           </div>
