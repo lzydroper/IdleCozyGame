@@ -57,6 +57,6 @@ Blocked by:
 - 正向依赖：`{ type: 'talent', nodeId: 'A', operator: 'greater', value: 0 }`（整数点下投入 >0 即已投入，等价原 ≥1）
 - **互斥**：`{ type: 'talent', nodeId: 'A', operator: 'equal', value: 0 }` —— A 未投入才解锁（文案渲染为「「A」未投入」）
 - 上限：`less N`（整数点下 <N 等价 ≤N-1）；恰好：`equal N`（=N 点）
-评估/文案 switch 加 `never` 穷尽断言（新增 operator 时编译报错）；新增 formatTalentGate 文案测试 + equal N>0 用例。提交 `3377f83`（初版 op/atLeast 方案，按澄清重写为 operator/greater-equal-less，最终提交 `10e8b21`）。
+评估/文案 switch 加 `never` 穷尽断言（新增 operator 时编译报错）；新增 formatTalentGate 文案测试 + equal N>0 用例。提交 `3377f83`（初版 op/atLeast 方案，按澄清重写为 operator/greater-equal-less，最终提交 `2991913`）。
 
 **已知边界（未处理）**：`unallocateTalentUpdate` 的 `has_dependents` 只检查 requires 下游，不检查 gate 中 talent 型依赖的下游——若未来需要「gate 依赖节点已投入时禁止撤销」，需扩展（本次按 YAGNI 跳过）。
