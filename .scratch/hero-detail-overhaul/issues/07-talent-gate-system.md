@@ -50,13 +50,13 @@ Blocked by:
 }
 ```
 
-**互斥扩展（2026-08-07，用户要求）**：原 `talent` 条件的 `minLevel`（≥N）只能表达正向依赖，无法表达互斥（点了 A 分支就不能点 B 分支）。按用户选择改为 **op 操作符（全拼不缩写）**：
+**互斥扩展（2026-08-07，用户要求）**：原 `talent` 条件的 `minLevel`（≥N）只能表达正向依赖，无法表达互斥（点了 A 分支就不能点 B 分支）。按用户选择改为 **operator 字段 + 直观单词操作符（严格 > / = / <，不缩写）**：
 ```ts
-| { type: 'talent'; nodeId: string; op: 'atLeast' | 'atMost' | 'exactly'; value: number }
+| { type: 'talent'; nodeId: string; operator: 'greater' | 'equal' | 'less'; value: number }
 ```
-- 正向依赖：`{ type: 'talent', nodeId: 'A', op: 'atLeast', value: 1 }`（原语义）
-- **互斥**：`{ type: 'talent', nodeId: 'A', op: 'exactly', value: 0 }` —— A 未投入才解锁（文案渲染为「「A」未投入」）
-- 区间：`atMost`（≤N）、`exactly N>0`（恰好 N 点）
-评估/文案 switch 加 `never` 穷尽断言（新增 op 时编译报错）；新增 formatTalentGate 文案测试 + exactly N>0 用例。提交 `3377f83`。
+- 正向依赖：`{ type: 'talent', nodeId: 'A', operator: 'greater', value: 0 }`（整数点下投入 >0 即已投入，等价原 ≥1）
+- **互斥**：`{ type: 'talent', nodeId: 'A', operator: 'equal', value: 0 }` —— A 未投入才解锁（文案渲染为「「A」未投入」）
+- 上限：`less N`（整数点下 <N 等价 ≤N-1）；恰好：`equal N`（=N 点）
+评估/文案 switch 加 `never` 穷尽断言（新增 operator 时编译报错）；新增 formatTalentGate 文案测试 + equal N>0 用例。提交 `3377f83`（初版 op/atLeast 方案，按澄清重写为 operator/greater-equal-less，最终提交 `10e8b21`）。
 
 **已知边界（未处理）**：`unallocateTalentUpdate` 的 `has_dependents` 只检查 requires 下游，不检查 gate 中 talent 型依赖的下游——若未来需要「gate 依赖节点已投入时禁止撤销」，需扩展（本次按 YAGNI 跳过）。

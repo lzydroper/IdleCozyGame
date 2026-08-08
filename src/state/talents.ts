@@ -50,13 +50,13 @@ export const evaluateTalentGate = (hero: HeroState, gate: TalentGate[] | undefin
     switch (g.type) {
       case 'talent': {
         const lv = getTalentLevel(hero, g.nodeId);
-        switch (g.op) {
-          case 'atLeast': return lv >= g.value;
-          case 'atMost': return lv <= g.value;
-          case 'exactly': return lv === g.value;
+        switch (g.operator) {
+          case 'greater': return lv > g.value;
+          case 'equal': return lv === g.value;
+          case 'less': return lv < g.value;
           default: {
-            // 穷尽性：新增 op 时 TS 在此报错
-            const exhaustive: never = g.op;
+            // 穷尽性：新增 operator 时 TS 在此报错
+            const exhaustive: never = g.operator;
             return exhaustive;
           }
         }
