@@ -1,6 +1,6 @@
 # 天赋树通用门控（gate）系统——觉醒/等级/天赋点等条件列表解锁节点
 
-Status: claimed
+Status: resolved
 Type: task
 Blocked by:
 
@@ -30,3 +30,24 @@ Blocked by:
 - 现有节点配置**不迁移**（requires 保留兼容），新节点可直接写 `gate`。
 
 范围外：unallocate 的 has_dependents 是否考虑 gate 的 talent 依赖（边界场景，本次不处理，Answer 注明）；gate 的节点名解析依赖 buildTalentTree 的节点列表。
+
+## Answer：实施完成（2026-08-07，TDD + code-review）
+
+提交 `dbedfab`。
+
+- **data/talents.ts**：`TalentGate` 联合类型（`talent`（节点投入 ≥minLevel 默认 1）/ `awakened` / `heroLevel` / `star`）+ `TalentNodeConfig.gate?: TalentGate[]`（全部满足 AND 才可点；**只阻塞不画线**——独立竖线节点可写 gate 而不写 requires）+ `formatTalentGate(gate, nameOf)` 可读文案。
+- **state/talents.ts**：`evaluateTalentGate`（AND 判定，空/无 gate 放行）、`firstUnmetTalentGate`（UI 标记/提示用）、`isTalentNodeUnlocked`（requires 与 gate 都满足）——`allocateTalentUpdate` 改用它。
+- **HeroTalentPanel.tsx**：节点锁区分——gate 未满足显示**紫色觉醒锁**（awakened 型额外挂「觉醒」角标），前置未满足保持灰色普通锁；选中节点详情面板显示具体解锁条件（`formatTalentGate` 文案，如「英雄已觉醒」「角色等级 ≥10」「投入「X」≥1 点」）；顺手删除用户改版残留的未使用 `bonus` 变量。
+- **测试**：talents.test +4 例（evaluateTalentGate 各条件边界/AND、isTalentNodeUnlocked 组合、allocateTalentUpdate 集成锁定）；HeroTab.test 适配用户界面改版文案（职阶星盘；移除已删的「英雄专属」「当前加成」断言）。
+- **code-review 修复**：详情面板 talent 型 gate 文案改用 `formatTalentGate`（原错用 `selParents`，gate 的 nodeId 非 requires 父节点）。
+- **验证**：全量 433/433、build 通过、lint 0 警告。
+
+**使用示例**（后续配置新节点）：
+```ts
+{ id: 'hero_nova_awakened_skill', name: '觉醒·星爆',
+  gate: [{ type: 'awakened' }, { type: 'heroLevel', minLevel: 10 }],
+  // 不写 requires → 独立竖线；仅觉醒 + 等级 ≥10 可点
+}
+```
+
+**已知边界（未处理）**：`unallocateTalentUpdate` 的 `has_dependents` 只检查 requires 下游，不检查 gate 中 talent 型依赖的下游——若未来需要「gate 依赖节点已投入时禁止撤销」，需扩展（本次按 YAGNI 跳过）。
