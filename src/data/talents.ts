@@ -14,9 +14,12 @@ import type { HeroClass } from '../types/game';
 import type { CombatBonus } from './bonds';
 import { HEROES_CONFIG } from './heroes';
 
-// 天赋门控条件（07 号）：各条件均为布尔判定，全部满足才解锁节点
+// 天赋门控条件（07 号）：各条件均为布尔判定，全部满足才解锁节点。
+// talent 条件用 op 操作符表达投入关系（含互斥）：
+//   atLeast value → 投入 ≥ value；atMost value → 投入 ≤ value；
+//   exactly 0 → 未投入（互斥分支：该节点投入 0 点才解锁）；exactly N → 恰好 N 点。
 export type TalentGate =
-  | { type: 'talent'; nodeId: string; minLevel?: number }  // 某天赋节点已投入 ≥ minLevel（默认 1）
+  | { type: 'talent'; nodeId: string; op: 'atLeast' | 'atMost' | 'exactly'; value: number }
   | { type: 'awakened' }                                   // 英雄已觉醒
   | { type: 'heroLevel'; minLevel: number }                // 角色等级 ≥ minLevel
   | { type: 'star'; minLevel: number };                    // 星级 ≥ minLevel
@@ -240,13 +243,24 @@ export const formatTalentEffect = (effect: CombatBonus): string => {
 };
 
 // 门控可读文案（07 号，UI 选中节点展示）：nameOf 解析节点 id → 名称
+// talent 的 exactly 0 渲染为「未投入」（互斥语义友好化）
 export const formatTalentGate = (gate: TalentGate[] | undefined, nameOf: (id: string) => string): string[] =>
   (gate || []).map(g => {
     switch (g.type) {
-      case 'talent': return `投入「${nameOf(g.nodeId)}」≥${g.minLevel ?? 1} 点`;
+      case 'talent': {
+        const node = `「${nameOf(g.nodeId)}」`;
+        if (g.op === 'exactly' && g.value === 0) return `${node}未投入`;
+        if (g.op === 'exactly') return `投入${node}恰好 ${g.value} 点`;
+        return `投入${node}${g.op === 'atLeast' ? '≥' : '≤'}${g.value} 点`;
+      }
       case 'awakened': return '英雄已觉醒';
       case 'heroLevel': return `角色等级 ≥${g.minLevel}`;
       case 'star': return `星级 ≥${g.minLevel}`;
+      default: {
+        // 穷尽性：新增条件类型时 TS 在此报错
+        const exhaustive: never = g;
+        return exhaustive;
+      }
     }
   });
 

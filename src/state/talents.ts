@@ -48,7 +48,19 @@ export const evaluateTalentGate = (hero: HeroState, gate: TalentGate[] | undefin
   if (!gate || gate.length === 0) return true;
   return gate.every(g => {
     switch (g.type) {
-      case 'talent': return getTalentLevel(hero, g.nodeId) >= (g.minLevel ?? 1);
+      case 'talent': {
+        const lv = getTalentLevel(hero, g.nodeId);
+        switch (g.op) {
+          case 'atLeast': return lv >= g.value;
+          case 'atMost': return lv <= g.value;
+          case 'exactly': return lv === g.value;
+          default: {
+            // 穷尽性：新增 op 时 TS 在此报错
+            const exhaustive: never = g.op;
+            return exhaustive;
+          }
+        }
+      }
       case 'awakened': return !!hero.awakened;
       case 'heroLevel': return hero.level >= g.minLevel;
       case 'star': return hero.star >= g.minLevel;

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { TALENT_TRUNKS, HERO_TALENTS, buildTalentTree } from '../data/talents';
+import { TALENT_TRUNKS, HERO_TALENTS, buildTalentTree, formatTalentGate } from '../data/talents';
 import {
   getTalentNodes,
   getTalentBonus,
@@ -239,25 +239,79 @@ describe('天赋门控 gate（07 号：觉醒/等级/天赋点等条件列表解
     // star
     expect(evaluateTalentGate(hero, [{ type: 'star', minLevel: 5 }])).toBe(false);
     expect(evaluateTalentGate({ ...hero, star: 5 }, [{ type: 'star', minLevel: 5 }])).toBe(true);
-    // talent（某节点投入 ≥ minLevel，默认 1）
-    expect(evaluateTalentGate(hero, [{ type: 'talent', nodeId: EDGE }])).toBe(false);
-    expect(evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE }])).toBe(true);
+    // talent（节点投入，op 操作符：atLeast / atMost / exactly）
+    expect(evaluateTalentGate(hero, [{ type: 'talent', nodeId: EDGE, op: 'atLeast', value: 1 }])).toBe(false);
     expect(
-      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, minLevel: 2 }])
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, op: 'atLeast', value: 1 }])
+    ).toBe(true);
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, op: 'atLeast', value: 2 }])
     ).toBe(false);
+    // atMost：投入 ≤ N
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 2 } }, [{ type: 'talent', nodeId: EDGE, op: 'atMost', value: 1 }])
+    ).toBe(false);
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, op: 'atMost', value: 1 }])
+    ).toBe(true);
+    // exactly 0：互斥（未投入该分支才解锁）
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, op: 'exactly', value: 0 }])
+    ).toBe(false);
+    expect(evaluateTalentGate(hero, [{ type: 'talent', nodeId: EDGE, op: 'exactly', value: 0 }])).toBe(true);
+    // exactly N>0：恰好 N 点
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 2 } }, [{ type: 'talent', nodeId: EDGE, op: 'exactly', value: 2 }])
+    ).toBe(true);
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, op: 'exactly', value: 2 }])
+    ).toBe(false);
+  });
+
+  it('formatTalentGate：各条件可读文案', () => {
+    const nameOf = (id: string) => (id === EDGE ? '进攻者·边锋' : id);
+    expect(
+      formatTalentGate([{ type: 'talent', nodeId: EDGE, op: 'atLeast', value: 1 }], nameOf)
+    ).toEqual(['投入「进攻者·边锋」≥1 点']);
+    expect(
+      formatTalentGate([{ type: 'talent', nodeId: EDGE, op: 'atMost', value: 2 }], nameOf)
+    ).toEqual(['投入「进攻者·边锋」≤2 点']);
+    expect(
+      formatTalentGate([{ type: 'talent', nodeId: EDGE, op: 'exactly', value: 2 }], nameOf)
+    ).toEqual(['投入「进攻者·边锋」恰好 2 点']);
+    // exactly 0 → 互斥友好文案「未投入」
+    expect(
+      formatTalentGate([{ type: 'talent', nodeId: EDGE, op: 'exactly', value: 0 }], nameOf)
+    ).toEqual(['「进攻者·边锋」未投入']);
+    expect(
+      formatTalentGate(
+        [
+          { type: 'awakened' },
+          { type: 'heroLevel', minLevel: 10 },
+          { type: 'star', minLevel: 5 }
+        ],
+        nameOf
+      )
+    ).toEqual(['英雄已觉醒', '角色等级 ≥10', '星级 ≥5']);
   });
 
   it('evaluateTalentGate：多条件 AND，任一不满足即不放行', () => {
     const gate = [
       { type: 'awakened' as const },
       { type: 'heroLevel' as const, minLevel: 10 },
-      { type: 'talent' as const, nodeId: EDGE }
+      { type: 'talent' as const, nodeId: EDGE, op: 'atLeast' as const, value: 1 }
     ];
     const full = { ...hero, awakened: true, level: 12, talents: { [EDGE]: 1 } };
     expect(evaluateTalentGate(full, gate)).toBe(true);
     expect(evaluateTalentGate({ ...full, level: 9 }, gate)).toBe(false);
     expect(evaluateTalentGate({ ...full, awakened: false }, gate)).toBe(false);
     expect(evaluateTalentGate({ ...full, talents: {} }, gate)).toBe(false);
+    // 互斥：exactly 0 与 atLeast 组合（投入 A 分支则 B 分支解锁失败）
+    const mutual = [
+      { type: 'talent' as const, nodeId: EDGE, op: 'exactly' as const, value: 0 }
+    ];
+    expect(evaluateTalentGate(full, mutual)).toBe(false); // 已投入 EDGE → 互斥条件失败
+    expect(evaluateTalentGate({ ...full, talents: {} }, mutual)).toBe(true);
   });
 
   it('isTalentNodeUnlocked：requires 与 gate 都满足才解锁（AND）', () => {

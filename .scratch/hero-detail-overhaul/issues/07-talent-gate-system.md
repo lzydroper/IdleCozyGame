@@ -35,7 +35,7 @@ Blocked by:
 
 提交 `dbedfab`。
 
-- **data/talents.ts**：`TalentGate` 联合类型（`talent`（节点投入 ≥minLevel 默认 1）/ `awakened` / `heroLevel` / `star`）+ `TalentNodeConfig.gate?: TalentGate[]`（全部满足 AND 才可点；**只阻塞不画线**——独立竖线节点可写 gate 而不写 requires）+ `formatTalentGate(gate, nameOf)` 可读文案。
+- **data/talents.ts**：`TalentGate` 联合类型（`talent`（节点投入，op 操作符）/ `awakened` / `heroLevel` / `star`）+ `TalentNodeConfig.gate?: TalentGate[]`（全部满足 AND 才可点；**只阻塞不画线**——独立竖线节点可写 gate 而不写 requires）+ `formatTalentGate(gate, nameOf)` 可读文案。
 - **state/talents.ts**：`evaluateTalentGate`（AND 判定，空/无 gate 放行）、`firstUnmetTalentGate`（UI 标记/提示用）、`isTalentNodeUnlocked`（requires 与 gate 都满足）——`allocateTalentUpdate` 改用它。
 - **HeroTalentPanel.tsx**：节点锁区分——gate 未满足显示**紫色觉醒锁**（awakened 型额外挂「觉醒」角标），前置未满足保持灰色普通锁；选中节点详情面板显示具体解锁条件（`formatTalentGate` 文案，如「英雄已觉醒」「角色等级 ≥10」「投入「X」≥1 点」）；顺手删除用户改版残留的未使用 `bonus` 变量。
 - **测试**：talents.test +4 例（evaluateTalentGate 各条件边界/AND、isTalentNodeUnlocked 组合、allocateTalentUpdate 集成锁定）；HeroTab.test 适配用户界面改版文案（职阶星盘；移除已删的「英雄专属」「当前加成」断言）。
@@ -49,5 +49,14 @@ Blocked by:
   // 不写 requires → 独立竖线；仅觉醒 + 等级 ≥10 可点
 }
 ```
+
+**互斥扩展（2026-08-07，用户要求）**：原 `talent` 条件的 `minLevel`（≥N）只能表达正向依赖，无法表达互斥（点了 A 分支就不能点 B 分支）。按用户选择改为 **op 操作符（全拼不缩写）**：
+```ts
+| { type: 'talent'; nodeId: string; op: 'atLeast' | 'atMost' | 'exactly'; value: number }
+```
+- 正向依赖：`{ type: 'talent', nodeId: 'A', op: 'atLeast', value: 1 }`（原语义）
+- **互斥**：`{ type: 'talent', nodeId: 'A', op: 'exactly', value: 0 }` —— A 未投入才解锁（文案渲染为「「A」未投入」）
+- 区间：`atMost`（≤N）、`exactly N>0`（恰好 N 点）
+评估/文案 switch 加 `never` 穷尽断言（新增 op 时编译报错）；新增 formatTalentGate 文案测试 + exactly N>0 用例。提交 `8a855b8`。
 
 **已知边界（未处理）**：`unallocateTalentUpdate` 的 `has_dependents` 只检查 requires 下游，不检查 gate 中 talent 型依赖的下游——若未来需要「gate 依赖节点已投入时禁止撤销」，需扩展（本次按 YAGNI 跳过）。
