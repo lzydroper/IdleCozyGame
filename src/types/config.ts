@@ -14,9 +14,18 @@ export interface CropConfig {
 
 export interface UpgradeLevel {
   level: number;
-  cost: Record<string, number>; // Materials needed to reach this level
+  cost: Record<string, number>; // 材料消耗（支持多材料：{ scrap_metal: 50, alloy_plate: 5 }）
   effectValue: number;          // The value of the main effect at this level
   effectText: string;           // Formatted text description of the effect (e.g. "13.0h", "0.90 能量/分")
+}
+
+// 解锁条件（统一为 type/id/minValue）
+// upgrade_level: id=升级项 id, minValue=最低等级
+// item_count: id=物品 id, minValue=最低数量
+export interface UnlockRequirement {
+  type: 'upgrade_level' | 'item_count';
+  id: string;
+  minValue: number;
 }
 
 export interface UpgradePath {
@@ -26,6 +35,9 @@ export interface UpgradePath {
   maxLevel: number;
   category: 'base' | 'facility';
   effectLabel: string;          // Label describing the effect (e.g. "离线最大挂机续航时间")
+  icon?: string;                        // 图标标识（数据驱动，替代硬编码 getUpgradeIcon）
+  theme?: { glow: string };             // 配色（数据驱动，替代硬编码 THEME_MAP）
+  unlockRequirements?: UnlockRequirement[];  // 解锁条件（满足后才在列表中显示）
   levels: UpgradeLevel[];
 }
 

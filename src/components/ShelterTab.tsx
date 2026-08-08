@@ -43,58 +43,51 @@ interface FlyingReward {
   offsetY: number;
 }
 
-const getUpgradeIcon = (id: string) => {
-  switch (id) {
-    case 'battery':
-      return <Battery className="w-4 h-4 text-cyan-400" />;
-    case 'generator':
-      return <Zap className="w-4 h-4 text-amber-400" />;
-    case 'recycler':
-      return <RefreshCw className="w-4 h-4 text-emerald-400" />;
-    default:
-      return <Settings className="w-4 h-4 text-zinc-400" />;
-  }
+// 基建升级图标映射（数据驱动，从 upgrade.icon 查找）
+const UPGRADE_ICONS: Record<string, React.ReactNode> = {
+  battery: <Battery className="w-4 h-4 text-cyan-400" />,
+  generator: <Zap className="w-4 h-4 text-amber-400" />,
+  recycler: <RefreshCw className="w-4 h-4 text-emerald-400" />,
+  smelter: <Cpu className="w-4 h-4 text-amber-400" />,
+  assembler: <Cpu className="w-4 h-4 text-purple-400" />,
+};
+const getUpgradeIcon = (id: string) => UPGRADE_ICONS[id] || <Settings className="w-4 h-4 text-zinc-400" />;
+
+// 基建升级配色（从 upgrade.theme.glow 派生）
+const THEME_COLORS: Record<string, { iconBg: string; iconBorder: string; buttonClass: (isMax: boolean, canAfford: boolean) => string }> = {
+  'bg-cyan-500/30': {
+    iconBg: 'bg-cyan-950/50', iconBorder: 'border-cyan-500/30',
+    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
+      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  },
+  'bg-amber-500/30': {
+    iconBg: 'bg-amber-950/50', iconBorder: 'border-amber-500/30',
+    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
+      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  },
+  'bg-emerald-500/30': {
+    iconBg: 'bg-emerald-950/50', iconBorder: 'border-emerald-500/30',
+    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 cursor-pointer'
+      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  },
+  'bg-purple-500/30': {
+    iconBg: 'bg-purple-950/50', iconBorder: 'border-purple-500/30',
+    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30 hover:bg-purple-500/20 active:scale-95 cursor-pointer'
+      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+  },
 };
 
-const THEME_MAP: Record<string, { iconBg: string; iconBorder: string; buttonClass: (isMax: boolean, canAfford: boolean) => string }> = {
-  battery: {
-    iconBg: 'bg-cyan-950/50',
-    iconBorder: 'border-cyan-500/30',
-    buttonClass: (isMax, canAfford) => isMax
-      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford
-        ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
-        : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  },
-  generator: {
-    iconBg: 'bg-amber-950/50',
-    iconBorder: 'border-amber-500/30',
-    buttonClass: (isMax, canAfford) => isMax
-      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford
-        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
-        : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  },
-  recycler: {
-    iconBg: 'bg-emerald-950/50',
-    iconBorder: 'border-emerald-500/30',
-    buttonClass: (isMax, canAfford) => isMax
-      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford
-        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 cursor-pointer'
-        : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  }
-};
-
-const getTheme = (id: string) => {
-  return THEME_MAP[id] || {
-    iconBg: 'bg-zinc-950/50',
-    iconBorder: 'border-zinc-500/30',
-    buttonClass: (isMax: boolean, canAfford: boolean) => isMax
-      ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford
-        ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
-        : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
+const getTheme = (glow?: string) => {
+  const key = glow || '';
+  return THEME_COLORS[key] || {
+    iconBg: 'bg-zinc-950/50', iconBorder: 'border-zinc-500/30',
+    buttonClass: (isMax: boolean, canAfford: boolean) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+      : canAfford ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
+      : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
   };
 };
 
@@ -344,13 +337,24 @@ const ShelterTab: React.FC = () => {
         <div className="space-y-3.5">
           {Object.values(SHELTER_UPGRADES)
             .filter((upg) => upg.category === 'base')
+            .filter((upg) => {
+              if (!upg.unlockRequirements) return true;
+              return upg.unlockRequirements.every(req => {
+                if (req.type === 'upgrade_level') {
+                  const upgLevel = req.id === 'battery' ? state.shelter.batteryLevel : req.id === 'generator' ? state.shelter.generatorLevel : req.id === 'recycler' ? state.shelter.recyclerLevel : 0;
+                  return upgLevel >= req.minValue;
+                } else {
+                  return (state.inventory[req.id] || 0) >= req.minValue;
+                }
+              });
+            })
             .map((upgrade) => {
               const currentLevel = getUpgradeLevel(upgrade.id);
               const isMax = currentLevel >= upgrade.maxLevel;
               const currentConfig = upgrade.levels.find((l) => l.level === currentLevel);
               const nextConfig = upgrade.levels.find((l) => l.level === currentLevel + 1);
               const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([item, qty]) => getInvQty(item) >= qty) : false;
-              const theme = getTheme(upgrade.id);
+              const theme = getTheme(upgrade.theme?.glow);
 
               return (
                 <div key={upgrade.id} className="flex items-center justify-between bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800 hover:border-emerald-500/20 transition-all">

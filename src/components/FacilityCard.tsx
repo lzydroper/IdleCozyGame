@@ -230,7 +230,7 @@ function FacilityUnitCard({
                     showToast(`${garrisonHero.name} 已解除驻守。`, 'info');
                   }
                 }}
-                className="text-[9px] text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+                className="text-[9px] px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 cursor-pointer"
               >
                 解除
               </button>
@@ -243,7 +243,7 @@ function FacilityUnitCard({
               </span>
               <button
                 onClick={() => setShowGarrisonPicker(true)}
-                className="text-[9px] text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                className="text-[9px] px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 cursor-pointer"
               >
                 驻守
               </button>
