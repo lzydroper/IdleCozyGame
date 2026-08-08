@@ -6,16 +6,19 @@ import { DEFAULT_BASE_ATTRIBUTES } from './statConfig';
 import type { HeroConfig } from './heroes';
 
 export interface HeroGrowthConfig {
-  hpPerLevel: number;      // 每级生命成长
-  attackPerLevel: number;  // 每级攻击成长
-  defensePerLevel: number; // 每级防御成长
+  attackPerLevel: number;     // 基础攻击面板
+  defensePerLevel: number;    // 基础防御面板
+  maxHpPerLevel: number;      // 基础最大生命
+  maxMpPerLevel: number;      // 基础最大魔力
+  critRatePerLevel: number;   // 基础暴击率 (如 0.05 代表 5%)
+  critDmgPerLevel: number;    // 基础暴击倍率 (如 1.50 代表 150%)
 }
 
 // 职阶基础成长系数（08 决策 D1：守护者血厚、进攻者攻高、协奏者均衡）
 export const HERO_GROWTH_BY_CLASS: Record<HeroClass, HeroGrowthConfig> = {
-  guardian: { hpPerLevel: 12, attackPerLevel: 2, defensePerLevel: 2 },
-  attacker: { hpPerLevel: 6, attackPerLevel: 4, defensePerLevel: 1 },
-  conductor: { hpPerLevel: 9, attackPerLevel: 3, defensePerLevel: 1 }
+  guardian: { attackPerLevel: 1, defensePerLevel: 5, maxHpPerLevel: 12, maxMpPerLevel: 3, critRatePerLevel: 0, critDmgPerLevel: 0 },
+  attacker: { attackPerLevel: 3, defensePerLevel: 1, maxHpPerLevel: 3, maxMpPerLevel: 6, critRatePerLevel: 0.002, critDmgPerLevel: 0.002 },
+  conductor: { attackPerLevel: 2, defensePerLevel: 2, maxHpPerLevel: 9, maxMpPerLevel: 9, critRatePerLevel: 0.001, critDmgPerLevel: 0.001 },
 };
 
 export const getHeroGrowth = (config: HeroConfig): HeroGrowthConfig =>
@@ -49,10 +52,10 @@ export const heroBaseAttributes = (config: HeroConfig, level: number): BaseAttri
   return {
     attack: config.baseAttributes.attack + (level - 1) * g.attackPerLevel + (bonus.attack ?? 0),
     defense: config.baseAttributes.defense + (level - 1) * g.defensePerLevel + (bonus.defense ?? 0),
-    maxHp: config.baseAttributes.maxHp + (level - 1) * g.hpPerLevel + (bonus.maxHp ?? 0),
-    maxMp: (config.baseAttributes.maxMp ?? DEFAULT_BASE_ATTRIBUTES.maxMp) + (bonus.maxMp ?? 0),
-    critRate: (config.baseAttributes.critRate ?? DEFAULT_BASE_ATTRIBUTES.critRate) + (bonus.critRate ?? 0),
-    critDmg: (config.baseAttributes.critDmg ?? DEFAULT_BASE_ATTRIBUTES.critDmg) + (bonus.critDmg ?? 0)
+    maxHp: config.baseAttributes.maxHp + (level - 1) * g.maxHpPerLevel + (bonus.maxHp ?? 0),
+    maxMp: (config.baseAttributes.maxMp ?? DEFAULT_BASE_ATTRIBUTES.maxMp) + (level - 1) * g.maxMpPerLevel + (bonus.maxMp ?? 0),
+    critRate: (config.baseAttributes.critRate ?? DEFAULT_BASE_ATTRIBUTES.critRate) + (level - 1) * g.critRatePerLevel + (bonus.critRate ?? 0),
+    critDmg: (config.baseAttributes.critDmg ?? DEFAULT_BASE_ATTRIBUTES.critDmg) + (level - 1) * g.critDmgPerLevel + (bonus.critDmg ?? 0)
   };
 };
 
