@@ -250,6 +250,11 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   shelter: {
     ...initialState.shelter,
     ...(parsed.shelter || {}),
+    // ADR-0018：旧存档的 assignedWatererId/assignedExplorerId 是缓存索引，
+    // 如果对应的 hero.logisticsFacilityId 已被清理（旧 string 格式），缓存也需清空
+    assignedWatererId: null,
+    assignedExplorerId: null,
+    expedition: { locationId: null, startTime: null, lastScavengeTime: null },
     facilities: normalizeFacilities(
       (parsed.shelter && (parsed.shelter as any).facilities) as any,
       initialState.shelter.facilities
@@ -287,6 +292,8 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
       // 天赋/觉醒字段（ticket 11/12）：旧存档缺失时补默认值，逐节点钳制等级并丢弃未知节点
       {
         ...h,
+        // ADR-0018：旧存档 logisticsFacilityId 可能为 string 格式，强制清为 null
+        logisticsFacilityId: (typeof h.logisticsFacilityId === 'object' && h.logisticsFacilityId !== null) ? h.logisticsFacilityId : null,
         talentPoints: Number.isFinite(h.talentPoints) ? Math.max(0, h.talentPoints) : 0,
         talents: normalizeTalents(heroId, h.talents),
         awakened: !!h.awakened
