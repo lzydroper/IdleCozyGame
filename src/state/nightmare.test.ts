@@ -59,7 +59,7 @@ describe('梦魇泄露防御（ticket 14）', () => {
 
   it('防御失败（小队全灭）→ 全员重伤 + 梦境封锁，警报保留可再战', () => {
     let state = withLeak(baseState());
-    state.heroes.nova = { ...state.heroes.nova, hp: 6 }; // 梦魇一轮 6 伤害 → 阵亡
+    state.heroes.nova = { ...state.heroes.nova, hp: 2 }; // 残血进场（战斗 hp ≈ 3），梦魇一轮 3 伤害 → 阵亡
 
     const before = Date.now();
     const r = defendDreamLeakUpdate(state, 'direct');

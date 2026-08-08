@@ -152,53 +152,53 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
   it('strike 技能：单体重击 + 冷却节奏（用后 3 回合普通攻击再发动）', () => {
     const buster: HeroState = { ...createInitialHero('buster'), star: STAR_MAX, awakened: true }; // 拆解重击 ×2.2
     const combatant = heroToCombatant('buster', buster);
-    // 攻击 = round(32 × (1 + 星级 8% + 觉醒被动 12%)) = round(38.4) = 38
-    expect(combatant.attack).toBe(38);
+    // 攻击 = round((32 + 力量 8×2) × (1 + 星级 8% + 觉醒被动 12%)) = round(57.6) = 58
+    expect(combatant.attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 8);
     const skills = result.actions.filter(a => a.kind === 'skill');
     // 回合 1 发动；冷却 3 → 回合 5 再发动（自身行动轮）
     expect(skills.map(a => a.round)).toEqual([1, 5]);
     expect(skills[0].skillName).toBe('拆解重击');
-    // 伤害 = 攻击 ×2.2（防御 0）：round(38 × 2.2) = 84
-    expect(skills[0].damage).toBe(Math.round(38 * 2.2));
+    // 伤害 = 攻击 ×2.2（防御 0）：round(58 × 2.2) = 128
+    expect(skills[0].damage).toBe(Math.round(58 * 2.2));
   });
 
   it('aoe 技能：一次行动对全部存活敌人造成伤害', () => {
     const nova: HeroState = { ...createInitialHero('nova'), star: STAR_MAX, awakened: true }; // 电涌过载 ×0.8
     const combatant = heroToCombatant('nova', nova);
-    // 攻击 = round(35 × (1 + 星级 8% + 觉醒被动 10%)) = round(41.3) = 41
-    expect(combatant.attack).toBe(41);
+    // 攻击 = round(49 × (1 + 星级 8% + 觉醒被动 10%)) = round(57.82) = 58
+    expect(combatant.attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
     const round1Skills = result.actions.filter(a => a.round === 1 && a.kind === 'skill');
     expect(round1Skills).toHaveLength(2); // 两个敌人都吃到
     expect(round1Skills.every(a => a.skillName === '电涌过载')).toBe(true);
-    expect(round1Skills[0].damage).toBe(Math.round(41 * 0.8));
+    expect(round1Skills[0].damage).toBe(Math.round(58 * 0.8));
   });
 
   it('heal 技能：恢复自身生命且不超过上限', () => {
     const healer: HeroState = { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 }; // 净化之泉 50%
     const combatant = heroToCombatant('healer', healer);
-    // maxHp = round(115 × (1 + 星级 16% + 觉醒被动 15%)) = round(150.65) = 151
-    expect(combatant.maxHp).toBe(151);
+    // maxHp = round((115 + 体质 4×10) × (1 + 星级 16% + 觉醒被动 15%)) = round(203.05) = 203
+    expect(combatant.maxHp).toBe(203);
     const heroes = [combatant];
     const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
     const healAction = result.actions.find(a => a.kind === 'heal');
     expect(healAction).toBeDefined();
-    // 治疗量 = maxHp 的 50% = round(151 × 0.5) = 76，上限内全额
-    expect(healAction!.damage).toBe(Math.round(151 * 0.5));
+    // 治疗量 = maxHp 的 50% = round(203 × 0.5) = 102，上限内全额
+    expect(healAction!.damage).toBe(Math.round(203 * 0.5));
     expect(healAction!.targetName).toBe('艾拉');
   });
 
   it('heal 治疗量受生命上限约束', () => {
-    const catherine: HeroState = { ...createInitialHero('catherine'), star: STAR_MAX, awakened: true, hp: 149 }; // maxHp 150，缺 1
+    const catherine: HeroState = { ...createInitialHero('catherine'), star: STAR_MAX, awakened: true, hp: 149 }; // 战斗 maxHp 265，缺 2
     const heroes = [heroToCombatant('catherine', catherine)];
     const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
     const healAction = result.actions.find(a => a.kind === 'heal');
-    expect(healAction!.damage).toBe(1); // 只补缺的 1 点
+    expect(healAction!.damage).toBe(2); // 只补缺的 2 点
   });
 
   it('未觉醒英雄战斗行为与之前一致（普通攻击，无技能）', () => {
@@ -212,9 +212,9 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
   it('升星/觉醒百分比加成计入战斗数值（与天赋叠加）', () => {
     const hero: HeroState = { ...createInitialHero('nova'), star: 3, awakened: true, talents: { trunk_attacker_edge: 2 } };
     const c = heroToCombatant('nova', hero);
-    // 攻击 = round(35 × (1 + (4 + 10 + 6)/100)) = round(35 × 1.2) = 42
+    // 攻击 = round(49 × (1 + (4 + 10 + 6)/100)) = round(58.8) = 59
     //   star 3: attack +2%×2=4%；觉醒被动 +10%；天赋锋芒 ×2 = +6%
-    expect(c.attack).toBe(42);
+    expect(c.attack).toBe(59);
     expect(c.skill?.name).toBe('电涌过载');
   });
 });

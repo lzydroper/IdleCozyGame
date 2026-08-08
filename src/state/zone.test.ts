@@ -151,12 +151,12 @@ describe('startBossBattleUpdate (关底 BOSS 战)', () => {
   });
 
   it('defeat: party wounded, zone NOT cleared, no drops', () => {
-    // 用最弱队伍（单诺娃）打最强区域（区3）的 BOSS → 必败；先解锁区3 再挑战
+    // 用最弱队伍（单残血诺娃）打最强区域（区3）的 BOSS → 必败；先解锁区3 再挑战
     const zone3 = COMBAT_ZONE_LIST[2];
     const unlocked = makeState({
       ...withCleared([COMBAT_ZONE_LIST[0].id, COMBAT_ZONE_LIST[1].id]),
       party: ['nova'],
-      heroes: { nova: createInitialHero('nova') },
+      heroes: { nova: { ...createInitialHero('nova'), hp: 5 } }, // 残血进场（战斗 hp ≈ 7）必败
       inventory: { scrap_metal: 5 }
     });
     const { state: next, result } = startBossBattleUpdate(unlocked, zone3.id);

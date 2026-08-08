@@ -140,7 +140,7 @@ describe('resolveEncounterBattleUpdate (探索战斗汇合)', () => {
     const state = makeState({
       inventory: { scrap_metal: 1, ration: 2 },
       party: ['nova'],
-      heroes: { nova: createInitialHero('nova') },
+      heroes: { nova: { ...createInitialHero('nova'), hp: 5 } }, // 残血进场（战斗 hp ≈ 7），车间畸变体必败
       exploration: inExploration({
         realitySteps: 2,
         realityLocationId: 'radar_station',

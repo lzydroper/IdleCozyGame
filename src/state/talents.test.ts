@@ -176,22 +176,22 @@ describe('天赋加成计算与战斗生效', () => {
     };
     const bond: StatModifier[] = [{ stat: 'attack', kind: 'percent', value: 0.10 }];
     const c = heroToCombatant('nova', hero, bond, gear);
-    // 攻击 = round((35 + 10) × 1.16) = round(52.2) = 52
-    expect(c.attack).toBe(52);
+    // 攻击 = round((49 + 10) × 1.16) = round(68.44) = 68
+    expect(c.attack).toBe(68);
   });
 
   it('守护者主干生命加成生效，当前血量按比例缩放', () => {
     const soldier = { ...createInitialHero('soldier'), talents: { trunk_guardian_bulwark: 3 }, hp: 80 }; // 生命 +9%
     const c = heroToCombatant('soldier', soldier);
-    expect(c.maxHp).toBe(Math.round(160 * 1.09));
-    expect(c.hp).toBe(Math.round(80 * 1.09)); // 已损比例保留
+    expect(c.maxHp).toBe(262); // (160 + 体质 8×10) × 1.09
+    expect(c.hp).toBe(131); // 已损比例保留（80/160 × 262）
   });
 
-  it('未加点英雄战斗属性与之前一致（回归）', () => {
+  it('未加点英雄战斗属性与之前一致（回归；元属性折算后）', () => {
     const c = heroToCombatant('nova', createInitialHero('nova'));
-    expect(c.attack).toBe(35);
-    expect(c.defense).toBe(8);
-    expect(c.maxHp).toBe(100);
+    expect(c.attack).toBe(49);
+    expect(c.defense).toBe(11);
+    expect(c.maxHp).toBe(130);
   });
 });
 

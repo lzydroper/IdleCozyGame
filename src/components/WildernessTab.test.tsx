@@ -330,7 +330,7 @@ describe('WildernessTab Component', () => {
       inventory: {},
       greenhouse: { slots: [], unlockedSlotsCount: 4 },
       heroes: {
-        nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false }
+        nova: { level: 1, exp: 0, hp: 5, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false } // 残血进场必败
       },
       party: ['nova'],
       exploration: {

@@ -151,11 +151,11 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
   });
 
   it('stops automatically when the party is defeated mid-idle (战败重伤)', () => {
-    // 单诺娃强开挂机于第三区（辐射车间）→ 第一场即战败
+    // 单残血诺娃强开挂机于第三区（辐射车间）→ 第一场即战败
     const state = makeState({
       ...armed('radiated_workshop'),
       party: ['nova'],
-      heroes: { nova: createInitialHero('nova') },
+      heroes: { nova: { ...createInitialHero('nova'), hp: 5 } }, // 残血进场（战斗 hp ≈ 7）必败
       stamina: 100,
       inventory: { scrap_metal: 5, soul_echo: 5 }
     });

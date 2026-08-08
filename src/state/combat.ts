@@ -8,8 +8,9 @@ import { REALITY_EVENTS } from '../data/realityEvents';
 import type { AwakenSkillConfig } from '../data/awakening';
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import { aggregateBonus } from './bonds';
-import type { StatModifier } from './statSystem';
+import type { StatModifier, BaseAttributes, PrimaryAttributes, SpecialAttributes } from './statSystem';
 import { calculateEntityStats } from './statSystem';
+import { collectBuffModifiers, type ActiveBuff } from './buffSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { getHeroGrowth, getLevelMilestoneBonus } from '../data/heroGrowth';
 import { getTalentBonus } from './talents';
@@ -28,6 +29,18 @@ export interface CombatantState {
   attack: number;
   defense: number;
   skill?: AwakenSkillConfig; // 觉醒专属战斗技能（ticket 12，仅英雄携带）
+  // 可重算快照（stat-bonus-unification B 方案）：英雄单位携带「配方」——三层输入 + 常驻修饰符。
+  // 战斗内 buff/技能变化 → 更新 ActiveBuff 列表 → recomputeCombatant 重算，保证与面板规则一致。
+  // 敌人/手动构造单位无快照（配置直取，无需重算）。
+  snapshot?: CombatantSnapshot;
+}
+
+// 战斗单位配方：与详情面板同口径（元属性/特殊属性全接入），入场后可作为 buff 重算基准
+export interface CombatantSnapshot {
+  baseAttributes: BaseAttributes;
+  primaryAttributes: PrimaryAttributes;
+  specialAttributes: SpecialAttributes;
+  permanentModifiers: StatModifier[]; // 常驻：羁绊/装备/天赋/觉醒
 }
 
 export type CombatFailure = 'no_stamina' | 'no_party' | 'wounded' | 'unknown_zone' | 'locked';
@@ -215,29 +228,53 @@ export const simulateBattle = (
 };
 
 // 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成统一为修饰符，经 statSystem 面板快照生效；
-// 退出战斗即复原。stat-bonus-unification 02/03）
+// 退出战斗即复原。stat-bonus-unification 02/03 + B 方案：单位持有可重算配方 snapshot，
+// 面板 = 战斗初始值（元属性/特殊属性同口径接入））
 export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModifier[] = [], gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
+  const milestone = getLevelMilestoneBonus(config, hero.level);
+
+  // 配方（与详情面板同口径）：基础三件套含成长+里程碑；暴击/魔力含里程碑；元属性/特殊属性全接入
+  const baseAttributes: BaseAttributes = {
+    attack: heroAttack(config, hero.level),
+    defense: heroDefense(config, hero.level),
+    maxHp: heroMaxHp(config, hero.level),
+    maxMp: 50 + (milestone.maxMp ?? 0),
+    critRate: 0.05 + (milestone.critRate ?? 0),
+    critDmg: 1.5 + (milestone.critDmg ?? 0)
+  };
+  const primaryAttributes: PrimaryAttributes = {
+    ...config.primaryAttributes,
+    strength: config.primaryAttributes.strength + (milestone.strength ?? 0),
+    constitution: config.primaryAttributes.constitution + (milestone.constitution ?? 0),
+    agility: config.primaryAttributes.agility + (milestone.agility ?? 0),
+    intelligence: config.primaryAttributes.intelligence + (milestone.intelligence ?? 0),
+    willpower: config.primaryAttributes.willpower + (milestone.willpower ?? 0),
+    transcendence: config.primaryAttributes.transcendence + (milestone.transcendence ?? 0)
+  };
+  const specialAttributes: SpecialAttributes = {
+    arcaneBoost: milestone.arcaneBoost ?? 0,
+    arcaneResistance: milestone.arcaneResistance ?? 0,
+    mechanicalLoad: milestone.mechanicalLoad ?? 0,
+    mechanicalEvolution: milestone.mechanicalEvolution ?? 0,
+    nightmareErosion: milestone.nightmareErosion ?? 0,
+    voidSpirit: milestone.voidSpirit ?? 0,
+    spiritInspire: milestone.spiritInspire ?? 0,
+    astralGuidance: milestone.astralGuidance ?? 0,
+    soulsealDrive: milestone.soulsealDrive ?? 0
+  };
+  const permanentModifiers: StatModifier[] = [
+    ...bonus,
+    ...(gear ? getHeroEquipmentBonus(gear) : []),
+    ...getTalentBonus(heroId, hero),
+    ...getAwakenBonus(heroId, hero)
+  ];
 
   // 面板快照：统一聚合全部来源修饰符（羁绊/装备/天赋/觉醒均已直连）
   const stats = calculateEntityStats(
-    {
-      baseAttributes: {
-        attack: heroAttack(config, hero.level),
-        defense: config.baseDefense,
-        maxHp: heroMaxHp(config, hero.level),
-        maxMp: 50,
-        critRate: 0.05,
-        critDmg: 1.5
-      }
-    },
-    [
-      ...bonus,
-      ...(gear ? getHeroEquipmentBonus(gear) : []),
-      ...getTalentBonus(heroId, hero),
-      ...getAwakenBonus(heroId, hero)
-    ]
+    { baseAttributes, primaryAttributes, specialAttributes },
+    permanentModifiers
   );
 
   const maxHp = Math.round(stats.maxHp);
@@ -249,7 +286,37 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
     maxHp,
     attack: Math.round(stats.attack),
     defense: Math.round(stats.defense),
-    skill: getAwakenSkill(heroId, hero)
+    skill: getAwakenSkill(heroId, hero),
+    snapshot: { baseAttributes, primaryAttributes, specialAttributes, permanentModifiers }
+  };
+};
+
+// 战斗内任意时刻重算面板（B 方案）：常驻修饰符 + 当前 buff 修饰符，一次管道计算。
+// 无快照的单位（敌人/手动构造）原样返回；有快照则按已损比例更新 hp 与三属性。
+export const recomputeCombatant = (combatant: CombatantState, activeBuffs: ActiveBuff[]): CombatantState => {
+  if (!combatant.snapshot) return combatant;
+  const { baseAttributes, primaryAttributes, specialAttributes, permanentModifiers } = combatant.snapshot;
+  // 意志减免取基础面板（不含 buff）的 effectReduction，与入场口径一致
+  const effectReduction = calculateEntityStats(
+    { baseAttributes, primaryAttributes, specialAttributes },
+    permanentModifiers
+  ).effectReduction;
+  const stats = calculateEntityStats(
+    { baseAttributes, primaryAttributes, specialAttributes },
+    [...permanentModifiers, ...collectBuffModifiers(activeBuffs, effectReduction)]
+  );
+  const maxHp = Math.round(stats.maxHp);
+  // 当前血量按已损比例缩放（保持血线比例），并钳制到 [0, maxHp]
+  const hp =
+    combatant.maxHp > 0
+      ? Math.max(0, Math.min(maxHp, Math.round((combatant.hp / combatant.maxHp) * maxHp)))
+      : maxHp;
+  return {
+    ...combatant,
+    hp,
+    maxHp,
+    attack: Math.round(stats.attack),
+    defense: Math.round(stats.defense)
   };
 };
 

@@ -17,9 +17,69 @@ import {
   healWoundedHeroUpdate,
   healWoundedHeroesUpdate,
   heroToCombatant,
+  recomputeCombatant,
   type CombatantState
 } from './combat';
+import type { ActiveBuff } from './buffSystem';
 import { STAR_MAX } from '../data/awakening';
+
+describe('recomputeCombatant (B 方案：可重算快照)', () => {
+  it('无 buff 时重算 = 入场值（幂等）', () => {
+    const c = heroToCombatant('nova', createInitialHero('nova'));
+    const r = recomputeCombatant(c, []);
+    expect(r.attack).toBe(c.attack);
+    expect(r.defense).toBe(c.defense);
+    expect(r.maxHp).toBe(c.maxHp);
+    expect(r.hp).toBe(c.hp);
+  });
+
+  it('buff 变化 → 面板重算（percent 加算 + 元属性折算 + hp 比例缩放）', () => {
+    const c = heroToCombatant('nova', createInitialHero('nova'));
+    const buffs: ActiveBuff[] = [
+      {
+        id: 'b1',
+        name: '狂暴',
+        type: 'buff',
+        duration: 3,
+        maxDuration: 3,
+        statModifiers: [
+          { stat: 'attack', kind: 'percent', value: 0.20 },
+          { stat: 'maxHp', kind: 'percent', value: 0.10 },
+          { stat: 'strength', kind: 'flat', value: 5 }
+        ]
+      }
+    ];
+    const r = recomputeCombatant(c, buffs);
+    // 力量 7 + 5 = 12 → 攻击 35 + 24 = 59；×1.2 = 70.8 → 71
+    expect(r.attack).toBe(71);
+    // maxHp = 130 × 1.1 = 143
+    expect(r.maxHp).toBe(143);
+    // 满血比例不变
+    expect(r.hp).toBe(143);
+  });
+
+  it('debuff 经意志减免后生效（力量越强减免越多）', () => {
+    const c = heroToCombatant('nova', createInitialHero('nova')); // nova 意志 1 → effectReduction 0.5%
+    const debuffs: ActiveBuff[] = [
+      {
+        id: 'd1',
+        name: '虚弱',
+        type: 'debuff',
+        duration: 3,
+        maxDuration: 3,
+        statModifiers: [{ stat: 'attack', kind: 'flat', value: -40 }]
+      }
+    ];
+    const r = recomputeCombatant(c, debuffs);
+    // 减免 40 × (1 - 0.005) = 39.8 → attack = (49 - 39.8) = 9.2 → round 9
+    expect(r.attack).toBe(9);
+  });
+
+  it('无快照的单位（敌人/手动构造）原样返回', () => {
+    const enemy: CombatantState = { id: 'e', name: '敌', hp: 50, maxHp: 50, attack: 5, defense: 2 };
+    expect(recomputeCombatant(enemy, [])).toBe(enemy);
+  });
+});
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
@@ -240,10 +300,10 @@ describe('startCombatUpdate (开战校验与结算)', () => {
       stamina: 30,
       inventory: { scrap_metal: 5, soul_echo: 5 },
       party: ['nova'],
-      heroes: { nova: createInitialHero('nova') },
+      heroes: { nova: { ...createInitialHero('nova'), hp: 5 } }, // 残血进场（战斗 hp ≈ 7），三人敌人必败
       combat: { ...INITIAL_STATE.combat, zonesCleared: ['wasteland_entrance', 'old_town_ruins'] }
     });
-    // 让诺娃打辐射车间（三人敌人）必然战败
+    // 让残血的诺娃打辐射车间（三人敌人）必然战败
     const { state: next, result } = startCombatUpdate(state, 'radiated_workshop');
 
     expect(result.settlement!.battle.victory).toBe(false);

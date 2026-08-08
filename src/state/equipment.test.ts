@@ -338,12 +338,12 @@ describe('属性与套装特效计算', () => {
 describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
   const novaLv1 = () => createInitialHero('nova'); // 攻击 35 / 防御 8 / 生命 100
 
-  it('无装备时战斗属性与之前一致（回归）', () => {
+  it('无装备时战斗属性与之前一致（回归；元属性折算后）', () => {
     const c = heroToCombatant('nova', novaLv1());
-    expect(c.attack).toBe(35);
-    expect(c.defense).toBe(8);
-    expect(c.maxHp).toBe(100);
-    expect(c.hp).toBe(100);
+    expect(c.attack).toBe(49); // 35 + 力量 7×2
+    expect(c.defense).toBe(11); // 8 + 体质 3
+    expect(c.maxHp).toBe(130); // 100 + 体质 3×10
+    expect(c.hp).toBe(130);
   });
 
   it('平值属性直接加入战斗数值，当前血量按比例缩放', () => {
@@ -354,9 +354,9 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     };
     const hero = { ...novaLv1(), hp: 80 }; // 已损 20%
     const c = heroToCombatant('nova', hero, [], gear);
-    expect(c.attack).toBe(35 + 16);
-    expect(c.maxHp).toBe(130);
-    expect(c.hp).toBe(104); // 80% × 130
+    expect(c.attack).toBe(49 + 16); // 65
+    expect(c.maxHp).toBe(130 + 30); // 160
+    expect(c.hp).toBe(128); // 80% × 160
   });
 
   it('套装特效百分比与羁绊百分比叠加生效', () => {
@@ -367,8 +367,8 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     };
     const bond: StatModifier[] = [{ stat: 'attack', kind: 'percent', value: 0.10 }]; // 羁绊攻击 +10%
     const c = heroToCombatant('nova', novaLv1(), bond, gear);
-    // 攻击 = round((35 + 20) × 1.15) = round(63.25) = 63
-    expect(c.attack).toBe(63);
+    // 攻击 = round((49 + 20) × 1.15) = round(79.35) = 79
+    expect(c.attack).toBe(79);
   });
 
   it('满强化 + 神话全套：属性显著放大', () => {
@@ -379,9 +379,9 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     };
     const c = heroToCombatant('nova', novaLv1(), [], gear);
     // 星核满编 90：特效攻击 +10%、防御 +12%、生命 +18%；神话词条（每系列一次）攻击+5% 防御+5%
-    expect(c.maxHp).toBe(Math.round((100 + 45 * 3 * 1.5) * 1.18));
-    expect(c.attack).toBe(Math.round((35 + (22 + 2 * 30) * 1.5) * 1.15));
-    expect(c.defense).toBe(Math.round((8 + (15 + 1 * 30) * 1.5) * 1.17));
+    expect(c.maxHp).toBe(Math.round((130 + 45 * 3 * 1.5) * 1.18)); // 392
+    expect(c.attack).toBe(Math.round((49 + (22 + 2 * 30) * 1.5) * 1.15)); // 198
+    expect(c.defense).toBe(Math.round((11 + (15 + 1 * 30) * 1.5) * 1.17)); // 92
   });
 });
 
