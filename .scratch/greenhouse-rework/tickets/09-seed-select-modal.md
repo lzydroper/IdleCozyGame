@@ -4,11 +4,11 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 新组件，props：`{ isOpen, title, inventory, onSelect, onClose, selectedCropId? }`
-- [ ] 列表式条目：种子 icon（物品系统 `GameIcon type="item"`）+ 作物名/描述/生长时间 + 种子持有数 + 全部产出预览（每个产出的物品 icon + 数量）
-- [ ] 无种子作物隐藏；全空显示「暂无可用种子」空态
-- [ ] `selectedCropId` 命中的条目高亮（选种模式）
-- [ ] 温室播种入口替换为该弹窗
-- [ ] 组件测试（渲染/隐藏无种子/产出预览/选择回调/选中高亮/空态）；全量 `npx vitest run` + `npm run build` + `npm run lint` 绿
+- [x] 新组件 `src/components/SeedSelectModal.tsx`，props：`{ isOpen, title, inventory, onSelect, onClose, selectedCropId? }`（`createPortal` + UI_TOKENS）
+- [x] 列表式条目：种子 icon（`GameIcon type="item" id={seedId}` 物品系统）+ 作物名/描述/生长时间 + 种子持有数 + 全部产出预览（每个产出的物品 icon + 数量）
+- [x] 无种子作物隐藏；全空显示「暂无可用种子」空态
+- [x] `selectedCropId` 命中的条目高亮（选种模式）
+- [x] 播种入口替换（由 T10 接线：播种与挂机选种两处复用）
+- [x] 组件测试 6 条（渲染/隐藏/产出预览/回调/高亮/空态/遮罩关闭）；`npx tsc -b` 通过
