@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Zap, Shield, Award, Swords } from 'lucide-react';
-import type { CalculatedEntityStats, StatModifier } from '../state/statSystem';
-import { PRIMARY_STAT_DESCRIPTIONS } from '../data/heroGrowth';
+import { X, Award, ChevronRight } from 'lucide-react';
+import type { CalculatedEntityStats, StatModifier, StatKey } from '../state/statSystem';
+import {
+  STAT_META,
+  DERIVED_STAT_META,
+  aggregateModifiersBySource,
+  getStatSourcesByStat,
+  getDerivedStatContributions,
+  type DerivedStatKey
+} from '../state/statSystem';
 import { UI_TOKENS } from '../data/uiConstants';
 
 export interface DetailedStatsModalProps {
@@ -13,6 +20,62 @@ export interface DetailedStatsModalProps {
   onClose: () => void;
 }
 
+// 21 项可修饰属性 key（按展示顺序：Base 6 + Primary 6 + Special 9）
+const STAT_ORDER: StatKey[] = [
+  'attack', 'defense', 'maxHp', 'maxMp', 'critRate', 'critDmg',
+  'strength', 'constitution', 'agility', 'intelligence', 'willpower', 'transcendence',
+  'arcaneBoost', 'arcaneResistance', 'mechanicalLoad', 'mechanicalEvolution',
+  'nightmareErosion', 'voidSpirit', 'spiritInspire', 'astralGuidance', 'soulsealDrive'
+];
+
+// 6 项派生属性 key（按展示顺序）
+const DERIVED_ORDER: DerivedStatKey[] = [
+  'critResist', 'damageReduction', 'durationReduction', 'effectReduction', 'cooldownReduction', 'voidSpirit'
+];
+
+// 获取某属性当前总值（从 CalculatedEntityStats 中读取）
+const getStatValue = (stats: CalculatedEntityStats, stat: StatKey): { value: number; isPercent: boolean } => {
+  const meta = STAT_META[stat];
+  const { primaryAttributes: primary, specialAttributes: special, ...base } = stats;
+
+  // Primary 属性
+  if (stat in primary) {
+    return { value: primary[stat as keyof typeof primary], isPercent: !!meta.percentDisplay };
+  }
+  // Special 属性
+  if (stat in special) {
+    return { value: special[stat as keyof typeof special], isPercent: !!meta.percentDisplay };
+  }
+  // Base 属性
+  return { value: base[stat as keyof typeof base], isPercent: !!meta.percentDisplay };
+};
+
+// 格式化属性值
+const formatValue = (value: number, isPercent: boolean): string => {
+  if (isPercent) return `${(value * 100).toFixed(1)}%`;
+  return String(Math.round(value));
+};
+
+// 格式化 modifier 贡献值
+const formatContribution = (flat: number, percent: number, isPercentStat: boolean): string => {
+  const parts: string[] = [];
+  if (flat !== 0) {
+    const sign = flat > 0 ? '+' : '';
+    parts.push(sign + (isPercentStat ? `${Math.round(flat * 100)}%` : String(Math.round(flat * 10) / 10)));
+  }
+  if (percent !== 0) {
+    const sign = percent > 0 ? '+' : '';
+    parts.push(`${sign}${Math.round(percent * 100)}%`);
+  }
+  return parts.join('、') || '0';
+};
+
+// 格式化派生属性贡献值
+const formatDerivedContribution = (contribution: number, isPercent: boolean): string => {
+  if (isPercent) return `${(contribution * 100).toFixed(1)}%`;
+  return String(Math.round(contribution));
+};
+
 export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   isOpen,
   heroName,
@@ -20,30 +83,124 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   modifiers,
   onClose
 }) => {
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  // 按来源分组聚合 modifiers（Memoized）
+  const groupedMods = useMemo(
+    () => aggregateModifiersBySource(modifiers ?? []),
+    [modifiers]
+  );
+
+  // 派生属性贡献分解（Memoized）
+  const derivedContributions = useMemo(
+    () => getDerivedStatContributions(stats),
+    [stats]
+  );
+
   if (!isOpen) return null;
 
-  // modifiers 供 06 号可展开折叠列表使用（来源分解）；当前面板仍用旧布局
-  void modifiers;
+  const toggleExpand = (key: string) => {
+    setExpandedKey(prev => prev === key ? null : key);
+  };
 
-  const { primaryAttributes: primary, specialAttributes: special } = stats;
+  // 渲染单条可修饰属性行
+  const renderStatRow = (stat: StatKey) => {
+    const meta = STAT_META[stat];
+    const { value, isPercent } = getStatValue(stats, stat);
+    const sources = getStatSourcesByStat(groupedMods, stat);
+    const hasSources = sources.length > 0;
+    const rowKey = `stat-${stat}`;
+    const isExpanded = expandedKey === rowKey;
 
-  // 基础属性区（16 号，08 决策 D4）：攻击/防御/生命/魔力/暴击/暴伤（已含职阶成长、里程碑、装备与元属性加成）
-  const baseRows: { label: string; value: string }[] = [
-    { label: '攻击 (ATK)', value: String(stats.attack) },
-    { label: '防御 (DEF)', value: String(stats.defense) },
-    { label: '生命 (HP)', value: String(stats.maxHp) },
-    { label: '魔力 (MP)', value: String(stats.maxMp) },
-    { label: '暴击率', value: `${(stats.critRate * 100).toFixed(1)}%` },
-    { label: '暴击倍率', value: `${(stats.critDmg * 100).toFixed(0)}%` }
-  ];
+    return (
+      <div key={rowKey} className="flex flex-col">
+        <button
+          onClick={() => hasSources && toggleExpand(rowKey)}
+          className={`flex justify-between items-center py-1 px-1.5 rounded-lg transition-colors ${
+            hasSources ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
+          }`}
+        >
+          <span className={`${UI_TOKENS.textBodyDense} text-zinc-400 font-bold`}>{meta.label}</span>
+          <div className="flex items-center gap-1">
+            <span className={`${UI_TOKENS.textBodyDense} font-black text-zinc-100`}>
+              {formatValue(value, isPercent)}
+            </span>
+            {hasSources && (
+              <ChevronRight
+                className={`w-3 h-3 text-zinc-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            )}
+          </div>
+        </button>
+        {isExpanded && hasSources && (
+          <div className="flex flex-col gap-0.5 pl-3 pr-1.5 pb-1 border-l border-zinc-800 ml-1.5">
+            {sources.map(s => (
+              <div key={s.source} className="flex justify-between items-center">
+                <span className={`${UI_TOKENS.textMini} text-zinc-500`}>{s.source}</span>
+                <span className={`${UI_TOKENS.textMini} text-zinc-400 font-bold`}>
+                  {formatContribution(s.flat, s.percent, isPercent)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-  const primaryColor: Record<string, string> = {
-    strength: 'text-amber-300',
-    constitution: 'text-rose-300',
-    agility: 'text-purple-300',
-    intelligence: 'text-sky-300',
-    willpower: 'text-emerald-300',
-    transcendence: 'text-fuchsia-300'
+  // 渲染单条派生属性行
+  const renderDerivedRow = (key: DerivedStatKey) => {
+    const meta = DERIVED_STAT_META[key];
+    const contributions = derivedContributions[key];
+    const hasContributions = contributions.length > 0;
+
+    // 获取派生属性当前总值
+    let value = 0;
+    if (key === 'voidSpirit') {
+      value = stats.specialAttributes.voidSpirit;
+    } else {
+      value = stats[key as keyof CalculatedEntityStats] as number;
+    }
+
+    const rowKey = `derived-${key}`;
+    const isExpanded = expandedKey === rowKey;
+
+    return (
+      <div key={rowKey} className="flex flex-col">
+        <button
+          onClick={() => hasContributions && toggleExpand(rowKey)}
+          className={`flex justify-between items-center py-1 px-1.5 rounded-lg transition-colors ${
+            hasContributions ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
+          }`}
+        >
+          <span className={`${UI_TOKENS.textBodyDense} text-zinc-400 font-bold`}>{meta.label}</span>
+          <div className="flex items-center gap-1">
+            <span className={`${UI_TOKENS.textBodyDense} font-black text-zinc-100`}>
+              {formatValue(value, meta.percentDisplay)}
+            </span>
+            {hasContributions && (
+              <ChevronRight
+                className={`w-3 h-3 text-zinc-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            )}
+          </div>
+        </button>
+        {isExpanded && hasContributions && (
+          <div className="flex flex-col gap-0.5 pl-3 pr-1.5 pb-1 border-l border-zinc-800 ml-1.5">
+            {contributions.map((c, i) => (
+              <div key={i} className="flex justify-between items-center">
+                <span className={`${UI_TOKENS.textMini} text-zinc-500`}>
+                  {c.source}{c.coefficient !== undefined ? ` (${c.sourceValue}×${c.coefficient})` : ` (${c.sourceValue})`}
+                </span>
+                <span className={`${UI_TOKENS.textMini} text-zinc-400 font-bold`}>
+                  {formatDerivedContribution(c.contribution, meta.percentDisplay)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const modalContent = (
@@ -68,79 +225,16 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
           </button>
         </header>
 
-        {/* 定高可滑动详细属性列表 (对齐点 7: 定高可滑动；头部固定，内容滚动) */}
-        <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col gap-2 pr-1 mt-3">
-          {/* 基础属性 (Base Attributes)：16 号，已含职阶成长/里程碑/装备/元属性加成 */}
-          <div className={UI_TOKENS.sectionCard}>
-            <div className={`${UI_TOKENS.textLabel} font-black text-zinc-100 border-b border-zinc-850 pb-1.5 flex items-center gap-1.5`}>
-              <Swords className="w-4 h-4 text-amber-400" /> 基础属性 (Base)
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {baseRows.map(r => (
-                <div key={r.label} className="flex justify-between items-center">
-                  <span className={`${UI_TOKENS.textBodyDense} text-zinc-500 font-bold`}>{r.label}:</span>
-                  <span className={`${UI_TOKENS.textBodyDense} font-black text-zinc-100`}>{r.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* 定高可滑动属性列表：不分大类，27 条属性依次平铺 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col gap-0.5 pr-1 mt-3">
+          {/* 21 项可修饰属性 */}
+          {STAT_ORDER.map(renderStatRow)}
 
-          {/* 一级元属性 (Primary Attributes)：含每项作用说明（16 号，08 决策 D4） */}
-          <div className={UI_TOKENS.sectionCard}>
-            <div className={`${UI_TOKENS.textLabel} font-black text-amber-300 border-b border-zinc-850 pb-1.5 flex items-center gap-1.5`}>
-              <Zap className="w-4 h-4 text-amber-400" /> 一级元属性 (Primary)
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {PRIMARY_STAT_DESCRIPTIONS.map(p => (
-                <div key={p.key} className="flex flex-col">
-                  <div className="flex justify-between items-center">
-                    <span className={`${UI_TOKENS.textBodyDense} text-zinc-500 font-bold`}>{p.name}:</span>
-                    <span className={`${UI_TOKENS.textBodyDense} font-black ${primaryColor[p.key]}`}>{primary[p.key]}</span>
-                  </div>
-                  <span className={`${UI_TOKENS.textMini} text-zinc-600 font-bold leading-tight mt-0.5`}>{p.description}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* 分隔线 */}
+          <div className="border-t border-zinc-800 my-1" />
 
-          {/* 特殊与防务属性 (Special & Defensive) */}
-          <div className={UI_TOKENS.sectionCard}>
-            <div className={`${UI_TOKENS.textLabel} font-black text-purple-300 border-b border-zinc-850 pb-1.5 flex items-center gap-1.5`}>
-              <Shield className="w-4 h-4 text-purple-400" /> 高级防务与特殊属性
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex justify-between text-zinc-300">
-                <span className="text-zinc-500 font-bold">减伤率:</span>
-                <span className="font-black text-emerald-300">
-                  {(stats.damageReduction * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex justify-between text-zinc-300">
-                <span className="text-zinc-500 font-bold">免暴击率:</span>
-                <span className="font-black text-sky-300">
-                  {(stats.critResist * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className={`${UI_TOKENS.textBodyDense} text-zinc-500 font-bold`}>奥术增幅:</span>
-                <span className={`${UI_TOKENS.textBodyDense} font-black text-purple-300`}>+{special.arcaneBoost}%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className={`${UI_TOKENS.textBodyDense} text-zinc-500 font-bold`}>机械负荷:</span>
-                <span className={`${UI_TOKENS.textBodyDense} font-black text-amber-300`}>{special.mechanicalLoad}%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className={`${UI_TOKENS.textBodyDense} text-zinc-500 font-bold`}>冷却缩减:</span>
-                <span className={`${UI_TOKENS.textBodyDense} font-black text-fuchsia-300`}>
-                  {(stats.cooldownReduction * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className={`${UI_TOKENS.textBodyDense} text-zinc-500 font-bold`}>伤害豁免:</span>
-                <span className={`${UI_TOKENS.textBodyDense} font-black text-teal-300`}>{special.voidSpirit}%</span>
-              </div>
-            </div>
-          </div>
+          {/* 6 项派生属性 */}
+          {DERIVED_ORDER.map(renderDerivedRow)}
         </div>
       </div>
     </div>
@@ -149,6 +243,6 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   return createPortal(modalContent, document.body);
 };
 
-// 04 号 04c：纯 props 展示组件，React.memo 直接有效（内部无 context 订阅）——
+// 04 号 04c：纯 props 展示组件，React.memo 直接有效（内部无 context 订阅）--
 // HeroDetailModal 每秒重渲染时（04b 后已消除）props 引用稳定则跳过。
 export default React.memo(DetailedStatsModal);

@@ -252,7 +252,7 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
   const permanentModifiers: StatModifier[] = [
     ...bonus,
     ...getMilestoneModifiers(config, hero.level),
-    ...(gear ? getHeroEquipmentBonus(gear) : []),
+    ...(gear ? getHeroEquipmentBonus(gear, config.faction) : []),
     ...getTalentBonus(heroId, hero),
     ...getAwakenBonus(heroId, hero)
   ];

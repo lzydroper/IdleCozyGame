@@ -367,8 +367,9 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     };
     const bond: StatModifier[] = [{ stat: 'attack', kind: 'percent', value: 0.10 }]; // 羁绊攻击 +10%
     const c = heroToCombatant('nova', novaLv1(), bond, gear);
-    // 攻击 = round((49 + 20) × 1.15) = round(79.35) = 79
-    expect(c.attack).toBe(79);
+    // nova 机械阵营穿戴废土利刃（机械阵营）-> +30% 基础加成
+    // 装备 flat = (10 + 10) × 1.3 = 26；攻击 = round((49 + 26) × 1.15) = round(86.25) = 86
+    expect(c.attack).toBe(86);
   });
 
   it('满强化 + 神话全套：属性显著放大', () => {

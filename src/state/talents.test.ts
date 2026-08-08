@@ -170,14 +170,15 @@ describe('天赋加成计算与战斗生效', () => {
   it('天赋百分比与羁绊、装备加成叠加生效于战斗数值', () => {
     const hero = { ...createInitialHero('nova'), talents: { [EDGE]: 2 } }; // 攻击 +6%
     const gear = {
-      weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false }, // 攻击 +10
+      weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false }, // 攻击 +10（机械阵营同阵营 +30% = 13）
       armor: null,
       trinket: null
     };
     const bond: StatModifier[] = [{ stat: 'attack', kind: 'percent', value: 0.10 }];
     const c = heroToCombatant('nova', hero, bond, gear);
-    // 攻击 = round((49 + 10) × 1.16) = round(68.44) = 68
-    expect(c.attack).toBe(68);
+    // nova 机械阵营穿戴废土利刃（机械阵营）-> +30% 基础加成：flat = 10 × 1.3 = 13
+    // 攻击 = round((49 + 13) × 1.16) = round(71.92) = 72
+    expect(c.attack).toBe(72);
   });
 
   it('守护者主干生命加成生效，当前血量按比例缩放', () => {
