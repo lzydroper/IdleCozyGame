@@ -57,6 +57,6 @@ Blocked by:
 - 正向依赖：`{ type: 'talent', nodeId: 'A', op: 'atLeast', value: 1 }`（原语义）
 - **互斥**：`{ type: 'talent', nodeId: 'A', op: 'exactly', value: 0 }` —— A 未投入才解锁（文案渲染为「「A」未投入」）
 - 区间：`atMost`（≤N）、`exactly N>0`（恰好 N 点）
-评估/文案 switch 加 `never` 穷尽断言（新增 op 时编译报错）；新增 formatTalentGate 文案测试 + exactly N>0 用例。提交 `8a855b8`。
+评估/文案 switch 加 `never` 穷尽断言（新增 op 时编译报错）；新增 formatTalentGate 文案测试 + exactly N>0 用例。提交 `3377f83`。
 
 **已知边界（未处理）**：`unallocateTalentUpdate` 的 `has_dependents` 只检查 requires 下游，不检查 gate 中 talent 型依赖的下游——若未来需要「gate 依赖节点已投入时禁止撤销」，需扩展（本次按 YAGNI 跳过）。
