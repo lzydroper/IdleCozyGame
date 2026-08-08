@@ -251,7 +251,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
             </span>
           )}
         </div>
-        <span className="text-[8.5px] font-bold text-zinc-300 max-w-[58px] truncate text-center leading-tight mt-0.5 group-hover:text-amber-200">
+        <span className="text-[8.5px] font-bold text-zinc-300 max-w-[58px] truncate text-center leading-tight group-hover:text-amber-200">
           {itemConfig?.name || slotLabel}
         </span>
       </div>
@@ -331,7 +331,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               </div>
               <button
                 onClick={handleToggleEquipAll}
-                className="w-full py-1 rounded-lg text-[11px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-1"
+                className="w-full py-1 rounded-lg text-[11px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-0.5"
               >
                 {hasAnyEquip ? '一键卸下' : '一键装备'}
               </button>
@@ -448,7 +448,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <button
                     onClick={handleStarUp}
                     disabled={totalAvailableShards < shardCost}
-                    className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                    className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-0.5 ${
                       totalAvailableShards >= shardCost
                         ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -465,7 +465,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 <button
                   onClick={handleAwaken}
                   disabled={!hasOrb}
-                  className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-1 ${
+                  className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-0.5 ${
                     hasOrb
                       ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 shadow-sm active:scale-95'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -476,7 +476,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               ) : (
                 <button
                   disabled
-                  className="w-full py-1 rounded-lg text-[11px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-1"
+                  className="w-full py-1 rounded-lg text-[11px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-0.5"
                 >
                   已觉醒
                 </button>
@@ -485,7 +485,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           </div>
 
           {/* 下半部分左右布局 (定高 h-[125px] 紧凑面板) */}
-          <div className="grid grid-cols-3 gap-2 h-[108px] shrink-0">
+          <div className="grid grid-cols-3 gap-2 h-[96px] shrink-0">
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
@@ -515,7 +515,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
 
               <div className="grid grid-cols-2 gap-2 pt-1 flex-1 items-center min-h-0">
                 {/* 1. 生命 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Heart className="w-4.5 h-4.5 text-rose-400" /> 生命
                   </span>
@@ -523,7 +523,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 2. 攻击 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Sword className="w-4.5 h-4.5 text-amber-400" /> 攻击
                   </span>
@@ -531,7 +531,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 3. 防御 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Shield className="w-4.5 h-4.5 text-sky-400" /> 防御
                   </span>
@@ -539,7 +539,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 4. 魔力 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Wand2 className="w-4.5 h-4.5 text-cyan-400" /> 魔力
                   </span>
@@ -547,7 +547,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 5. 暴击 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Sparkles className="w-4.5 h-4.5 text-purple-400" /> 暴击
                   </span>
@@ -557,7 +557,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 </div>
 
                 {/* 6. 暴伤 */}
-                <div className="flex items-center justify-between px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Flame className="w-4.5 h-4.5 text-amber-500" /> 暴伤
                   </span>
