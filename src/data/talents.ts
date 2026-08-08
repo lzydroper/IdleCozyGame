@@ -13,7 +13,6 @@
 //   （与 requires 的画线语义解耦——独立竖线节点可写 gate 而不写 requires）。
 import type { HeroClass } from '../types/game';
 import type { StatModifier } from '../state/statSystem';
-import { formatModifiers } from '../state/statSystem';
 import { HEROES_CONFIG } from './heroes';
 
 // 天赋门控条件（07 号）：各条件均为布尔判定，全部满足才解锁节点。
@@ -241,10 +240,6 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
     }
   ]
 };
-
-// 效果文案（UI 共用）：复用数据驱动的 formatBonus（百分比加成 → 描述），单一描述来源
-// （手写 description 已移除——效果描述一律由 effect 数据导出，新增属性只需扩展 COMBAT_BONUS_META）
-export const formatTalentEffect = (effect: StatModifier[]): string => formatModifiers(effect);
 
 // 门控可读文案（07 号，UI 选中节点展示）：nameOf 解析节点 id → 名称
 // talent 的 equal 0 渲染为「未投入」（互斥语义友好化）

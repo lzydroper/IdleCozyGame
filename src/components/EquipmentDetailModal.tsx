@@ -7,15 +7,15 @@ import {
   EQUIPMENT_CONFIG,
   EQUIPMENT_SETS,
   ENHANCE_MAX,
-  MYTHIC_STAT_MULTIPLIER,
-  FACTION_EQUIPMENT_BONUS_MULTIPLIER,
   FACTION_EQUIPMENT_BONUS_PERCENT,
   enhanceCost,
   FORGE_COST
 } from '../data/equipment';
 import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
 import { ITEMS_CONFIG } from '../data/items';
-import { getEquippedItemStats, getSetEnhanceProgress } from '../state/equipment';
+import { getEquippedItemStats, getEquippedStatParts, getSetEnhanceProgress } from '../state/equipment';
+import type { EquipmentStats } from '../data/equipment';
+import { formatModifiers } from '../state/statSystem';
 import EquipSelectorModal from './EquipSelectorModal';
 import { UI_TOKENS } from '../data/uiConstants';
 import GameIcon from './GameIcon';
@@ -76,10 +76,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
   // 计算穿戴时装备属性（只有同阵营英雄穿戴才触发 30% 阵营加成）
   const statsWithFaction = getEquippedItemStats(item, heroConfig?.faction);
-  const baseStats = cfg.baseStats;
-  const statPerEnhance = cfg.statPerEnhance;
-  const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1.0;
-  const factionMult = isFactionMatched ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
 
   // 套装强化进度计算
   const setProgress = getSetEnhanceProgress(heroEquip);
@@ -93,9 +89,9 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     return itemCfg?.set === cfg.set;
   });
   const equippedSetCount = equippedSetItems.length;
-  const activeTierDescriptions = setCfg.tierEffects
+  const activeTierModifiers = setCfg.tierEffects
     .filter(t => currentSetProgress >= t.threshold)
-    .map(t => t.description);
+    .map(t => formatModifiers(t.bonus));
 
   // 装备总战力/分值（ATK + DEF*2 + HP/5）
   const gearScore = Math.round(
@@ -143,17 +139,17 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     }
   };
 
-  // 渲染属性行 (base + enhanceBonus)
+  // 渲染属性行（base + 强化成长；数据源与聚合共用 getEquippedStatParts）
   const renderStatRow = (
     label: string,
     IconComp: React.ComponentType<{ className?: string }>,
-    baseVal: number | undefined,
-    perLvlVal: number | undefined,
+    stat: keyof EquipmentStats,
     colorClass: string = 'text-amber-400'
   ) => {
-    if (!baseVal && !perLvlVal) return null;
-    const base = Math.round((baseVal || 0) * mult * factionMult * 10) / 10;
-    const enhanceBonus = Math.round((perLvlVal || 0) * item.enhance * mult * factionMult * 10) / 10;
+    const { base, enhance } = getEquippedStatParts(item, stat, heroConfig?.faction);
+    if (!base && !enhance) return null;
+    const baseDisp = Math.round(base * 10) / 10;
+    const enhanceDisp = Math.round(enhance * 10) / 10;
 
     return (
       <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80">
@@ -162,10 +158,10 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           <span>{label}</span>
         </div>
         <div className="font-mono font-black text-right">
-          <span className="text-zinc-100">{base}</span>
-          {enhanceBonus > 0 && (
+          <span className="text-zinc-100">{baseDisp}</span>
+          {enhanceDisp > 0 && (
             <span className="text-emerald-400 text-[11px] ml-1">
-              +{enhanceBonus} <span className="text-[9px] text-zinc-500 font-normal">(强化)</span>
+              +{enhanceDisp} <span className="text-[9px] text-zinc-500 font-normal">(强化)</span>
             </span>
           )}
         </div>
@@ -292,10 +288,10 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               穿戴同系列装备并提升强化等级，强化等级总和达 10/20/30 级时解锁对应属性加成。
 
               <div className="mt-1 font-bold">
-                {activeTierDescriptions.length > 0 ? (
+                {activeTierModifiers.length > 0 ? (
                   <span className="text-amber-400 inline-flex items-center gap-1">
                     <Flame className="w-3 h-3 shrink-0" />
-                    <span>当前已生效：{activeTierDescriptions.join('、')}</span>
+                    <span>当前已生效：{activeTierModifiers.join('、')}</span>
                   </span>
                 ) : (
                   <span className="text-zinc-500 inline-flex items-center gap-1">
@@ -324,7 +320,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                       }`}>
                         {tier.threshold}
                       </span>
-                      <span>{tier.description}</span>
+                      <span>{formatModifiers(tier.bonus)}</span>
                     </span>
                     {active ? (
                       <span className="text-[10px] text-amber-400 font-black flex items-center gap-0.5">
@@ -356,9 +352,9 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             </div>
 
             <div className="flex flex-col gap-1 pt-0.5">
-              {renderStatRow('装备攻击', Sword, baseStats.attack, statPerEnhance.attack, 'text-amber-400')}
-              {renderStatRow('装备生命', Heart, baseStats.maxHp, statPerEnhance.maxHp, 'text-rose-400')}
-              {renderStatRow('装备防御', Shield, baseStats.defense, statPerEnhance.defense, 'text-sky-400')}
+              {renderStatRow('装备攻击', Sword, 'attack', 'text-amber-400')}
+              {renderStatRow('装备生命', Heart, 'maxHp', 'text-rose-400')}
+              {renderStatRow('装备防御', Shield, 'defense', 'text-sky-400')}
             </div>
           </div>
 

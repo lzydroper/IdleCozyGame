@@ -2,8 +2,9 @@ import React, { useMemo, useState, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { formatTalentEffect, formatTalentGate, buildTalentTree } from '../data/talents';
+import { formatTalentGate, buildTalentTree } from '../data/talents';
 import type { TalentNodeConfig } from '../data/talents';
+import { formatModifiers } from '../state/statSystem';
 import { getTalentLevel, getInvestedPoints, isTalentNodeUnlocked, firstUnmetTalentGate, evaluateTalentGate } from '../state/talents';
 import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move, Award } from 'lucide-react';
 
@@ -312,7 +313,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 </div>
               </div>
 
-              <p className="text-[10px] text-zinc-400 font-medium leading-normal">{formatTalentEffect(selected.effect)} / 级</p>
+              <p className="text-[10px] text-zinc-400 font-medium leading-normal">{formatModifiers(selected.effect)} / 级</p>
 
               <div className="flex items-center justify-between text-[10px] pt-1 border-t border-zinc-800/60">
                 {selLocked && (

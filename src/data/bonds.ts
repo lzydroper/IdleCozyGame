@@ -5,20 +5,12 @@ import type { StatModifier } from '../state/statSystem';
 // 生效于战斗数值（攻击/防御/生命），由 state/bonds.ts 计算，combat.ts 应用。
 // 新增内容只需在此追加配置，无需改动战斗逻辑。
 
-// 战斗数值加成（百分比，叠加求和）
+// 战斗数值加成（百分比，叠加求和）——兼容转换用（stat-bonus-unification 08 Contract 时删除）
 export interface CombatBonus {
   attackPercent?: number;   // 攻击力 +x%
   defensePercent?: number;  // 防御力 +x%
   maxHpPercent?: number;    // 生命上限 +x%（战斗中按同比例缩放当前血量）
 }
-
-// 加成属性元数据（数据驱动）：新增属性 → `CombatBonus` 加字段后，TS 强制在本表补一行，
-// `formatBonus` 等文案函数自动覆盖——不再需要改 if 链
-export const COMBAT_BONUS_META: { [K in keyof CombatBonus]-?: { label: string; unit?: string } } = {
-  attackPercent: { label: '攻击', unit: '%' },
-  defensePercent: { label: '防御', unit: '%' },
-  maxHpPercent: { label: '生命', unit: '%' },
-};
 
 export interface BondConfig {
   id: string;
@@ -55,13 +47,6 @@ export const BONDS: BondConfig[] = [
     bonus: [{ stat: 'defense', kind: 'percent', value: 0.10 }]
   }
 ];
-
-// 加成数值 → 展示文案（UI 共用）：遍历属性元数据表生成，非硬编码 if 链
-export const formatBonus = (bonus: CombatBonus): string =>
-  (Object.keys(COMBAT_BONUS_META) as (keyof CombatBonus)[])
-    .filter(k => !!bonus[k])
-    .map(k => `${COMBAT_BONUS_META[k].label} +${bonus[k]!}${COMBAT_BONUS_META[k].unit ?? ''}`)
-    .join('、');
 
 // 兼容转换（stat-bonus-unification 01，Contract 时删除）：旧 CombatBonus → 统一修饰符数组
 export const toModifiers = (bonus: CombatBonus): StatModifier[] => {

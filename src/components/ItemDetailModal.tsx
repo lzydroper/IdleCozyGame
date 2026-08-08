@@ -8,6 +8,7 @@ import { EQUIPMENT_CONFIG, EQUIPMENT_SETS, EQUIPMENT_SLOT_LABELS } from '../data
 import type { EquipmentStats } from '../data/equipment';
 import { HEROES_CONFIG } from '../data/heroes';
 import { getEquippedItemStats } from '../state/equipment';
+import { formatModifiers } from '../state/statSystem';
 import GameIcon from './GameIcon';
 import HeroHealModal from './HeroHealModal';
 import { X } from 'lucide-react';
@@ -182,12 +183,12 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ itemId, onClose }) =>
               </p>
               {equipSet?.tierEffects.map(t => (
                 <p key={t.threshold} className="text-[10px] text-zinc-400">
-                  套装 +{t.threshold}：{t.description}
+                  套装 +{t.threshold}：{formatModifiers(t.bonus)}
                 </p>
               ))}
-              {equipSet?.mythicAffixText && (
-                <p className="text-[10px] text-purple-300">{equipSet.mythicAffixText}</p>
-              )}
+              {equipSet?.mythicAffix.length ? (
+                <p className="text-[10px] text-purple-300">神话词条：{formatModifiers(equipSet.mythicAffix)}</p>
+              ) : null}
               <p className="text-[10px] text-zinc-500">
                 获取：{EQUIP_SOURCE_LABEL[equipCfg.source] ?? equipCfg.source}
               </p>

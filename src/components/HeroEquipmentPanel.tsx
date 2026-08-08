@@ -16,6 +16,7 @@ import GameIcon from './GameIcon';
 import { SLOT_ICON_MAP } from './iconMaps';
 import { Backpack, Hammer } from 'lucide-react';
 import { getEquippedItemStats, getSetEnhanceProgress } from '../state/equipment';
+import { formatModifiers } from '../state/statSystem';
 
 // 英雄装备面板（ticket 10）：3 槽穿戴 / 强化（上限 +30）/ 神话锻造 / 套装特效进度
 const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
@@ -245,7 +246,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 </div>
                 <span className="text-zinc-600">
                   {active.length > 0
-                    ? ` 特效：${active.map(t => t.description).join('、')}`
+                    ? ` 特效：${active.map(t => formatModifiers(t.bonus)).join('、')}`
                     : ' 达 +10/+20/+30 触发套装特效'}
                 </span>
               </div>

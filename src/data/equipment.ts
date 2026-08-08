@@ -29,8 +29,7 @@ export interface EquipmentConfig {
 // 套装特效档位：同系列穿戴装备强化总和达到阈值即触发（可叠加）
 export interface SetTierEffect {
   threshold: number;          // 10 / 20 / 30
-  bonus: StatModifier[];      // 百分比加成（战斗内生效）
-  description: string;
+  bonus: StatModifier[];      // 百分比加成（战斗内生效；文案由 formatModifiers 自动导出）
 }
 
 export interface EquipmentSetConfig {
@@ -39,8 +38,7 @@ export interface EquipmentSetConfig {
   faction: HeroFaction;       // 系列所属阵营
   factionLabel: string;       // 阵营展示 Label
   tierEffects: SetTierEffect[];
-  mythicAffix: StatModifier[];   // 系列共有词条：穿戴任意神话装备即生效（百分比）
-  mythicAffixText: string;
+  mythicAffix: StatModifier[];   // 系列共有词条：穿戴任意神话装备即生效（百分比；文案由 formatModifiers 导出）
 }
 
 // === 数值常量 ===
@@ -71,12 +69,11 @@ export const EQUIPMENT_SETS: Record<string, EquipmentSetConfig> = {
     faction: 'mechanical',
     factionLabel: '【机械】',
     tierEffects: [
-      { threshold: 10, bonus: [{ stat: 'attack', kind: 'percent', value: 0.05 }], description: '攻击 +5%' },
-      { threshold: 20, bonus: [{ stat: 'defense', kind: 'percent', value: 0.08 }], description: '防御 +8%' },
-      { threshold: 30, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.10 }], description: '生命上限 +10%' }
+      { threshold: 10, bonus: [{ stat: 'attack', kind: 'percent', value: 0.05 }] },
+      { threshold: 20, bonus: [{ stat: 'defense', kind: 'percent', value: 0.08 }] },
+      { threshold: 30, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.10 }] }
     ],
-    mythicAffix: [{ stat: 'attack', kind: 'percent', value: 0.03 }],
-    mythicAffixText: '神话词条：攻击 +3%'
+    mythicAffix: [{ stat: 'attack', kind: 'percent', value: 0.03 }]
   },
   ember: {
     id: 'ember',
@@ -84,12 +81,11 @@ export const EQUIPMENT_SETS: Record<string, EquipmentSetConfig> = {
     faction: 'spirit',
     factionLabel: '【英灵】',
     tierEffects: [
-      { threshold: 10, bonus: [{ stat: 'attack', kind: 'percent', value: 0.08 }], description: '攻击 +8%' },
-      { threshold: 20, bonus: [{ stat: 'defense', kind: 'percent', value: 0.10 }], description: '防御 +10%' },
-      { threshold: 30, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.15 }], description: '生命上限 +15%' }
+      { threshold: 10, bonus: [{ stat: 'attack', kind: 'percent', value: 0.08 }] },
+      { threshold: 20, bonus: [{ stat: 'defense', kind: 'percent', value: 0.10 }] },
+      { threshold: 30, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.15 }] }
     ],
-    mythicAffix: [{ stat: 'maxHp', kind: 'percent', value: 0.05 }],
-    mythicAffixText: '神话词条：生命上限 +5%'
+    mythicAffix: [{ stat: 'maxHp', kind: 'percent', value: 0.05 }]
   },
   dreamveil: {
     id: 'dreamveil',
@@ -97,12 +93,11 @@ export const EQUIPMENT_SETS: Record<string, EquipmentSetConfig> = {
     faction: 'arcane',
     factionLabel: '【奥术】',
     tierEffects: [
-      { threshold: 10, bonus: [{ stat: 'defense', kind: 'percent', value: 0.08 }], description: '防御 +8%' },
-      { threshold: 20, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.10 }], description: '生命上限 +10%' },
-      { threshold: 30, bonus: [{ stat: 'attack', kind: 'percent', value: 0.12 }], description: '攻击 +12%' }
+      { threshold: 10, bonus: [{ stat: 'defense', kind: 'percent', value: 0.08 }] },
+      { threshold: 20, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.10 }] },
+      { threshold: 30, bonus: [{ stat: 'attack', kind: 'percent', value: 0.12 }] }
     ],
-    mythicAffix: [{ stat: 'defense', kind: 'percent', value: 0.05 }],
-    mythicAffixText: '神话词条：防御 +5%'
+    mythicAffix: [{ stat: 'defense', kind: 'percent', value: 0.05 }]
   },
   starcore: {
     id: 'starcore',
@@ -110,15 +105,14 @@ export const EQUIPMENT_SETS: Record<string, EquipmentSetConfig> = {
     faction: 'astral',
     factionLabel: '【星界】',
     tierEffects: [
-      { threshold: 10, bonus: [{ stat: 'attack', kind: 'percent', value: 0.10 }], description: '攻击 +10%' },
-      { threshold: 20, bonus: [{ stat: 'defense', kind: 'percent', value: 0.12 }], description: '防御 +12%' },
-      { threshold: 30, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.18 }], description: '生命上限 +18%' }
+      { threshold: 10, bonus: [{ stat: 'attack', kind: 'percent', value: 0.10 }] },
+      { threshold: 20, bonus: [{ stat: 'defense', kind: 'percent', value: 0.12 }] },
+      { threshold: 30, bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.18 }] }
     ],
     mythicAffix: [
       { stat: 'attack', kind: 'percent', value: 0.05 },
       { stat: 'defense', kind: 'percent', value: 0.05 }
-    ],
-    mythicAffixText: '神话词条：攻击 +5%、防御 +5%'
+    ]
   }
 };
 

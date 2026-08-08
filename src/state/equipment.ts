@@ -44,16 +44,29 @@ export const addItemRewards = (
 
 export const emptyEquipment = (): HeroEquipment => ({ weapon: null, armor: null, trinket: null });
 
-// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5；英雄穿戴同阵营装备时附带阵营加成 (+30%)
-export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): EquipmentStats => {
+// 单件装备单属性拆分（基础值 / 强化成长，含神话倍率与阵营加成），UI 属性行与聚合共用
+export const getEquippedStatParts = (
+  item: EquippedItem,
+  stat: keyof EquipmentStats,
+  heroFaction?: HeroFaction
+): { base: number; enhance: number } => {
   const cfg = EQUIPMENT_CONFIG[item.itemId];
-  if (!cfg) return {};
+  if (!cfg) return { base: 0, enhance: 0 };
   const mult = item.mythic ? MYTHIC_STAT_MULTIPLIER : 1;
   const isFactionMatched = Boolean(heroFaction && cfg.faction === heroFaction);
   const factionMult = isFactionMatched ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
+  return {
+    base: (cfg.baseStats[stat] || 0) * mult * factionMult,
+    enhance: (cfg.statPerEnhance[stat] || 0) * item.enhance * mult * factionMult
+  };
+};
+
+// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5；英雄穿戴同阵营装备时附带阵营加成 (+30%)
+export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): EquipmentStats => {
   const stats: EquipmentStats = {};
   (['attack', 'defense', 'maxHp'] as const).forEach(key => {
-    const total = ((cfg.baseStats[key] || 0) + (cfg.statPerEnhance[key] || 0) * item.enhance) * mult * factionMult;
+    const { base, enhance } = getEquippedStatParts(item, key, heroFaction);
+    const total = base + enhance;
     if (total > 0) stats[key] = Math.round(total * 10) / 10;
   });
   return stats;
