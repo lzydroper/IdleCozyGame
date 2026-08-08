@@ -49,14 +49,16 @@ describe('天赋树配置完整性（ticket 11）', () => {
     });
   });
 
-  it('每位英雄都有专属节点，且挂在对应职阶主干入口之后', () => {
+  it('每位英雄都有专属节点，且挂职阶主干入口之后（或独立 gate 竖线）', () => {
     Object.keys(HEROES_CONFIG).forEach(heroId => {
       const own = HERO_TALENTS[heroId];
       expect(own, heroId).toBeDefined();
       expect(own.length).toBeGreaterThanOrEqual(1);
       const trunk = TALENT_TRUNKS[HEROES_CONFIG[heroId].heroClass];
       own.forEach(node => {
-        expect(node.requires, `${heroId}/${node.id}`).toEqual([trunk[0].id]);
+        // 07 号 gate 系统：专属节点可挂主干入口（requires）或独立竖线（无 requires + gate 解锁）
+        const attached = node.requires?.length === 1 && node.requires[0] === trunk[0].id;
+        expect(attached || !!node.gate?.length, `${heroId}/${node.id}`).toBe(true);
       });
     });
   });
@@ -121,7 +123,8 @@ describe('加点 / 撤点 / 重置', () => {
 
     const opened = allocateTalentUpdate(state, 'nova', EDGE).state;
     expect(allocateTalentUpdate(opened, 'nova', FLURRY).result).toBe(true);
-    expect(allocateTalentUpdate(opened, 'nova', OVERDRIVE).result).toBe(true);
+    // OVERDRIVE 已改为独立竖线（gate：等级 ≥20 + 已觉醒）——requires 点亮不解锁，仍 gate 锁定
+    expect(allocateTalentUpdate(opened, 'nova', OVERDRIVE).result).toBe('locked');
   });
 
   it('撤点返还 1 天赋点；下游已投入时拒绝', () => {
@@ -360,11 +363,13 @@ describe('buildTalentTree（09 树形组装：pos + children）', () => {
   it('把英雄专属节点挂到其 requires 父节点的 children 末尾（主干链子在前）', () => {
     const tree = buildTalentTree('nova');
     const byId = new Map(tree.map(n => [n.id, n]));
-    // 锋芒毕露（根）：2 个子 → 连环攻势（链子在前）+ 过载引擎（专属在后）→ 槽位 左下 / 右下
-    expect(byId.get(EDGE)?.children).toEqual([FLURRY, OVERDRIVE]);
+    // 锋芒毕露（根）：链子连环攻势为子；过载引擎改独立竖线（无 requires + gate）不再挂 root
+    expect(byId.get(EDGE)?.children).toEqual([FLURRY]);
+    expect(byId.get(OVERDRIVE)?.requires).toBeUndefined();
+    expect(byId.get(OVERDRIVE)).toBeDefined();
     // 连环攻势唯一子 → 破甲重击（正下直线）
     expect(byId.get(FLURRY)?.children).toEqual(['trunk_attacker_armor_break']);
-    // 根节点 pos 为第 0 行第 0 个；专属与链子同属第 1 行
+    // 根节点 pos 为第 0 行第 0 个；链子与专属同属第 1 行（配置值）
     expect(byId.get(EDGE)?.pos).toEqual({ row: 0, col: 0 });
     expect(byId.get(FLURRY)?.pos.row).toBe(1);
     expect(byId.get(OVERDRIVE)?.pos.row).toBe(1);
@@ -380,10 +385,8 @@ describe('buildTalentTree（09 树形组装：pos + children）', () => {
       const ownIds = HERO_TALENTS[heroId].map(n => n.id);
       const treeIds = tree.map(n => n.id);
       trunkIds.forEach(tid => expect(treeIds).toContain(tid));
+      // 专属节点在树中即可（07 号 gate 系统：可独立竖线而不挂主干入口）
       ownIds.forEach(oid => expect(treeIds).toContain(oid));
-      // 专属节点必须挂到主干入口（trunk[0]）children
-      const root = tree.find(n => n.id === trunkIds[0]);
-      ownIds.forEach(oid => expect(root?.children).toContain(oid));
       // 每个节点都有相对坐标
       tree.forEach(n => {
         expect(n.pos).toBeDefined();

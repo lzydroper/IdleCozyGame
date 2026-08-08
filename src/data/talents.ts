@@ -6,7 +6,8 @@
 // - `pos: { row, col }` —— 相对坐标：row = 行（根为第 0 行，子节点行 = 父节点行 + 1），col = 该行从左到右的序号（0 起）。
 // - `children?: string[]` —— 子节点 id 列表（顺序 = 槽位顺序，从左到右）。布局引擎按子节点数自动定槽位：
 //   1 个 → 正下（直线）；2 个 → 左下、右下；3 个 → 左下、正下、右下；同一父节点的子节点在同一水平线上。
-//   （职阶主干在配置中只声明主干链子节点；英雄专属节点由 `buildTalentTree` 挂到其 `requires` 父节点的 children 末尾。）
+//   （职阶主干在配置中只声明主干链子节点；英雄专属节点由 `buildTalentTree` 挂到其 `requires` 父节点的 children 末尾；
+//     也可写 `gate` 而不写 `requires` 构成独立竖线——该节点仍在树中，但独立布局、不画连线。）
 // - `requires?: string[]` —— 父节点（阻塞来源）：父节点已投入点数 ≥1 时子节点才可升级；查看信息不受限。
 // - `gate?: TalentGate[]` —— 通用解锁门控（07 号）：一组条件全部满足（AND）才可升级；只阻塞、不画线
 //   （与 requires 的画线语义解耦——独立竖线节点可写 gate 而不写 requires）。
@@ -141,7 +142,11 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
       maxLevel: 3,
       effect: { attackPercent: 2 },
       pos: { row: 1, col: 1 },
-      requires: ['trunk_attacker_edge']
+      // requires: ['trunk_attacker_edge'],
+      gate: [
+        { type: 'heroLevel', minLevel: 20 },
+        { type: 'awakened' },                    // 英雄已觉醒
+      ],
     }
   ],
   buster: [

@@ -4,7 +4,7 @@ import { useToast } from './ToastSystem';
 import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
 import { formatTalentEffect, formatTalentGate, buildTalentTree } from '../data/talents';
 import type { TalentNodeConfig } from '../data/talents';
-import { getTalentLevel, getInvestedPoints, isTalentNodeUnlocked, firstUnmetTalentGate } from '../state/talents';
+import { getTalentLevel, getInvestedPoints, isTalentNodeUnlocked, firstUnmetTalentGate, evaluateTalentGate } from '../state/talents';
 import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move, Award } from 'lucide-react';
 
 const ROW_H = 75;    // 竖直步长 75px
@@ -66,6 +66,14 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
   // 07 号：解锁 = requires（前置投入）与 gate（觉醒/等级等门控）都满足
   const selLocked = selected ? !isTalentNodeUnlocked(hero, selected) : false;
   const selUnmetGate = selected ? firstUnmetTalentGate(hero, selected.gate) : undefined;
+  // 全部 gate 条件的渲染项：满足状态 + 文案 + 分隔符（多条件全部显示，按满足与否着色）
+  const selGateTexts = selected?.gate?.length
+    ? selected.gate.map((g, i) => ({
+        ok: evaluateTalentGate(hero, [g]),
+        text: formatTalentGate([g], id => byId.get(id)?.name || id)[0],
+        sep: i < (selected.gate?.length ?? 0) - 1,
+      }))
+    : null;
   const selParents = selected
     ? (selected.requires || []).map(pid => byId.get(pid)?.name).filter(Boolean).join('、')
     : '';
@@ -311,10 +319,20 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                   效果：{formatTalentEffect(selected.effect)} / 级
                 </span>
                 {selLocked && (
-                  <span className="font-bold text-amber-500/90">
-                    {selUnmetGate
-                      ? `解锁条件：${formatTalentGate([selUnmetGate], id => byId.get(id)?.name || id).join('；')}`
-                      : `需解锁前置：【${selParents}】`}
+                  <span className="font-bold">
+                    {selGateTexts ? (
+                      <span className="text-right">
+                        解锁条件：
+                        {selGateTexts.map((t, i) => (
+                          <span key={i} className={t.ok ? 'text-emerald-400/90' : 'text-amber-500/90'}>
+                            {t.text}
+                            {t.sep ? '、' : ''}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="text-amber-500/90">需解锁前置：【{selParents}】</span>
+                    )}
                   </span>
                 )}
               </div>
