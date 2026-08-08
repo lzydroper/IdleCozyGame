@@ -89,6 +89,23 @@ describe('DutyAssignModal Component', () => {
     expect(screen.getByText(/无可用英雄/)).toBeDefined();
   });
 
+  it('hides heroes already in the party (已上阵不可指派驻守)', () => {
+    render(
+      <DutyAssignModal
+        isOpen={true}
+        title="指派驻守英雄"
+        heroes={sampleHeroes}
+        party={['nova']}
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    // 诺娃已上阵 → 不可见；赛罗（未上阵未驻守）可见
+    expect(screen.queryByText('诺娃')).toBeNull();
+    expect(screen.getByText('赛罗')).toBeDefined();
+  });
+
   it('returns null when closed', () => {
     render(
       <DutyAssignModal

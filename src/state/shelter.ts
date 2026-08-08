@@ -54,6 +54,8 @@ export const assignHeroToDutyUpdate = (
 ): UpdateResult<boolean> => {
   if (!heroId || heroId.trim() === '') return NO_OP(state);
   if (!state.heroes[heroId]) return NO_OP(state);
+  // 已上阵英雄不可指派后勤（与出战队伍互斥，防同时上阵+驻守）
+  if (state.party.includes(heroId)) return NO_OP(state);
 
   // duty = null：解除该英雄的所有后勤占用
   if (!duty) {

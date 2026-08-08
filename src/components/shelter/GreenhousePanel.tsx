@@ -17,8 +17,6 @@ interface FlyingReward {
   offsetY: number;
 }
 
-// 温室控制中心面板：种植槽卡片网格、浇水操作员（驻守）、批量操作与挂机区域。
-// 从 ShelterTab 拆分（结构重构，无行为变化）；自足 useGame/useToast。
 const GreenhousePanel: React.FC = () => {
   const {
     state,
@@ -35,12 +33,10 @@ const GreenhousePanel: React.FC = () => {
 
   const { showToast } = useToast();
 
-  // 种子选择弹窗（09）：播种与挂机选种共用一个 SeedSelectModal
   const [seedModal, setSeedModal] = useState<{ mode: 'plant'; slotId: number } | { mode: 'autofarm' } | null>(null);
   const [showWatererPicker, setShowWatererPicker] = useState(false);
   const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
 
-  // 触发飘字特效
   const triggerFlyingRewards = (yields: Record<string, number>, slotId: number) => {
     const rewards: FlyingReward[] = [];
     let index = 0;
@@ -50,7 +46,7 @@ const GreenhousePanel: React.FC = () => {
         id: Date.now() + Math.random(),
         text: `+${qty} ${itemConfig}`,
         slotId,
-        offsetY: index * -22 // 避免重叠
+        offsetY: index * -22
       });
       index++;
     });
@@ -71,7 +67,6 @@ const GreenhousePanel: React.FC = () => {
     }
   };
 
-  // 一键浇水操作
   const handleBatchWater = () => {
     const wateredCount = batchWater();
     if (wateredCount > 0) {
@@ -82,7 +77,6 @@ const GreenhousePanel: React.FC = () => {
     }
   };
 
-  // 批量收割（10）：只收割不播种（原「一键收割并播种」拆分而来）
   const handleBatchHarvest = () => {
     const yields = batchHarvest();
     if (yields && Object.keys(yields).length > 0) {
@@ -96,7 +90,6 @@ const GreenhousePanel: React.FC = () => {
     }
   };
 
-  // 挂机区域（08/10）：开关与选种
   const autoFarm = state.greenhouse.autoFarm;
   const hasWaterer = state.shelter.assignedWatererId !== null;
   const autoFarmActive = autoFarm.enabled && !!autoFarm.cropId;
@@ -135,7 +128,7 @@ const GreenhousePanel: React.FC = () => {
         温室控制中心
       </h2>
 
-      {/* 培养槽小卡片网格（原型风格，10） */}
+      {/* 培养槽卡片网格 */}
       <div className="mb-4">
         <div className="grid grid-cols-2 gap-3">
           {state.greenhouse.slots.map(slot => {
@@ -143,25 +136,37 @@ const GreenhousePanel: React.FC = () => {
             const isReady = slot.growthProgress >= 100;
             const isWatered = slot.isWatered || state.shelter.assignedWatererId !== null;
             const mainYieldId = crop ? Object.keys(crop.yields)[0] : null;
-            const plantingDisabled = autoFarmActive; // 挂机开启时禁用播种（08）
+            const plantingDisabled = autoFarmActive;
+
+            // 整块卡片的智能点击逻辑（成熟->收割，缺水->浇水，空闲->播种）
+            const handleCardClick = () => {
+              if (isReady) {
+                handleHarvest(slot.id);
+              } else if (crop && !isWatered) {
+                const success = waterSlot(slot.id);
+                if (success) {
+                  addLog(`手动为培养槽 #${slot.id} 补充了水分`, 'logistics');
+                }
+              } else if (!crop && !plantingDisabled) {
+                setSeedModal({ mode: 'plant', slotId: slot.id });
+              }
+            };
 
             return (
               <div
                 key={slot.id}
-                onClick={() => {
-                  if (plantingDisabled || crop) return;
-                  setSeedModal({ mode: 'plant', slotId: slot.id });
-                }}
-                className={`relative rounded-2xl overflow-hidden border transition-all duration-300 select-none ${
-                  isReady
-                    ? 'border-emerald-500/60 shadow-[0_0_16px_rgba(16,185,129,0.25)]'
-                    : crop
-                    ? 'border-zinc-800 bg-zinc-900/60'
-                    : 'border-dashed border-zinc-700/50 bg-zinc-950/40 hover:border-purple-500/40 cursor-pointer'
-                }`}
+                onClick={handleCardClick}
+                className={`relative rounded-2xl overflow-hidden border transition-all duration-300 select-none p-2.5 flex flex-col gap-2 ${isReady
+                    ? 'border-emerald-500/80 shadow-[0_0_12px_rgba(16,185,129,0.25)] bg-emerald-950/20 cursor-pointer'
+                    : crop && !isWatered
+                      ? 'border-orange-500/40 bg-zinc-900/80 cursor-pointer'
+                      : crop
+                        ? 'border-zinc-800 bg-zinc-900/60'
+                        : 'border-dashed border-zinc-700/50 bg-zinc-950/40 hover:border-purple-500/40 cursor-pointer'
+                  }`}
               >
-                {/* 顶部 glow 线（原型 card 风格） */}
-                <div className={`h-0.5 w-full ${isReady ? 'bg-emerald-400' : crop ? 'bg-purple-500/40' : 'bg-zinc-800'}`} />
+                {/* 顶部 glow 线 */}
+                <div className={`absolute top-0 left-0 right-0 h-0.5 ${isReady ? 'bg-emerald-400' : crop ? 'bg-purple-500/40' : 'bg-zinc-800'}`} />
 
                 {/* 飘字特效 */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none z-30">
@@ -181,78 +186,53 @@ const GreenhousePanel: React.FC = () => {
 
                 {crop ? (
                   <>
-                    <div className="p-3 flex items-center gap-2.5">
-                      {/* 产出物品 icon（作物图标退役，10）：取主产物 */}
-                      <div className="w-9 h-9 rounded-lg bg-zinc-950/60 border border-zinc-800 flex items-center justify-center shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-950/60 border border-zinc-800 flex items-center justify-center shrink-0">
                         {mainYieldId ? (
-                          <GameIcon id={mainYieldId} type="item" className="w-7 h-7 rounded" />
+                          <GameIcon id={mainYieldId} type="item" className="w-6 h-6 rounded" />
                         ) : (
-                          <Sprout className="w-5 h-5 text-emerald-500/40" />
+                          <Sprout className="w-4 h-4 text-emerald-500/40" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[9px] text-zinc-500 font-semibold">槽位 #{slot.id}</div>
-                        <div className="text-[11px] font-bold text-zinc-100 truncate">{crop.name}</div>
-                        <div className="text-[8px] text-zinc-500 font-mono">
+                        <div className="text-[9px] text-zinc-500 font-semibold leading-none">槽位 #{slot.id}</div>
+                        <div className="text-[11px] font-bold text-zinc-100 truncate mt-0.5 leading-tight">{crop.name}</div>
+                        <div className="text-[8px] text-zinc-500 font-mono leading-none mt-0.5">
                           {isReady ? '已成熟' : `${slot.growthTimeLeft}s`}
                         </div>
                       </div>
-                      {/* 湿润蓝水滴 / 停滞「缺水」橙警示（10） */}
-                      {isWatered ? (
-                        <span className="flex items-center gap-0.5 text-blue-400 text-[9px] font-bold shrink-0">
-                          <Droplet className="w-3 h-3 fill-blue-400" />湿润
+
+                      {/* 右侧直接展现交互标签 */}
+                      {isReady ? (
+                        <span className="flex items-center gap-0.5 text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-1.5 py-0.5 rounded-md text-[9px] font-black shrink-0 animate-pulse">
+                          <Sparkles className="w-3 h-3" />收割
+                        </span>
+                      ) : !isWatered ? (
+                        <span className="flex items-center gap-0.5 text-orange-400 bg-orange-500/10 border border-orange-500/30 px-1.5 py-0.5 rounded-md text-[9px] font-bold shrink-0 animate-pulse">
+                          <Droplet className="w-3 h-3 fill-orange-400" />浇水
                         </span>
                       ) : (
-                        <span className="flex items-center gap-0.5 text-orange-400 text-[9px] font-bold shrink-0 animate-pulse">
-                          <Droplet className="w-3 h-3 fill-orange-400" />缺水
+                        <span className="flex items-center gap-0.5 text-blue-400 text-[9px] font-bold shrink-0">
+                          <Droplet className="w-3 h-3 fill-blue-400" />湿润
                         </span>
                       )}
                     </div>
 
-                    <div className="px-3 pb-2.5">
-                      <div className="w-full bg-zinc-900/80 rounded-full h-1 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-1000 ${
-                            isReady ? 'bg-emerald-400 shadow-[0_0_4px_#34d399]' : 'bg-purple-500'
+                    {/* 进度条 */}
+                    <div className="w-full bg-zinc-900/80 rounded-full h-1 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ${isReady ? 'bg-emerald-400 shadow-[0_0_4px_#34d399]' : 'bg-purple-500'
                           }`}
-                          style={{ width: `${slot.growthProgress}%` }}
-                        />
-                      </div>
-                      {isReady ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleHarvest(slot.id);
-                          }}
-                          className="mt-2 w-full py-1 bg-emerald-500 text-zinc-950 font-extrabold rounded-md hover:bg-emerald-400 active:scale-95 transition-all text-[9px] text-center animate-pulse cursor-pointer"
-                        >
-                          收割
-                        </button>
-                      ) : !isWatered ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const success = waterSlot(slot.id);
-                            if (success) {
-                              addLog(`手动为培养槽 #${slot.id} 补充了水分`, 'logistics');
-                            }
-                          }}
-                          className="mt-2 w-full py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold rounded-md hover:bg-blue-500/20 active:scale-95 transition-all text-[9px] text-center cursor-pointer"
-                        >
-                          浇水
-                        </button>
-                      ) : null}
+                        style={{ width: `${slot.growthProgress}%` }}
+                      />
                     </div>
                   </>
                 ) : (
-                  <div className="p-3 flex flex-col items-center justify-center gap-1 py-6 text-zinc-600">
-                    <div className="text-[9px] text-zinc-600 font-semibold">槽位 #{slot.id}</div>
-                    <Sprout className="w-6 h-6 opacity-20" />
+                  <div className="flex flex-col items-center justify-center gap-0.5 py-1 text-zinc-600">
+                    <div className="text-[8px] text-zinc-600 font-semibold">槽位 #{slot.id}</div>
+                    <Sprout className="w-4 h-4 opacity-20" />
                     <span className="text-[9px] font-bold text-zinc-500">
-                      {plantingDisabled ? '挂机托管中' : '闲置中'}
-                    </span>
-                    <span className="text-[8px] opacity-50">
-                      {plantingDisabled ? '由挂机自动播种' : '点击播种'}
+                      {plantingDisabled ? '托管中' : '点击播种'}
                     </span>
                   </div>
                 )}
@@ -262,7 +242,7 @@ const GreenhousePanel: React.FC = () => {
         </div>
       </div>
 
-      {/* 浇水操作员卡片（产线风格） */}
+      {/* 浇水操作员卡片 */}
       {(() => {
         const watererId = state.shelter.assignedWatererId;
         const watererHero = watererId ? state.heroes[watererId] : null;
@@ -312,7 +292,6 @@ const GreenhousePanel: React.FC = () => {
                   ? <div className="flex flex-wrap items-center gap-x-2 gap-y-1">当前操作员：<b className="text-zinc-200">{watererCfg?.name}</b> · 自动浇水 / 自动收割并播种，离线也生效</div>
                   : '指派英雄后自动浇水、自动收割并播种，并提供特殊加成，离线也生效'}
               </div>
-              {/* dutyMeta 特殊加成徽章（10） */}
               {watererCfg?.dutyMeta && (
                 <div className="flex flex-wrap gap-1.5">
                   {watererCfg.dutyMeta.facilitySpeedMultiplier ? (
@@ -337,11 +316,11 @@ const GreenhousePanel: React.FC = () => {
         );
       })()}
 
-      {/* 浇水操作员选择弹窗 */}
       <DutyAssignModal
         isOpen={showWatererPicker}
         title="指派浇水操作员"
         heroes={state.heroes}
+        party={state.party}
         onSelect={(id) => {
           if (assignHeroToDuty(id, { type: 'waterer', targetId: 'greenhouse' })) {
             const name = getHeroName(id);
@@ -353,26 +332,26 @@ const GreenhousePanel: React.FC = () => {
         onClose={() => setShowWatererPicker(false)}
       />
 
-      {/* 控制按钮与挂机区域（10）：左侧垂直「批量浇水/批量收割」+ 右侧挂机 */}
-      <div className="flex gap-3">
-        <div className="flex flex-col gap-1.5 flex-1">
+      {/* 控制按钮与挂机区域 */}
+      <div className="flex items-stretch gap-3">
+        <div className="flex flex-col gap-2 flex-1 justify-between">
           <button
             onClick={handleBatchWater}
-            className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="flex-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm text-xs"
           >
             <Droplet className="w-3.5 h-3.5 text-blue-400" />
             批量浇水
           </button>
           <button
             onClick={handleBatchHarvest}
-            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm text-xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
             批量收割
           </button>
         </div>
 
-        {/* 挂机区域（08/10）：启用/关闭 + 选种 + 状态 */}
+        {/* 挂机区域 */}
         <div className="flex-1 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-zinc-200 flex items-center gap-1">
@@ -381,13 +360,12 @@ const GreenhousePanel: React.FC = () => {
             <button
               onClick={handleToggleAutoFarm}
               disabled={!hasWaterer && !autoFarm.enabled}
-              className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all ${
-                autoFarm.enabled
+              className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all ${autoFarm.enabled
                   ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 cursor-pointer'
                   : hasWaterer
-                  ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30 hover:bg-purple-500/20 cursor-pointer'
-                  : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-              }`}
+                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30 hover:bg-purple-500/20 cursor-pointer'
+                    : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+                }`}
             >
               {autoFarm.enabled ? '关闭' : '启用'}
             </button>
@@ -408,15 +386,14 @@ const GreenhousePanel: React.FC = () => {
             {!hasWaterer
               ? '需先指派驻守英雄才能开启挂机'
               : autoFarmActive
-              ? '挂机中：自动收割、浇水并播种所选作物，种子耗光自动停止'
-              : autoFarm.cropId
-              ? '已选种，启用后自动循环种植直到种子耗光'
-              : '选择一种作物作为挂机品种'}
+                ? '挂机中：自动收割、浇水并播种所选作物，种子耗光自动停止'
+                : autoFarm.cropId
+                  ? '已选种，启用后自动循环种植直到种子耗光'
+                  : '选择一种作物作为挂机品种'}
           </div>
         </div>
       </div>
 
-      {/* 种子选择弹窗（09）：播种与挂机选种共用一个 SeedSelectModal */}
       <SeedSelectModal
         isOpen={seedModal !== null}
         title={seedModal?.mode === 'autofarm' ? '选择挂机作物' : '选择种植作物'}

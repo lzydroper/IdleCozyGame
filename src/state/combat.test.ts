@@ -410,6 +410,17 @@ describe('setPartyUpdate (上阵队伍管理)', () => {
     expect(result).toBe(false);
     expect(next).toBe(state);
   });
+
+  it('rejects heroes on logistics duty (驻守中不可上阵，与后勤互斥)', () => {
+    const state = makeState({
+      heroes: {
+        nova: { ...createInitialHero('nova'), logisticsFacilityId: { type: 'waterer', targetId: 'greenhouse' } }
+      }
+    });
+    const { state: next, result } = setPartyUpdate(state, ['nova']);
+    expect(result).toBe(false);
+    expect(next).toBe(state);
+  });
 });
 
 describe('healWoundedHeroUpdate (纳米修复剂治愈重伤)', () => {

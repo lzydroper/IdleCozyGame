@@ -13,11 +13,21 @@ const makeTestState = (): GameState => {
     buster: { level: 1, exp: 0, hp: 110, maxHp: 110, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false, logisticsFacilityId: null }
   };
   state.inventory.ration = 10; // 确保口粮充足
+  state.party = []; // 测试默认无上阵（初始 party=['nova'] 会与后勤互斥校验冲突）
   return state;
 };
 
 describe('assignHeroToDutyUpdate', () => {
   describe('waterer assignment', () => {
+    it('rejects assigning a hero already in the party (已上阵不可驻守)', () => {
+      const state = makeTestState();
+      state.party = ['nova'];
+      const r = assignHeroToDutyUpdate(state, 'nova', { type: 'waterer', targetId: 'greenhouse' });
+
+      expect(r.result).toBe(false);
+      expect(r.state).toBe(state); // 原状态不变
+    });
+
     it('assigns hero as waterer and updates cache index', () => {
       const state = makeTestState();
       const r = assignHeroToDutyUpdate(state, 'mei', { type: 'waterer', targetId: 'greenhouse' });

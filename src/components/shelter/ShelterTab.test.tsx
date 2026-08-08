@@ -57,8 +57,8 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
 
     switchToGreenhouse();
 
-    // 闲置中的槽位会显示"闲置中"
-    const idleSlots = screen.getAllByText(/闲置中/i);
+    // 闲置中的槽位会显示"点击播种"（智能点击版 UI）
+    const idleSlots = screen.getAllByText(/点击播种/i);
     expect(idleSlots.length).toBeGreaterThan(0);
   });
 
@@ -118,7 +118,9 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
   });
 
   it('指派驻守后显示特殊加成徽章（10）', () => {
-    renderGreenhouse(structuredClone(INITIAL_STATE) as GameState);
+    const save = structuredClone(INITIAL_STATE) as GameState;
+    save.party = []; // 诺娃先离队才能指派驻守（上阵/后勤互斥）
+    renderGreenhouse(save);
 
     // 打开驻守弹窗并指派诺娃（+25% 生长速度）
     fireEvent.click(screen.getByText('驻守'));
@@ -134,12 +136,14 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
     save.greenhouse.slots[1] = { id: 2, cropId: 'glow_grass', growthProgress: 30, growthTimeLeft: 21, isWatered: true };
     renderGreenhouse(save);
 
-    expect(screen.getAllByText('缺水').length).toBe(1);
+    expect(screen.getAllByText('浇水').length).toBe(1); // 未湿润 → 浇水标签（智能点击版 UI）
     expect(screen.getAllByText('湿润').length).toBe(1);
   });
 
   it('挂机流程：指派驻守 → 选种 → 启用后空槽显示托管中（08）', () => {
-    renderGreenhouse(structuredClone(INITIAL_STATE) as GameState);
+    const save = structuredClone(INITIAL_STATE) as GameState;
+    save.party = []; // 诺娃先离队才能指派驻守（上阵/后勤互斥）
+    renderGreenhouse(save);
 
     // 1. 指派驻守
     fireEvent.click(screen.getByText('驻守'));
@@ -150,7 +154,7 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
     // 3. 启用挂机
     fireEvent.click(screen.getByText('启用'));
 
-    expect(screen.getAllByText('挂机托管中').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('托管中').length).toBeGreaterThan(0);
     expect(screen.getByText('关闭')).toBeDefined();
     expect(screen.getByText(/挂机中：自动收割/)).toBeDefined();
   });

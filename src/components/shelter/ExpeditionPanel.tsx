@@ -317,6 +317,7 @@ const ExpeditionPanel: React.FC = () => {
         isOpen={showExplorerPicker}
         title="指派远征探索员"
         heroes={state.heroes}
+        party={state.party}
         onSelect={(id) => {
           setSelectedExpExplorerId(id);
           setShowExplorerPicker(false);

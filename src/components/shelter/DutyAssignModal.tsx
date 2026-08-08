@@ -12,22 +12,25 @@ export interface DutyAssignModalProps {
   heroes: Record<string, HeroState>;
   onSelect: (heroId: string) => void;
   onClose: () => void;
+  /** 上阵队伍（party 中的英雄不可再指派后勤，与出战互斥） */
+  party?: string[];
 }
 
 // 通用后勤指派弹窗（shelter-ui-polish T02）：选择英雄指派到产线驻守/温室浇水/远征探索
-// 只列可指派英雄（未驻守/未上阵，logisticsFacilityId 为 null）；展示职阶·阵营标签 + dutyMeta 加成角标
+// 只列可指派英雄（未驻守 logisticsFacilityId 为 null 且未上阵不在 party）；展示职阶·阵营标签 + dutyMeta 加成角标
 export const DutyAssignModal: React.FC<DutyAssignModalProps> = ({
   isOpen,
   title,
   heroes,
   onSelect,
-  onClose
+  onClose,
+  party = []
 }) => {
   if (!isOpen) return null;
 
-  // 可指派英雄：未驻守/未上阵（logisticsFacilityId 为 null）
+  // 可指派英雄：未驻守（logisticsFacilityId 为 null）且未上阵（不在 party 中）
   const assignableHeroIds = Object.entries(heroes)
-    .filter(([, h]) => !h.logisticsFacilityId)
+    .filter(([id, h]) => !h.logisticsFacilityId && !party.includes(id))
     .map(([id]) => id);
 
   const dutyMetaLabel = (heroId: string): string[] => {

@@ -869,7 +869,7 @@ export const setPartyUpdate = (state: GameState, heroIds: string[]): UpdateResul
   if (unique.length > COMBAT_CONFIG.partySize) return NO_OP(state);
   for (const id of unique) {
     const hero = state.heroes[id];
-    if (!hero || hero.wounded || !HEROES_CONFIG[id]) return NO_OP(state);
+    if (!hero || hero.wounded || hero.logisticsFacilityId || !HEROES_CONFIG[id]) return NO_OP(state);
   }
   return { state: { ...state, party: unique }, result: true };
 };

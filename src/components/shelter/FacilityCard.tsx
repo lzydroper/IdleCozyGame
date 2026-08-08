@@ -252,6 +252,7 @@ function FacilityUnitCard({
           isOpen={showGarrisonPicker}
           title={`指派驻守英雄 · ${fac.name}`}
           heroes={state.heroes}
+          party={state.party}
           onSelect={(id) => {
             if (assignHeroToDuty(id, { type: 'facility', targetId: `${type}_${unitIndex}` })) {
               showToast(`${HEROES_CONFIG[id]?.name || id} 已驻守 ${fac.name}。`, 'success');
