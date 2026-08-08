@@ -4,7 +4,7 @@
 
 **Blocked by:** None - can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `StatModifier` 接口新增可选字段 `source?: string`（`src/state/statSystem.ts`）
 - [ ] 新增 `aggregateModifiersBySource` 函数：输入 `StatModifier[]`，返回按 source 分组的结果（每个来源下按 stat 再聚合 flat/percent），供 UI 展开时展示"某属性来自哪些来源、各贡献多少"

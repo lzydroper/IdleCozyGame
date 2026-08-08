@@ -16,7 +16,7 @@
 
 ## Decisions so far
 
-<!-- 空 - 尚无 ticket 完成 -->
+- [01 - StatModifier source 字段 + 分组聚合](issues/01-statmodifier-source-field-and-grouped-aggregation.md) - StatModifier 加可选 source?: string；新增 aggregateModifiersBySource 按来源分组 + getStatSourcesByStat 提取单属性来源贡献；8 个新测试全绿；现有 aggregateModifiers/calculateEntityStats 不受影响
 
 ## Not yet specified
 
