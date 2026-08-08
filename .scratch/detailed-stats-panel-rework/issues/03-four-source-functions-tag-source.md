@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 - StatModifier 加 source 字段 + 按来源分组聚合
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `src/state/equipment.ts` - `getEquippedItemStats` 给每条 flat modifier 打 `source: cfg.name`；`getSetBonuses` 给套装特效打 `source: set.name + '·套装特效'`，神话词条打 `source: set.name + '·神话词条'`。注意 `getEquippedFlatStats` 中同属性合并时需保留各自的 source（不再合并，或合并时拼接 source）
 - [ ] `src/state/talents.ts` - `getTalentBonus` 的 `flatMap` 中给每条 modifier 打 `source: node.name`
