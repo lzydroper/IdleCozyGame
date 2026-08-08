@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { CROPS_CONFIG } from '../../data/crops';
 import { ITEMS_CONFIG } from '../../data/items';
-import { HEROES_CONFIG, type DutyBonus } from '../../data/heroes';
+import { HEROES_CONFIG } from '../../data/heroes';
 import { resolveWatererBonuses } from '../../state/greenhouse';
 import { getHeroName } from '../../utils/gameUtils';
 import { useToast } from '../ToastSystem';
@@ -297,7 +297,7 @@ const GreenhousePanel: React.FC = () => {
                 // 作用域化加成（温室上下文聚合 + 作物专精展示）
                 const wb = resolveWatererBonuses(state);
                 const cropBonuses = (watererCfg?.dutyMeta?.bonuses ?? []).filter(
-                  (b): b is DutyBonus => b.scope.kind === 'greenhouse' && b.scope.cropId !== undefined && (b.yieldMultiplier ?? 0) > 0
+                  b => b.scope.kind === 'greenhouse' && !!b.scope.cropIds && b.scope.cropIds.length > 0 && ((b.yieldMultiplier ?? 0) > 0 || (b.speedMultiplier ?? 0) > 0)
                 );
                 if (wb.speedMultiplier <= 0 && wb.yieldMultiplier <= 0 && cropBonuses.length === 0) return null;
                 return (
@@ -312,13 +312,18 @@ const GreenhousePanel: React.FC = () => {
                         收割产量 +{Math.round(wb.yieldMultiplier * 100)}%
                       </span>
                     )}
-                    {cropBonuses.map((b, i) => (
-                      <span key={i} className="text-[9px] text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded">
-                        {b.scope.kind === 'greenhouse' && b.scope.cropId
-                          ? `${CROPS_CONFIG[b.scope.cropId]?.name || b.scope.cropId}专精 +${Math.round((b.yieldMultiplier ?? 0) * 100)}%`
-                          : ''}
-                      </span>
-                    ))}
+                    {cropBonuses.map((b, i) => {
+                      if (b.scope.kind !== 'greenhouse' || !b.scope.cropIds || b.scope.cropIds.length === 0) return null;
+                      const names = b.scope.cropIds.map(id => CROPS_CONFIG[id]?.name || id).join('、');
+                      const parts: string[] = [];
+                      if (b.speedMultiplier) parts.push(`生长 +${Math.round(b.speedMultiplier * 100)}%`);
+                      if (b.yieldMultiplier) parts.push(`产量 +${Math.round(b.yieldMultiplier * 100)}%`);
+                      return (
+                        <span key={i} className="text-[9px] text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded">
+                          {names}专精 {parts.join(' ')}
+                        </span>
+                      );
+                    })}
                   </div>
                 );
               })()}

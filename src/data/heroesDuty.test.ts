@@ -16,12 +16,12 @@ describe('Facility Duty & Hero Meta Attributes', () => {
     expect(
       HEROES_CONFIG.roy.dutyMeta?.bonuses.some(b => b.scope.kind === 'facility' && b.scope.facilityType === 'smelter' && b.speedMultiplier === 0.30)
     ).toBe(true);
-    // 阿梅：温室 +25% 产量 + 以太浆果专精 +10%
+    // 阿梅：温室 +25% 产量 + 以太浆果专精（产量 +10% 且生长速度 +15%，作物级 speed + 多作物数组）
     expect(
-      HEROES_CONFIG.mei.dutyMeta?.bonuses.some(b => b.scope.kind === 'greenhouse' && b.scope.cropId === undefined && b.yieldMultiplier === 0.25)
+      HEROES_CONFIG.mei.dutyMeta?.bonuses.some(b => b.scope.kind === 'greenhouse' && b.scope.cropIds === undefined && b.yieldMultiplier === 0.25)
     ).toBe(true);
     expect(
-      HEROES_CONFIG.mei.dutyMeta?.bonuses.some(b => b.scope.kind === 'greenhouse' && b.scope.cropId === 'aether_berry' && b.yieldMultiplier === 0.10)
+      HEROES_CONFIG.mei.dutyMeta?.bonuses.some(b => b.scope.kind === 'greenhouse' && b.scope.cropIds?.includes('aether_berry') && b.yieldMultiplier === 0.10 && b.speedMultiplier === 0.15)
     ).toBe(true);
     // 零：远征拾荒间隔 -20%
     expect(

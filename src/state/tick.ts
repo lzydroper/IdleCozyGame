@@ -87,16 +87,16 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     nextAccumulatedScrap -= intScrap;
   }
 
-  // 2. 温室作物托管浇水与生长（06/07）
+  // 2. 温室作物托管浇水与生长（06/07/09）
   const isWateredOnline = prev.shelter.assignedWatererId !== null;
-  const speedBonus = isWateredOnline ? resolveWatererBonuses(prev).speedMultiplier : 0;
   const updatedSlots = prev.greenhouse.slots.map(slot => {
     if (!slot.cropId) return slot;
     const config = (CROPS_CONFIG as any)[slot.cropId];
     if (!config) return slot;
 
     // 浇水=维持生长（06）：湿润作物按基础 1x 扣减，未湿润作物停滞（不扣减）；
-    // 驻守速度加成（07）：湿润作物扣减 ×(1 + speedBonus)
+    // 驻守速度加成（07/09）：湿润作物扣减 ×(1 + speedBonus)，按槽位作物解析（作物级 speed）
+    const speedBonus = isWateredOnline ? resolveWatererBonuses(prev, slot.cropId).speedMultiplier : 0;
     const timeReduced = (slot.isWatered || isWateredOnline) ? 1 * (1 + speedBonus) : 0;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));

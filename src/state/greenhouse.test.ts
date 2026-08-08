@@ -11,6 +11,7 @@ import {
   setAutoFarmEnabledUpdate,
   maybeStopAutoFarmOnSeedDepletion
 } from './greenhouse';
+import { resolveDutyBonuses } from './duty';
 import type { GameState, GreenhouseSlot } from '../types/game';
 
 const makeSlots = (slots: Partial<GreenhouseSlot>[]): GreenhouseSlot[] =>
@@ -49,11 +50,46 @@ describe('resolveWatererBonuses（07 驻守加成反查，作用域化）', () =
     expect(resolveWatererBonuses(makeState({ assignedWatererId: 'roy' })).speedMultiplier).toBe(0.15);
   });
 
-  it('作物级专精：限定作物的加成叠加生效', () => {
-    // 阿梅：温室 +25% + 以太浆果专精 +10% = 35%
-    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'mei' }), 'aether_berry').yieldMultiplier).toBe(0.35);
-    // 其他作物只吃到温室级 +25%
-    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'mei' }), 'glow_grass').yieldMultiplier).toBe(0.25);
+  it('作物级专精：限定作物的加成叠加生效（多作物数组 + 作物级 speed）', () => {
+    // 阿梅：以太浆果专精（产量 +10% 且生长速度 +15%）叠加温室级（产量 +25%）
+    const berry = resolveWatererBonuses(makeState({ assignedWatererId: 'mei' }), 'aether_berry');
+    expect(berry.yieldMultiplier).toBe(0.35); // 0.25 + 0.10
+    expect(berry.speedMultiplier).toBe(0.15); // 作物级 speed 仅浆果生效
+    // 其他作物只吃到温室级产量加成，无作物级速度
+    const grass = resolveWatererBonuses(makeState({ assignedWatererId: 'mei' }), 'glow_grass');
+    expect(grass.yieldMultiplier).toBe(0.25);
+    expect(grass.speedMultiplier).toBe(0);
+  });
+
+  it('多作物数组：cropIds 任一命中即生效；空数组 = 温室级', () => {
+    const meta = {
+      bonuses: [{ scope: { kind: 'greenhouse' as const, cropIds: ['aether_berry', 'glow_grass'] }, speedMultiplier: 0.10 }]
+    };
+    expect(resolveDutyBonuses(meta, { role: 'greenhouse', cropId: 'aether_berry' }).speedMultiplier).toBe(0.10);
+    expect(resolveDutyBonuses(meta, { role: 'greenhouse', cropId: 'glow_grass' }).speedMultiplier).toBe(0.10);
+    // 未命中作物 → 不生效
+    expect(resolveDutyBonuses(meta, { role: 'greenhouse', cropId: 'sunflower' }).speedMultiplier).toBe(0);
+    // 未指定作物上下文 → 限定加成不生效
+    expect(resolveDutyBonuses(meta, { role: 'greenhouse' }).speedMultiplier).toBe(0);
+    // 空 cropIds = 未限定 → 对所有作物生效
+    const all = { bonuses: [{ scope: { kind: 'greenhouse' as const, cropIds: [] }, yieldMultiplier: 0.05 }] };
+    expect(resolveDutyBonuses(all, { role: 'greenhouse', cropId: 'sunflower' }).yieldMultiplier).toBe(0.05);
+  });
+
+  it('作物级速度专精：离线推进时以太浆果生长快于普通作物（09）', () => {
+    const state = makeState({
+      assignedWatererId: 'mei',
+      slots: makeSlots([
+        { cropId: 'aether_berry', growthTimeLeft: 100, growthProgress: 0, isWatered: true },
+        { cropId: 'glow_grass', growthTimeLeft: 100, growthProgress: 0, isWatered: true },
+        { cropId: null }
+      ])
+    });
+    const r = advanceGreenhouseAutomation(state, 10, 'original');
+    const slots = r.state.greenhouse.slots;
+    // 以太浆果 10 × 1.15 = 11.5 秒扣减；荧光草 10 × 1 = 10 秒
+    expect(slots[0].growthTimeLeft).toBeCloseTo(88.5, 5);
+    expect(slots[1].growthTimeLeft).toBeCloseTo(90, 5);
   });
 });
 

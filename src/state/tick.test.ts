@@ -139,6 +139,25 @@ describe('applyTick 驻守自动化（07）', () => {
     const slot = next.greenhouse.slots[0];
     expect(slot.growthTimeLeft).toBe(28.75); // 30 - 1.25
   });
+
+  it('作物级速度：以太浆果 1 tick 扣 1.15 秒（mei 浆果专精），荧光草扣 1 秒（09）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'aether_berry', growthTimeLeft: 30, growthProgress: 0, isWatered: true } :
+          i === 1 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, isWatered: true } : s
+        )
+      },
+      shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'mei' },
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    expect(next.greenhouse.slots[0].growthTimeLeft).toBeCloseTo(28.85, 5); // 30 - 1.15（浆果专精）
+    expect(next.greenhouse.slots[1].growthTimeLeft).toBeCloseTo(29, 5);    // 30 - 1（普通作物）
+  });
 });
 
 // 08 挂机：autoFarm 开启时按选定作物播种、种子耗光自动停止

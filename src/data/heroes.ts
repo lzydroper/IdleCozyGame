@@ -10,7 +10,7 @@ import type { BaseStatsSeed } from './statConfig';
 export type DutyScope =
   | { kind: 'all' }                                            // 全局：所有后勤岗位
   | { kind: 'facility'; facilityType: FacilityType }           // 指定产线设备（smelter/assembler）
-  | { kind: 'greenhouse'; cropId?: string }                    // 温室（cropId 可选：细化到指定作物）
+  | { kind: 'greenhouse'; cropIds?: string[] }                  // 温室（cropIds 可选：细化到指定作物，支持多个）
   | { kind: 'expedition' };                                    // 远征探索
 
 // 单条加成：作用域 + 数值（至少一项生效）
@@ -159,7 +159,8 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
     dutyMeta: {
       bonuses: [
         { scope: { kind: 'greenhouse' }, yieldMultiplier: 0.25 }, // 温室 +25% 收割产量
-        { scope: { kind: 'greenhouse', cropId: 'aether_berry' }, yieldMultiplier: 0.10 } // 以太浆果专精 +10%
+        // 以太浆果专精：产量 +10% 且生长速度 +15%（作物级 speed + 多作物数组）
+        { scope: { kind: 'greenhouse', cropIds: ['aether_berry'] }, yieldMultiplier: 0.10, speedMultiplier: 0.15 }
       ]
     },
     sprite: { sheet: 'survivors', index: 1 },

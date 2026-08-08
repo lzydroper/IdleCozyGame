@@ -293,7 +293,10 @@ export const advanceGreenhouseAutomation = (
   let cur = state;
   let remaining = seconds;
   const accumulated: Record<string, number> = {};
-  const speedMult = resolveWatererBonuses(state).speedMultiplier;
+  // 作物级速度加成（09）：按槽位作物解析，支持作物专精生长加速；
+  // 从当前 cur 解析（而非外层 state），避免 shelter 变化时速度解析脱节
+  const speedOf = (cropState: GameState, cropId: string | null): number =>
+    resolveWatererBonuses(cropState, cropId ?? undefined).speedMultiplier;
 
   // 收割离线开始时就已成熟的槽位（code-review should-fix）：
   // 在线按 growthProgress >= 100 收割，离线循环按 growthTimeLeft > 0 推进，
@@ -313,18 +316,18 @@ export const advanceGreenhouseAutomation = (
     // 无作物 → 无进展可推进
     if (!cur.greenhouse.slots.some(s => s.cropId)) break;
 
-    // 推进到最早成熟的湿润作物（含速度加成）；全部湿润则推进剩余时间
+    // 推进到最早成熟的湿润作物（含作物级速度加成）；全部湿润则推进剩余时间
     let advance = remaining;
     let hasWateredCrop = false;
     for (const slot of cur.greenhouse.slots) {
       if (slot.cropId && slot.isWatered && slot.growthTimeLeft > 0) {
         hasWateredCrop = true;
-        advance = Math.min(advance, Math.ceil(slot.growthTimeLeft / (1 + speedMult)));
+        advance = Math.min(advance, Math.ceil(slot.growthTimeLeft / (1 + speedOf(cur, slot.cropId))));
       }
     }
     if (!hasWateredCrop) break; // 防御：autoWater 后仍无湿润作物
 
-    cur = advanceGreenhouseGrowth(cur, advance, speedMult);
+    cur = advanceGreenhouseGrowth(cur, advance, speedOf);
     remaining -= advance;
 
     // 收割成熟槽 + 按策略播种
@@ -343,13 +346,14 @@ export const advanceGreenhouseAutomation = (
   };
 };
 
-// 推进温室作物生长 seconds 秒（06/07）：湿润作物 1x × 驻守速度加成，未湿润停滞
-const advanceGreenhouseGrowth = (state: GameState, seconds: number, speedMult: number): GameState => {
+// 推进温室作物生长 seconds 秒（06/07/09）：湿润作物 1x × 槽位作物级速度加成，未湿润停滞
+// speedOf：按作物解析驻守速度加成（从当前 state 解析，支持作物专精生长加速）
+const advanceGreenhouseGrowth = (state: GameState, seconds: number, speedOf: (cropState: GameState, cropId: string | null) => number): GameState => {
   const updatedSlots = state.greenhouse.slots.map(slot => {
     if (!slot.cropId) return slot;
     const config = CROPS_CONFIG[slot.cropId];
     if (!config) return slot;
-    const timeReduced = slot.isWatered ? seconds * (1 + speedMult) : 0;
+    const timeReduced = slot.isWatered ? seconds * (1 + speedOf(state, slot.cropId)) : 0;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
     return { ...slot, growthTimeLeft: newTimeLeft, growthProgress: progress };

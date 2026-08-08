@@ -33,8 +33,9 @@ const scopeMatches = (scope: DutyScope, ctx: DutyContext): boolean => {
       return ctx.role === 'facility' && ctx.facilityType === scope.facilityType;
     case 'greenhouse':
       if (ctx.role !== 'greenhouse') return false;
-      // 未限定作物 → 对所有作物生效；限定作物 → 仅该作物生效
-      return scope.cropId === undefined || ctx.cropId === scope.cropId;
+      // cropIds 未限定（或空）→ 对所有作物生效；限定 → 仅列表内作物生效（需作物上下文命中）
+      if (!scope.cropIds || scope.cropIds.length === 0) return true;
+      return ctx.cropId !== undefined && scope.cropIds.includes(ctx.cropId);
     case 'expedition':
       return ctx.role === 'expedition';
     default:
@@ -68,7 +69,7 @@ export const describeDutyBonuses = (dutyMeta: HeroDutyMeta | null | undefined): 
       const scope =
         b.scope.kind === 'all' ? '' :
         b.scope.kind === 'facility' ? (b.scope.facilityType === 'smelter' ? '熔炉' : '组装台') :
-        b.scope.kind === 'greenhouse' ? (b.scope.cropId ? `温室·${CROPS_CONFIG[b.scope.cropId]?.name || b.scope.cropId}` : '温室') :
+        b.scope.kind === 'greenhouse' ? (b.scope.cropIds && b.scope.cropIds.length > 0 ? `温室·${b.scope.cropIds.map(id => CROPS_CONFIG[id]?.name || id).join('、')}` : '温室') :
         '远征';
       const parts: string[] = [];
       if (b.speedMultiplier) parts.push(`${scope}生产速度 +${Math.round(b.speedMultiplier * 100)}%`);
