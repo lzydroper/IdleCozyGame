@@ -858,7 +858,7 @@ const App: React.FC = () => {
             
             {/* 头部 */}
             <div className="text-center">
-              <span className="inline-block px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2 flex items-center gap-1">
+              <span className="inline-flex px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2 flex items-center gap-1">
                 <Save className="w-3 h-3" />
                 避难所离线运转报告
               </span>
