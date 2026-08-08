@@ -5,6 +5,7 @@ import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../data
 import { getAwakenedName } from '../state/awakening';
 import { useGame } from '../context/GameContext';
 import GameIcon from './GameIcon';
+import { UI_TOKENS } from '../data/uiConstants';
 import { X, Award, Shield, Sparkles, Factory, Wrench, Package } from 'lucide-react';
 
 export interface HeroDossierModalProps {
@@ -41,20 +42,20 @@ const HeroDossierModal: React.FC<HeroDossierModalProps> = ({ isOpen, heroId, onC
   const modalContent = (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[10002] bg-black/80 flex items-center justify-center p-3 animate-in fade-in duration-150 select-none pointer-events-auto"
+      className={UI_TOKENS.modalBackdropChild}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[85vh] p-4 flex flex-col gap-3 shadow-2xl overflow-y-auto overscroll-contain"
+        className={UI_TOKENS.modalContainerScroll}
       >
-        <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0">
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-400" />
-            <h3 className="text-sm font-black text-zinc-100">英雄档案</h3>
+        <header className={UI_TOKENS.modalHeader}>
+          <div className={UI_TOKENS.modalHeaderTitle}>
+            <Award className="w-4 h-4 text-amber-400" />
+            <h3>英雄档案</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors cursor-pointer"
+            className={UI_TOKENS.modalCloseButton}
             title="关闭"
           >
             <X className="w-4.5 h-4.5" />
@@ -83,44 +84,44 @@ const HeroDossierModal: React.FC<HeroDossierModalProps> = ({ isOpen, heroId, onC
         </div>
 
         {/* 描述 */}
-        <section className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col gap-1">
-          <h4 className="text-[10px] font-black text-amber-300 flex items-center gap-1">
-            <Wrench className="w-3 h-3 text-amber-400" /> 背景故事
+        <section className={UI_TOKENS.sectionCard}>
+          <h4 className={`${UI_TOKENS.textLabel} font-black text-amber-300 flex items-center gap-1`}>
+            <Wrench className="w-3.5 h-3.5 text-amber-400" /> 背景故事
           </h4>
-          <p className="text-[10px] text-zinc-300 leading-relaxed">{config.backstory}</p>
+          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{config.backstory}</p>
         </section>
 
         {/* 职阶设定 */}
-        <section className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col gap-1">
-          <h4 className={`text-[10px] font-black flex items-center gap-1 ${clsColor.split(' ')[0]}`}>
-            <Shield className="w-3 h-3" /> 职阶 · {clsLabel}
+        <section className={UI_TOKENS.sectionCard}>
+          <h4 className={`${UI_TOKENS.textLabel} font-black flex items-center gap-1 ${clsColor.split(' ')[0]}`}>
+            <Shield className="w-3.5 h-3.5" /> 职阶 · {clsLabel}
           </h4>
-          <p className="text-[10px] text-zinc-300 leading-relaxed">{HERO_CLASS_LORE[config.heroClass]}</p>
+          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{HERO_CLASS_LORE[config.heroClass]}</p>
         </section>
 
         {/* 阵营设定 */}
-        <section className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col gap-1">
-          <h4 className={`text-[10px] font-black flex items-center gap-1 ${factionColor.split(' ')[0]}`}>
-            <Sparkles className="w-3 h-3" /> 阵营 · {factionLabel}
+        <section className={UI_TOKENS.sectionCard}>
+          <h4 className={`${UI_TOKENS.textLabel} font-black flex items-center gap-1 ${factionColor.split(' ')[0]}`}>
+            <Sparkles className="w-3.5 h-3.5" /> 阵营 · {factionLabel}
           </h4>
-          <p className="text-[10px] text-zinc-300 leading-relaxed">{HERO_FACTION_LORE[config.faction]}</p>
+          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{HERO_FACTION_LORE[config.faction]}</p>
         </section>
 
         {/* 后台驻守特长 */}
-        <section className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex flex-col gap-1">
-          <h4 className="text-[10px] font-black text-amber-300 flex items-center gap-1">
-            <Factory className="w-3 h-3 text-amber-400" /> 后台驻守特长
+        <section className={UI_TOKENS.sectionCard}>
+          <h4 className={`${UI_TOKENS.textLabel} font-black text-amber-300 flex items-center gap-1`}>
+            <Factory className="w-3.5 h-3.5 text-amber-400" /> 后台驻守特长
           </h4>
           {dutyParts.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {dutyParts.map((p, i) => (
-                <span key={i} className="text-[9px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 rounded-md px-1.5 py-0.5 flex items-center gap-1">
-                  <Package className="w-2.5 h-2.5" /> {p}
+                <span key={i} className={`${UI_TOKENS.textMini} font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 rounded-md px-1.5 py-0.5 flex items-center gap-1`}>
+                  <Package className="w-3 h-3" /> {p}
                 </span>
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-zinc-500 font-bold">该英雄暂未配置后勤驻守特长。</p>
+            <p className={`${UI_TOKENS.textMini} text-zinc-500 font-bold`}>该英雄暂未配置后勤驻守特长。</p>
           )}
         </section>
       </div>

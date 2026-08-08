@@ -176,7 +176,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const modalContent = (
     <div
       onClick={onClose}
-      className={UI_TOKENS.modalBackdrop}
+      className={UI_TOKENS.modalBackdropChild}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -199,7 +199,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           <div className="bg-zinc-950/70 border border-zinc-800 rounded-xl p-2.5 flex items-center gap-3 relative shadow-inner">
             <div className="w-16 h-16 rounded-xl bg-zinc-900 border-2 border-amber-500/40 relative flex items-center justify-center shadow-md shrink-0">
               <GameIcon type="item" id={item.itemId} className="w-11 h-11" />
-              <span className="absolute -bottom-1 -right-1 text-[8.5px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1.5 py-0.5 rounded-md shadow">
+              <span className="absolute -bottom-1 -right-1 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1.5 py-0.5 rounded-md shadow">
                 +{item.enhance}
               </span>
             </div>
@@ -293,7 +293,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
-                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black ${
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-black ${
                         active ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-800 text-zinc-600'
                       }`}>
                         {tier.threshold}

@@ -17,7 +17,7 @@ import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
-import HeroTalentPanel from './HeroTalentPanel';
+import HeroTalentModal from './HeroTalentModal';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
 import HeroDossierModal from './HeroDossierModal';
@@ -580,30 +580,13 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
       />
 
       {/* 天赋树弹窗 */}
-      {showTalentModal && (
-        <div
-          onClick={() => setShowTalentModal(false)}
-          className="fixed inset-0 z-[10001] bg-transparent flex items-center justify-center p-3 animate-in fade-in duration-150 pointer-events-auto"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col gap-3 shadow-2xl overflow-y-auto overscroll-contain"
-          >
-            <header className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <h3 className="text-sm font-black text-amber-300 flex items-center gap-1.5">
-                <Sliders className="w-4 h-4" /> 【{config.name}】天赋树
-              </h3>
-              <button
-                onClick={() => setShowTalentModal(false)}
-                className="p-1 text-zinc-400 hover:text-zinc-200 rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </header>
-            <HeroTalentPanel heroId={heroId} />
-          </div>
-        </div>
-      )}
+      {/* 天赋树弹窗（03 号：外提为独立组件） */}
+      <HeroTalentModal
+        isOpen={showTalentModal}
+        heroId={heroId}
+        heroName={config.name}
+        onClose={() => setShowTalentModal(false)}
+      />
 
       {/* 装备详情弹窗 */}
       {selectedEquipSlot && heroEquip[selectedEquipSlot] && showEquipDetailModal && (

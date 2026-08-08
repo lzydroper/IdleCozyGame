@@ -110,11 +110,11 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
           <TreeDeciduous className="w-3 h-3" /> 【{HERO_CLASS_LABELS[config.heroClass]} · 职阶主干】
         </span>
         <div className="flex items-center gap-1.5">
-          <span className="text-[8px] font-bold text-emerald-400">天赋点 ×{points}</span>
+          <span className="text-[9px] font-bold text-emerald-400">天赋点 ×{points}</span>
           <button
             onClick={handleReset}
             disabled={invested === 0}
-            className={`text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
+            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
               invested > 0
                 ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-950/60'
                 : 'border-zinc-800 bg-zinc-900 text-zinc-600 cursor-not-allowed'
@@ -127,7 +127,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
       </div>
 
       {tree.length === 0 ? (
-        <p className="text-[8px] text-zinc-600 font-bold">该英雄暂无天赋配置。</p>
+        <p className="text-[9px] text-zinc-600 font-bold">该英雄暂无天赋配置。</p>
       ) : (
         <>
           {/* 树图：SVG 直线连线 + 绝对定位节点 */}
@@ -177,12 +177,12 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                       <Lock className="w-3 h-3 text-zinc-500 absolute -top-1 -right-1 bg-zinc-950 rounded-full p-0.5 box-content" />
                     )}
                     {level > 0 && (
-                      <span className="absolute -bottom-1 -right-1 text-[7px] font-black text-amber-200 bg-amber-950 border border-amber-500/60 rounded-full px-1 leading-3">
+                      <span className="absolute -bottom-1 -right-1 text-[9px] font-black text-amber-200 bg-amber-950 border border-amber-500/60 rounded-full px-1 leading-3">
                         {level}
                       </span>
                     )}
                   </div>
-                  <span className={`text-[8px] font-black mt-1 max-w-[76px] truncate ${isSel ? 'text-amber-300' : 'text-zinc-300'}`}>
+                  <span className={`text-[9px] font-black mt-1 max-w-[76px] truncate ${isSel ? 'text-amber-300' : 'text-zinc-300'}`}>
                     {p.node.name}
                   </span>
                 </button>
@@ -198,7 +198,7 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                   {selLocked && <Lock className="w-2.5 h-2.5 inline-block mr-1 text-zinc-500" />}
                   {selected.name}
                 </span>
-                <span className="text-[8px] font-bold text-amber-300">{selLevel}/{selected.maxLevel}</span>
+                <span className="text-[9px] font-bold text-amber-300">{selLevel}/{selected.maxLevel}</span>
                 <button
                   onClick={() => handleUnallocate(selected.id)}
                   disabled={selLevel <= 0}
@@ -216,29 +216,29 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                   +
                 </button>
               </div>
-              <div className="text-[8px] text-zinc-400 font-bold">{selected.description}</div>
-              <div className="text-[8px] font-bold text-emerald-500/80">增益：{formatTalentEffect(selected.effect)}/级</div>
+              <div className="text-[9px] text-zinc-400 font-bold">{selected.description}</div>
+              <div className="text-[9px] font-bold text-emerald-500/80">增益：{formatTalentEffect(selected.effect)}/级</div>
               {selLocked && (
-                <div className="text-[8px] font-bold text-amber-500/80">
+                <div className="text-[9px] font-bold text-amber-500/80">
                   被【{selParents}】阻塞：父节点已投入 {Math.max(...(selected.requires || []).map(pid => getTalentLevel(hero, pid)))} 点，需 ≥1 点后可升级（可查看信息）。
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-[8px] text-zinc-600 font-bold">点击上方节点查看详情与投入天赋点。</p>
+            <p className="text-[9px] text-zinc-600 font-bold">点击上方节点查看详情与投入天赋点。</p>
           )}
 
           {/* 汇总行 */}
           {(Object.keys(bonus).length > 0 || invested > 0) && (
-            <p className="text-[8px] font-bold text-emerald-500/80 mt-0.5">
+            <p className="text-[9px] font-bold text-emerald-500/80 mt-0.5">
               当前加成：{formatTalentEffect(bonus) || '—'}（已投入 {invested} 点）
             </p>
           )}
           {points === 0 && invested === 0 && (
-            <p className="text-[8px] text-zinc-600 font-bold">战斗升级获得天赋点，投入后效果在战斗中生效。</p>
+            <p className="text-[9px] text-zinc-600 font-bold">战斗升级获得天赋点，投入后效果在战斗中生效。</p>
           )}
           {tree.some(n => n.id.startsWith('hero_')) && (
-            <p className="text-[8px] font-black text-zinc-600 tracking-wider mt-0.5">【英雄专属】星形节点为英雄专属天赋。</p>
+            <p className="text-[9px] font-black text-zinc-600 tracking-wider mt-0.5">【英雄专属】星形节点为英雄专属天赋。</p>
           )}
         </>
       )}

@@ -53,7 +53,7 @@ const ExpLevelUpModal: React.FC<ExpLevelUpModalProps> = ({ isOpen, heroId, onClo
   };
 
   const modalContent = (
-    <div onClick={onClose} className={UI_TOKENS.modalBackdrop}>
+    <div onClick={onClose} className={UI_TOKENS.modalBackdropChild}>
       <div
         data-testid="exp-levelup-container"
         onClick={(e) => e.stopPropagation()}
