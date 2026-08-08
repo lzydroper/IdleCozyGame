@@ -19,7 +19,7 @@ const HeroTalentModal: React.FC<HeroTalentModalProps> = ({ isOpen, heroId, heroN
     <div onClick={onClose} className={UI_TOKENS.modalBackdropChild}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className={UI_TOKENS.modalContainerScroll}
+        className={`${UI_TOKENS.modalContainerScroll} [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
       >
         <header className={UI_TOKENS.modalHeader}>
           <h3 className={`${UI_TOKENS.modalHeaderTitle} text-amber-300`}>

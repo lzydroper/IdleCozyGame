@@ -7,11 +7,11 @@ import type { TalentNodeConfig } from '../data/talents';
 import { getTalentLevel, getTalentBonus, getInvestedPoints } from '../state/talents';
 import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move } from 'lucide-react';
 
-const ROW_H = 90;    // 行高（px）
-const COL_W = 120;   // 槽位列宽（px）
-const NODE_R = 22;   // 节点半径
-const PAD_X = 60;    // 横向内边距
-const PAD_Y = 40;    // 纵向内边距
+const ROW_H = 75;    // 竖直步长 75px
+const COL_W = 75;    // 水平步长 75px（保证 dx == dy = 75px，构成 45° 完美交汇）
+const NODE_R = 20;   // 节点圆环半径 (40px / 2)
+const PAD_X = 75;    // 横向边距
+const PAD_Y = 45;    // 纵向边距
 
 interface Placed {
   node: TalentNodeConfig;
@@ -205,49 +205,54 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                   )}
                 </svg>
 
-                {/* 天赋节点 */}
-                {placed.map(p => {
-                  const level = getTalentLevel(hero, p.node.id);
-                  const locked = (p.node.requires || []).some(pid => getTalentLevel(hero, pid) < 1);
-                  const isSel = selectedId === p.node.id;
-                  return (
-                    <button
-                      key={p.node.id}
-                      onClick={() => setSelectedId(p.node.id)}
-                      className="absolute flex flex-col items-center cursor-pointer group -translate-x-1/2 -translate-y-1/2 transition-transform active:scale-95"
-                      style={{ left: p.x, top: p.y }}
-                    >
+                  {/* 天赋节点 */}
+                  {placed.map(p => {
+                    const level = getTalentLevel(hero, p.node.id);
+                    const locked = (p.node.requires || []).some(pid => getTalentLevel(hero, pid) < 1);
+                    const isSel = selectedId === p.node.id;
+
+                    return (
                       <div
-                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center relative transition-all duration-200 ${isSel
-                            ? 'border-amber-400 bg-amber-950/80 ring-4 ring-amber-400/20 shadow-lg shadow-amber-500/20 scale-110'
-                            : level > 0
-                              ? 'border-amber-500/80 bg-zinc-900 hover:border-amber-400'
-                              : locked
-                                ? 'border-zinc-800 bg-zinc-950 opacity-40'
-                                : 'border-zinc-700 bg-zinc-900 group-hover:border-zinc-500'
-                          }`}
+                        key={p.node.id}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center pointer-events-none"
+                        style={{ left: p.x, top: p.y }}
                       >
-                        {nodeIcon(p.node)}
-                        {locked && (
-                          <Lock className="w-3 h-3 text-zinc-500 absolute -top-1 -right-1 bg-zinc-950 rounded-full p-0.5 box-content border border-zinc-800" />
-                        )}
-                        {level > 0 && (
-                          <span className="absolute -bottom-1 -right-1 text-[9px] font-black text-amber-200 bg-amber-950 border border-amber-500/60 rounded-full px-1.5 leading-3 shadow">
-                            {level}
-                          </span>
-                        )}
+                        {/* 1. 圆形图标：精准以 (p.x, p.y) 为中心，与 SVG 虚线起点/终点重合 */}
+                        <button
+                          onClick={() => setSelectedId(p.node.id)}
+                          className={`pointer-events-auto w-10 h-10 rounded-full border-2 flex items-center justify-center relative transition-all duration-200 cursor-pointer group ${isSel
+                              ? 'border-amber-400 bg-amber-950/80 ring-4 ring-amber-400/20 shadow-lg shadow-amber-500/20 scale-110'
+                              : level > 0
+                                ? 'border-amber-500/80 bg-zinc-900 hover:border-amber-400'
+                                : locked
+                                  ? 'border-zinc-800 bg-zinc-950 opacity-40'
+                                  : 'border-zinc-700 bg-zinc-900 group-hover:border-zinc-500'
+                            }`}
+                        >
+                          {nodeIcon(p.node)}
+                          {locked && (
+                            <Lock className="w-3 h-3 text-zinc-500 absolute -top-1 -right-1 bg-zinc-950 rounded-full p-0.5 box-content border border-zinc-800" />
+                          )}
+                          {level > 0 && (
+                            <span className="absolute -bottom-1 -right-1 text-[9px] font-black text-amber-200 bg-amber-950 border border-amber-500/60 rounded-full px-1.5 leading-3 shadow">
+                              {level}
+                            </span>
+                          )}
+                        </button>
+
+                        {/* 2. 节点名称标签：绝对定位悬挂在圆环正下方，不影响圆心中轴 */}
+                        <button
+                          onClick={() => setSelectedId(p.node.id)}
+                          className={`pointer-events-auto absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded cursor-pointer transition-colors ${isSel
+                              ? 'text-amber-300 bg-amber-950/80 border border-amber-500/40 shadow-sm'
+                              : 'text-zinc-300 bg-zinc-950/90 border border-zinc-900/80 hover:text-zinc-100'
+                            }`}
+                        >
+                          {p.node.name}
+                        </button>
                       </div>
-                      <span
-                        className={`text-[10px] font-bold mt-1.5 whitespace-nowrap px-1.5 py-0.5 rounded ${isSel
-                            ? 'text-amber-300 bg-amber-950/60 border border-amber-500/30'
-                            : 'text-zinc-400 bg-zinc-950/80'
-                          }`}
-                      >
-                        {p.node.name}
-                      </span>
-                    </button>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
           </div>
