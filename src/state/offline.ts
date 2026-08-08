@@ -1,7 +1,7 @@
 import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
-import { processFacility } from './facility';
+import { processFacility, resolveDutyBonus } from './facility';
 import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
@@ -212,7 +212,7 @@ export function calculateDetailedOfflineProgress(
     const units = updatedFacilities[type];
     const multiUnit = units.length > 1;
     updatedFacilities[type] = units.map((fac, unitIndex) => {
-      const r = processFacility(fac, currentInventory, actualSeconds);
+      const r = processFacility(fac, currentInventory, actualSeconds, resolveDutyBonus(state, type, unitIndex));
 
       // 产出并入离线报告
       Object.entries(r.produced).forEach(([itemId, qty]) => {

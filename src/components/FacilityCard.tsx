@@ -4,11 +4,12 @@ import { useToast } from './ToastSystem';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
-import { getQueueCapacity, getActualDuration } from '../state/facility';
+import { HEROES_CONFIG } from '../data/heroes';
+import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../state/facility';
 import { getRecipeDisplayName } from '../state/workshop';
 import GameIcon from './GameIcon';
 import type { AutomationFacility, FacilityType } from '../types/game';
-import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers } from 'lucide-react';
+import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers, UserCog } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // 共用子组件：配方消耗/产出展示行
@@ -87,10 +88,12 @@ function FacilityUnitCard({
     enqueueRecipe,
     removeQueueEntry,
     setFacilityActive,
+    assignHeroToDuty,
     addLog,
   } = useGame();
   const { showToast } = useToast();
   const [selectedRecipe, setSelectedRecipe] = useState('');
+  const [showGarrisonPicker, setShowGarrisonPicker] = useState(false);
 
   const { accent, glow, barClass, runningBg, iconBg, iconBorder } = theme;
   const units = state.shelter.facilities[type];
@@ -113,7 +116,20 @@ function FacilityUnitCard({
     !Object.entries(headRecipe.cost).every(([itemId, qty]) => getInvQty(itemId) >= qty);
   const isRunning = fac.active !== false && fac.queue.length > 0;
   const progress = fac.currentProgress || 0;
-  const cycleTime = headRecipe ? getActualDuration(headRecipe.id, level) : 0;
+  const dutyMeta = resolveDutyBonus(state, type, unitIndex);
+  const speedMult = dutyMeta?.facilitySpeedMultiplier ?? 0;
+  const cycleTime = headRecipe ? getActualDuration(headRecipe.id, level, speedMult) : 0;
+
+  // 查找驻守此 unit 的英雄
+  const garrisonHeroId = Object.entries(state.heroes).find(
+    ([, h]) => h.logisticsFacilityId?.type === 'facility' && h.logisticsFacilityId.targetId === `${type}_${unitIndex}`
+  )?.[0];
+  const garrisonHero = garrisonHeroId ? HEROES_CONFIG[garrisonHeroId] : null;
+
+  // 可驻守的英雄列表：已获得、未驻守其他设施/岗位、未上阵
+  const availableHeroes = Object.entries(state.heroes)
+    .filter(([, h]) => !h.logisticsFacilityId)
+    .map(([id]) => id);
 
   const handleEnqueue = () => {
     if (!selectedRecipe) return;
@@ -190,6 +206,87 @@ function FacilityUnitCard({
             )}
           </button>
         </div>
+
+        {/* ── 驻守英雄徽章 ── */}
+        <div className="flex items-center justify-between bg-zinc-950/60 rounded-lg px-2.5 py-1.5 border border-zinc-800/50">
+          {garrisonHero ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <UserCog className={`w-3 h-3 ${accent}`} />
+                <span className="text-[10px] font-bold text-zinc-200">{garrisonHero.name}</span>
+                {dutyMeta?.facilitySpeedMultiplier && (
+                  <span className="text-[9px] text-emerald-400">+{Math.round(dutyMeta.facilitySpeedMultiplier * 100)}%速度</span>
+                )}
+                {dutyMeta?.facilityYieldMultiplier && (
+                  <span className="text-[9px] text-emerald-400">+{Math.round(dutyMeta.facilityYieldMultiplier * 100)}%产量</span>
+                )}
+                {dutyMeta?.facilityCostReduction && (
+                  <span className="text-[9px] text-emerald-400">-{Math.round(dutyMeta.facilityCostReduction * 100)}%原料</span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  if (garrisonHeroId && assignHeroToDuty(garrisonHeroId, null)) {
+                    showToast(`${garrisonHero.name} 已解除驻守。`, 'info');
+                  }
+                }}
+                className="text-[9px] text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+              >
+                解除
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-[9px] text-zinc-500 flex items-center gap-1">
+                <UserCog className="w-3 h-3 text-zinc-600" />
+                未驻守英雄
+              </span>
+              <button
+                onClick={() => setShowGarrisonPicker(true)}
+                className="text-[9px] text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+              >
+                驻守
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* 驻守英雄选择器 */}
+        {showGarrisonPicker && (
+          <div className="flex items-center gap-1.5 flex-wrap bg-zinc-950/80 rounded-lg px-2 py-1.5 border border-zinc-800">
+            <span className="text-[9px] text-zinc-500 shrink-0">选择驻守英雄：</span>
+            {availableHeroes.length === 0 ? (
+              <span className="text-[9px] text-zinc-600">无可用英雄</span>
+            ) : (
+              availableHeroes.map(id => {
+                const hero = HEROES_CONFIG[id];
+                return (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      if (assignHeroToDuty(id, { type: 'facility', targetId: `${type}_${unitIndex}` })) {
+                        showToast(`${hero?.name || id} 已驻守 ${fac.name}。`, 'success');
+                        setShowGarrisonPicker(false);
+                      }
+                    }}
+                    className="text-[9px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 cursor-pointer transition-colors"
+                  >
+                    {hero?.name || id}
+                    {hero?.dutyMeta?.facilitySpeedMultiplier && <span className="text-emerald-400 ml-0.5">速</span>}
+                    {hero?.dutyMeta?.facilityYieldMultiplier && <span className="text-emerald-400 ml-0.5">产</span>}
+                    {hero?.dutyMeta?.facilityCostReduction && <span className="text-emerald-400 ml-0.5">省</span>}
+                  </button>
+                );
+              })
+            )}
+            <button
+              onClick={() => setShowGarrisonPicker(false)}
+              className="text-[9px] text-zinc-500 hover:text-zinc-300 ml-auto cursor-pointer"
+            >
+              取消
+            </button>
+          </div>
+        )}
 
         {/* ── 配方入队 ── */}
         <div className="space-y-1.5">

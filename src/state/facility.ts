@@ -1,4 +1,6 @@
 import type { AutomationFacility, FacilityType, GameState } from '../types/game';
+import type { HeroDutyMeta } from '../data/heroes';
+import { HEROES_CONFIG } from '../data/heroes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
 import type { UpdateResult } from './types';
@@ -11,19 +13,37 @@ type UpgradeStatType = 'battery' | 'generator' | 'recycler' | FacilityType;
 // 队列容量 = 设施等级（Lv1 = 1 个配方位，Lv5 = 5 个）
 export const getQueueCapacity = (level: number): number => Math.max(1, Math.floor(level));
 
-// 单次加工实际耗时：效率随设施等级提升（每级 +10%，与 shelterUpgrades 配置一致）
-export const getActualDuration = (recipeId: string, level: number): number => {
+// 单次加工实际耗时：效率随设施等级提升（每级 +10%），驻守英雄 dutyMeta 速度加成乘算叠加
+// speedMultiplier = 0 时无加成（向后兼容）
+export const getActualDuration = (recipeId: string, level: number, speedMultiplier = 0): number => {
   const recipe = AUTO_RECIPES[recipeId];
   if (!recipe) return 0;
-  return Math.max(1, Math.floor((recipe.duration ?? 0) / (1 + level * 0.1)));
+  return Math.max(1, Math.floor((recipe.duration ?? 0) / ((1 + level * 0.1) * (1 + speedMultiplier))));
 };
 
-const canAfford = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>): boolean =>
-  Object.entries(recipe.cost).every(([itemId, qty]) => (inventory[itemId] || 0) >= qty);
+// 解析设施驻守英雄的 dutyMeta 加成（ADR-0018：设施驻守机制补全）
+// targetId 格式 '${facilityType}_${unitIndex}'，反查 state.heroes 找到驻守英雄的 dutyMeta
+export const resolveDutyBonus = (state: GameState, type: FacilityType, unitIndex: number): HeroDutyMeta | null => {
+  const targetId = `${type}_${unitIndex}`;
+  for (const [heroId, hero] of Object.entries(state.heroes)) {
+    if (hero.logisticsFacilityId?.type === 'facility' && hero.logisticsFacilityId.targetId === targetId) {
+      return HEROES_CONFIG[heroId]?.dutyMeta ?? null;
+    }
+  }
+  return null;
+};
 
-const consumeInputs = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>): void => {
+// dutyMeta 原料消耗减免：max(1, floor(qty * (1 - costReduction)))，最低消耗 1
+const canAffordWithReduction = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>, costReduction: number): boolean =>
+  Object.entries(recipe.cost).every(([itemId, qty]) => {
+    const reducedQty = Math.max(1, Math.floor(qty * (1 - costReduction)));
+    return (inventory[itemId] || 0) >= reducedQty;
+  });
+
+const consumeInputsWithReduction = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>, costReduction: number): void => {
   Object.entries(recipe.cost).forEach(([itemId, qty]) => {
-    inventory[itemId] = (inventory[itemId] || 0) - qty;
+    const reducedQty = Math.max(1, Math.floor(qty * (1 - costReduction)));
+    inventory[itemId] = (inventory[itemId] || 0) - reducedQty;
   });
 };
 
@@ -45,16 +65,22 @@ export interface FacilityProcessResult {
 
 // 推进一台设施运转 seconds 秒（在线 tick 传 1，离线结算传总秒数）。
 // inventory 就地修改（启动扣料、完成加产出）；资源不足时暂停等待，队首不跳过。
+// dutyMeta（可选）：驻守英雄的后勤加成，影响速度/产量/原料消耗
 export function processFacility(
   fac: AutomationFacility,
   inventory: Record<string, number>,
-  seconds: number
+  seconds: number,
+  dutyMeta?: HeroDutyMeta | null
 ): FacilityProcessResult {
   const produced: Record<string, number> = {};
   const completed: Record<string, number> = {};
   if (fac.active === false || seconds <= 0) {
     return { facility: fac, produced, completed };
   }
+
+  const speedMult = dutyMeta?.facilitySpeedMultiplier ?? 0;
+  const yieldMult = dutyMeta?.facilityYieldMultiplier ?? 0;
+  const costReduction = dutyMeta?.facilityCostReduction ?? 0;
 
   let queue = [...fac.queue];
   let timeLeft = fac.timeLeft;
@@ -69,7 +95,7 @@ export function processFacility(
   let remaining = seconds;
 
   while (remaining > 0 && head) {
-    const duration = getActualDuration(head.id, fac.level);
+    const duration = getActualDuration(head.id, fac.level, speedMult);
     if (timeLeft > 0) {
       // 进行中的一轮
       const consume = Math.min(timeLeft, remaining);
@@ -77,10 +103,11 @@ export function processFacility(
       remaining -= consume;
       if (timeLeft > 0) break; // 本轮未完成，剩余进度保留到下次
 
-      // 一轮完成：产出并入账，队首出队
+      // 一轮完成：产出并入账（dutyMeta 产量加成：floor(qty * (1 + yieldMult))）
       Object.entries(head.reward).forEach(([itemId, qty]) => {
-        inventory[itemId] = (inventory[itemId] || 0) + qty;
-        produced[itemId] = (produced[itemId] || 0) + qty;
+        const boostedQty = Math.floor(qty * (1 + yieldMult));
+        inventory[itemId] = (inventory[itemId] || 0) + boostedQty;
+        produced[itemId] = (produced[itemId] || 0) + boostedQty;
       });
       completed[head.id] = (completed[head.id] || 0) + 1;
       queue.shift();
@@ -90,9 +117,9 @@ export function processFacility(
         timeLeft = 0;
         break;
       }
-      // 尝试启动下一配方
-      if (canAfford(head, inventory)) {
-        consumeInputs(head, inventory);
+      // 尝试启动下一配方（dutyMeta 原料加成：max(1, floor(qty * (1 - costReduction)))）
+      if (canAffordWithReduction(head, inventory, costReduction)) {
+        consumeInputsWithReduction(head, inventory, costReduction);
         timeLeft = duration;
       } else {
         timeLeft = 0;
@@ -100,8 +127,8 @@ export function processFacility(
       }
     } else {
       // 空闲：尝试启动队首配方
-      if (canAfford(head, inventory)) {
-        consumeInputs(head, inventory);
+      if (canAffordWithReduction(head, inventory, costReduction)) {
+        consumeInputsWithReduction(head, inventory, costReduction);
         timeLeft = duration;
       } else {
         break; // 资源不足：暂停等待
@@ -110,7 +137,7 @@ export function processFacility(
   }
 
   const currentHead = headId ? AUTO_RECIPES[headId] : null;
-  const currentDuration = currentHead ? getActualDuration(currentHead.id, fac.level) : 0;
+  const currentDuration = currentHead ? getActualDuration(currentHead.id, fac.level, speedMult) : 0;
   const progress = timeLeft > 0 && currentDuration > 0
     ? Math.min(100, Math.round(((currentDuration - timeLeft) / currentDuration) * 100))
     : 0;

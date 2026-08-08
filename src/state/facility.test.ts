@@ -9,7 +9,8 @@ import {
   upgradeShelterStatUpdate,
   processFacility,
   getQueueCapacity,
-  getActualDuration
+  getActualDuration,
+  resolveDutyBonus
 } from './facility';
 import { mergeSavedState } from './persistence';
 
@@ -415,6 +416,78 @@ describe('配方队列（ticket 13）', () => {
       expect(merged.shelter.facilities.smelter[0].queue).not.toContain('craft_nanite_slurry');
       expect(merged.shelter.facilities.assembler[0].queue).toEqual(['assemble_ration']);
       expect(merged.shelter.facilities.assembler[0].queue).not.toContain('craft_rusted_spring');
+    });
+  });
+
+  describe('dutyMeta 加成（ADR-0018：设施驻守）', () => {
+    it('getActualDuration 扩展第三参：speedMultiplier=0 时向后兼容', () => {
+      expect(getActualDuration('smelt_alloy', 1, 0)).toBe(27); // 30 / 1.1
+      expect(getActualDuration('smelt_alloy', 1)).toBe(27);    // 不传第三参，默认 0
+    });
+
+    it('getActualDuration 速度加成乘算叠加：level + speedMultiplier', () => {
+      // 30 / ((1 + 1*0.1) * (1 + 0.25)) = 30 / (1.1 * 1.25) = 30 / 1.375 = 21.8 -> floor 21
+      expect(getActualDuration('smelt_alloy', 1, 0.25)).toBe(21);
+      // 30 / ((1 + 5*0.1) * (1 + 0.25)) = 30 / (1.5 * 1.25) = 30 / 1.875 = 16
+      expect(getActualDuration('smelt_alloy', 5, 0.25)).toBe(16);
+    });
+
+    it('resolveDutyBonus 无驻守英雄时返回 null', () => {
+      const state = baseState();
+      expect(resolveDutyBonus(state, 'smelter', 0)).toBeNull();
+    });
+
+    it('resolveDutyBonus 有驻守英雄时返回 dutyMeta', () => {
+      const state = baseState();
+      // nova 有 facilitySpeedMultiplier: 0.25
+      state.heroes.nova.logisticsFacilityId = { type: 'facility', targetId: 'smelter_0' };
+      const bonus = resolveDutyBonus(state, 'smelter', 0);
+      expect(bonus?.facilitySpeedMultiplier).toBe(0.25);
+    });
+
+    it('processFacility 无 dutyMeta 时行为不变（向后兼容）', () => {
+      const state = baseState();
+      state.inventory.scrap_metal = 10;
+      const fac = { ...smelter(state), queue: ['smelt_alloy'], timeLeft: 0 };
+      const r = processFacility(fac, state.inventory, 27);
+      expect(r.facility.queue).toEqual([]);
+      expect(state.inventory.alloy_plate).toBe(1);
+      expect(state.inventory.scrap_metal).toBe(10 - 2);
+      expect(r.facility.queue).toEqual([]);
+    });
+
+    it('processFacility 速度加成缩短加工时间', () => {
+      const state = baseState();
+      state.inventory.scrap_metal = 10;
+      const fac = { ...smelter(state), queue: ['smelt_alloy'], timeLeft: 0 };
+      // 有 +25% 速度时，27 秒已足够完成（实际耗时 21 秒）
+      const dutyMeta = { facilitySpeedMultiplier: 0.25 };
+      const r = processFacility(fac, state.inventory, 27, dutyMeta);
+      expect(r.facility.queue).toEqual([]);
+      expect(state.inventory.alloy_plate).toBe(1);
+    });
+
+    it('processFacility 产量加成增加产出数量', () => {
+      const state = baseState();
+      state.inventory.scrap_metal = 10;
+      const fac = { ...smelter(state), queue: ['smelt_alloy'], timeLeft: 0 };
+      // smelt_alloy 产出 1 个 alloy_plate，+20% 产量 -> floor(1 * 1.2) = 1
+      // 用一个产量 >1 的配方测试更有效，但 smelt_alloy 只产 1 个
+      // 验证 floor 公式：floor(1 * 1.2) = 1（不变），floor(2 * 1.2) = 2（不变）
+      // 改用 +100% 验证：floor(1 * 2.0) = 2
+      const dutyMeta = { facilityYieldMultiplier: 1.0 };
+      processFacility(fac, state.inventory, 27, dutyMeta);
+      expect(state.inventory.alloy_plate).toBe(2); // 1 * (1 + 1.0) = 2
+    });
+
+    it('processFacility 原料减免降低消耗（最低 1）', () => {
+      const state = baseState();
+      state.inventory.scrap_metal = 10;
+      const fac = { ...smelter(state), queue: ['smelt_alloy'], timeLeft: 0 };
+      // smelt_alloy 消耗 2 个 scrap_metal，-50% 原料 -> max(1, floor(2 * 0.5)) = 1
+      const dutyMeta = { facilityCostReduction: 0.5 };
+      processFacility(fac, state.inventory, 27, dutyMeta);
+      expect(state.inventory.scrap_metal).toBe(10 - 1);
     });
   });
 });
