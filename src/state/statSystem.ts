@@ -61,10 +61,12 @@ export interface SpecialAttributes {
 export type StatKey = keyof BaseAttributes | keyof PrimaryAttributes | keyof SpecialAttributes;
 
 // 统一加成表达单元：flat 为绝对值（+5 攻击）；percent 为小数（0.10 = +10%），多来源加算
+// source 为可选来源标注（如"废土利刃"、"钢铁壁垒"、"Lv10里程碑"），供 UI 展开时展示来源分解
 export interface StatModifier {
   stat: StatKey;
   kind: 'flat' | 'percent';
   value: number;
+  source?: string;
 }
 
 // 聚合中间态：每属性 flat/percent 总和
@@ -83,6 +85,41 @@ export function aggregateModifiers(modifiers: StatModifier[]): ModifierMap {
     entry[m.kind] += m.value;
   }
   return acc;
+}
+
+// 按来源分组的聚合结果：source -> stat -> { flat, percent }
+// 供 UI 展开某属性时展示"来自哪些来源、各贡献多少"
+export type SourceGroupedModifiers = Record<string, ModifierMap>;
+
+const UNKNOWN_SOURCE = '未知来源';
+
+// 按来源分组聚合：保留每条 modifier 的 source 信息，同来源同属性 flat/percent 分别求和
+// 与 aggregateModifiers 互补：后者丢弃来源直接全局求和，用于 calculateEntityStats；
+// 本函数保留来源维度，用于 UI 来源分解展示
+export function aggregateModifiersBySource(modifiers: StatModifier[]): SourceGroupedModifiers {
+  const acc: SourceGroupedModifiers = {};
+  for (const m of modifiers) {
+    const source = m.source ?? UNKNOWN_SOURCE;
+    const group = acc[source] ?? (acc[source] = {});
+    const entry = group[m.stat] ?? (group[m.stat] = { flat: 0, percent: 0 });
+    entry[m.kind] += m.value;
+  }
+  return acc;
+}
+
+// 从按来源分组的结果中，提取某个属性的所有来源贡献（供 UI 展开单行时使用）
+export function getStatSourcesByStat(
+  grouped: SourceGroupedModifiers,
+  stat: StatKey
+): Array<{ source: string; flat: number; percent: number }> {
+  const results: Array<{ source: string; flat: number; percent: number }> = [];
+  for (const [source, statMap] of Object.entries(grouped)) {
+    const entry = statMap[stat];
+    if (entry && (entry.flat !== 0 || entry.percent !== 0)) {
+      results.push({ source, flat: entry.flat, percent: entry.percent });
+    }
+  }
+  return results;
 }
 
 // 属性展示元数据（数据驱动）：新增 StatKey 后 TS 强制在本表补一行

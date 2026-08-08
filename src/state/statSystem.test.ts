@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateEntityStats, aggregateModifiers, formatModifiers, DEFAULT_PRIMARY_ATTRIBUTES } from './statSystem';
+import { calculateEntityStats, aggregateModifiers, aggregateModifiersBySource, getStatSourcesByStat, formatModifiers, DEFAULT_PRIMARY_ATTRIBUTES } from './statSystem';
 import type { BaseAttributes, PrimaryAttributes } from './statSystem';
 
 describe('statSystem - Primary Attribute Bonus Engine', () => {
@@ -244,6 +244,98 @@ describe('statSystem - Modifier Pipeline (stat-bonus-unification 01)', () => {
         { stat: 'attack', kind: 'percent', value: 0.10 },
         { stat: 'defense', kind: 'percent', value: 0.10 }
       ])).toBe('攻击 +10%、防御 +10%');
+    });
+  });
+});
+
+describe('statSystem - Source-Grouped Aggregation (detailed-stats-panel-rework 01)', () => {
+  describe('aggregateModifiersBySource', () => {
+    it('groups modifiers by source, summing flat/percent per stat within each source', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 10, source: '废土利刃' },
+        { stat: 'attack', kind: 'percent', value: 0.05, source: '废土利刃' },
+        { stat: 'attack', kind: 'flat', value: 5, source: '钢铁壁垒' },
+        { stat: 'maxHp', kind: 'percent', value: 0.10, source: '废土利刃' }
+      ]);
+
+      expect(grouped['废土利刃']).toBeDefined();
+      expect(grouped['废土利刃'].attack!.flat).toBe(10);
+      expect(grouped['废土利刃'].attack!.percent).toBeCloseTo(0.05);
+      expect(grouped['废土利刃'].maxHp!.percent).toBeCloseTo(0.10);
+
+      expect(grouped['钢铁壁垒']).toBeDefined();
+      expect(grouped['钢铁壁垒'].attack!.flat).toBe(5);
+    });
+
+    it('assigns modifiers without source to "未知来源"', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 10 },
+        { stat: 'defense', kind: 'percent', value: 0.05, source: '装备' }
+      ]);
+
+      expect(grouped['未知来源']).toBeDefined();
+      expect(grouped['未知来源'].attack!.flat).toBe(10);
+      expect(grouped['装备']).toBeDefined();
+      expect(grouped['装备'].defense!.percent).toBeCloseTo(0.05);
+    });
+
+    it('returns empty object for no modifiers', () => {
+      expect(aggregateModifiersBySource([])).toEqual({});
+    });
+
+    it('keeps sources separate even for the same stat', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 10, source: '来源A' },
+        { stat: 'attack', kind: 'flat', value: 20, source: '来源B' }
+      ]);
+
+      expect(grouped['来源A'].attack!.flat).toBe(10);
+      expect(grouped['来源B'].attack!.flat).toBe(20);
+    });
+
+    it('sums same-source same-stat flat and percent independently', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 5, source: '来源A' },
+        { stat: 'attack', kind: 'flat', value: 3, source: '来源A' },
+        { stat: 'attack', kind: 'percent', value: 0.10, source: '来源A' }
+      ]);
+
+      expect(grouped['来源A'].attack!.flat).toBe(8);
+      expect(grouped['来源A'].attack!.percent).toBeCloseTo(0.10);
+    });
+  });
+
+  describe('getStatSourcesByStat', () => {
+    it('extracts all source contributions for a given stat', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 10, source: '废土利刃' },
+        { stat: 'attack', kind: 'percent', value: 0.05, source: '钢铁壁垒' },
+        { stat: 'maxHp', kind: 'percent', value: 0.10, source: '废土利刃' }
+      ]);
+
+      const attackSources = getStatSourcesByStat(grouped, 'attack');
+      expect(attackSources).toHaveLength(2);
+      expect(attackSources).toContainEqual({ source: '废土利刃', flat: 10, percent: 0 });
+      expect(attackSources).toContainEqual({ source: '钢铁壁垒', flat: 0, percent: 0.05 });
+    });
+
+    it('returns empty array for a stat with no modifiers', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 10, source: '废土利刃' }
+      ]);
+
+      expect(getStatSourcesByStat(grouped, 'defense')).toEqual([]);
+    });
+
+    it('excludes source entries where both flat and percent are zero', () => {
+      const grouped = aggregateModifiersBySource([
+        { stat: 'attack', kind: 'flat', value: 0, source: '来源A' },
+        { stat: 'attack', kind: 'flat', value: 10, source: '来源B' }
+      ]);
+
+      const attackSources = getStatSourcesByStat(grouped, 'attack');
+      expect(attackSources).toHaveLength(1);
+      expect(attackSources[0].source).toBe('来源B');
     });
   });
 });
