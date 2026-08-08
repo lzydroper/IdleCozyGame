@@ -4,6 +4,7 @@ import { EXPEDITION_LOCATIONS } from '../../data/expeditionLocations';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
 import { ITEMS_CONFIG } from '../../data/items';
 import { getHeroName, getInvQty } from '../../utils/gameUtils';
+import { resolveDutyBonuses } from '../../state/duty';
 import { useToast } from '../ToastSystem';
 import DutyAssignModal from './DutyAssignModal';
 import { Compass, Rocket, Clock, LogOut, Search, Info, Play, ShieldAlert } from 'lucide-react';
@@ -117,6 +118,15 @@ const ExpeditionPanel: React.FC = () => {
                     探索员: <strong className="text-zinc-200 font-bold">{getHeroName(state.shelter.assignedExplorerId || '')}</strong>
                     <span className="ml-1">[{getHeroClassLabel(state.shelter.assignedExplorerId || '')} · {getHeroFactionLabel(state.shelter.assignedExplorerId || '')}]</span>
                   </div>
+                  {(() => {
+                    // 探索员加成（作用域化）：拾荒间隔缩短 / 稀有掉落加成
+                    const eb = resolveDutyBonuses(HEROES_CONFIG[state.shelter.assignedExplorerId || '']?.dutyMeta, { role: 'expedition' });
+                    const parts: string[] = [];
+                    if (eb.intervalReduction > 0) parts.push(`拾荒间隔 -${Math.round(eb.intervalReduction * 100)}%`);
+                    if (eb.lootChanceBonus > 0) parts.push(`稀有掉落 +${Math.round(eb.lootChanceBonus * 100)}%`);
+                    if (parts.length === 0) return null;
+                    return <div className="text-[9px] text-cyan-300/80 mt-0.5">探索员加成：{parts.join(' · ')}</div>;
+                  })()}
                 </div>
               </div>
               <button

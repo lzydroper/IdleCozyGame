@@ -1,8 +1,8 @@
 import type { AutomationFacility, FacilityType, GameState } from '../types/game';
-import type { HeroDutyMeta } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
+import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -21,16 +21,20 @@ export const getActualDuration = (recipeId: string, level: number, speedMultipli
   return Math.max(1, Math.floor((recipe.duration ?? 0) / ((1 + level * 0.1) * (1 + speedMultiplier))));
 };
 
-// 解析设施驻守英雄的 dutyMeta 加成（ADR-0018：设施驻守机制补全）
+// 解析设施驻守英雄的加成（作用域化：bonuses 中匹配该设备的加成聚合生效）
 // targetId 格式 '${facilityType}_${unitIndex}'，反查 state.heroes 找到驻守英雄的 dutyMeta
-export const resolveDutyBonus = (state: GameState, type: FacilityType, unitIndex: number): HeroDutyMeta | null => {
+// 返回驻守英雄 id（供 UI 显示）与聚合后的加成值
+export const resolveDutyBonus = (state: GameState, type: FacilityType, unitIndex: number): { heroId: string | null; bonuses: DutyResolvedBonus } => {
   const targetId = `${type}_${unitIndex}`;
   for (const [heroId, hero] of Object.entries(state.heroes)) {
     if (hero.logisticsFacilityId?.type === 'facility' && hero.logisticsFacilityId.targetId === targetId) {
-      return HEROES_CONFIG[heroId]?.dutyMeta ?? null;
+      return {
+        heroId,
+        bonuses: resolveDutyBonuses(HEROES_CONFIG[heroId]?.dutyMeta, { role: 'facility', facilityType: type })
+      };
     }
   }
-  return null;
+  return { heroId: null, bonuses: EMPTY_DUTY_BONUS };
 };
 
 // dutyMeta 原料消耗减免：max(1, floor(qty * (1 - costReduction)))，最低消耗 1
@@ -65,12 +69,12 @@ export interface FacilityProcessResult {
 
 // 推进一台设施运转 seconds 秒（在线 tick 传 1，离线结算传总秒数）。
 // inventory 就地修改（启动扣料、完成加产出）；资源不足时暂停等待，队首不跳过。
-// dutyMeta（可选）：驻守英雄的后勤加成，影响速度/产量/原料消耗
+// resolved（必传）：驻守英雄的加成，已按设备作用域解析（无驻守传 EMPTY_DUTY_BONUS）
 export function processFacility(
   fac: AutomationFacility,
   inventory: Record<string, number>,
   seconds: number,
-  dutyMeta?: HeroDutyMeta | null
+  resolved: DutyResolvedBonus = EMPTY_DUTY_BONUS
 ): FacilityProcessResult {
   const produced: Record<string, number> = {};
   const completed: Record<string, number> = {};
@@ -78,9 +82,9 @@ export function processFacility(
     return { facility: fac, produced, completed };
   }
 
-  const speedMult = dutyMeta?.facilitySpeedMultiplier ?? 0;
-  const yieldMult = dutyMeta?.facilityYieldMultiplier ?? 0;
-  const costReduction = dutyMeta?.facilityCostReduction ?? 0;
+  const speedMult = resolved.speedMultiplier;
+  const yieldMult = resolved.yieldMultiplier;
+  const costReduction = resolved.costReduction;
 
   let queue = [...fac.queue];
   let timeLeft = fac.timeLeft;

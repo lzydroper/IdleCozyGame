@@ -12,6 +12,7 @@ import {
   getActualDuration,
   resolveDutyBonus
 } from './facility';
+import { EMPTY_DUTY_BONUS } from './duty';
 import { mergeSavedState } from './persistence';
 
 // 以初始存档为基底构造测试状态
@@ -432,17 +433,32 @@ describe('配方队列（ticket 13）', () => {
       expect(getActualDuration('smelt_alloy', 5, 0.25)).toBe(16);
     });
 
-    it('resolveDutyBonus 无驻守英雄时返回 null', () => {
+    it('resolveDutyBonus 无驻守英雄时返回空加成', () => {
       const state = baseState();
-      expect(resolveDutyBonus(state, 'smelter', 0)).toBeNull();
+      expect(resolveDutyBonus(state, 'smelter', 0)).toEqual({ heroId: null, bonuses: EMPTY_DUTY_BONUS });
     });
 
-    it('resolveDutyBonus 有驻守英雄时返回 dutyMeta', () => {
+    it('resolveDutyBonus 有驻守英雄时按设备作用域返回加成', () => {
       const state = baseState();
-      // nova 有 facilitySpeedMultiplier: 0.25
+      // nova 全局 +25% 速度（作用域化：all → 对熔炉生效）
       state.heroes.nova.logisticsFacilityId = { type: 'facility', targetId: 'smelter_0' };
-      const bonus = resolveDutyBonus(state, 'smelter', 0);
-      expect(bonus?.facilitySpeedMultiplier).toBe(0.25);
+      const { heroId, bonuses } = resolveDutyBonus(state, 'smelter', 0);
+      expect(heroId).toBe('nova');
+      expect(bonuses.speedMultiplier).toBe(0.25);
+      expect(bonuses.yieldMultiplier).toBe(0);
+    });
+
+    it('resolveDutyBonus 熔炉专精：罗伊驻守熔炉 +30%，驻守组装台仅 +15%', () => {
+      const state = baseState();
+      // roy 非初始英雄，用 nova 状态模板注入
+      state.heroes.roy = structuredClone(state.heroes.nova);
+      state.heroes.roy.logisticsFacilityId = { type: 'facility', targetId: 'smelter_0' };
+      const smelterBonus = resolveDutyBonus(state, 'smelter', 0).bonuses;
+      expect(smelterBonus.speedMultiplier).toBeCloseTo(0.45, 5); // 熔炉专精 0.30 + 全局 0.15
+      // 同一英雄改驻守组装台：只吃到全局 0.15（熔炉专精被过滤）
+      state.heroes.roy.logisticsFacilityId = { type: 'facility', targetId: 'assembler_0' };
+      const assemblerBonus = resolveDutyBonus(state, 'assembler', 0).bonuses;
+      expect(assemblerBonus.speedMultiplier).toBe(0.15);
     });
 
     it('processFacility 无 dutyMeta 时行为不变（向后兼容）', () => {
@@ -461,8 +477,8 @@ describe('配方队列（ticket 13）', () => {
       state.inventory.scrap_metal = 10;
       const fac = { ...smelter(state), queue: ['smelt_alloy'], timeLeft: 0 };
       // 有 +25% 速度时，27 秒已足够完成（实际耗时 21 秒）
-      const dutyMeta = { facilitySpeedMultiplier: 0.25 };
-      const r = processFacility(fac, state.inventory, 27, dutyMeta);
+      const dutyResolved = { ...EMPTY_DUTY_BONUS, speedMultiplier: 0.25 };
+      const r = processFacility(fac, state.inventory, 27, dutyResolved);
       expect(r.facility.queue).toEqual([]);
       expect(state.inventory.alloy_plate).toBe(1);
     });
@@ -475,8 +491,8 @@ describe('配方队列（ticket 13）', () => {
       // 用一个产量 >1 的配方测试更有效，但 smelt_alloy 只产 1 个
       // 验证 floor 公式：floor(1 * 1.2) = 1（不变），floor(2 * 1.2) = 2（不变）
       // 改用 +100% 验证：floor(1 * 2.0) = 2
-      const dutyMeta = { facilityYieldMultiplier: 1.0 };
-      processFacility(fac, state.inventory, 27, dutyMeta);
+      const dutyResolved = { ...EMPTY_DUTY_BONUS, yieldMultiplier: 1.0 };
+      processFacility(fac, state.inventory, 27, dutyResolved);
       expect(state.inventory.alloy_plate).toBe(2); // 1 * (1 + 1.0) = 2
     });
 
@@ -485,8 +501,8 @@ describe('配方队列（ticket 13）', () => {
       state.inventory.scrap_metal = 10;
       const fac = { ...smelter(state), queue: ['smelt_alloy'], timeLeft: 0 };
       // smelt_alloy 消耗 2 个 scrap_metal，-50% 原料 -> max(1, floor(2 * 0.5)) = 1
-      const dutyMeta = { facilityCostReduction: 0.5 };
-      processFacility(fac, state.inventory, 27, dutyMeta);
+      const dutyResolved = { ...EMPTY_DUTY_BONUS, costReduction: 0.5 };
+      processFacility(fac, state.inventory, 27, dutyResolved);
       expect(state.inventory.scrap_metal).toBe(10 - 1);
     });
   });

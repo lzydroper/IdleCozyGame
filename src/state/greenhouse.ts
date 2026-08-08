@@ -4,14 +4,15 @@ import { GAME_CONSTANTS } from '../data/gameConstants';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 import { HEROES_CONFIG } from '../data/heroes';
-import type { HeroDutyMeta } from '../data/heroes';
+import { EMPTY_DUTY_BONUS, resolveDutyBonuses, type DutyResolvedBonus } from './duty';
 
-// 反查温室驻守（浇水岗）英雄的 dutyMeta 特殊加成（07）：
-// facilitySpeedMultiplier → 生长速度；facilityYieldMultiplier → 收割产量；成本减免不应用于温室
-export const resolveWatererBonus = (state: GameState): HeroDutyMeta | null => {
+// 反查温室驻守（浇水岗）英雄的加成（作用域化：bonuses 中匹配温室的加成聚合生效）
+// speedMultiplier → 生长速度；yieldMultiplier → 收割产量（cropId 可选：细化到指定作物）；成本减免不应用于温室
+// cropId 传入时仅匹配「未限定作物或限定该作物」的加成，用于作物级专精（如阿梅的以太浆果专精）
+export const resolveWatererBonuses = (state: GameState, cropId?: string): DutyResolvedBonus => {
   const watererId = state.shelter.assignedWatererId;
-  if (!watererId) return null;
-  return HEROES_CONFIG[watererId]?.dutyMeta ?? null;
+  if (!watererId) return EMPTY_DUTY_BONUS;
+  return resolveDutyBonuses(HEROES_CONFIG[watererId]?.dutyMeta, { role: 'greenhouse', cropId });
 };
 
 // 种植作物：校验种子与空闲槽位后种下
@@ -112,8 +113,8 @@ export const harvestSlotUpdate = (state: GameState, slotId: number): UpdateResul
   }
 
   const config = CROPS_CONFIG[targetSlot.cropId as keyof typeof CROPS_CONFIG];
-  // 驻守产量加成（07）：驻守期间所有收割 floor(qty × (1 + yieldMult))
-  const yieldMult = resolveWatererBonus(state)?.facilityYieldMultiplier ?? 0;
+  // 驻守产量加成（07）：驻守期间所有收割 floor(qty × (1 + yieldMult))，支持作物级作用域
+  const yieldMult = resolveWatererBonuses(state, targetSlot.cropId).yieldMultiplier;
   const gatheredItems: Record<string, number> = {};
 
   const newInventory = { ...state.inventory };
@@ -147,11 +148,11 @@ export const batchHarvestUpdate = (state: GameState): UpdateResult<Record<string
 
   const accumulatedYields: Record<string, number> = {};
   const newInventory = { ...state.inventory };
-  // 驻守产量加成（07）：驻守期间所有收割 floor(qty × (1 + yieldMult))
-  const yieldMult = resolveWatererBonus(state)?.facilityYieldMultiplier ?? 0;
 
   slotsToHarvest.forEach(slot => {
     const config = CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG];
+    // 作物级产量加成（作用域化）：按槽位作物解析
+    const yieldMult = resolveWatererBonuses(state, slot.cropId ?? undefined).yieldMultiplier;
     Object.entries(config.yields).forEach(([item, qty]) => {
       const boosted = Math.floor(qty * (1 + yieldMult));
       accumulatedYields[item] = (accumulatedYields[item] || 0) + boosted;
@@ -186,16 +187,16 @@ export const autoHarvestAndReplantUpdate = (
   state: GameState,
   replantStrategy: ReplantStrategy
 ): UpdateResult<{ harvested: Record<string, number> | null }> => {
-  const yieldMult = resolveWatererBonus(state)?.facilityYieldMultiplier ?? 0;
   const harvested: Record<string, number> = {};
   const newInventory = { ...state.inventory };
   const harvestedSlots: { slotId: number; cropId: string }[] = [];
 
-  // 1. 收割所有成熟槽
+  // 1. 收割所有成熟槽（作物级产量加成：按槽位作物解析）
   const slotsAfterHarvest = state.greenhouse.slots.map(slot => {
     if (!slot.cropId || slot.growthProgress < 100) return slot;
     const config = CROPS_CONFIG[slot.cropId];
     if (!config) return slot;
+    const yieldMult = resolveWatererBonuses(state, slot.cropId).yieldMultiplier;
     Object.entries(config.yields).forEach(([item, qty]) => {
       const boosted = Math.floor(qty * (1 + yieldMult));
       harvested[item] = (harvested[item] || 0) + boosted;
@@ -292,7 +293,7 @@ export const advanceGreenhouseAutomation = (
   let cur = state;
   let remaining = seconds;
   const accumulated: Record<string, number> = {};
-  const speedMult = resolveWatererBonus(state)?.facilitySpeedMultiplier ?? 0;
+  const speedMult = resolveWatererBonuses(state).speedMultiplier;
 
   // 收割离线开始时就已成熟的槽位（code-review should-fix）：
   // 在线按 growthProgress >= 100 收割，离线循环按 growthTimeLeft > 0 推进，

@@ -2,8 +2,9 @@ import type { GameState, LogEntry } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus } from './facility';
-import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonus } from './greenhouse';
+import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonuses } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
+import { resolveDutyBonuses } from './duty';
 import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
@@ -88,7 +89,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
 
   // 2. 温室作物托管浇水与生长（06/07）
   const isWateredOnline = prev.shelter.assignedWatererId !== null;
-  const speedBonus = isWateredOnline ? (resolveWatererBonus(prev)?.facilitySpeedMultiplier ?? 0) : 0;
+  const speedBonus = isWateredOnline ? resolveWatererBonuses(prev).speedMultiplier : 0;
   const updatedSlots = prev.greenhouse.slots.map(slot => {
     if (!slot.cropId) return slot;
     const config = (CROPS_CONFIG as any)[slot.cropId];
@@ -152,7 +153,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     const units = updatedFacilities[type];
     const multiUnit = units.length > 1;
     updatedFacilities[type] = units.map((fac, unitIndex) => {
-      const r = processFacility(fac, currentInventory, elapsedSeconds, resolveDutyBonus(prev, type, unitIndex));
+      const r = processFacility(fac, currentInventory, elapsedSeconds, resolveDutyBonus(prev, type, unitIndex).bonuses);
       Object.entries(r.completed).forEach(([recipeId, count]) => {
         const recipe = AUTO_RECIPES[recipeId];
         logsToAdd.push({
@@ -171,7 +172,12 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   if (exp.locationId && prev.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
-      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval));
+      // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
+      const explorerBonuses = resolveDutyBonuses(
+        HEROES_CONFIG[prev.shelter.assignedExplorerId!]?.dutyMeta,
+        { role: 'expedition' }
+      );
+      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval * (1 - explorerBonuses.intervalReduction)));
 
       const timeDiff = now - (exp.lastScavengeTime || exp.startTime || now);
       const ticks = Math.floor(timeDiff / (actualInterval * 1000));
@@ -179,7 +185,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
         let scavengedCount: Record<string, number> = {};
         for (let t = 0; t < ticks; t++) {
           loc.lootTable.forEach(loot => {
-            if (Math.random() <= loot.chance) {
+            if (Math.random() <= Math.min(1, loot.chance + explorerBonuses.lootChanceBonus)) {
               const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
               scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
             }

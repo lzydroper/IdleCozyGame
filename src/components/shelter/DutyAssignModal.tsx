@@ -33,14 +33,23 @@ export const DutyAssignModal: React.FC<DutyAssignModalProps> = ({
     .filter(([id, h]) => !h.logisticsFacilityId && !party.includes(id))
     .map(([id]) => id);
 
+  // 展示特殊加成角标（作用域化）：如「全·速」「熔炉·速」「温室·产」「远征·掠」
   const dutyMetaLabel = (heroId: string): string[] => {
     const meta = HEROES_CONFIG[heroId]?.dutyMeta;
-    if (!meta) return [];
-    const labels: string[] = [];
-    if (meta.facilitySpeedMultiplier) labels.push('速');
-    if (meta.facilityYieldMultiplier) labels.push('产');
-    if (meta.facilityCostReduction) labels.push('省');
-    return labels;
+    if (!meta || !meta.bonuses || meta.bonuses.length === 0) return [];
+    return meta.bonuses.map(b => {
+      const scopeLabel =
+        b.scope.kind === 'all' ? '全' :
+        b.scope.kind === 'facility' ? (b.scope.facilityType === 'smelter' ? '熔炉' : '组装') :
+        b.scope.kind === 'greenhouse' ? '温室' : '远征';
+      const types: string[] = [];
+      if (b.speedMultiplier) types.push('速');
+      if (b.yieldMultiplier) types.push('产');
+      if (b.costReduction) types.push('省');
+      if (b.intervalReduction) types.push('掠');
+      if (b.lootChanceBonus) types.push('珍');
+      return `${scopeLabel}·${types.join('')}`;
+    });
   };
 
   const modalContent = (

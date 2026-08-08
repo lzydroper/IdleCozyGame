@@ -181,3 +181,34 @@ describe('applyTick 挂机（08）', () => {
     expect(next.greenhouse.autoFarm.cropId).toBe('aether_berry'); // 保留选种
   });
 });
+
+// 远征探索员加成（作用域化）：零 -20% 拾荒间隔（radar_station 300s → 240s）
+describe('applyTick 远征探索员加成（作用域化）', () => {
+  const makeExpeditionState = (explorerId: string | null, elapsedSec: number, now: number): GameState => {
+    return {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      inventory: { ration: 5 },
+      shelter: {
+        ...INITIAL_STATE.shelter,
+        assignedExplorerId: explorerId,
+        expedition: {
+          locationId: 'radar_station',
+          startTime: now - elapsedSec * 1000,
+          lastScavengeTime: now - elapsedSec * 1000
+        }
+      },
+      lastTick: now - 1000
+    };
+  };
+
+  it('零（-20% 拾荒间隔）：240 秒触发拾荒，无加成时不触发', () => {
+    const now = Date.now();
+    // 无加成：240s < 300s → 不触发，lastScavengeTime 保持
+    const plain = applyTick(makeExpeditionState(null, 240, now), now);
+    expect(plain.shelter.expedition.lastScavengeTime).toBe(now - 240 * 1000);
+    // 零加成：300 × 0.8 = 240s → 触发一次拾荒，lastScavengeTime 推进一个间隔
+    const boosted = applyTick(makeExpeditionState('zero', 240, now), now);
+    expect(boosted.shelter.expedition.lastScavengeTime).toBe(now); // lastScavengeTime + 1×240s = now
+  });
+});

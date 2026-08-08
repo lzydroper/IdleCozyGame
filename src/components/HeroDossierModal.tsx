@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../data/heroes';
 import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../data/heroLore';
 import { getAwakenedName } from '../state/awakening';
+import { describeDutyBonuses } from '../state/duty';
 import { useGame } from '../context/GameContext';
 import GameIcon from './GameIcon';
 import { UI_TOKENS } from '../data/uiConstants';
@@ -31,12 +32,11 @@ const HeroDossierModal: React.FC<HeroDossierModalProps> = ({ isOpen, heroId, onC
   const factionColor = HERO_FACTION_COLORS[config.faction];
   const duty = config.dutyMeta;
 
-  // 驻守特长文案（逐项拼接；无加成则显示「无后勤加成」）
+  // 驻守特长文案（作用域化；无加成则显示「无后勤加成」）
   const dutyParts: string[] = [];
   if (duty) {
-    if (duty.facilitySpeedMultiplier) dutyParts.push(`生产速度 +${Math.round(duty.facilitySpeedMultiplier * 100)}%`);
-    if (duty.facilityYieldMultiplier) dutyParts.push(`额外产出 +${Math.round(duty.facilityYieldMultiplier * 100)}%`);
-    if (duty.facilityCostReduction) dutyParts.push(`配方消耗 -${Math.round(duty.facilityCostReduction * 100)}%`);
+    const desc = describeDutyBonuses(duty);
+    if (desc) dutyParts.push(desc);
   }
 
   const modalContent = (

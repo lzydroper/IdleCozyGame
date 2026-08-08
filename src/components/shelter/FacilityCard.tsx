@@ -117,14 +117,12 @@ function FacilityUnitCard({
     !Object.entries(headRecipe.cost).every(([itemId, qty]) => getInvQty(state.inventory, itemId) >= qty);
   const isRunning = fac.active !== false && fac.queue.length > 0;
   const progress = fac.currentProgress || 0;
-  const dutyMeta = resolveDutyBonus(state, type, unitIndex);
-  const speedMult = dutyMeta?.facilitySpeedMultiplier ?? 0;
+  const dutyResolved = resolveDutyBonus(state, type, unitIndex);
+  const speedMult = dutyResolved.bonuses.speedMultiplier;
   const cycleTime = headRecipe ? getActualDuration(headRecipe.id, level, speedMult) : 0;
 
-  // 查找驻守此 unit 的英雄
-  const garrisonHeroId = Object.entries(state.heroes).find(
-    ([, h]) => h.logisticsFacilityId?.type === 'facility' && h.logisticsFacilityId.targetId === `${type}_${unitIndex}`
-  )?.[0];
+  // 驻守此 unit 的英雄（resolveDutyBonus 已反查）
+  const garrisonHeroId = dutyResolved.heroId;
   const garrisonHero = garrisonHeroId ? HEROES_CONFIG[garrisonHeroId] : null;
 
   const handleEnqueue = () => {
@@ -210,14 +208,14 @@ function FacilityUnitCard({
               <div className="flex items-center gap-1.5">
                 <UserCog className={`w-3 h-3 ${accent}`} />
                 <span className="text-[10px] font-bold text-zinc-200">{garrisonHero.name}</span>
-                {dutyMeta?.facilitySpeedMultiplier && (
-                  <span className="text-[9px] text-emerald-400">+{Math.round(dutyMeta.facilitySpeedMultiplier * 100)}%速度</span>
+                {dutyResolved.bonuses.speedMultiplier > 0 && (
+                  <span className="text-[9px] text-emerald-400">+{Math.round(dutyResolved.bonuses.speedMultiplier * 100)}%速度</span>
                 )}
-                {dutyMeta?.facilityYieldMultiplier && (
-                  <span className="text-[9px] text-emerald-400">+{Math.round(dutyMeta.facilityYieldMultiplier * 100)}%产量</span>
+                {dutyResolved.bonuses.yieldMultiplier > 0 && (
+                  <span className="text-[9px] text-emerald-400">+{Math.round(dutyResolved.bonuses.yieldMultiplier * 100)}%产量</span>
                 )}
-                {dutyMeta?.facilityCostReduction && (
-                  <span className="text-[9px] text-emerald-400">-{Math.round(dutyMeta.facilityCostReduction * 100)}%原料</span>
+                {dutyResolved.bonuses.costReduction > 0 && (
+                  <span className="text-[9px] text-emerald-400">-{Math.round(dutyResolved.bonuses.costReduction * 100)}%原料</span>
                 )}
               </div>
               <button

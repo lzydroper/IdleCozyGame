@@ -2,6 +2,7 @@ import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from 
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus } from './facility';
+import { resolveDutyBonuses } from './duty';
 import { advanceGreenhouseAutomation, maybeStopAutoFarmOnSeedDepletion } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
 import { getRecipeDisplayName } from './workshop';
@@ -174,7 +175,12 @@ export function calculateDetailedOfflineProgress(
   if (exp.locationId && state.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
-      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval));
+      // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
+      const explorerBonuses = resolveDutyBonuses(
+        HEROES_CONFIG[state.shelter.assignedExplorerId!]?.dutyMeta,
+        { role: 'expedition' }
+      );
+      const actualInterval = Math.max(30, Math.floor(loc.scavengeInterval * (1 - explorerBonuses.intervalReduction)));
       const scavengeTicks = Math.floor(actualSeconds / actualInterval);
 
       if (scavengeTicks > 0) {
@@ -187,7 +193,7 @@ export function calculateDetailedOfflineProgress(
       let scavengedCount: Record<string, number> = {};
       for (let i = 0; i < scavengeTicks; i++) {
         loc.lootTable.forEach(loot => {
-          if (Math.random() <= loot.chance) {
+          if (Math.random() <= Math.min(1, loot.chance + explorerBonuses.lootChanceBonus)) {
             const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
             scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
           }
@@ -231,7 +237,7 @@ export function calculateDetailedOfflineProgress(
     const units = updatedFacilities[type];
     const multiUnit = units.length > 1;
     updatedFacilities[type] = units.map((fac, unitIndex) => {
-      const r = processFacility(fac, currentInventory, actualSeconds, resolveDutyBonus(state, type, unitIndex));
+      const r = processFacility(fac, currentInventory, actualSeconds, resolveDutyBonus(state, type, unitIndex).bonuses);
 
       // 产出并入离线报告
       Object.entries(r.produced).forEach(([itemId, qty]) => {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { INITIAL_STATE } from '../data/initialState';
 import { CROPS_CONFIG } from '../data/crops';
 import {
-  resolveWatererBonus,
+  resolveWatererBonuses,
   autoHarvestAndReplantUpdate,
   advanceGreenhouseAutomation,
   harvestSlotUpdate,
@@ -40,11 +40,20 @@ const makeState = (overrides: {
   }
 });
 
-describe('resolveWatererBonus（07 驻守加成反查）', () => {
-  it('从驻守英雄配置反查 dutyMeta', () => {
-    expect(resolveWatererBonus(makeState({ assignedWatererId: 'mei' }))?.facilityYieldMultiplier).toBe(0.25);
-    expect(resolveWatererBonus(makeState({ assignedWatererId: 'nova' }))?.facilitySpeedMultiplier).toBe(0.25);
-    expect(resolveWatererBonus(makeState({ assignedWatererId: null }))).toBeNull();
+describe('resolveWatererBonuses（07 驻守加成反查，作用域化）', () => {
+  it('从驻守英雄配置按温室作用域聚合加成', () => {
+    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'mei' })).yieldMultiplier).toBe(0.25);
+    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'nova' })).speedMultiplier).toBe(0.25);
+    expect(resolveWatererBonuses(makeState({ assignedWatererId: null })).yieldMultiplier).toBe(0);
+    // 产线专用加成（facility scope，如罗伊熔炉专精）不作用于温室，只吃到全局部分
+    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'roy' })).speedMultiplier).toBe(0.15);
+  });
+
+  it('作物级专精：限定作物的加成叠加生效', () => {
+    // 阿梅：温室 +25% + 以太浆果专精 +10% = 35%
+    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'mei' }), 'aether_berry').yieldMultiplier).toBe(0.35);
+    // 其他作物只吃到温室级 +25%
+    expect(resolveWatererBonuses(makeState({ assignedWatererId: 'mei' }), 'glow_grass').yieldMultiplier).toBe(0.25);
   });
 });
 

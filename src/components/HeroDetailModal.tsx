@@ -14,6 +14,7 @@ import { EQUIPMENT_CONFIG } from '../data/equipment';
 import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp } from '../state/combat';
 import { getTalentBonus } from '../state/talents';
+import { describeDutyBonuses } from '../state/duty';
 import { aggregateBonus } from '../state/bonds';
 import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
 import { DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
@@ -413,10 +414,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                         后勤驻守特长
                         <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
                       </div>
-                      <div className="text-[9px] font-semibold text-zinc-300 leading-tight line-clamp-1">
-                        {config.dutyMeta.facilitySpeedMultiplier && `生产速度 +${Math.round(config.dutyMeta.facilitySpeedMultiplier * 100)}%`}
-                        {config.dutyMeta.facilityYieldMultiplier && ` · 额外产出 +${Math.round(config.dutyMeta.facilityYieldMultiplier * 100)}%`}
-                        {config.dutyMeta.facilityCostReduction && ` · 配方消耗 -${Math.round(config.dutyMeta.facilityCostReduction * 100)}%`}
+                      <div className="text-[9px] font-semibold text-zinc-300 leading-tight line-clamp-2">
+                        {describeDutyBonuses(config.dutyMeta)}
                       </div>
                     </>
                   ) : (

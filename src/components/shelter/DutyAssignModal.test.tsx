@@ -51,8 +51,8 @@ describe('DutyAssignModal Component', () => {
 
     // 诺娃是 进攻者 · 机械（HEROES_CONFIG）
     expect(screen.getByText(/进攻者 · 机械/)).toBeDefined();
-    // 诺娃和赛罗都有 speedMultiplier -> 「速」角标至少一个
-    expect(screen.getAllByText('速').length).toBeGreaterThanOrEqual(1);
+    // 诺娃和赛罗都有速度加成 -> 作用域化标签「全·速」至少一个
+    expect(screen.getAllByText('全·速').length).toBeGreaterThanOrEqual(1);
   });
 
   it('calls onSelect when hero clicked', () => {
