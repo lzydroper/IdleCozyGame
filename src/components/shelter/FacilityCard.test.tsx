@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { GameProvider } from '../context/GameContext';
-import { ToastProvider } from './ToastSystem';
+import { GameProvider } from '../../context/GameContext';
+import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
 
 describe('FacilityCard 配方队列 UI（ticket 13）', () => {

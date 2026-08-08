@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import DutyAssignModal from './DutyAssignModal';
-import type { HeroState } from '../types/game';
+import type { HeroState } from '../../types/game';
 
 describe('DutyAssignModal Component', () => {
   const sampleHeroes: Record<string, HeroState> = {

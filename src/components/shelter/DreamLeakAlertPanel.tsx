@@ -1,8 +1,8 @@
 import React from 'react';
-import { useGame } from '../context/GameContext';
-import { useToast } from './ToastSystem';
-import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
-import { getDreamLockdownMinutes } from '../state/nightmare';
+import { useGame } from '../../context/GameContext';
+import { useToast } from '../ToastSystem';
+import { NIGHTMARE_CONFIG } from '../../data/nightmareConfig';
+import { getDreamLockdownMinutes } from '../../state/nightmare';
 import { ShieldAlert, Siren, Skull, Shield, HeartCrack, HeartPulse } from 'lucide-react';
 
 // 梦魇入侵警报控制台（ticket 05：从工坊迁出 → 避难所运营页顶部）：

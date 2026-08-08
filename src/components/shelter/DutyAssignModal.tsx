@@ -1,10 +1,10 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../data/heroes';
-import type { HeroState } from '../types/game';
-import { UI_TOKENS } from '../data/uiConstants';
+import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
+import type { HeroState } from '../../types/game';
+import { UI_TOKENS } from '../../data/uiConstants';
 import { User, X } from 'lucide-react';
-import GameIcon from './GameIcon';
+import GameIcon from '../GameIcon';
 
 export interface DutyAssignModalProps {
   isOpen: boolean;

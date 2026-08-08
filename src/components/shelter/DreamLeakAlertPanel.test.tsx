@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { GameProvider } from '../context/GameContext';
-import { ToastProvider } from './ToastSystem';
+import { GameProvider } from '../../context/GameContext';
+import { ToastProvider } from '../ToastSystem';
 import DreamLeakAlertPanel from './DreamLeakAlertPanel';
-import { INITIAL_STATE } from '../data/initialState';
-import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { INITIAL_STATE } from '../../data/initialState';
+import { NIGHTMARE_CONFIG } from '../../data/nightmareConfig';
 
 // 水合存档：注入梦魇入侵警报（ticket 05）
 const hydrate = (activeAlert: { type: 'dream_leak' | null; hp: number }) => {

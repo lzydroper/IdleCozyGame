@@ -5,7 +5,7 @@ import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
 import WorkshopTab from './components/workshop/WorkshopTab';
 import LogTab from './components/LogTab';
-import ShelterTab from './components/ShelterTab';
+import ShelterTab from './components/shelter/ShelterTab';
 import HeroTab from './components/HeroTab';
 import SummonTab from './components/SummonTab';
 import CloudSyncWidget from './components/CloudSyncWidget';

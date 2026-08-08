@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useGame } from '../context/GameContext';
-import { CROPS_CONFIG } from '../data/crops';
-import { ITEMS_CONFIG } from '../data/items';
-import { HEROES_CONFIG } from '../data/heroes';
-import { getHeroName } from '../utils/gameUtils';
-import { useToast } from './ToastSystem';
-import GameIcon from './GameIcon';
+import { useGame } from '../../context/GameContext';
+import { CROPS_CONFIG } from '../../data/crops';
+import { ITEMS_CONFIG } from '../../data/items';
+import { HEROES_CONFIG } from '../../data/heroes';
+import { getHeroName } from '../../utils/gameUtils';
+import { useToast } from '../ToastSystem';
+import GameIcon from '../GameIcon';
 import DutyAssignModal from './DutyAssignModal';
 import SeedSelectModal from './SeedSelectModal';
 import { Sprout, Droplet, Sparkles, Timer, User } from 'lucide-react';

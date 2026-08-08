@@ -1,9 +1,9 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { CROPS_CONFIG } from '../data/crops';
-import { UI_TOKENS } from '../data/uiConstants';
+import { CROPS_CONFIG } from '../../data/crops';
+import { UI_TOKENS } from '../../data/uiConstants';
 import { Sprout, X } from 'lucide-react';
-import GameIcon from './GameIcon';
+import GameIcon from '../GameIcon';
 
 export interface SeedSelectModalProps {
   isOpen: boolean;

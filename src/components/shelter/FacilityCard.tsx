@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { useGame } from '../context/GameContext';
-import { useToast } from './ToastSystem';
-import { AUTO_RECIPES } from '../data/autoRecipes';
-import { ITEMS_CONFIG } from '../data/items';
-import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
-import { HEROES_CONFIG } from '../data/heroes';
-import { getInvQty } from '../utils/gameUtils';
-import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../state/facility';
-import { getRecipeDisplayName } from '../state/workshop';
-import GameIcon from './GameIcon';
+import { useGame } from '../../context/GameContext';
+import { useToast } from '../ToastSystem';
+import { AUTO_RECIPES } from '../../data/autoRecipes';
+import { ITEMS_CONFIG } from '../../data/items';
+import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../../data/shelterUpgrades';
+import { HEROES_CONFIG } from '../../data/heroes';
+import { getInvQty } from '../../utils/gameUtils';
+import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../../state/facility';
+import { getRecipeDisplayName } from '../../state/workshop';
+import GameIcon from '../GameIcon';
 import DutyAssignModal from './DutyAssignModal';
-import type { AutomationFacility, FacilityType } from '../types/game';
+import type { AutomationFacility, FacilityType } from '../../types/game';
 import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers, UserCog } from 'lucide-react';
 
 // ─────────────────────────────────────────────

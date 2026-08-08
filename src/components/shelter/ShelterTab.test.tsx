@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { GameProvider } from '../context/GameContext';
-import { ToastProvider } from './ToastSystem';
+import { GameProvider } from '../../context/GameContext';
+import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
-import { INITIAL_STATE } from '../data/initialState';
-import type { GameState } from '../types/game';
+import { INITIAL_STATE } from '../../data/initialState';
+import type { GameState } from '../../types/game';
 
 describe('ShelterTab Component UI - Integrated Greenhouse', () => {
   beforeEach(() => {
