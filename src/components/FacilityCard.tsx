@@ -8,6 +8,7 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../state/facility';
 import { getRecipeDisplayName } from '../state/workshop';
 import GameIcon from './GameIcon';
+import DutyAssignModal from './DutyAssignModal';
 import type { AutomationFacility, FacilityType } from '../types/game';
 import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers, UserCog } from 'lucide-react';
 
@@ -125,11 +126,6 @@ function FacilityUnitCard({
     ([, h]) => h.logisticsFacilityId?.type === 'facility' && h.logisticsFacilityId.targetId === `${type}_${unitIndex}`
   )?.[0];
   const garrisonHero = garrisonHeroId ? HEROES_CONFIG[garrisonHeroId] : null;
-
-  // 可驻守的英雄列表：已获得、未驻守其他设施/岗位、未上阵
-  const availableHeroes = Object.entries(state.heroes)
-    .filter(([, h]) => !h.logisticsFacilityId)
-    .map(([id]) => id);
 
   const handleEnqueue = () => {
     if (!selectedRecipe) return;
@@ -251,42 +247,18 @@ function FacilityUnitCard({
           )}
         </div>
 
-        {/* 驻守英雄选择器 */}
-        {showGarrisonPicker && (
-          <div className="flex items-center gap-1.5 flex-wrap bg-zinc-950/80 rounded-lg px-2 py-1.5 border border-zinc-800">
-            <span className="text-[9px] text-zinc-500 shrink-0">选择驻守英雄：</span>
-            {availableHeroes.length === 0 ? (
-              <span className="text-[9px] text-zinc-600">无可用英雄</span>
-            ) : (
-              availableHeroes.map(id => {
-                const hero = HEROES_CONFIG[id];
-                return (
-                  <button
-                    key={id}
-                    onClick={() => {
-                      if (assignHeroToDuty(id, { type: 'facility', targetId: `${type}_${unitIndex}` })) {
-                        showToast(`${hero?.name || id} 已驻守 ${fac.name}。`, 'success');
-                        setShowGarrisonPicker(false);
-                      }
-                    }}
-                    className="text-[9px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 cursor-pointer transition-colors"
-                  >
-                    {hero?.name || id}
-                    {hero?.dutyMeta?.facilitySpeedMultiplier && <span className="text-emerald-400 ml-0.5">速</span>}
-                    {hero?.dutyMeta?.facilityYieldMultiplier && <span className="text-emerald-400 ml-0.5">产</span>}
-                    {hero?.dutyMeta?.facilityCostReduction && <span className="text-emerald-400 ml-0.5">省</span>}
-                  </button>
-                );
-              })
-            )}
-            <button
-              onClick={() => setShowGarrisonPicker(false)}
-              className="text-[9px] text-zinc-500 hover:text-zinc-300 ml-auto cursor-pointer"
-            >
-              取消
-            </button>
-          </div>
-        )}
+        {/* 驻守英雄选择弹窗 */}
+        <DutyAssignModal
+          isOpen={showGarrisonPicker}
+          title={`指派驻守英雄 · ${fac.name}`}
+          heroes={state.heroes}
+          onSelect={(id) => {
+            if (assignHeroToDuty(id, { type: 'facility', targetId: `${type}_${unitIndex}` })) {
+              showToast(`${HEROES_CONFIG[id]?.name || id} 已驻守 ${fac.name}。`, 'success');
+            }
+          }}
+          onClose={() => setShowGarrisonPicker(false)}
+        />
 
         {/* ── 配方入队 ── */}
         <div className="space-y-1.5">
