@@ -35,6 +35,14 @@ import {
 import { SmelterCard, AssemblerCard } from './FacilityCard';
 import DreamLeakAlertPanel from './DreamLeakAlertPanel';
 
+
+interface FlyingReward {
+  id: number;
+  text: string;
+  slotId: number;
+  offsetY: number;
+}
+
 const getUpgradeIcon = (id: string) => {
   switch (id) {
     case 'battery':
@@ -112,11 +120,11 @@ const ShelterTab: React.FC = () => {
   // 嵌入温室控制需要的状态
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [showSeedSelector, setShowSeedSelector] = useState(false);
-  const [flyingRewards, setFlyingRewards] = useState<any[]>([]);
+  const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
 
   // 触发飘字特效
   const triggerFlyingRewards = (yields: Record<string, number>, slotId: number) => {
-    const rewards: any[] = [];
+    const rewards: FlyingReward[] = [];
     let index = 0;
     Object.entries(yields).forEach(([item, qty]) => {
       const itemConfig = ITEMS_CONFIG[item]?.name || item;
@@ -174,11 +182,11 @@ const ShelterTab: React.FC = () => {
   }, []);
 
   // 状态绑定：温室一键收获并重新播种的选定作物
-  const [replantCropId, setReplantCropId] = useState<string>('glow_grass');
+  const [replantCropId, setReplantCropId] = useState<string>(Object.keys(CROPS_CONFIG)[0] || 'glow_grass');
 
   // 状态绑定：挂机远征的选择
   const [selectedExpExplorerId, setSelectedExpExplorerId] = useState<string>('');
-  const [selectedLocationId, setSelectedLocationId] = useState<string>('radar_station');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(Object.keys(EXPEDITION_LOCATIONS)[0] || 'radar_station');
 
   // 辅助：获取特定物品在背包里的数量
   const getInvQty = (itemId: string) => state.inventory[itemId] || 0;
@@ -188,12 +196,11 @@ const ShelterTab: React.FC = () => {
     if (id === 'battery') return state.shelter.batteryLevel || 1;
     if (id === 'generator') return state.shelter.generatorLevel || 0;
     if (id === 'recycler') return state.shelter.recyclerLevel || 0;
-    return (state.shelter as any)[id + 'Level'] || 0;
+    return 0; // 未知升级类型，默认 0
   };
 
   // 2. 英雄列表（ADR-0013：已获得英雄全部可指派，岗位状态由 shelter 字段判定）
   const heroesList = Object.keys(state.heroes);
-  const meiHero = state.heroes.mei;
 
   // 英雄的职阶/阵营（ADR-0018：远征门槛迁移为 heroClass/faction）
   const getHeroClassLabel = (heroId: string): string =>
@@ -269,10 +276,7 @@ const ShelterTab: React.FC = () => {
     : null;
 
   // 远征速度与间隔计算（角色效率加成已随被动系统退役，仅由地点配置决定）
-  let expInterval = 300;
-  if (expLocation) {
-    expInterval = Math.max(30, Math.floor(expLocation.scavengeInterval));
-  }
+  const expInterval = expLocation ? Math.max(30, Math.floor(expLocation.scavengeInterval)) : 300;
 
   // 挂机远征实时计算
   let expElapsedTime = 0;
@@ -369,7 +373,7 @@ const ShelterTab: React.FC = () => {
                   <button
                     onClick={() => {
                       if (isMax) return;
-                      if (upgradeShelterStat(upgrade.id as any)) {
+                      if (upgradeShelterStat(upgrade.id as 'battery' | 'generator' | 'recycler')) {
                         addLog(`${upgrade.name} 升级至 Lv.${currentLevel + 1}`, 'logistics');
                         showToast(`${upgrade.name} 升级成功！`, 'success');
                       } else {
@@ -585,41 +589,23 @@ const ShelterTab: React.FC = () => {
             >
               <option value="">-- 未指派操作员 --</option>
               {heroesList.map(s => {
-                const isRecommended = s === 'mei';
                 const statusStr = getHeroStatus(s);
                 const heroCfg = HEROES_CONFIG[s];
                 const dutyLabel = heroCfg ? `${HERO_CLASS_LABELS[heroCfg.heroClass]}/${HERO_FACTION_LABELS[heroCfg.faction]}` : '';
                 return (
                   <option key={s} value={s}>
-                    {getHeroName(s)}{dutyLabel ? ` (${dutyLabel})` : ''}
-                    {isRecommended ? ' [优先推荐]' : ''} {statusStr}
+                    {getHeroName(s)}{dutyLabel ? ` (${dutyLabel})` : ''} {statusStr}
                   </option>
                 );
               })}
             </select>
 
-            {/* Mei 优先指派一键快捷键 */}
-            {meiHero && state.shelter.assignedWatererId !== 'mei' && (
-              <button
-                onClick={() => {
-                  assignHeroToDuty('mei', { type: 'waterer', targetId: 'greenhouse' });
-                  addLog(`指派 ${getHeroName('mei')} 负责温室自动浇水`, 'logistics');
-                  showToast('阿梅 (Mei) 已快速就位自动浇水岗位！', 'success');
-                }}
-                className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
-              >
-                优先指派阿梅
-              </button>
-            )}
+
           </div>
 
           <p className="text-[10px] text-zinc-500 leading-relaxed">
             <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> <span className="text-zinc-400">托管效应：</span>指派任意英雄在岗，温室插槽将自动维持浇水状态（生长速度翻倍），离线也生效。
-            {meiHero ? (
-              <span className="text-emerald-500/90 font-medium"> 农学家【阿梅】是灌溉的绝佳人选！</span>
-            ) : (
-              <span className="text-zinc-500">（可在探索中救援阿梅以获得更好支持）</span>
-            )}
+
           </p>
         </div>
 
