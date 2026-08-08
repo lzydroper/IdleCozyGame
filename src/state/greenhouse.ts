@@ -422,3 +422,51 @@ const autoWaterGreenhouse = (state: GameState): GameState => ({
     )
   }
 });
+
+// 挂机选种（08）：设置/清除挂机作物（无前置，随时可存；null = 清除）
+export const setAutoFarmCropUpdate = (state: GameState, cropId: string | null): UpdateResult<boolean> => {
+  if (cropId && !CROPS_CONFIG[cropId]) return NO_OP(state);
+  return {
+    state: {
+      ...state,
+      greenhouse: {
+        ...state.greenhouse,
+        autoFarm: { ...state.greenhouse.autoFarm, cropId }
+      }
+    },
+    result: true
+  };
+};
+
+// 挂机开关（08）：开启必须已驻守（否则失败）；关闭无前置
+export const setAutoFarmEnabledUpdate = (state: GameState, enabled: boolean): UpdateResult<boolean> => {
+  if (enabled && !state.shelter.assignedWatererId) return NO_OP(state);
+  return {
+    state: {
+      ...state,
+      greenhouse: {
+        ...state.greenhouse,
+        autoFarm: { ...state.greenhouse.autoFarm, enabled }
+      }
+    },
+    result: true
+  };
+};
+
+// 挂机种子耗光检查（08）：挂机开启且选定作物种子不足以播种 1 槽 → 自动停止
+// tick/offline 每次自动收割播种后调用
+export const maybeStopAutoFarmOnSeedDepletion = (state: GameState): GameState => {
+  const autoFarm = state.greenhouse.autoFarm;
+  if (!autoFarm.enabled || !autoFarm.cropId) return state;
+  const cropConfig = CROPS_CONFIG[autoFarm.cropId];
+  if (!cropConfig) return state;
+  const seedId = Object.keys(cropConfig.seedCost)[0];
+  const seedQty = cropConfig.seedCost[seedId];
+  if ((state.inventory[seedId] || 0) < seedQty) {
+    return {
+      ...state,
+      greenhouse: { ...state.greenhouse, autoFarm: { ...autoFarm, enabled: false } }
+    };
+  }
+  return state;
+};

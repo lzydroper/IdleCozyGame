@@ -55,7 +55,8 @@ export const INITIAL_STATE: GameState = {
       { id: 3, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false },
       { id: 4, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false }
     ],
-    unlockedSlotsCount: 4
+    unlockedSlotsCount: 4,
+    autoFarm: { enabled: false, cropId: null }
   },
   heroes: INITIAL_HEROES,
   equipment: {}, // 英雄装备栏：开局无装备（ticket 10）

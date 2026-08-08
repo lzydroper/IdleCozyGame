@@ -164,6 +164,10 @@ export interface GameState {
   greenhouse: {
     slots: GreenhouseSlot[];
     unlockedSlotsCount: number;
+    autoFarm: {
+      enabled: boolean;    // 挂机开关（08）：需已驻守才可开启
+      cropId: string | null; // 挂机选定种子对应的作物（null = 未选种）
+    };
   };
   heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
   equipment: Record<string, HeroEquipment>; // 英雄装备栏：hero id -> 三槽装备（ticket 10）

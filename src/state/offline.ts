@@ -2,7 +2,8 @@ import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from 
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus } from './facility';
-import { advanceGreenhouseAutomation } from './greenhouse';
+import { advanceGreenhouseAutomation, maybeStopAutoFarmOnSeedDepletion } from './greenhouse';
+import type { ReplantStrategy } from './greenhouse';
 import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
@@ -255,11 +256,14 @@ export function calculateDetailedOfflineProgress(
   // 5. 温室作物离线生长结算（06）+ 驻守自动收割播种（07）
   let finalGreenhouse = state.greenhouse;
   if (state.shelter.assignedWatererId) {
-    // 驻守：循环「自动浇水 → 生长（含速度加成） → 收割+补种原作物」，多轮结算
+    // 驻守：循环「自动浇水 → 生长（含速度加成） → 收割+播种」，多轮结算
+    const autoFarm = state.greenhouse.autoFarm;
+    const autoFarmActive = autoFarm.enabled && !!autoFarm.cropId;
+    const strategy: ReplantStrategy = autoFarmActive ? { cropId: autoFarm.cropId! } : 'original';
     const autoR = advanceGreenhouseAutomation(
       { ...state, inventory: currentInventory },
       actualSeconds,
-      'original'
+      strategy
     );
     finalGreenhouse = autoR.state.greenhouse;
     currentInventory = autoR.state.inventory;
@@ -271,6 +275,18 @@ export function calculateDetailedOfflineProgress(
         .map(([id, q]) => `${ITEMS_CONFIG[id]?.name || id} ×${q}`)
         .join('、');
       reportLogs.push(`驻守 ${HEROES_CONFIG[state.shelter.assignedWatererId]?.name || '英雄'} 离线自动收割: ${itemsStr}`);
+    }
+    // 挂机种子耗光 → 自动停止（08）
+    if (autoFarmActive) {
+      const seedState = maybeStopAutoFarmOnSeedDepletion({
+        ...state,
+        inventory: currentInventory,
+        greenhouse: finalGreenhouse
+      });
+      finalGreenhouse = seedState.greenhouse;
+      if (!seedState.greenhouse.autoFarm.enabled) {
+        reportLogs.push('挂机种子已耗光，温室挂机自动停止。');
+      }
     }
   } else {
     // 无驻守：仅生长推进（06：湿润 1x、未湿润停滞）

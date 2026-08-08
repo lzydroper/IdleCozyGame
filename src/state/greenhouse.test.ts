@@ -6,7 +6,10 @@ import {
   autoHarvestAndReplantUpdate,
   advanceGreenhouseAutomation,
   harvestSlotUpdate,
-  batchHarvestUpdate
+  batchHarvestUpdate,
+  setAutoFarmCropUpdate,
+  setAutoFarmEnabledUpdate,
+  maybeStopAutoFarmOnSeedDepletion
 } from './greenhouse';
 import type { GameState, GreenhouseSlot } from '../types/game';
 
@@ -162,5 +165,66 @@ describe('advanceGreenhouseAutomation（07 离线多轮自动收割播种）', (
     });
     const r = advanceGreenhouseAutomation(state, 60, 'original');
     expect(r.result.harvested).toBeNull();
+  });
+});
+
+describe('挂机区域 actions（08）', () => {
+  it('setAutoFarmCrop 选种/清除（无前置，随时可存）', () => {
+    const s = makeState();
+    const r1 = setAutoFarmCropUpdate(s, 'glow_grass');
+    expect(r1.result).toBe(true);
+    expect(r1.state.greenhouse.autoFarm.cropId).toBe('glow_grass');
+    const r2 = setAutoFarmCropUpdate(r1.state, null);
+    expect(r2.state.greenhouse.autoFarm.cropId).toBeNull();
+  });
+
+  it('setAutoFarmEnabled 开启必须驻守、关闭无前置', () => {
+    const noGarrison = makeState({ assignedWatererId: null });
+    expect(setAutoFarmEnabledUpdate(noGarrison, true).result).toBe(false);
+
+    const withGarrison = makeState({ assignedWatererId: 'nova' });
+    const r = setAutoFarmEnabledUpdate(withGarrison, true);
+    expect(r.result).toBe(true);
+    expect(r.state.greenhouse.autoFarm.enabled).toBe(true);
+
+    const r2 = setAutoFarmEnabledUpdate(r.state, false);
+    expect(r2.state.greenhouse.autoFarm.enabled).toBe(false);
+  });
+
+  it('maybeStopAutoFarmOnSeedDepletion：种子耗光停止、保留 cropId', () => {
+    const state = makeState({ inventory: { seed_glow_grass: 0 } });
+    const s = {
+      ...state,
+      greenhouse: { ...state.greenhouse, autoFarm: { enabled: true, cropId: 'glow_grass' } }
+    };
+    const r = maybeStopAutoFarmOnSeedDepletion(s);
+    expect(r.greenhouse.autoFarm.enabled).toBe(false);
+    expect(r.greenhouse.autoFarm.cropId).toBe('glow_grass');
+  });
+
+  it('种子充足时不停止', () => {
+    const state = makeState({ inventory: { seed_glow_grass: 3 } });
+    const s = {
+      ...state,
+      greenhouse: { ...state.greenhouse, autoFarm: { enabled: true, cropId: 'glow_grass' } }
+    };
+    expect(maybeStopAutoFarmOnSeedDepletion(s).greenhouse.autoFarm.enabled).toBe(true);
+  });
+
+  it('挂机策略 { cropId }：收割成熟槽并把空槽种上选定作物（08）', () => {
+    const state = makeState({
+      slots: makeSlots([
+        { cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: true },
+        { cropId: null }
+      ]),
+      assignedWatererId: 'mei',
+      inventory: { seed_glow_grass: 5, seed_aether_berry: 5 }
+    });
+    const r = advanceGreenhouseAutomation(state, 60, { cropId: 'aether_berry' });
+    // 60 秒：glow_grass 30s 成熟收割 1 轮（第 2 轮 30 秒被 aether_berry 占据，120s 未成熟）
+    expect(r.result.harvested).toEqual({ glow_fiber: 2, mana_dust: 1 });
+    const planted = r.state.greenhouse.slots.filter(s => s.cropId === 'aether_berry');
+    expect(planted.length).toBe(2); // 收割后槽 + 原空槽都种 aether_berry
+    expect(r.state.inventory.seed_aether_berry).toBe(3); // 扣 2
   });
 });

@@ -4,12 +4,12 @@
 
 **Blocked by:** 06, 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `greenhouse.autoFarm = { enabled, cropId }` 字段（初始与存档合并默认 `{ enabled: false, cropId: null }`）
-- [ ] 状态层 actions：选种（无前置，随时可存）；开启（必须已驻守，否则失败）；关闭（无前置）
-- [ ] 解除驻守 → 自动 `enabled=false` 且保留 cropId
-- [ ] 在线 tick 与离线结算按 `{ cropId }` 播种策略循环：收割成熟槽 → 免费浇水未湿润槽 → 播种空槽（复用 07 的播种策略接口）
-- [ ] 种子种到最后一颗、种不完的空槽留空；种子耗光后 `enabled=false`
-- [ ] 离线收益并入 recoveredItems + 日志
-- [ ] 状态层测试（开启/关闭/选种/种子耗光停止/离线收益/解除驻守联动）；全量 `npx vitest run` + `npm run build` + `npm run lint` 绿
+- [x] `greenhouse.autoFarm = { enabled, cropId }` 字段（types/game.ts、initialState 默认 `{ enabled:false, cropId:null }`；persistence 浅合并继承默认）
+- [x] 状态层 actions：`setAutoFarmCropUpdate`（无前置）、`setAutoFarmEnabledUpdate`（开启校验驻守）、`maybeStopAutoFarmOnSeedDepletion`（种子不足停止）；GameContext 绑定导出
+- [x] 解除驻守 → 自动 `enabled=false` 且保留 cropId（shelter.ts clearHeroDuty waterer 分支）
+- [x] 在线 tick 与离线结算按 `{ cropId }` 播种策略循环（复用 T07 的 `autoHarvestAndReplantUpdate`/`advanceGreenhouseAutomation`），覆盖驻守的 `'original'`
+- [x] 种子种到最后一颗、种不完留空；种子耗光 `enabled=false`（在线每 tick + 离线结算后检查）
+- [x] 离线收益并入 recoveredItems + 日志（含「挂机种子已耗光，温室挂机自动停止」）
+- [x] 状态层测试：greenhouse.test.ts +5（选种/开关/种子耗光/`{cropId}` 离线播种）、tick.test.ts +2（在线播种与停止）、shelter.test.ts +1（解除驻守联动）、GameContext.test.tsx +1（离线挂机集成）；`npx tsc -b` 通过

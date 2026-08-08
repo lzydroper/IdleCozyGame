@@ -13,10 +13,18 @@ const clearHeroDuty = (state: GameState, heroId: string): GameState => {
   const prevDuty = hero.logisticsFacilityId;
   const updatedHeroes = { ...state.heroes, [heroId]: { ...hero, logisticsFacilityId: null } };
   const updatedShelter = { ...state.shelter, facilities: { ...state.shelter.facilities } };
+  let nextGreenhouse = state.greenhouse;
 
   // 清缓存索引
   if (prevDuty.type === 'waterer' && updatedShelter.assignedWatererId === heroId) {
     updatedShelter.assignedWatererId = null;
+    // 解除驻守联动（08）：挂机自动关闭，保留 cropId（重新驻守后可一键恢复开启）
+    if (nextGreenhouse.autoFarm.enabled) {
+      nextGreenhouse = {
+        ...nextGreenhouse,
+        autoFarm: { ...nextGreenhouse.autoFarm, enabled: false }
+      };
+    }
   }
   if (prevDuty.type === 'explorer' && updatedShelter.assignedExplorerId === heroId) {
     updatedShelter.assignedExplorerId = null;
@@ -28,7 +36,7 @@ const clearHeroDuty = (state: GameState, heroId: string): GameState => {
     };
   }
 
-  return { ...state, heroes: updatedHeroes, shelter: updatedShelter };
+  return { ...state, heroes: updatedHeroes, shelter: updatedShelter, greenhouse: nextGreenhouse };
 };
 
 // 统一指派/解除英雄后勤岗位（ADR-0018：浇水 / 探索 / 设施驻守统一为 logisticsFacilityId）

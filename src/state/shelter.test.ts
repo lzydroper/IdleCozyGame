@@ -36,6 +36,18 @@ describe('assignHeroToDutyUpdate', () => {
       expect(r2.state.heroes.nova.logisticsFacilityId).toEqual({ type: 'waterer', targetId: 'greenhouse' });
       expect(r2.state.shelter.assignedWatererId).toBe('nova');
     });
+
+    it('解除驻守时挂机自动关闭但保留 cropId（08）', () => {
+      const state = makeTestState();
+      state.greenhouse.autoFarm = { enabled: true, cropId: 'glow_grass' };
+      const r1 = assignHeroToDutyUpdate(state, 'mei', { type: 'waterer', targetId: 'greenhouse' });
+      const r2 = assignHeroToDutyUpdate(r1.state, 'mei', null); // 解除驻守
+
+      expect(r2.result).toBe(true);
+      expect(r2.state.shelter.assignedWatererId).toBeNull();
+      expect(r2.state.greenhouse.autoFarm.enabled).toBe(false);
+      expect(r2.state.greenhouse.autoFarm.cropId).toBe('glow_grass'); // 保留选种
+    });
   });
 
   describe('facility assignment', () => {

@@ -140,3 +140,44 @@ describe('applyTick 驻守自动化（07）', () => {
     expect(slot.growthTimeLeft).toBe(28.75); // 30 - 1.25
   });
 });
+
+// 08 挂机：autoFarm 开启时按选定作物播种、种子耗光自动停止
+describe('applyTick 挂机（08）', () => {
+  const makeAutoFarmState = (autoFarm: { enabled: boolean; cropId: string | null }, inventory: Record<string, number>): GameState => ({
+    ...INITIAL_STATE,
+    stamina: COMBAT_CONFIG.maxStamina,
+    inventory,
+    greenhouse: {
+      ...INITIAL_STATE.greenhouse,
+      autoFarm,
+      slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+        i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, isWatered: true } : s
+      )
+    },
+    shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'nova' },
+    lastTick: Date.now() - 1000
+  });
+
+  it('挂机开启：空槽播种选定作物（非原作物），种子耗光后自动停止', () => {
+    const state = makeAutoFarmState(
+      { enabled: true, cropId: 'aether_berry' },
+      { seed_glow_grass: 2, seed_aether_berry: 3 }
+    );
+    const next = applyTick(state, Date.now());
+    // 3 个空槽种上 aether_berry，扣 3 种子
+    expect(next.greenhouse.slots.filter(s => s.cropId === 'aether_berry').length).toBe(3);
+    expect(next.inventory.seed_aether_berry).toBe(0);
+    // 种子种到最后一颗后耗光 → 自动停止
+    expect(next.greenhouse.autoFarm.enabled).toBe(false);
+  });
+
+  it('挂机已选种但种子为 0 → 直接停止', () => {
+    const state = makeAutoFarmState(
+      { enabled: true, cropId: 'aether_berry' },
+      { seed_glow_grass: 2, seed_aether_berry: 0 }
+    );
+    const next = applyTick(state, Date.now());
+    expect(next.greenhouse.autoFarm.enabled).toBe(false);
+    expect(next.greenhouse.autoFarm.cropId).toBe('aether_berry'); // 保留选种
+  });
+});

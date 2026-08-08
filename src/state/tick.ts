@@ -2,7 +2,8 @@ import type { GameState, LogEntry } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus } from './facility';
-import { autoHarvestAndReplantUpdate, resolveWatererBonus } from './greenhouse';
+import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonus } from './greenhouse';
+import type { ReplantStrategy } from './greenhouse';
 import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
@@ -107,13 +108,17 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     };
   });
 
-  // 驻守自动收割并补种（07）：在线每 tick 检查成熟槽收割 + 补种原作物
+  // 驻守自动收割并补种（07/08）：在线每 tick 检查成熟槽收割 + 按策略播种
   const logsToAdd: TickLogEntry[] = [];
   let greenhouseSlots = updatedSlots;
+  let finalAutoFarm = prev.greenhouse.autoFarm;
   if (isWateredOnline) {
+    const autoFarm = prev.greenhouse.autoFarm;
+    const autoFarmActive = autoFarm.enabled && !!autoFarm.cropId;
+    const strategy: ReplantStrategy = autoFarmActive ? { cropId: autoFarm.cropId! } : 'original';
     const autoR = autoHarvestAndReplantUpdate(
       { ...prev, greenhouse: { ...prev.greenhouse, slots: updatedSlots }, inventory: currentInventory },
-      'original'
+      strategy
     );
     greenhouseSlots = autoR.state.greenhouse.slots;
     currentInventory = autoR.state.inventory;
@@ -125,6 +130,18 @@ export const applyTick = (prev: GameState, now: number): GameState => {
         text: `驻守 ${HEROES_CONFIG[prev.shelter.assignedWatererId!]?.name || '英雄'} 自动收割: ${itemsStr}`,
         type: 'logistics'
       });
+    }
+    // 挂机种子耗光 → 自动停止（08）
+    if (autoFarmActive) {
+      const seedState = maybeStopAutoFarmOnSeedDepletion({
+        ...prev,
+        inventory: currentInventory,
+        greenhouse: { ...prev.greenhouse, slots: greenhouseSlots }
+      });
+      finalAutoFarm = seedState.greenhouse.autoFarm;
+      if (!finalAutoFarm.enabled) {
+        logsToAdd.push({ text: '挂机种子已耗光，温室挂机自动停止。', type: 'logistics' });
+      }
     }
   }
 
@@ -254,7 +271,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     player: { ...prev.player, energy: currentEnergy, days: newDays },
     stamina: nextStamina,
     inventory: currentInventory,
-    greenhouse: { ...prev.greenhouse, slots: greenhouseSlots },
+    greenhouse: { ...prev.greenhouse, slots: greenhouseSlots, autoFarm: finalAutoFarm },
     shelter: finalShelter,
     heroes: updatedHeroes,
     logs: newLogs,

@@ -12,7 +12,9 @@ import {
   harvestSlotUpdate,
   batchHarvestUpdate,
   batchPlantUpdate,
-  batchHarvestAndReplantUpdate
+  batchHarvestAndReplantUpdate,
+  setAutoFarmCropUpdate,
+  setAutoFarmEnabledUpdate
 } from '../state/greenhouse';
 import { craftItemUpdate, applySupplyItemUpdate } from '../state/workshop';
 import {
@@ -80,6 +82,8 @@ interface GameContextType {
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
   batchHarvestAndReplant: (cropId: string) => { harvested: Record<string, number> | null, replantedCount: number };
+  setAutoFarmCrop: (cropId: string | null) => boolean;
+  setAutoFarmEnabled: (enabled: boolean) => boolean;
   craftItem: (recipeId: string, count?: number) => boolean;
   addLog: (text: string, type: 'event' | 'logistics' | 'combat' | 'dream' | 'system') => void;
   resetGame: () => void;
@@ -458,6 +462,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return result;
   };
 
+  // 挂机区域（08）：选种/开关
+  const setAutoFarmCrop = (cropId: string | null): boolean => {
+    let ok = false;
+    setState(prev => {
+      const r = setAutoFarmCropUpdate(prev, cropId);
+      ok = r.result;
+      return r.state;
+    });
+    return ok;
+  };
+
+  const setAutoFarmEnabled = (enabled: boolean): boolean => {
+    let ok = false;
+    setState(prev => {
+      const r = setAutoFarmEnabledUpdate(prev, enabled);
+      ok = r.result;
+      return r.state;
+    });
+    return ok;
+  };
+
   // === 工坊 ===
   const craftItem = (recipeId: string, count = 1): boolean => {
     let ok = false;
@@ -772,6 +797,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       batchHarvest,
       batchPlant,
       batchHarvestAndReplant,
+      setAutoFarmCrop,
+      setAutoFarmEnabled,
       craftItem,
       addLog,
       resetGame,

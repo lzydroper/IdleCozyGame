@@ -149,7 +149,7 @@ describe('GameContext Integration', () => {
           energy: 10, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 5 },
-        greenhouse: { slots: [], unlockedSlotsCount: 0 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
         heroes: {},
         equipment: {},
         equipmentInventory: {},
@@ -197,7 +197,7 @@ describe('GameContext Integration', () => {
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 6 },
-        greenhouse: { slots: [], unlockedSlotsCount: 0 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
         heroes: {},
         equipment: {},
         equipmentInventory: {},
@@ -262,7 +262,7 @@ describe('GameContext Integration', () => {
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 2 },
-        greenhouse: { slots: [], unlockedSlotsCount: 0 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
         heroes: {},
         equipment: {},
         equipmentInventory: {},
@@ -332,7 +332,8 @@ describe('GameContext Integration', () => {
         slots: [
           { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: overrides.isWatered ?? false }
         ],
-        unlockedSlotsCount: 4
+        unlockedSlotsCount: 4,
+        autoFarm: { enabled: false, cropId: null }
       },
       heroes: {},
       equipment: {},
@@ -388,6 +389,23 @@ describe('GameContext Integration', () => {
 
       expect(slot.growthTimeLeft).toBe(20);
       expect(slot.growthProgress).toBe(33);
+    });
+
+    it('离线挂机：选定种子播种空槽，种子耗光后 autoFarm.enabled=false（08）', () => {
+      const base = makeGreenhouseState({ assignedWatererId: 'nova', isWatered: true });
+      const state: GameState = {
+        ...base,
+        inventory: { seed_aether_berry: 1 },
+        greenhouse: {
+          ...base.greenhouse,
+          autoFarm: { enabled: true, cropId: 'aether_berry' }
+        }
+      };
+      const { updatedState } = calculateDetailedOfflineProgress(state, 60);
+      expect(updatedState.greenhouse.slots[0].cropId).toBe('aether_berry'); // 收割后空槽被种上选定作物
+      expect(updatedState.inventory.seed_aether_berry).toBe(0);
+      expect(updatedState.greenhouse.autoFarm.enabled).toBe(false); // 种子耗光停止
+      expect(updatedState.inventory.glow_fiber).toBeGreaterThan(0); // 收益入账
     });
   });
 });
