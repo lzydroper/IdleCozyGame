@@ -2,15 +2,8 @@ import type { HeroFaction } from '../types/game';
 import type { StatModifier } from '../state/statSystem';
 
 // 羁绊配置（ticket 09）：队伍构筑策略层 —— 特定英雄组合 / 阵营条件上阵触发数值加成，
-// 生效于战斗数值（攻击/防御/生命），由 state/bonds.ts 计算，combat.ts 应用。
+// 生效于战斗数值，由 state/bonds.ts 计算，combat.ts 应用。
 // 新增内容只需在此追加配置，无需改动战斗逻辑。
-
-// 战斗数值加成（百分比，叠加求和）——兼容转换用（stat-bonus-unification 08 Contract 时删除）
-export interface CombatBonus {
-  attackPercent?: number;   // 攻击力 +x%
-  defensePercent?: number;  // 防御力 +x%
-  maxHpPercent?: number;    // 生命上限 +x%（战斗中按同比例缩放当前血量）
-}
 
 export interface BondConfig {
   id: string;
@@ -47,12 +40,3 @@ export const BONDS: BondConfig[] = [
     bonus: [{ stat: 'defense', kind: 'percent', value: 0.10 }]
   }
 ];
-
-// 兼容转换（stat-bonus-unification 01，Contract 时删除）：旧 CombatBonus → 统一修饰符数组
-export const toModifiers = (bonus: CombatBonus): StatModifier[] => {
-  const mods: StatModifier[] = [];
-  if (bonus.attackPercent) mods.push({ stat: 'attack', kind: 'percent', value: bonus.attackPercent / 100 });
-  if (bonus.defensePercent) mods.push({ stat: 'defense', kind: 'percent', value: bonus.defensePercent / 100 });
-  if (bonus.maxHpPercent) mods.push({ stat: 'maxHp', kind: 'percent', value: bonus.maxHpPercent / 100 });
-  return mods;
-};

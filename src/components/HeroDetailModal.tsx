@@ -83,15 +83,13 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     [heroEquip, config?.faction]
   );
 
-  // 里程碑三层加成（stat-bonus-unification 06）：元/基础/特殊全覆盖；基础三件套已含在 heroAttack 等内
-  const milestone = config && hero ? getLevelMilestoneBonus(config, hero.level) : {};
-
   // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)：统一走职阶成长 + 里程碑 + 装备加成，元属性增益首次实装（16 号）
-  const calculatedStats = useMemo(
-    () =>
-      config && hero
-        ? calculateEntityStats(
-            {
+  // 里程碑三层（stat-bonus-unification 06）：元/基础/特殊全覆盖；基础三件套已含在 heroAttack 等内
+  const calculatedStats = useMemo(() => {
+    if (!config || !hero) return null;
+    const milestone = getLevelMilestoneBonus(config, hero.level);
+    return calculateEntityStats(
+      {
               baseAttributes: {
                 attack: heroAttack(config, hero.level) + (equipFlat.attack || 0),
                 defense: heroDefense(config, hero.level) + (equipFlat.defense || 0),
@@ -121,10 +119,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 soulsealDrive: milestone.soulsealDrive ?? 0
               }
             }
-          )
-        : null,
-    [config, hero, equipFlat, milestone]
-  );
+          );
+  }, [config, hero, equipFlat]);
 
   if (!isOpen || !heroId || !hero || !config) return null;
   // early return 已保证 config/hero 非空，calculatedStats 必非空
