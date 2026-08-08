@@ -13,6 +13,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
 import { getEquippedFlatStats, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp, heroMaxHp, heroAttack, heroDefense } from '../state/combat';
+import { getLevelMilestoneBonus } from '../data/heroGrowth';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats } from '../state/statSystem';
 import { useToast } from './ToastSystem';
@@ -82,23 +83,47 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     [heroEquip, config?.faction]
   );
 
+  // 里程碑三层加成（stat-bonus-unification 06）：元/基础/特殊全覆盖；基础三件套已含在 heroAttack 等内
+  const milestone = config && hero ? getLevelMilestoneBonus(config, hero.level) : {};
+
   // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)：统一走职阶成长 + 里程碑 + 装备加成，元属性增益首次实装（16 号）
   const calculatedStats = useMemo(
     () =>
       config && hero
-        ? calculateEntityStats({
-            baseAttributes: {
-              attack: heroAttack(config, hero.level) + (equipFlat.attack || 0),
-              defense: heroDefense(config, hero.level) + (equipFlat.defense || 0),
-              maxHp: heroMaxHp(config, hero.level) + (equipFlat.maxHp || 0),
-              maxMp: 50,
-              critRate: 0.05,
-              critDmg: 1.50
-            },
-            primaryAttributes: config.primaryAttributes
-          })
+        ? calculateEntityStats(
+            {
+              baseAttributes: {
+                attack: heroAttack(config, hero.level) + (equipFlat.attack || 0),
+                defense: heroDefense(config, hero.level) + (equipFlat.defense || 0),
+                maxHp: heroMaxHp(config, hero.level) + (equipFlat.maxHp || 0),
+                maxMp: 50 + (milestone.maxMp ?? 0),
+                critRate: 0.05 + (milestone.critRate ?? 0),
+                critDmg: 1.50 + (milestone.critDmg ?? 0)
+              },
+              primaryAttributes: {
+                ...config.primaryAttributes,
+                strength: config.primaryAttributes.strength + (milestone.strength ?? 0),
+                constitution: config.primaryAttributes.constitution + (milestone.constitution ?? 0),
+                agility: config.primaryAttributes.agility + (milestone.agility ?? 0),
+                intelligence: config.primaryAttributes.intelligence + (milestone.intelligence ?? 0),
+                willpower: config.primaryAttributes.willpower + (milestone.willpower ?? 0),
+                transcendence: config.primaryAttributes.transcendence + (milestone.transcendence ?? 0)
+              },
+              specialAttributes: {
+                arcaneBoost: milestone.arcaneBoost ?? 0,
+                arcaneResistance: milestone.arcaneResistance ?? 0,
+                mechanicalLoad: milestone.mechanicalLoad ?? 0,
+                mechanicalEvolution: milestone.mechanicalEvolution ?? 0,
+                nightmareErosion: milestone.nightmareErosion ?? 0,
+                voidSpirit: milestone.voidSpirit ?? 0,
+                spiritInspire: milestone.spiritInspire ?? 0,
+                astralGuidance: milestone.astralGuidance ?? 0,
+                soulsealDrive: milestone.soulsealDrive ?? 0
+              }
+            }
+          )
         : null,
-    [config, hero, equipFlat]
+    [config, hero, equipFlat, milestone]
   );
 
   if (!isOpen || !heroId || !hero || !config) return null;

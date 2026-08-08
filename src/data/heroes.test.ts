@@ -3,6 +3,7 @@ import type { GameState } from '../types/game';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, STARTER_HERO_ID } from './heroes';
 import { INITIAL_HEROES, createInitialHero, INITIAL_STATE } from './initialState';
 import { mergeSavedState } from '../state/persistence';
+import { getLevelMilestoneBonus } from './heroGrowth';
 
 describe('Heroes data config', () => {
   it('has 9 heroes with valid class and faction labels', () => {
@@ -40,6 +41,28 @@ describe('Initial heroes', () => {
 
   it('createInitialHero throws for unknown config id', () => {
     expect(() => createInitialHero('unknown_hero')).toThrow();
+  });
+});
+
+describe('Level milestones (stat-bonus-unification 06: 三层全覆盖)', () => {
+  it('base 三件套里程碑生效且多档可叠加（攻击/生命/防御走 heroAttack 等唯一真相源）', () => {
+    const nova = HEROES_CONFIG.nova; // { 10: { attack: 5 }, 20: { critRate: 0.02 } }
+    expect(getLevelMilestoneBonus(nova, 5)).toEqual({});
+    expect(getLevelMilestoneBonus(nova, 10)).toEqual({ attack: 5 });
+    expect(getLevelMilestoneBonus(nova, 20)).toEqual({ attack: 5, critRate: 0.02 });
+    expect(getLevelMilestoneBonus(nova, 30)).toEqual({ attack: 5, critRate: 0.02 });
+  });
+
+  it('元属性与特殊属性里程碑可配置（三层 21 项全覆盖）', () => {
+    const custom = { ...HEROES_CONFIG.nova, levelMilestones: { 10: { strength: 2, arcaneBoost: 0.1 } } };
+    expect(getLevelMilestoneBonus(custom, 10)).toEqual({ strength: 2, arcaneBoost: 0.1 });
+    expect(getLevelMilestoneBonus(custom, 5)).toEqual({});
+  });
+
+  it('多档同类属性线性叠加', () => {
+    const custom = { ...HEROES_CONFIG.nova, levelMilestones: { 10: { attack: 2 }, 15: { attack: 3 } } };
+    expect(getLevelMilestoneBonus(custom, 14)).toEqual({ attack: 2 });
+    expect(getLevelMilestoneBonus(custom, 20)).toEqual({ attack: 5 });
   });
 });
 

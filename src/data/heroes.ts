@@ -2,7 +2,7 @@ import type { HeroClass, HeroFaction } from '../types/game';
 import type { LucideIcon } from 'lucide-react';
 import { FlaskConical, Footprints, Hammer, HandMetal, HeartPulse, Rocket, Shield, Wheat, Wrench } from 'lucide-react';
 import type { ItemSprite } from './items/types';
-import type { PrimaryAttributes, BaseAttributes } from '../state/statSystem';
+import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
 
 // 英雄后勤 Meta 属性定义：英雄驻守设施时提供的产能/速度加成
 export interface HeroDutyMeta {
@@ -23,7 +23,7 @@ export interface HeroConfig {
   baseAttack: number;
   baseDefense: number;
   primaryAttributes: PrimaryAttributes;   // 初始元属性（力量/体质/敏捷/智慧/意志/超越）
-  levelMilestones?: Record<number, Partial<BaseAttributes>>; // 里程碑：如 { 10: { attack: 5 } }
+  levelMilestones?: Record<number, Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes>>; // 里程碑：如 { 10: { attack: 5 }, 20: { strength: 2, critRate: 0.01 } }
   dutyMeta?: HeroDutyMeta; // 后勤驻守 Meta 属性
   sprite?: ItemSprite;      // 立绘雪碧图（survivors sheet，3x3）
   icon?: LucideIcon;        // Lucide 回退图标（sprite 缺失时显示）

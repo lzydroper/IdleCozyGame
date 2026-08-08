@@ -1,7 +1,7 @@
 // 英雄成长配置（16 号，08 决策 D1/D4）：职阶基础成长系数 + 英雄级里程碑加成 + 元属性作用说明。
 // 每级成长唯一真相源：战斗计算（state/combat.ts）与详情面板（HeroDetailModal）共用本文件。
 import type { HeroClass } from '../types/game';
-import type { BaseAttributes, PrimaryAttributes } from '../state/statSystem';
+import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
 import type { HeroConfig } from './heroes';
 
 export interface HeroGrowthConfig {
@@ -20,17 +20,18 @@ export const HERO_GROWTH_BY_CLASS: Record<HeroClass, HeroGrowthConfig> = {
 export const getHeroGrowth = (config: HeroConfig): HeroGrowthConfig =>
   HERO_GROWTH_BY_CLASS[config.heroClass];
 
-// 英雄级里程碑加成（08 决策 D1）：到达指定等级一次性获得额外基础属性，如 { 10: { attack: 5 } }。
+// 英雄级里程碑加成（08 决策 D1 + stat-bonus-unification 06）：到达指定等级一次性获得三层属性加成
+// （元/基础/特殊 21 项全覆盖），如 { 10: { attack: 5 }, 20: { strength: 2, critRate: 0.01 } }。
 // 多档可叠加（20 级同时获得 10 级与 20 级加成）。
 export const getLevelMilestoneBonus = (
   config: HeroConfig,
   level: number
-): Partial<BaseAttributes> => {
+): Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes> => {
   if (!config.levelMilestones) return {};
-  const bonus: Partial<BaseAttributes> = {};
+  const bonus: Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes> = {};
   Object.entries(config.levelMilestones).forEach(([lv, b]) => {
     if (level < Number(lv)) return;
-    (Object.keys(b) as (keyof BaseAttributes)[]).forEach(k => {
+    (Object.keys(b) as (keyof (BaseAttributes & PrimaryAttributes & SpecialAttributes))[]).forEach(k => {
       const v = b[k] ?? 0;
       bonus[k] = (bonus[k] ?? 0) + v;
     });
