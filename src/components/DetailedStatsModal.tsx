@@ -15,7 +15,8 @@ import { UI_TOKENS } from '../data/uiConstants';
 export interface DetailedStatsModalProps {
   isOpen: boolean;
   heroName: string;
-  stats: CalculatedEntityStats;
+  stats: CalculatedEntityStats;           // 含全部 modifier 的最终值
+  baseStats: CalculatedEntityStats;       // 不含外部 modifier 的基础值（calculateEntityStats(params, [])）
   modifiers?: StatModifier[];
   onClose: () => void;
 }
@@ -33,15 +34,12 @@ const DERIVED_ORDER: DerivedStatKey[] = [
   'critResist', 'damageReduction', 'durationReduction', 'effectReduction', 'cooldownReduction', 'voidSpirit'
 ];
 
-// 属性配色（参考 EquipmentDetailModal 风格：Base 暖色、Primary 各异、Special 紫系、Derived 青绿系）
+// 属性配色（参考 EquipmentDetailModal 风格）
 const STAT_COLOR: Record<string, string> = {
-  // Base
   attack: 'text-amber-300', defense: 'text-sky-300', maxHp: 'text-rose-300', maxMp: 'text-violet-300',
   critRate: 'text-orange-300', critDmg: 'text-orange-300',
-  // Primary
   strength: 'text-amber-300', constitution: 'text-rose-300', agility: 'text-purple-300',
   intelligence: 'text-sky-300', willpower: 'text-emerald-300', transcendence: 'text-fuchsia-300',
-  // Special
   arcaneBoost: 'text-violet-300', arcaneResistance: 'text-violet-300',
   mechanicalLoad: 'text-amber-300', mechanicalEvolution: 'text-amber-300',
   nightmareErosion: 'text-rose-300', voidSpirit: 'text-teal-300',
@@ -53,55 +51,45 @@ const DERIVED_COLOR: Record<string, string> = {
   cooldownReduction: 'text-fuchsia-300', voidSpirit: 'text-teal-300',
 };
 
-// 获取某属性当前总值（从 CalculatedEntityStats 中读取）
-const getStatValue = (stats: CalculatedEntityStats, stat: StatKey): { value: number; isPercent: boolean } => {
-  const meta = STAT_META[stat];
-  const { primaryAttributes: primary, specialAttributes: special, ...base } = stats;
-  if (stat in primary) return { value: primary[stat as keyof typeof primary], isPercent: !!meta.percentDisplay };
-  if (stat in special) return { value: special[stat as keyof typeof special], isPercent: !!meta.percentDisplay };
-  return { value: base[stat as keyof typeof base], isPercent: !!meta.percentDisplay };
-};
-
-// 获取某属性的基础值（不含 modifier 贡献）
-const getBaseStatValue = (stats: CalculatedEntityStats, stat: StatKey): number => {
+// 从 CalculatedEntityStats 中读取某属性的值
+const readStatValue = (stats: CalculatedEntityStats, stat: StatKey): number => {
   const { primaryAttributes: primary, specialAttributes: special, ...base } = stats;
   if (stat in primary) return primary[stat as keyof typeof primary];
   if (stat in special) return special[stat as keyof typeof special];
   return base[stat as keyof typeof base];
 };
 
-// 格式化属性值：非百分比保留 1 位小数，百分比保留 1 位小数
+// 格式化数值：非百分比保留 1 位小数，百分比保留 1 位小数
 const formatValue = (value: number, isPercent: boolean): string => {
   if (isPercent) return `${(value * 100).toFixed(1)}%`;
   return String(Math.round(value * 10) / 10);
 };
 
-// 格式化 modifier 贡献值（带正负号）
-const formatContribution = (flat: number, percent: number, isPercentStat: boolean): string => {
+// 将贡献值拆为符号 + 数值两部分，供对齐渲染
+const splitContribution = (flat: number, percent: number, isPercentStat: boolean): { sign: string; num: string } | null => {
   const parts: string[] = [];
   if (flat !== 0) {
-    const sign = flat > 0 ? '+' : '';
-    parts.push(sign + (isPercentStat ? `${Math.round(flat * 100)}%` : String(Math.round(flat * 10) / 10)));
+    const s = flat > 0 ? '+' : '';
+    parts.push(s + (isPercentStat ? `${Math.round(flat * 100)}%` : String(Math.round(flat * 10) / 10)));
   }
   if (percent !== 0) {
-    const sign = percent > 0 ? '+' : '';
-    parts.push(`${sign}${Math.round(percent * 100)}%`);
+    const s = percent > 0 ? '+' : '';
+    parts.push(`${s}${Math.round(percent * 100)}%`);
   }
-  return parts.join('、') || '0';
+  const joined = parts.join('、');
+  if (!joined || joined === '0') return null;
+  // 拆出首个符号
+  if (joined.startsWith('+')) return { sign: '+', num: joined.slice(1) };
+  if (joined.startsWith('-')) return { sign: '-', num: joined.slice(1) };
+  return { sign: '', num: joined };
 };
 
-// 格式化派生属性贡献值
-const formatDerivedContribution = (contribution: number, isPercent: boolean): string => {
-  if (isPercent) return `${(contribution * 100).toFixed(1)}%`;
-  return String(Math.round(contribution * 10) / 10);
-};
-
-// 字号：行 13px，详情 12px
+// 字号
 const TEXT_ROW = 'text-[13px]';
 const TEXT_DETAIL = 'text-xs';
 
 export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
-  isOpen, heroName, stats, modifiers, onClose
+  isOpen, heroName, stats, baseStats, modifiers, onClose
 }) => {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
@@ -122,12 +110,13 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   // 渲染单条可修饰属性行
   const renderStatRow = (stat: StatKey) => {
     const meta = STAT_META[stat];
-    const { value, isPercent } = getStatValue(stats, stat);
+    const isPercent = !!meta.percentDisplay;
+    const value = readStatValue(stats, stat);
+    const baseValue = readStatValue(baseStats, stat);
     const sources = getStatSourcesByStat(groupedMods, stat);
     const hasSources = sources.length > 0;
     const rowKey = `stat-${stat}`;
     const isExpanded = expandedKeys.has(rowKey);
-    const baseValue = getBaseStatValue(stats, stat);
     const color = STAT_COLOR[stat] ?? 'text-zinc-100';
 
     return (
@@ -150,22 +139,33 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
         </button>
         {isExpanded && hasSources && (
           <div className="flex flex-col gap-0.5 pl-4 pr-2 pb-1.5 border-l-2 border-zinc-700/60 ml-2 mt-0.5">
-            {/* 基础值 */}
+            {/* 基础值：符号位空占位，数值右对齐 */}
             <div className="flex justify-between items-center">
               <span className={`${TEXT_DETAIL} text-zinc-500`}>基础值</span>
-              <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
-                {formatValue(baseValue, isPercent)}
-              </span>
-            </div>
-            {/* modifier 来源分解 */}
-            {sources.map(s => (
-              <div key={s.source} className="flex justify-between items-center">
-                <span className={`${TEXT_DETAIL} text-zinc-500`}>{s.source}</span>
-                <span className={`${TEXT_DETAIL} text-emerald-300/90 font-bold tabular-nums`}>
-                  {formatContribution(s.flat, s.percent, isPercent)}
+              <div className="flex items-center">
+                <span className={`${TEXT_DETAIL} w-3 text-right text-transparent`}>+</span>
+                <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
+                  {formatValue(baseValue, isPercent)}
                 </span>
               </div>
-            ))}
+            </div>
+            {/* modifier 来源分解：符号 + 数值分离，首数字竖直对齐 */}
+            {sources.map(s => {
+              const split = splitContribution(s.flat, s.percent, isPercent);
+              return (
+                <div key={s.source} className="flex justify-between items-center">
+                  <span className={`${TEXT_DETAIL} text-zinc-500`}>{s.source}</span>
+                  <div className="flex items-center">
+                    <span className={`${TEXT_DETAIL} w-3 text-right text-emerald-400/80 font-bold`}>
+                      {split?.sign ?? ''}
+                    </span>
+                    <span className={`${TEXT_DETAIL} text-emerald-300/90 font-bold tabular-nums`}>
+                      {split?.num ?? '0'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -211,9 +211,12 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
                 <span className={`${TEXT_DETAIL} text-zinc-500`}>
                   {c.source}（{c.sourceValue}）
                 </span>
-                <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
-                  {formatDerivedContribution(c.contribution, meta.percentDisplay)}
-                </span>
+                <div className="flex items-center">
+                  <span className={`${TEXT_DETAIL} w-3 text-right text-transparent`}>+</span>
+                  <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
+                    {meta.percentDisplay ? `${(c.contribution * 100).toFixed(1)}%` : String(Math.round(c.contribution * 10) / 10)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -235,7 +238,6 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
           </button>
         </header>
 
-        {/* 定高可滑动属性列表：不分大类，27 条属性依次平铺 */}
         <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col gap-0.5 pr-1 mt-3">
           {STAT_ORDER.map(renderStatRow)}
           <div className="border-t border-zinc-700/60 my-1.5" />

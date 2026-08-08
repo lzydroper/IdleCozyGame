@@ -94,21 +94,29 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     ];
   }, [config, hero, heroId, heroEquip, state.party]);
 
-  const calculatedStats = useMemo(() => {
+  const statsParams = useMemo(() => {
     if (!config || !hero) return null;
     const base = heroBaseAttributes(config, hero.level);
-    return calculateEntityStats(
-      {
-        baseAttributes: base,
-        primaryAttributes: { ...config.primaryAttributes },
-        specialAttributes: {
-          ...DEFAULT_SPECIAL_ATTRIBUTES,
-          ...config.specialAttributes
-        }
-      },
-      permanentModifiers
-    );
-  }, [config, hero, permanentModifiers]);
+    return {
+      baseAttributes: base,
+      primaryAttributes: { ...config.primaryAttributes },
+      specialAttributes: {
+        ...DEFAULT_SPECIAL_ATTRIBUTES,
+        ...config.specialAttributes
+      }
+    };
+  }, [config, hero]);
+
+  const calculatedStats = useMemo(() => {
+    if (!statsParams) return null;
+    return calculateEntityStats(statsParams, permanentModifiers);
+  }, [statsParams, permanentModifiers]);
+
+  // 不含外部 modifier 的基础值（供 DetailedStatsModal 展开时显示"基础值"）
+  const baseStats = useMemo(() => {
+    if (!statsParams) return null;
+    return calculateEntityStats(statsParams, []);
+  }, [statsParams]);
 
   if (!isOpen || !heroId || !hero || !config) return null;
   // early return 已保证 config/hero 非空，calculatedStats 必非空
@@ -585,6 +593,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         isOpen={showDetailedStats}
         heroName={awakenedName}
         stats={stats}
+        baseStats={baseStats as CalculatedEntityStats}
         modifiers={permanentModifiers}
         onClose={handleCloseDetailedStats}
       />
