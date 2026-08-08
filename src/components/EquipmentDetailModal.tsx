@@ -127,7 +127,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     }
   };
 
-  // 渲染属性行：显示最终属性值（base + 强化加成），强化部分括号标注
+  // 渲染属性行：只显示最终属性值（含强化、阵营加成）
   const renderStatRow = (
     label: string,
     IconComp: React.ComponentType<{ className?: string }>,
@@ -137,7 +137,6 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
     const { base, enhance } = getEquippedStatParts(item, stat, heroConfig?.faction);
     if (!base && !enhance) return null;
     const total = Math.round((base + enhance) * 10) / 10;
-    const enhanceDisp = Math.round(enhance * 10) / 10;
 
     return (
       <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80">
@@ -145,14 +144,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           <IconComp className={`w-3.5 h-3.5 ${colorClass}`} />
           <span>{label}</span>
         </div>
-        <div className="font-mono font-black text-right flex items-center gap-1">
-          <span className="text-zinc-100">{total}</span>
-          {enhanceDisp > 0 && (
-            <span className="text-emerald-400/70 text-[10px] font-bold">
-              (+{enhanceDisp})
-            </span>
-          )}
-        </div>
+        <span className="font-mono font-black text-zinc-100">{total}</span>
       </div>
     );
   };
