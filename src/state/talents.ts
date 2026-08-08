@@ -1,7 +1,7 @@
 import type { GameState, HeroState } from '../types/game';
 import type { HeroClass } from '../types/game';
 import { HEROES_CONFIG } from '../data/heroes';
-import type { TalentNodeConfig } from '../data/talents';
+import type { TalentNodeConfig, TalentGate } from '../data/talents';
 import { TALENT_TRUNKS, HERO_TALENTS } from '../data/talents';
 import type { CombatBonus } from '../data/bonds';
 import type { UpdateResult } from './types';
@@ -43,6 +43,29 @@ export const getTalentBonus = (heroId: string, hero: HeroState): CombatBonus => 
 const prereqsMet = (hero: HeroState, node: TalentNodeConfig): boolean =>
   !node.requires || node.requires.every(req => getTalentLevel(hero, req) >= 1);
 
+// 门控判定（07 号）：所有 gate 条件满足才放行（AND）
+export const evaluateTalentGate = (hero: HeroState, gate: TalentGate[] | undefined): boolean => {
+  if (!gate || gate.length === 0) return true;
+  return gate.every(g => {
+    switch (g.type) {
+      case 'talent': return getTalentLevel(hero, g.nodeId) >= (g.minLevel ?? 1);
+      case 'awakened': return !!hero.awakened;
+      case 'heroLevel': return hero.level >= g.minLevel;
+      case 'star': return hero.star >= g.minLevel;
+    }
+  });
+};
+
+// 第一个未满足的门控条件（07 号，UI 节点锁标记/提示用；无 gate 或全满足时返回 undefined）
+export const firstUnmetTalentGate = (hero: HeroState, gate: TalentGate[] | undefined): TalentGate | undefined => {
+  if (!gate) return undefined;
+  return gate.find(g => !evaluateTalentGate(hero, [g]));
+};
+
+// 节点是否可加点（07 号）：requires（前置投入）与 gate（门控）都满足（AND）
+export const isTalentNodeUnlocked = (hero: HeroState, node: TalentNodeConfig): boolean =>
+  prereqsMet(hero, node) && evaluateTalentGate(hero, node.gate);
+
 export type TalentAllocateFailure = 'unknown_hero' | 'unknown_node' | 'no_points' | 'maxed' | 'locked';
 
 // 加点：消耗 1 天赋点，投入节点 +1（校验前置与上限）
@@ -53,7 +76,7 @@ export const allocateTalentUpdate = (state: GameState, heroId: string, nodeId: s
   if (!node) return { state, result: 'unknown_node' as const };
   if ((hero.talentPoints || 0) < 1) return { state, result: 'no_points' as const };
   if (getTalentLevel(hero, nodeId) >= node.maxLevel) return { state, result: 'maxed' as const };
-  if (!prereqsMet(hero, node)) return { state, result: 'locked' as const };
+  if (!isTalentNodeUnlocked(hero, node)) return { state, result: 'locked' as const };
 
   return {
     state: {

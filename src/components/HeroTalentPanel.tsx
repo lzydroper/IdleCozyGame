@@ -2,10 +2,10 @@ import React, { useMemo, useState, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { formatTalentEffect, buildTalentTree } from '../data/talents';
+import { formatTalentEffect, formatTalentGate, buildTalentTree } from '../data/talents';
 import type { TalentNodeConfig } from '../data/talents';
-import { getTalentLevel, getTalentBonus, getInvestedPoints } from '../state/talents';
-import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move } from 'lucide-react';
+import { getTalentLevel, getInvestedPoints, isTalentNodeUnlocked, firstUnmetTalentGate } from '../state/talents';
+import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move, Award } from 'lucide-react';
 
 const ROW_H = 75;    // 竖直步长 75px
 const COL_W = 75;    // 水平步长 75px（保证 dx == dy = 75px，构成 45° 完美交汇）
@@ -60,13 +60,12 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
 
   const points = hero.talentPoints || 0;
   const invested = getInvestedPoints(hero);
-  const bonus = getTalentBonus(heroId, hero);
 
   const selected = selectedId ? byId.get(selectedId) : undefined;
   const selLevel = selected ? getTalentLevel(hero, selected.id) : 0;
-  const selLocked = selected
-    ? (selected.requires || []).some(pid => getTalentLevel(hero, pid) < 1)
-    : false;
+  // 07 号：解锁 = requires（前置投入）与 gate（觉醒/等级等门控）都满足
+  const selLocked = selected ? !isTalentNodeUnlocked(hero, selected) : false;
+  const selUnmetGate = selected ? firstUnmetTalentGate(hero, selected.gate) : undefined;
   const selParents = selected
     ? (selected.requires || []).map(pid => byId.get(pid)?.name).filter(Boolean).join('、')
     : '';
@@ -208,7 +207,8 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                   {/* 天赋节点 */}
                   {placed.map(p => {
                     const level = getTalentLevel(hero, p.node.id);
-                    const locked = (p.node.requires || []).some(pid => getTalentLevel(hero, pid) < 1);
+                    const locked = !isTalentNodeUnlocked(hero, p.node);
+                    const unmetGate = firstUnmetTalentGate(hero, p.node.gate);
                     const isSel = selectedId === p.node.id;
 
                     return (
@@ -225,13 +225,20 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                               : level > 0
                                 ? 'border-amber-500/80 bg-zinc-900 hover:border-amber-400'
                                 : locked
-                                  ? 'border-zinc-800 bg-zinc-950 opacity-40'
+                                  ? unmetGate
+                                    ? 'border-purple-500/40 bg-zinc-950 opacity-60 group-hover:border-purple-400/70'
+                                    : 'border-zinc-800 bg-zinc-950 opacity-40'
                                   : 'border-zinc-700 bg-zinc-900 group-hover:border-zinc-500'
                             }`}
                         >
                           {nodeIcon(p.node)}
                           {locked && (
-                            <Lock className="w-3 h-3 text-zinc-500 absolute -top-1 -right-1 bg-zinc-950 rounded-full p-0.5 box-content border border-zinc-800" />
+                            <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center absolute -top-1 -right-1 border ${unmetGate ? 'bg-purple-950 border-purple-500/40 text-purple-300' : 'bg-zinc-950 border-zinc-800 text-zinc-500'}`}>
+                              {unmetGate ? <Award className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                            </span>
+                          )}
+                          {unmetGate && unmetGate.type === 'awakened' && (
+                            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[8px] font-black text-purple-300 bg-purple-950 border border-purple-500/40 rounded-full px-1.5 py-0.5 leading-3 whitespace-nowrap">觉醒</span>
                           )}
                           {level > 0 && (
                             <span className="absolute -bottom-1 -right-1 text-[9px] font-black text-amber-200 bg-amber-950 border border-amber-500/60 rounded-full px-1.5 leading-3 shadow">
@@ -286,7 +293,11 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                     onClick={() => handleAllocate(selected.id)}
                     disabled={selLocked || selLevel >= selected.maxLevel || points < 1}
                     className="w-6 h-6 rounded-lg border text-xs font-black flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-20 border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60"
-                    title={selLocked ? `被【${selParents}】阻塞` : selLevel >= selected.maxLevel ? '已满级' : points < 1 ? '天赋点不足' : '投入 1 点'}
+                    title={selLocked
+                      ? selUnmetGate
+                        ? `未满足门控：${selUnmetGate.type === 'awakened' ? '需觉醒' : selUnmetGate.type === 'heroLevel' ? `需等级 ≥${selUnmetGate.minLevel}` : selUnmetGate.type === 'star' ? `需星级 ≥${selUnmetGate.minLevel}` : '需前置天赋投入'}`
+                        : `被【${selParents}】阻塞`
+                      : selLevel >= selected.maxLevel ? '已满级' : points < 1 ? '天赋点不足' : '投入 1 点'}
                   >
                     +
                   </button>
@@ -301,7 +312,9 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 </span>
                 {selLocked && (
                   <span className="font-bold text-amber-500/90">
-                    需解锁前置：【{selParents}】
+                    {selUnmetGate
+                      ? `解锁条件：${formatTalentGate([selUnmetGate], id => byId.get(id)?.name || id).join('；')}`
+                      : `需解锁前置：【${selParents}】`}
                   </span>
                 )}
               </div>

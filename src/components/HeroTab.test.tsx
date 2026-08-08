@@ -154,14 +154,12 @@ describe('HeroTab Component', () => {
     fireEvent.click(screen.getByTestId('hero-card-nova'));
     fireEvent.click(screen.getByText('天赋树入口'));
 
-    expect(screen.getByText(/【进攻者 · 职阶主干】/)).toBeDefined();
-    expect(screen.getByText(/【英雄专属】/)).toBeDefined();
+    expect(screen.getByText(/【进攻者 · 职阶星盘】/)).toBeDefined();
     fireEvent.click(screen.getAllByText('+')[0]);
 
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.talentPoints).toBe(2);
     expect(saved.heroes.nova.talents.trunk_attacker_edge).toBe(1);
-    expect(screen.getByText(/当前加成：攻击 \+3%/)).toBeDefined();
   });
 
   it('resets all invested talent points (ticket 11)', () => {

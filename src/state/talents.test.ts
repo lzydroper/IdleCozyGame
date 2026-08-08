@@ -9,8 +9,11 @@ import {
   getInvestedPoints,
   allocateTalentUpdate,
   unallocateTalentUpdate,
-  resetTalentsUpdate
+  resetTalentsUpdate,
+  evaluateTalentGate,
+  isTalentNodeUnlocked
 } from './talents';
+import type { TalentNodeConfig } from '../data/talents';
 import { applyHeroExp, heroToCombatant } from './combat';
 import { mergeSavedState } from './persistence';
 
@@ -218,6 +221,86 @@ describe('存档迁移（ticket 11）', () => {
     } as never;
     const merged = mergeSavedState(save, INITIAL_STATE);
     expect(merged.heroes.nova.talents).toEqual({ [EDGE]: 3, [OVERDRIVE]: 1 });
+  });
+});
+
+describe('天赋门控 gate（07 号：觉醒/等级/天赋点等条件列表解锁）', () => {
+  const hero = createInitialHero('nova'); // level 1, star 1, awakened false
+
+  it('evaluateTalentGate：无/空 gate 放行，各条件独立判定', () => {
+    expect(evaluateTalentGate(hero, undefined)).toBe(true);
+    expect(evaluateTalentGate(hero, [])).toBe(true);
+    // awakened
+    expect(evaluateTalentGate(hero, [{ type: 'awakened' }])).toBe(false);
+    expect(evaluateTalentGate({ ...hero, awakened: true }, [{ type: 'awakened' }])).toBe(true);
+    // heroLevel
+    expect(evaluateTalentGate(hero, [{ type: 'heroLevel', minLevel: 5 }])).toBe(false);
+    expect(evaluateTalentGate({ ...hero, level: 10 }, [{ type: 'heroLevel', minLevel: 10 }])).toBe(true);
+    // star
+    expect(evaluateTalentGate(hero, [{ type: 'star', minLevel: 5 }])).toBe(false);
+    expect(evaluateTalentGate({ ...hero, star: 5 }, [{ type: 'star', minLevel: 5 }])).toBe(true);
+    // talent（某节点投入 ≥ minLevel，默认 1）
+    expect(evaluateTalentGate(hero, [{ type: 'talent', nodeId: EDGE }])).toBe(false);
+    expect(evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE }])).toBe(true);
+    expect(
+      evaluateTalentGate({ ...hero, talents: { [EDGE]: 1 } }, [{ type: 'talent', nodeId: EDGE, minLevel: 2 }])
+    ).toBe(false);
+  });
+
+  it('evaluateTalentGate：多条件 AND，任一不满足即不放行', () => {
+    const gate = [
+      { type: 'awakened' as const },
+      { type: 'heroLevel' as const, minLevel: 10 },
+      { type: 'talent' as const, nodeId: EDGE }
+    ];
+    const full = { ...hero, awakened: true, level: 12, talents: { [EDGE]: 1 } };
+    expect(evaluateTalentGate(full, gate)).toBe(true);
+    expect(evaluateTalentGate({ ...full, level: 9 }, gate)).toBe(false);
+    expect(evaluateTalentGate({ ...full, awakened: false }, gate)).toBe(false);
+    expect(evaluateTalentGate({ ...full, talents: {} }, gate)).toBe(false);
+  });
+
+  it('isTalentNodeUnlocked：requires 与 gate 都满足才解锁（AND）', () => {
+    const gated: TalentNodeConfig = {
+      id: 'test_gated',
+      name: '测试门控',
+      description: '',
+      maxLevel: 1,
+      effect: {},
+      pos: { row: 0, col: 0 },
+      gate: [{ type: 'awakened' }]
+    };
+    expect(isTalentNodeUnlocked(hero, gated)).toBe(false);
+    expect(isTalentNodeUnlocked({ ...hero, awakened: true }, gated)).toBe(true);
+
+    // requires + gate 组合
+    const both: TalentNodeConfig = { ...gated, requires: [EDGE] };
+    expect(isTalentNodeUnlocked({ ...hero, awakened: true }, both)).toBe(false); // requires 不满足
+    expect(isTalentNodeUnlocked({ ...hero, awakened: true, talents: { [EDGE]: 1 } }, both)).toBe(true);
+  });
+
+  it('allocateTalentUpdate：gate 未满足时 locked（集成）', () => {
+    const state = novaWithPoints(3, { [EDGE]: 1 });
+    // 临时注入一个带觉醒 gate 的专属节点（测试后移除，不污染配置）
+    HERO_TALENTS.nova.push({
+      id: 'hero_nova_test_gate',
+      name: '测试·觉醒',
+      description: '攻击 +1%/级',
+      maxLevel: 1,
+      effect: { attackPercent: 1 },
+      pos: { row: 2, col: 1 },
+      gate: [{ type: 'awakened' }]
+    });
+    try {
+      expect(allocateTalentUpdate(state, 'nova', 'hero_nova_test_gate').result).toBe('locked');
+      const awakenedState = {
+        ...state,
+        heroes: { nova: { ...state.heroes.nova, awakened: true } }
+      };
+      expect(allocateTalentUpdate(awakenedState, 'nova', 'hero_nova_test_gate').result).toBe(true);
+    } finally {
+      HERO_TALENTS.nova = HERO_TALENTS.nova.filter(n => n.id !== 'hero_nova_test_gate');
+    }
   });
 });
 
