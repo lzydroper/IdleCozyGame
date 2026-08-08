@@ -123,7 +123,7 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'weapon',
     set: 'wasteland',
     faction: 'mechanical',
-    baseStats: [{ stat: 'attack', kind: 'flat', value: 10 }],
+    baseStats: [{ stat: 'attack', kind: 'flat', value: 10 }, { stat: 'defense', kind: 'flat', value: 2 }],
     statPerEnhance: [{ stat: 'attack', kind: 'flat', value: 1 }],
     source: 'workshop',
     description: '用废旧金属打磨的求生刀刃，废土猎人的第一把武器。'

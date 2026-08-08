@@ -123,40 +123,38 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
       <div key={rowKey} className="flex flex-col">
         <button
           onClick={() => hasSources && toggleExpand(rowKey)}
-          className={`flex justify-between items-center py-1 px-2 rounded-lg transition-colors ${
-            hasSources ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
-          }`}
+          className={`flex justify-between items-center py-1 px-2 rounded-lg transition-colors ${hasSources ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
+            }`}
         >
           <span className={`${TEXT_ROW} text-zinc-300 font-bold`}>{meta.label}</span>
           <div className="flex items-center gap-1.5">
             <span className={`${TEXT_ROW} font-black ${color} tabular-nums`}>
               {formatValue(value, isPercent)}
             </span>
-            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${
-              hasSources ? (isExpanded ? 'rotate-90 text-zinc-300' : 'text-zinc-500') : 'invisible'
-            }`} />
+            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${hasSources ? (isExpanded ? 'rotate-90 text-zinc-300' : 'text-zinc-500') : 'invisible'
+              }`} />
           </div>
         </button>
         {isExpanded && hasSources && (
           <div className="flex flex-col gap-0.5 pl-4 pr-2 pb-1.5 border-l-2 border-zinc-700/60 ml-2 mt-0.5">
-            {/* 基础值：符号位空占位，数值右对齐 */}
+            {/* 基础值：固定 w-20 容器，首数字靠左竖直对齐 */}
             <div className="flex justify-between items-center">
               <span className={`${TEXT_DETAIL} text-zinc-500`}>基础值</span>
-              <div className="flex items-center">
-                <span className={`${TEXT_DETAIL} w-3 text-right text-transparent`}>+</span>
+              <div className="flex items-center w-20 justify-start">
+                <span className={`${TEXT_DETAIL} w-3.5 text-right text-transparent select-none`}>+</span>
                 <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
                   {formatValue(baseValue, isPercent)}
                 </span>
               </div>
             </div>
-            {/* modifier 来源分解：符号 + 数值分离，首数字竖直对齐 */}
+            {/* modifier 来源分解：符号与首数字分离，首数字竖直对齐 */}
             {sources.map(s => {
               const split = splitContribution(s.flat, s.percent, isPercent);
               return (
                 <div key={s.source} className="flex justify-between items-center">
                   <span className={`${TEXT_DETAIL} text-zinc-500`}>{s.source}</span>
-                  <div className="flex items-center">
-                    <span className={`${TEXT_DETAIL} w-3 text-right text-emerald-400/80 font-bold`}>
+                  <div className="flex items-center w-20 justify-start">
+                    <span className={`${TEXT_DETAIL} w-3.5 text-right text-emerald-400/80 font-bold`}>
                       {split?.sign ?? ''}
                     </span>
                     <span className={`${TEXT_DETAIL} text-emerald-300/90 font-bold tabular-nums`}>
@@ -190,18 +188,16 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
       <div key={rowKey} className="flex flex-col">
         <button
           onClick={() => hasContributions && toggleExpand(rowKey)}
-          className={`flex justify-between items-center py-1 px-2 rounded-lg transition-colors ${
-            hasContributions ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
-          }`}
+          className={`flex justify-between items-center py-1 px-2 rounded-lg transition-colors ${hasContributions ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
+            }`}
         >
           <span className={`${TEXT_ROW} text-zinc-300 font-bold`}>{meta.label}</span>
           <div className="flex items-center gap-1.5">
             <span className={`${TEXT_ROW} font-black ${color} tabular-nums`}>
               {formatValue(value, meta.percentDisplay)}
             </span>
-            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${
-              hasContributions ? (isExpanded ? 'rotate-90 text-zinc-300' : 'text-zinc-500') : 'invisible'
-            }`} />
+            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${hasContributions ? (isExpanded ? 'rotate-90 text-zinc-300' : 'text-zinc-500') : 'invisible'
+              }`} />
           </div>
         </button>
         {isExpanded && hasContributions && (
@@ -211,8 +207,8 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
                 <span className={`${TEXT_DETAIL} text-zinc-500`}>
                   {c.source}（{c.sourceValue}）
                 </span>
-                <div className="flex items-center">
-                  <span className={`${TEXT_DETAIL} w-3 text-right text-transparent`}>+</span>
+                <div className="flex items-center w-20 justify-start">
+                  <span className={`${TEXT_DETAIL} w-3.5 text-right text-transparent select-none`}>+</span>
                   <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
                     {meta.percentDisplay ? `${(c.contribution * 100).toFixed(1)}%` : String(Math.round(c.contribution * 10) / 10)}
                   </span>

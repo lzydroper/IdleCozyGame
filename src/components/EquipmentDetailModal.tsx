@@ -26,7 +26,7 @@ import {
   Sword,
   Shield,
   Heart,
-  Plus,
+  HelpCircle,
   Sparkles,
   Zap,
   Hammer,
@@ -388,7 +388,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                 className="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700 flex items-center justify-center cursor-pointer transition-colors"
                 title="获取途径说明"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <HelpCircle className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
