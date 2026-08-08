@@ -396,10 +396,10 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                         后勤驻守特长
                         <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
                       </div>
-                      <div className="text-[9px] font-semibold text-zinc-300 leading-tight">
+                      <div className="text-[9px] font-semibold text-zinc-300 leading-tight line-clamp-1">
                         {config.dutyMeta.facilitySpeedMultiplier && `生产速度 +${Math.round(config.dutyMeta.facilitySpeedMultiplier * 100)}%`}
-                        {config.dutyMeta.facilityYieldMultiplier && `额外产出 +${Math.round(config.dutyMeta.facilityYieldMultiplier * 100)}%`}
-                        {config.dutyMeta.facilityCostReduction && `配方消耗 -${Math.round(config.dutyMeta.facilityCostReduction * 100)}%`}
+                        {config.dutyMeta.facilityYieldMultiplier && ` · 额外产出 +${Math.round(config.dutyMeta.facilityYieldMultiplier * 100)}%`}
+                        {config.dutyMeta.facilityCostReduction && ` · 配方消耗 -${Math.round(config.dutyMeta.facilityCostReduction * 100)}%`}
                       </div>
                     </>
                   ) : (
@@ -485,7 +485,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
           </div>
 
           {/* 下半部分左右布局 (定高 h-[125px] 紧凑面板) */}
-          <div className="grid grid-cols-3 gap-2 h-[112px] shrink-0">
+          <div className="grid grid-cols-3 gap-2 h-[108px] shrink-0">
             {/* 左侧：天赋树入口 */}
             <div
               onClick={() => setShowTalentModal(true)}
