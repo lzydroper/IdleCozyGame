@@ -212,8 +212,14 @@ describe('神话锻造（+30 装备）', () => {
     Object.entries(FORGE_COST).forEach(([id, qty]) => {
       expect(r.state.inventory[id]).toBe(inv[id] - qty);
     });
-    // 神话词条生效（余烬：生命上限 +5%，与 +30 档特效 +15% 叠加 → 20%）
-    expect(getSetBonuses(r.state.equipment.nova).maxHpPercent).toBe(20);
+    // 神话词条生效（余烬单件 +30 触发三档特效 8%/10%/15% + 神话生命 +5%）
+    const mods = getSetBonuses(r.state.equipment.nova);
+    expect(mods).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.08 },
+      { stat: 'defense', kind: 'percent', value: 0.10 },
+      { stat: 'maxHp', kind: 'percent', value: 0.15 },
+      { stat: 'maxHp', kind: 'percent', value: 0.05 }
+    ]);
   });
 
   it('未满 +30 / 材料不足 / 已是神话均拒绝', () => {
@@ -260,17 +266,24 @@ describe('属性与套装特效计算', () => {
 
   it('套装特效按 +10/+20/+30 阈值叠加触发', () => {
     const gear10: HeroEquipment = { weapon: { itemId: 'wasteland_weapon', enhance: 10, mythic: false }, armor: null, trinket: null };
-    expect(getSetBonuses(gear10)).toEqual({ attackPercent: 5 });
+    expect(getSetBonuses(gear10)).toEqual([{ stat: 'attack', kind: 'percent', value: 0.05 }]);
 
     const gear20: HeroEquipment = { weapon: { itemId: 'wasteland_weapon', enhance: 10, mythic: false }, armor: { itemId: 'wasteland_armor', enhance: 10, mythic: false }, trinket: null };
-    expect(getSetBonuses(gear20)).toEqual({ attackPercent: 5, defensePercent: 8 });
+    expect(getSetBonuses(gear20)).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.05 },
+      { stat: 'defense', kind: 'percent', value: 0.08 }
+    ]);
 
     const gear30: HeroEquipment = {
       weapon: { itemId: 'wasteland_weapon', enhance: 10, mythic: false },
       armor: { itemId: 'wasteland_armor', enhance: 10, mythic: false },
       trinket: { itemId: 'wasteland_trinket', enhance: 10, mythic: false }
     };
-    expect(getSetBonuses(gear30)).toEqual({ attackPercent: 5, defensePercent: 8, maxHpPercent: 10 });
+    expect(getSetBonuses(gear30)).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.05 },
+      { stat: 'defense', kind: 'percent', value: 0.08 },
+      { stat: 'maxHp', kind: 'percent', value: 0.10 }
+    ]);
   });
 
   it('神话词条：穿戴该系列任意神话装备即生效（与套装特效叠加，每系列仅一次）', () => {
@@ -280,7 +293,13 @@ describe('属性与套装特效计算', () => {
       trinket: null
     };
     // 单件 +30 神话：触发全部阈值特效（攻击+10%、防御+12%、生命+18%）+ 神话词条（攻击+5%、防御+5%）
-    expect(getSetBonuses(equip)).toEqual({ attackPercent: 15, defensePercent: 17, maxHpPercent: 18 });
+    expect(getSetBonuses(equip)).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.10 },
+      { stat: 'defense', kind: 'percent', value: 0.12 },
+      { stat: 'maxHp', kind: 'percent', value: 0.18 },
+      { stat: 'attack', kind: 'percent', value: 0.05 },
+      { stat: 'defense', kind: 'percent', value: 0.05 }
+    ]);
   });
 
   it('神话词条为系列共有：三件神话也只结算一次', () => {
@@ -290,7 +309,13 @@ describe('属性与套装特效计算', () => {
       trinket: { itemId: 'starcore_trinket', enhance: 30, mythic: true }
     };
     // 满编 90：特效攻击+10%、防御+12%、生命+18% + 词条攻击+5%、防御+5%（仅一次）
-    expect(getSetBonuses(equip)).toEqual({ attackPercent: 15, defensePercent: 17, maxHpPercent: 18 });
+    expect(getSetBonuses(equip)).toEqual([
+      { stat: 'attack', kind: 'percent', value: 0.10 },
+      { stat: 'defense', kind: 'percent', value: 0.12 },
+      { stat: 'maxHp', kind: 'percent', value: 0.18 },
+      { stat: 'attack', kind: 'percent', value: 0.05 },
+      { stat: 'defense', kind: 'percent', value: 0.05 }
+    ]);
   });
 
   it('getHeroEquipmentBonus 汇总平值与百分比', () => {
@@ -299,10 +324,10 @@ describe('属性与套装特效计算', () => {
       armor: null,
       trinket: null
     };
-    expect(getHeroEquipmentBonus(equip)).toEqual({
-      flat: { attack: 20 },               // 10 + 1*10
-      percent: { attackPercent: 5 }       // 废土 +10 档
-    });
+    expect(getHeroEquipmentBonus(equip)).toEqual([
+      { stat: 'attack', kind: 'flat', value: 20 },          // 10 + 1*10
+      { stat: 'attack', kind: 'percent', value: 0.05 }      // 废土 +10 档
+    ]);
   });
 });
 

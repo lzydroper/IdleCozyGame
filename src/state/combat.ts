@@ -5,11 +5,9 @@ import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
 import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
-import type { CombatBonus } from '../data/bonds';
 import { toModifiers } from '../data/bonds';
 import type { AwakenSkillConfig } from '../data/awakening';
 import { aggregateBonus } from './bonds';
-import type { EquipmentStats } from '../data/equipment';
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import type { StatModifier } from './statSystem';
 import { calculateEntityStats } from './statSystem';
@@ -217,25 +215,13 @@ export const simulateBattle = (
   };
 };
 
-// 兼容辅助（stat-bonus-unification 02，03 装备来源迁移后删除）：装备平值 → flat 修饰符
-const equipmentFlatToModifiers = (flat: EquipmentStats): StatModifier[] => {
-  const mods: StatModifier[] = [];
-  if (flat.attack) mods.push({ stat: 'attack', kind: 'flat', value: flat.attack });
-  if (flat.defense) mods.push({ stat: 'defense', kind: 'flat', value: flat.defense });
-  if (flat.maxHp) mods.push({ stat: 'maxHp', kind: 'flat', value: flat.maxHp });
-  return mods;
-};
-
 // 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成统一为修饰符，经 statSystem 面板快照生效；
-// 退出战斗即复原。stat-bonus-unification 02）
+// 退出战斗即复原。stat-bonus-unification 02/03）
 export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModifier[] = [], gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
-  const { flat, percent } = gear ? getHeroEquipmentBonus(gear) : { flat: {} as EquipmentStats, percent: {} as CombatBonus };
-  const talentPercent = getTalentBonus(heroId, hero);
-  const awakenPercent = getAwakenBonus(heroId, hero);
 
-  // 面板快照：统一聚合全部来源修饰符（未迁移来源经 toModifiers 兼容，数值与旧实现一致）
+  // 面板快照：统一聚合全部来源修饰符（装备来源已直连，羁绊/天赋/觉醒经 toModifiers 兼容）
   const stats = calculateEntityStats(
     {
       baseAttributes: {
@@ -249,10 +235,9 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
     },
     [
       ...bonus,
-      ...equipmentFlatToModifiers(flat),
-      ...toModifiers(percent),
-      ...toModifiers(talentPercent),
-      ...toModifiers(awakenPercent)
+      ...(gear ? getHeroEquipmentBonus(gear) : []),
+      ...toModifiers(getTalentBonus(heroId, hero)),
+      ...toModifiers(getAwakenBonus(heroId, hero))
     ]
   );
 

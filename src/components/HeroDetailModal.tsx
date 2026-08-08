@@ -11,7 +11,7 @@ import { STAR_MAX, starUpShardCost } from '../data/awakening';
 import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
-import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
+import { getEquippedFlatStats, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp, heroMaxHp, heroAttack, heroDefense } from '../state/combat';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats } from '../state/statSystem';
@@ -77,8 +77,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const awakenedName = hero && config ? getAwakenedName(heroId || '', hero) || config.name : '';
 
   // 装备加成属性（含同阵营 30% 穿戴加成）
-  const { flat: equipFlat } = useMemo(
-    () => getHeroEquipmentBonus(heroEquip, config?.faction ?? 'mechanical'),
+  const equipFlat = useMemo(
+    () => getEquippedFlatStats(heroEquip, config?.faction ?? 'mechanical'),
     [heroEquip, config?.faction]
   );
 

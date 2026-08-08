@@ -9,7 +9,7 @@ import {
   enhanceCost,
   FORGE_COST
 } from '../data/equipment';
-import type { CombatBonus } from '../data/bonds';
+import type { StatModifier } from './statSystem';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -90,8 +90,8 @@ export const getSetEnhanceProgress = (equip: HeroEquipment | null): Record<strin
 };
 
 // 百分比加成汇总：套装特效（达阈值叠加）+ 神话系列共有词条（任意神话装备生效）
-export const getSetBonuses = (equip: HeroEquipment | null): CombatBonus => {
-  const bonus: CombatBonus = {};
+export const getSetBonuses = (equip: HeroEquipment | null): StatModifier[] => {
+  const bonus: StatModifier[] = [];
   if (!equip) return bonus;
   const progress = getSetEnhanceProgress(equip);
 
@@ -100,7 +100,7 @@ export const getSetBonuses = (equip: HeroEquipment | null): CombatBonus => {
     if (!set) return;
     // 套装特效：同系列强化总和 ≥ 阈值即触发，多档叠加
     set.tierEffects.forEach(tier => {
-      if (total >= tier.threshold) addBonus(bonus, tier.bonus);
+      if (total >= tier.threshold) bonus.push(...tier.bonus);
     });
   });
 
@@ -113,23 +113,22 @@ export const getSetBonuses = (equip: HeroEquipment | null): CombatBonus => {
     const set = cfg && EQUIPMENT_SETS[cfg.set];
     if (set && !affixGranted.has(set.id)) {
       affixGranted.add(set.id);
-      addBonus(bonus, set.mythicAffix);
+      bonus.push(...set.mythicAffix);
     }
   });
 
   return bonus;
 };
 
-// 英雄装备加成汇总（平值 + 百分比），战斗计算与 UI 共用
-export const getHeroEquipmentBonus = (equip: HeroEquipment | null, heroFaction?: HeroFaction): { flat: EquipmentStats; percent: CombatBonus } => ({
-  flat: getEquippedFlatStats(equip, heroFaction),
-  percent: getSetBonuses(equip)
-});
-
-const addBonus = (target: CombatBonus, src: CombatBonus): void => {
-  if (src.attackPercent) target.attackPercent = (target.attackPercent || 0) + src.attackPercent;
-  if (src.defensePercent) target.defensePercent = (target.defensePercent || 0) + src.defensePercent;
-  if (src.maxHpPercent) target.maxHpPercent = (target.maxHpPercent || 0) + src.maxHpPercent;
+// 英雄装备加成汇总（平值 + 百分比统一为修饰符数组），战斗计算与 UI 共用
+// （stat-bonus-unification 03：EquipmentStats 仅保留为装备静态属性定义，加成输出统一 StatModifier[]）
+export const getHeroEquipmentBonus = (equip: HeroEquipment | null, heroFaction?: HeroFaction): StatModifier[] => {
+  const flat = getEquippedFlatStats(equip, heroFaction);
+  const mods: StatModifier[] = [];
+  if (flat.attack) mods.push({ stat: 'attack', kind: 'flat', value: flat.attack });
+  if (flat.defense) mods.push({ stat: 'defense', kind: 'flat', value: flat.defense });
+  if (flat.maxHp) mods.push({ stat: 'maxHp', kind: 'flat', value: flat.maxHp });
+  return [...mods, ...getSetBonuses(equip)];
 };
 
 const writeEquipment = (state: GameState, heroId: string, equip: HeroEquipment): GameState => ({
