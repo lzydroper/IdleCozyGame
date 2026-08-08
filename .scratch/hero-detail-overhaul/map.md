@@ -35,11 +35,12 @@
 - [英雄详情弹窗性能优化实施（存档节流 + tick 短路 + 弹窗 memo）](issues/04-hero-detail-perf-implementation.md) — 04a `createSaveThrottle`（5s 窗口 + 测试环境不节流）+ beforeunload/pagehide 关闭兑底（persistence.test 2 例）；04b applyTick 体力跨整点才 tick（无活跃系统时每秒重渲染 → 每 3 秒 1 次，tick.test 适配+新增跨整点用例）；04c DetailedStatsModal/HeroDetailModal React.memo + HeroDetailModal 内 onClose useCallback + HeroTab useCallback（code-review 修复 memo 恒失效问题）。全量 429/429、build 通过，提交 2a476af。
 - [装备详情滚动卡顿修复：移除弹窗 backdrop blur + 滚动容器优化](issues/05-equipment-modal-scroll-lag-fix.md) — 用户实证反馈装备详情滚动明显卡顿：根因是 EquipmentDetailModal 用 UI_TOKENS.modalBackdrop（backdrop-blur-sm）+ 可滚动容器（max-h-85vh overflow-y-auto），滚动时全屏 blur 每帧重绘（17 号结论的 token 路径遗漏）。修复：UI_TOKENS 两个 backdrop 去 blur（保留透明度）+ modalContainerEquipment overscroll-contain；code-review 补漏 ShelterTab 播种选择、App 离线结算（同为可滚动+全屏 blur）。全量 429/429、build 通过，提交 bc38254。
 - [英雄详情弹窗放大优化原型](issues/02-hero-detail-zoom-prototype.md) — 用户选定**变体 C（激进放大，紧凑）**并经三轮反馈迭代定稿（溢出修复 → 垂直预算 → 属性边框拥挤）。规格：字号阶梯 正文/数值/按钮 11px · 标签 10px · 辅助 9px（装备名/技能名保持 8.5px）；图标 框内 w-7 · 属性项 w-4.5 · 按钮内 w-4；头像 w-20；按钮 py-1；下半部 h-112px；属性项 py-0.5 + gap-2。关键发现：460px 定高容器下放大有垂直预算约束（必须从间距/区块挤出空间）。已折入 HeroDetailModal（提交 1806503），原型归档至 prototype-archive/。**此规格为 03 号（子弹窗设计语言统一）的字号阶梯依据，03 阻塞已解除**。
+- [相关子弹窗设计语言统一设计](issues/03-derived-modals-design-unification.md) — 四项决策（用户拍板）：①字号对齐 02 阶梯但按场景留余地（正文 10-11px、标签 10px、辅助 ≥9px、标题保持 text-sm）；②UI_TOKENS 扩展字号/区段卡/头部 token；③容器统一到标准 380px/68vh（装备详情保留滚动）；④天赋树弹窗外提 + z-index 规范（主 10000/子 10001/三级 10002）。已毕业出实施 ticket [相关子弹窗设计语言统一实施](issues/06-derived-modals-design-unification-implementation.md)。
 
 ## Not yet specified
 
 - **放大规格数值**：新字号阶梯（7.5px → ?）、图标尺寸、间距 token 的具体值——已由 02 原型选定（变体 C：11/10/9px + 图标 w-7/w-4.5/w-4 + 头像 w-20 + 按钮 py-1 + 下半部 h-112px + 属性 py-0.5 gap-2），03 号据其统一子弹窗。
-- **UI_TOKENS 扩展设计**：字号阶梯/卡片/按钮 token、z-index 规范的具体形态——待 02 选定字号后由 03 决定。
+- **UI_TOKENS 扩展设计**：字号阶梯/卡片/按钮 token、z-index 规范的具体形态——已由 03 决策（token 清单 + z-index 分层 + 容器统一），实施 ticket 06 落地。
 - **性能优化实施清单**：01 测量的结果将毕业出实施 ticket；若测量证明「设施活跃时每秒全树重渲染」是主要瓶颈，全局渲染优化（memo 隔离 / context 拆分）是否纳入范围待 01 结论。
 - **各弹窗内部密度细节**：装备详情属性展示、天赋树面板节点尺寸/连线、批量升级滑条布局——在 02/03 或其后续实施中明确。
 - **context 拆分（高频/低频 slice）+ actions useCallback**——13 号遗留；01 测量确认其必要但超出本 effort 弹性范围，若 04b 实施后设施活跃场景仍有卡顿再评估纳入。

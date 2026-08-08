@@ -1,6 +1,6 @@
 # 相关子弹窗设计语言统一设计
 
-Status: open
+Status: resolved
 Type: grilling
 Blocked by: 02
 
@@ -22,3 +22,12 @@ Blocked by: 02
 4. **详细属性弹窗的字号**：它是 6 个弹窗中唯一 text-xs 级的，向下对齐 02 字号阶梯还是保持较大字号（属性表信息密度高）？
 
 产出：UI_TOKENS 扩展设计 + 逐弹窗迁移清单 + z-index 规范，作为实施（毕业 ticket）的依据。迁移不得改变各弹窗的功能与交互。
+
+## Answer：四项核心决策已定（2026-08-07，用户 grilling 拍板）
+
+1. **字号策略**：对齐 02 阶梯（11/10/9px）但按场景留余地——正文 10-11px（高密度属性表用 `textBodyDense` 10px）、标签 10px、辅助 ≥9px；标题保持 text-sm/base。
+2. **UI_TOKENS 扩展**：新增字号阶梯 token（textBody/textBodyDense/textLabel/textMini）+ 区段卡 token（sectionCard）+ 弹窗头部 token（modalHeader/modalHeaderTitle/modalCloseButton）。
+3. **容器尺寸**：统一到标准 `w-[92%] max-w-[380px] max-h-[68vh]`（装备详情保留 overflow-y-auto 滚动、装备选择保留 overflow-hidden）。
+4. **天赋树外提 + z-index 规范**：天赋树弹窗容器从 HeroDetailModal 内联外提为独立组件；z-index 分层——主弹窗 `z-[10000]` / 子弹窗 `z-[10001]`（新增 `modalBackdropChild`）/ 三级 `z-[10002]`（modalBackdropSub 改档）。
+
+已毕业出实施 ticket [相关子弹窗设计语言统一实施（UI_TOKENS 扩展 + 字号对齐 + z-index 规范）](issues/06-derived-modals-design-unification-implementation.md)（含逐弹窗迁移清单）。
