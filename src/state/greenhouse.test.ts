@@ -1,0 +1,166 @@
+import { describe, it, expect } from 'vitest';
+import { INITIAL_STATE } from '../data/initialState';
+import { CROPS_CONFIG } from '../data/crops';
+import {
+  resolveWatererBonus,
+  autoHarvestAndReplantUpdate,
+  advanceGreenhouseAutomation,
+  harvestSlotUpdate,
+  batchHarvestUpdate
+} from './greenhouse';
+import type { GameState, GreenhouseSlot } from '../types/game';
+
+const makeSlots = (slots: Partial<GreenhouseSlot>[]): GreenhouseSlot[] =>
+  slots.map((s, i) => ({
+    id: i + 1,
+    cropId: null,
+    growthProgress: 0,
+    growthTimeLeft: 0,
+    isWatered: false,
+    ...s
+  }));
+
+const makeState = (overrides: {
+  slots?: GreenhouseSlot[];
+  assignedWatererId?: string | null;
+  inventory?: Record<string, number>;
+} = {}): GameState => ({
+  ...INITIAL_STATE,
+  inventory: overrides.inventory ?? { seed_glow_grass: 5 },
+  greenhouse: {
+    ...INITIAL_STATE.greenhouse,
+    slots: overrides.slots ?? makeSlots([{ cropId: null }])
+  },
+  shelter: {
+    ...INITIAL_STATE.shelter,
+    assignedWatererId: overrides.assignedWatererId ?? null
+  }
+});
+
+describe('resolveWatererBonus（07 驻守加成反查）', () => {
+  it('从驻守英雄配置反查 dutyMeta', () => {
+    expect(resolveWatererBonus(makeState({ assignedWatererId: 'mei' }))?.facilityYieldMultiplier).toBe(0.25);
+    expect(resolveWatererBonus(makeState({ assignedWatererId: 'nova' }))?.facilitySpeedMultiplier).toBe(0.25);
+    expect(resolveWatererBonus(makeState({ assignedWatererId: null }))).toBeNull();
+  });
+});
+
+describe('autoHarvestAndReplantUpdate（07 驻守自动收割播种）', () => {
+  it('收割成熟槽并补种原作物（扣种子、种下未湿润）', () => {
+    const state = makeState({
+      slots: makeSlots([
+        { cropId: 'glow_grass', growthProgress: 100, growthTimeLeft: 0, isWatered: true },
+        { cropId: null }
+      ]),
+      assignedWatererId: 'nova',
+      inventory: { seed_glow_grass: 5 }
+    });
+    const r = autoHarvestAndReplantUpdate(state, 'original');
+    expect(r.result.harvested).toEqual({ glow_fiber: 2, mana_dust: 1 });
+    expect(r.state.inventory.glow_fiber).toBe(2);
+    expect(r.state.inventory.mana_dust).toBe(1);
+    // 补种原作物 glow_grass，扣 1 种子
+    expect(r.state.inventory.seed_glow_grass).toBe(4);
+    const slot = r.state.greenhouse.slots[0];
+    expect(slot.cropId).toBe('glow_grass');
+    expect(slot.growthProgress).toBe(0);
+    expect(slot.growthTimeLeft).toBe(CROPS_CONFIG.glow_grass.growthTime);
+    expect(slot.isWatered).toBe(false); // 种下未湿润（06）
+    // 从未种植的空槽不播种（'original' 只补收割槽）
+    expect(r.state.greenhouse.slots[1].cropId).toBeNull();
+  });
+
+  it('种子不足时收割后留空', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'glow_grass', growthProgress: 100, growthTimeLeft: 0, isWatered: true }]),
+      assignedWatererId: 'nova',
+      inventory: { seed_glow_grass: 0 }
+    });
+    const r = autoHarvestAndReplantUpdate(state, 'original');
+    expect(r.result.harvested).toEqual({ glow_fiber: 2, mana_dust: 1 });
+    expect(r.state.greenhouse.slots[0].cropId).toBeNull(); // 留空
+  });
+
+  it('驻守产量加成（floor(qty × (1+yieldMult))）作用于自动收割', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'steel_sunflower', growthProgress: 100, growthTimeLeft: 0, isWatered: true }]),
+      assignedWatererId: 'mei', // +25% 产量
+      inventory: { seed_steel_sunflower: 5 }
+    });
+    const r = autoHarvestAndReplantUpdate(state, 'original');
+    expect(r.result.harvested).toEqual({ steel_petal: 5, alloy_plate: 1 }); // 4×1.25=5, 1×1.25=1
+  });
+});
+
+describe('手动/批量收割产量加成（07 驻守期间所有收割）', () => {
+  it('手动收割享受驻守产量加成', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'steel_sunflower', growthProgress: 100, growthTimeLeft: 0, isWatered: true }]),
+      assignedWatererId: 'mei'
+    });
+    const r = harvestSlotUpdate(state, 1);
+    expect(r.result).toEqual({ steel_petal: 5, alloy_plate: 1 });
+  });
+
+  it('批量收割享受驻守产量加成', () => {
+    const state = makeState({
+      slots: makeSlots([
+        { cropId: 'steel_sunflower', growthProgress: 100, growthTimeLeft: 0, isWatered: true },
+        { cropId: 'steel_sunflower', growthProgress: 100, growthTimeLeft: 0, isWatered: true }
+      ]),
+      assignedWatererId: 'mei'
+    });
+    const r = batchHarvestUpdate(state);
+    expect(r.result).toEqual({ steel_petal: 10, alloy_plate: 2 });
+  });
+
+  it('无驻守时收割不加成', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'steel_sunflower', growthProgress: 100, growthTimeLeft: 0, isWatered: true }])
+    });
+    const r = harvestSlotUpdate(state, 1);
+    expect(r.result).toEqual({ steel_petal: 4, alloy_plate: 1 });
+  });
+});
+
+describe('advanceGreenhouseAutomation（07 离线多轮自动收割播种）', () => {
+  it('离线 125 秒、30 秒作物 → 自动收割 4 轮并补种（mei 无速度加成）', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: false }]),
+      assignedWatererId: 'mei', // 无 speed，yield 0.25（floor 后产量不变）
+      inventory: { seed_glow_grass: 10 }
+    });
+    const r = advanceGreenhouseAutomation(state, 125, 'original');
+    expect(r.result.harvested).toEqual({ glow_fiber: 8, mana_dust: 4 }); // 4 轮 × 2/1
+    expect(r.state.inventory.seed_glow_grass).toBe(6); // 补种 4 次扣 4
+    const slot = r.state.greenhouse.slots[0];
+    expect(slot.cropId).toBe('glow_grass'); // 第 5 轮补种后仍在生长
+    expect(slot.growthTimeLeft).toBe(25); // 30 - 5（剩余 5 秒 × 1x）
+    expect(slot.growthProgress).toBe(17); // (30-25)/30*100 ≈ 16.67 → round 17
+    expect(slot.isWatered).toBe(true); // 驻守自动浇水（维持生长）
+  });
+
+  it('驻守速度加成加速生长（nova +25% → 40 秒内成熟并补种推进 20 秒）', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: true }]),
+      assignedWatererId: 'nova', // +25% 速度
+      inventory: { seed_glow_grass: 5 }
+    });
+    const r = advanceGreenhouseAutomation(state, 40, 'original');
+    // 30/1.25=24 秒成熟 → 收割补种 → 剩余 16 秒 × 1.25 = 20 秒生长
+    expect(r.result.harvested).toEqual({ glow_fiber: 2, mana_dust: 1 });
+    const slot = r.state.greenhouse.slots[0];
+    expect(slot.cropId).toBe('glow_grass');
+    expect(slot.growthTimeLeft).toBe(10); // 30 - 20
+    expect(slot.isWatered).toBe(true);
+  });
+
+  it('无作物时不产生收割', () => {
+    const state = makeState({
+      slots: makeSlots([{ cropId: null }]),
+      assignedWatererId: 'nova'
+    });
+    const r = advanceGreenhouseAutomation(state, 60, 'original');
+    expect(r.result.harvested).toBeNull();
+  });
+});

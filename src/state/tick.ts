@@ -2,6 +2,7 @@ import type { GameState, LogEntry } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus } from './facility';
+import { autoHarvestAndReplantUpdate, resolveWatererBonus } from './greenhouse';
 import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
@@ -84,16 +85,17 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     nextAccumulatedScrap -= intScrap;
   }
 
-  // 2. 温室作物托管浇水与生长
+  // 2. 温室作物托管浇水与生长（06/07）
   const isWateredOnline = prev.shelter.assignedWatererId !== null;
+  const speedBonus = isWateredOnline ? (resolveWatererBonus(prev)?.facilitySpeedMultiplier ?? 0) : 0;
   const updatedSlots = prev.greenhouse.slots.map(slot => {
     if (!slot.cropId) return slot;
     const config = (CROPS_CONFIG as any)[slot.cropId];
     if (!config) return slot;
 
     // 浇水=维持生长（06）：湿润作物按基础 1x 扣减，未湿润作物停滞（不扣减）；
-    // 驻守（isWateredOnline）强制湿润逻辑保留，07 正式化
-    const timeReduced = (slot.isWatered || isWateredOnline) ? 1 : 0;
+    // 驻守速度加成（07）：湿润作物扣减 ×(1 + speedBonus)
+    const timeReduced = (slot.isWatered || isWateredOnline) ? 1 * (1 + speedBonus) : 0;
     const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
     const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
 
@@ -105,9 +107,29 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     };
   });
 
+  // 驻守自动收割并补种（07）：在线每 tick 检查成熟槽收割 + 补种原作物
+  const logsToAdd: TickLogEntry[] = [];
+  let greenhouseSlots = updatedSlots;
+  if (isWateredOnline) {
+    const autoR = autoHarvestAndReplantUpdate(
+      { ...prev, greenhouse: { ...prev.greenhouse, slots: updatedSlots }, inventory: currentInventory },
+      'original'
+    );
+    greenhouseSlots = autoR.state.greenhouse.slots;
+    currentInventory = autoR.state.inventory;
+    if (autoR.result.harvested && Object.keys(autoR.result.harvested).length > 0) {
+      const itemsStr = Object.entries(autoR.result.harvested)
+        .map(([id, q]) => `${ITEMS_CONFIG[id]?.name || id} ×${q}`)
+        .join('、');
+      logsToAdd.push({
+        text: `驻守 ${HEROES_CONFIG[prev.shelter.assignedWatererId!]?.name || '英雄'} 自动收割: ${itemsStr}`,
+        type: 'logistics'
+      });
+    }
+  }
+
   // 3. 工厂流水线 Tick：FIFO 配方队列顺序执行，纯自动运转（ticket 13）
   const updatedFacilities = { ...prev.shelter.facilities };
-  const logsToAdd: TickLogEntry[] = [];
 
   (Object.keys(updatedFacilities) as FacilityType[]).forEach(type => {
     const units = updatedFacilities[type];
@@ -232,7 +254,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     player: { ...prev.player, energy: currentEnergy, days: newDays },
     stamina: nextStamina,
     inventory: currentInventory,
-    greenhouse: { ...prev.greenhouse, slots: updatedSlots },
+    greenhouse: { ...prev.greenhouse, slots: greenhouseSlots },
     shelter: finalShelter,
     heroes: updatedHeroes,
     logs: newLogs,

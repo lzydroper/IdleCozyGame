@@ -2,6 +2,7 @@ import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from 
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus } from './facility';
+import { advanceGreenhouseAutomation } from './greenhouse';
 import { getRecipeDisplayName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
@@ -251,26 +252,39 @@ export function calculateDetailedOfflineProgress(
     });
   });
 
-  // 5. 温室作物离线生长结算
-  const isWateredOffline = state.shelter.assignedWatererId !== null;
-  const updatedSlots = state.greenhouse.slots.map(slot => {
-    if (!slot.cropId) return slot;
-    const config = (CROPS_CONFIG as any)[slot.cropId];
-    if (!config) return slot;
-
-    // 浇水=维持生长（06）：湿润作物按基础 1x 扣减，未湿润作物停滞；
-    // 驻守（isWateredOffline）强制湿润逻辑保留，07 正式化
-    const timeReduced = (slot.isWatered || isWateredOffline) ? actualSeconds : 0;
-    const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
-    const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
-
-    return {
-      ...slot,
-      growthTimeLeft: newTimeLeft,
-      growthProgress: progress,
-      isWatered: isWateredOffline ? true : slot.isWatered
-    };
-  });
+  // 5. 温室作物离线生长结算（06）+ 驻守自动收割播种（07）
+  let finalGreenhouse = state.greenhouse;
+  if (state.shelter.assignedWatererId) {
+    // 驻守：循环「自动浇水 → 生长（含速度加成） → 收割+补种原作物」，多轮结算
+    const autoR = advanceGreenhouseAutomation(
+      { ...state, inventory: currentInventory },
+      actualSeconds,
+      'original'
+    );
+    finalGreenhouse = autoR.state.greenhouse;
+    currentInventory = autoR.state.inventory;
+    if (autoR.result.harvested && Object.keys(autoR.result.harvested).length > 0) {
+      Object.entries(autoR.result.harvested).forEach(([itemId, qty]) => {
+        recoveredItems[itemId] = (recoveredItems[itemId] || 0) + qty;
+      });
+      const itemsStr = Object.entries(autoR.result.harvested)
+        .map(([id, q]) => `${ITEMS_CONFIG[id]?.name || id} ×${q}`)
+        .join('、');
+      reportLogs.push(`驻守 ${HEROES_CONFIG[state.shelter.assignedWatererId]?.name || '英雄'} 离线自动收割: ${itemsStr}`);
+    }
+  } else {
+    // 无驻守：仅生长推进（06：湿润 1x、未湿润停滞）
+    const updatedSlots = state.greenhouse.slots.map(slot => {
+      if (!slot.cropId) return slot;
+      const config = (CROPS_CONFIG as any)[slot.cropId];
+      if (!config) return slot;
+      const timeReduced = slot.isWatered ? actualSeconds : 0;
+      const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
+      const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
+      return { ...slot, growthTimeLeft: newTimeLeft, growthProgress: progress };
+    });
+    finalGreenhouse = { ...state.greenhouse, slots: updatedSlots };
+  }
 
   let updatedState: GameState = {
     ...state,
@@ -280,7 +294,7 @@ export function calculateDetailedOfflineProgress(
     equipmentInventory: currentEquipmentInventory,
     heroes: currentHeroes,
     combat: currentCombat,
-    greenhouse: { ...state.greenhouse, slots: updatedSlots },
+    greenhouse: finalGreenhouse,
     shelter: {
       ...state.shelter,
       facilities: updatedFacilities,

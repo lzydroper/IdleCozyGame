@@ -364,13 +364,13 @@ describe('GameContext Integration', () => {
       }
     });
 
-    it('驻守时作物保持湿润并按基础 1x 生长', () => {
-      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({ assignedWatererId: 'nova' }), 10);
+    it('驻守时作物保持湿润并按基础 1x 生长（mei 无速度加成）', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({ assignedWatererId: 'mei' }), 10);
       const slot = updatedState.greenhouse.slots[0];
 
       expect(slot.growthTimeLeft).toBe(20); // 30 - 10（1x，不再 ×2）
       expect(slot.growthProgress).toBe(33); // (30-20)/30*100
-      expect(slot.isWatered).toBe(true);    // 驻守强制湿润保留（07 正式化）
+      expect(slot.isWatered).toBe(true);    // 驻守自动浇水
     });
 
     it('无驻守且未湿润的作物离线停滞', () => {

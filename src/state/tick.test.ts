@@ -96,3 +96,47 @@ describe('applyTick 温室生长（06 浇水=维持生长）', () => {
     expect(slot.growthProgress).toBe(3); // (30-29)/30*100 ≈ 3.33 → round 3
   });
 });
+
+// 07 驻守自动化：自动收割成熟槽并补种原作物、速度加成加速生长
+describe('applyTick 驻守自动化（07）', () => {
+  it('驻守自动收割成熟作物并补种原作物（扣种子、产出入账）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      inventory: { seed_glow_grass: 3 },
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 0, growthProgress: 100, isWatered: true } : s
+        )
+      },
+      shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'mei' }, // 无速度加成，专注收割补种
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.cropId).toBe('glow_grass'); // 补种原作物
+    expect(slot.growthProgress).toBe(0);
+    expect(next.inventory.seed_glow_grass).toBe(2); // 扣 1 种子
+    expect(next.inventory.glow_fiber).toBe(2);      // 收割产出
+    expect(next.inventory.mana_dust).toBe(1);
+  });
+
+  it('驻守速度加成：湿润作物 1 tick 扣 1.25 秒（nova +25%）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, isWatered: true } : s
+        )
+      },
+      shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'nova' },
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.growthTimeLeft).toBe(28.75); // 30 - 1.25
+  });
+});

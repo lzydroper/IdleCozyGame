@@ -3,6 +3,16 @@ import { CROPS_CONFIG } from '../data/crops';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
+import { HEROES_CONFIG } from '../data/heroes';
+import type { HeroDutyMeta } from '../data/heroes';
+
+// 反查温室驻守（浇水岗）英雄的 dutyMeta 特殊加成（07）：
+// facilitySpeedMultiplier → 生长速度；facilityYieldMultiplier → 收割产量；成本减免不应用于温室
+export const resolveWatererBonus = (state: GameState): HeroDutyMeta | null => {
+  const watererId = state.shelter.assignedWatererId;
+  if (!watererId) return null;
+  return HEROES_CONFIG[watererId]?.dutyMeta ?? null;
+};
 
 // 种植作物：校验种子与空闲槽位后种下
 export const plantCropUpdate = (state: GameState, slotId: number, cropId: string): UpdateResult<boolean> => {
@@ -102,11 +112,15 @@ export const harvestSlotUpdate = (state: GameState, slotId: number): UpdateResul
   }
 
   const config = CROPS_CONFIG[targetSlot.cropId as keyof typeof CROPS_CONFIG];
-  const gatheredItems: Record<string, number> = { ...config.yields };
+  // 驻守产量加成（07）：驻守期间所有收割 floor(qty × (1 + yieldMult))
+  const yieldMult = resolveWatererBonus(state)?.facilityYieldMultiplier ?? 0;
+  const gatheredItems: Record<string, number> = {};
 
   const newInventory = { ...state.inventory };
   Object.entries(config.yields).forEach(([item, qty]) => {
-    newInventory[item] = (newInventory[item] || 0) + qty;
+    const boosted = Math.floor(qty * (1 + yieldMult));
+    gatheredItems[item] = boosted;
+    newInventory[item] = (newInventory[item] || 0) + boosted;
   });
 
   const updatedSlots = state.greenhouse.slots.map(s => {
@@ -133,12 +147,15 @@ export const batchHarvestUpdate = (state: GameState): UpdateResult<Record<string
 
   const accumulatedYields: Record<string, number> = {};
   const newInventory = { ...state.inventory };
+  // 驻守产量加成（07）：驻守期间所有收割 floor(qty × (1 + yieldMult))
+  const yieldMult = resolveWatererBonus(state)?.facilityYieldMultiplier ?? 0;
 
   slotsToHarvest.forEach(slot => {
     const config = CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG];
     Object.entries(config.yields).forEach(([item, qty]) => {
-      accumulatedYields[item] = (accumulatedYields[item] || 0) + qty;
-      newInventory[item] = (newInventory[item] || 0) + qty;
+      const boosted = Math.floor(qty * (1 + yieldMult));
+      accumulatedYields[item] = (accumulatedYields[item] || 0) + boosted;
+      newInventory[item] = (newInventory[item] || 0) + boosted;
     });
   });
 
@@ -156,6 +173,76 @@ export const batchHarvestUpdate = (state: GameState): UpdateResult<Record<string
       greenhouse: { ...state.greenhouse, slots: updatedSlots }
     },
     result: accumulatedYields
+  };
+};
+
+// 自动收割播种的播种策略（07）：'original' = 补种原作物（驻守默认）；
+// { cropId } = 播种指定作物到所有空槽（T08 挂机）
+export type ReplantStrategy = 'original' | { cropId: string };
+
+// 驻守自动收割并播种（07）：收割所有成熟槽（含驻守产量加成），
+// 然后按策略播种——'original' 只补种刚收割槽位的原作物（种子不足留空）
+export const autoHarvestAndReplantUpdate = (
+  state: GameState,
+  replantStrategy: ReplantStrategy
+): UpdateResult<{ harvested: Record<string, number> | null }> => {
+  const yieldMult = resolveWatererBonus(state)?.facilityYieldMultiplier ?? 0;
+  const harvested: Record<string, number> = {};
+  const newInventory = { ...state.inventory };
+  const harvestedSlots: { slotId: number; cropId: string }[] = [];
+
+  // 1. 收割所有成熟槽
+  const slotsAfterHarvest = state.greenhouse.slots.map(slot => {
+    if (!slot.cropId || slot.growthProgress < 100) return slot;
+    const config = CROPS_CONFIG[slot.cropId];
+    if (!config) return slot;
+    Object.entries(config.yields).forEach(([item, qty]) => {
+      const boosted = Math.floor(qty * (1 + yieldMult));
+      harvested[item] = (harvested[item] || 0) + boosted;
+      newInventory[item] = (newInventory[item] || 0) + boosted;
+    });
+    harvestedSlots.push({ slotId: slot.id, cropId: slot.cropId });
+    return { ...slot, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false };
+  });
+
+  // 2. 播种
+  let slotsAfterPlant = slotsAfterHarvest;
+  let finalInventory = newInventory;
+  if (replantStrategy === 'original') {
+    // 补种刚收割槽位的原作物（种子不足留空）
+    slotsAfterPlant = slotsAfterHarvest.map(slot => {
+      const entry = harvestedSlots.find(h => h.slotId === slot.id);
+      if (!entry || slot.cropId !== null) return slot;
+      const cropConfig = CROPS_CONFIG[entry.cropId];
+      if (!cropConfig) return slot;
+      const seedId = Object.keys(cropConfig.seedCost)[0];
+      const seedQty = cropConfig.seedCost[seedId];
+      if ((finalInventory[seedId] || 0) < seedQty) return slot;
+      finalInventory = { ...finalInventory, [seedId]: finalInventory[seedId] - seedQty };
+      return { ...slot, cropId: entry.cropId, growthProgress: 0, growthTimeLeft: cropConfig.growthTime, isWatered: false };
+    });
+  } else {
+    // { cropId }（T08 挂机）：播种指定作物到所有空槽
+    const cropConfig = CROPS_CONFIG[replantStrategy.cropId];
+    if (cropConfig) {
+      const seedId = Object.keys(cropConfig.seedCost)[0];
+      const seedQty = cropConfig.seedCost[seedId];
+      slotsAfterPlant = slotsAfterHarvest.map(slot => {
+        if (slot.cropId !== null || (finalInventory[seedId] || 0) < seedQty) return slot;
+        finalInventory = { ...finalInventory, [seedId]: finalInventory[seedId] - seedQty };
+        return { ...slot, cropId: cropConfig.id, growthProgress: 0, growthTimeLeft: cropConfig.growthTime, isWatered: false };
+      });
+    }
+  }
+
+  const hasHarvested = Object.keys(harvested).length > 0;
+  return {
+    state: {
+      ...state,
+      inventory: finalInventory,
+      greenhouse: { ...state.greenhouse, slots: slotsAfterPlant }
+    },
+    result: { harvested: hasHarvested ? harvested : null }
   };
 };
 
@@ -261,3 +348,77 @@ export const batchHarvestAndReplantUpdate = (
     result: { harvested, replantedCount }
   };
 };
+
+// 离线推进温室自动化 seconds 秒（07）：循环「自动浇水 → 生长推进 → 收割+播种」，
+// 使驻守自动收割播种在离线期间按多轮作物循环结算（与在线 tick 语义一致）
+export const advanceGreenhouseAutomation = (
+  state: GameState,
+  seconds: number,
+  replantStrategy: ReplantStrategy
+): UpdateResult<{ harvested: Record<string, number> | null }> => {
+  let cur = state;
+  let remaining = seconds;
+  const accumulated: Record<string, number> = {};
+  const speedMult = resolveWatererBonus(state)?.facilitySpeedMultiplier ?? 0;
+
+  while (remaining > 0) {
+    // 自动浇水（驻守免费）：有作物的未湿润槽位置 true（维持生长）
+    cur = autoWaterGreenhouse(cur);
+
+    // 无作物 → 无进展可推进
+    if (!cur.greenhouse.slots.some(s => s.cropId)) break;
+
+    // 推进到最早成熟的湿润作物（含速度加成）；全部湿润则推进剩余时间
+    let advance = remaining;
+    let hasWateredCrop = false;
+    for (const slot of cur.greenhouse.slots) {
+      if (slot.cropId && slot.isWatered && slot.growthTimeLeft > 0) {
+        hasWateredCrop = true;
+        advance = Math.min(advance, Math.ceil(slot.growthTimeLeft / (1 + speedMult)));
+      }
+    }
+    if (!hasWateredCrop) break; // 防御：autoWater 后仍无湿润作物
+
+    cur = advanceGreenhouseGrowth(cur, advance, speedMult);
+    remaining -= advance;
+
+    // 收割成熟槽 + 按策略播种
+    const r = autoHarvestAndReplantUpdate(cur, replantStrategy);
+    cur = r.state;
+    if (r.result.harvested) {
+      Object.entries(r.result.harvested).forEach(([itemId, qty]) => {
+        accumulated[itemId] = (accumulated[itemId] || 0) + qty;
+      });
+    }
+  }
+
+  return {
+    state: cur,
+    result: { harvested: Object.keys(accumulated).length > 0 ? accumulated : null }
+  };
+};
+
+// 推进温室作物生长 seconds 秒（06/07）：湿润作物 1x × 驻守速度加成，未湿润停滞
+const advanceGreenhouseGrowth = (state: GameState, seconds: number, speedMult: number): GameState => {
+  const updatedSlots = state.greenhouse.slots.map(slot => {
+    if (!slot.cropId) return slot;
+    const config = CROPS_CONFIG[slot.cropId];
+    if (!config) return slot;
+    const timeReduced = slot.isWatered ? seconds * (1 + speedMult) : 0;
+    const newTimeLeft = Math.max(0, slot.growthTimeLeft - timeReduced);
+    const progress = Math.min(100, Math.round(((config.growthTime - newTimeLeft) / config.growthTime) * 100));
+    return { ...slot, growthTimeLeft: newTimeLeft, growthProgress: progress };
+  });
+  return { ...state, greenhouse: { ...state.greenhouse, slots: updatedSlots } };
+};
+
+// 自动浇水（驻守免费）：有作物的未湿润槽位置 true
+const autoWaterGreenhouse = (state: GameState): GameState => ({
+  ...state,
+  greenhouse: {
+    ...state.greenhouse,
+    slots: state.greenhouse.slots.map(slot =>
+      slot.cropId && !slot.isWatered ? { ...slot, isWatered: true } : slot
+    )
+  }
+});
