@@ -19,6 +19,7 @@
 - [01 - StatModifier source 字段 + 分组聚合](issues/01-statmodifier-source-field-and-grouped-aggregation.md) - StatModifier 加可选 source?: string；新增 aggregateModifiersBySource 按来源分组 + getStatSourcesByStat 提取单属性来源贡献；8 个新测试全绿；现有 aggregateModifiers/calculateEntityStats 不受影响
 - [02 - 派生属性贡献计算](issues/02-derived-stat-contribution-calculation.md) - 新增 getDerivedStatContributions 追溯 6 个派生属性来源（critResist<-敏捷、damageReduction<-防御公式、durationReduction/effectReduction<-意志、cooldownReduction<-超越、voidSpirit<-固有值）；coefficient 可选（非线性公式不设）；守卫用 !==0 处理负值；10 个新测试全绿
 - [03 - 四来源产出函数打 source 标签](issues/03-four-source-functions-tag-source.md) - 装备/天赋/觉醒/羁绊四来源全部打 source 标签；getEquippedFlatStats 不再预合并同属性 modifier（保留各装备独立 source）；17 处测试断言更新；战斗数值无回归（aggregateModifiers 忽略 source）；review 标记 HeroDetailModal flatOf 隐性契约留待 05 号修复
+- [04 - 里程碑加成转 StatModifier](issues/04-milestone-to-statmodifier.md) - 新增 getMilestoneModifiers 将三层里程碑加成转为 flat StatModifier（source: "Lv{N}里程碑"）；heroBaseAttributes 移除里程碑 base 部分；combat.ts 和 HeroDetailModal 两处手动拆分代码消除；修复预先存在的 combat.test 成长系数错误（attacker +3/+3 非 +4/+6）；全套 479 测试全绿零失败
 
 ## Not yet specified
 

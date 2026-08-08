@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 - StatModifier 加 source 字段 + 按来源分组聚合
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] 新增 `getMilestoneModifiers(config, level): StatModifier[]`，将里程碑配置（`Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes>`）转为 `StatModifier[]`，每条 `kind: 'flat'`，`source: 'Lv{N}里程碑'`
 - [ ] `src/state/combat.ts:243-269` - 移除手动拆分里程碑到 primaryAttributes/specialAttributes 的逻辑，改为调用 `getMilestoneModifiers` 并 push 进 `permanentModifiers`
