@@ -12,7 +12,6 @@ import {
   harvestSlotUpdate,
   batchHarvestUpdate,
   batchPlantUpdate,
-  batchHarvestAndReplantUpdate,
   setAutoFarmCropUpdate,
   setAutoFarmEnabledUpdate
 } from '../state/greenhouse';
@@ -81,7 +80,6 @@ interface GameContextType {
   harvestSlot: (slotId: number) => Record<string, number> | null;
   batchHarvest: () => Record<string, number> | null;
   batchPlant: (cropId: string) => boolean;
-  batchHarvestAndReplant: (cropId: string) => { harvested: Record<string, number> | null, replantedCount: number };
   setAutoFarmCrop: (cropId: string | null) => boolean;
   setAutoFarmEnabled: (enabled: boolean) => boolean;
   craftItem: (recipeId: string, count?: number) => boolean;
@@ -452,16 +450,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
-  const batchHarvestAndReplant = (cropId: string): { harvested: Record<string, number> | null, replantedCount: number } => {
-    let result = { harvested: null as Record<string, number> | null, replantedCount: 0 };
-    setState(prev => {
-      const r = batchHarvestAndReplantUpdate(prev, cropId);
-      result = r.result;
-      return r.state;
-    });
-    return result;
-  };
-
   // 挂机区域（08）：选种/开关
   const setAutoFarmCrop = (cropId: string | null): boolean => {
     let ok = false;
@@ -796,7 +784,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       harvestSlot,
       batchHarvest,
       batchPlant,
-      batchHarvestAndReplant,
       setAutoFarmCrop,
       setAutoFarmEnabled,
       craftItem,

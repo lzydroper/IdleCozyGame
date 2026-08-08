@@ -4,12 +4,12 @@
 
 **Blocked by:** 06, 07, 08, 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 种植槽小卡片（grid-cols-2）：主产物产出 icon、进度条、生长倒计时、单槽收割/浇水按钮；湿润蓝色水滴标记、未湿润「缺水」橙色警示
-- [ ] 空槽卡片：占位 + 「点击播种」，点击打开 09 弹窗
-- [ ] 按钮区一行 flex：左侧批量浇水（上）/批量收割（下）；右侧挂机区域（开关/选种/状态文案：挂机中·种植 X / 种子已耗光已停止 / 未驻守）
-- [ ] 未驻守时挂机开关禁用并提示；挂机开启期间播种入口禁用
-- [ ] 驻守卡片显示 dutyMeta 加成徽章（速/产）与效果文案；文案改为「自动浇水 / 自动收割并播种 / 特殊加成」，移除「生长翻倍」表述
-- [ ] 删除连播选择器、replantCropId 状态、一键收割并播种逻辑（含状态层不再使用的 action）
-- [ ] 组件测试更新（卡片渲染/状态标记、批量按钮、挂机交互、加成显示）；全量 `npx vitest run` + `npm run build` + `npm run lint` 绿
+- [x] 种植槽小卡片（grid-cols-2，原型 card 风格）：主产物产出 icon（GameIcon，作物图标退役）、进度条、生长倒计时、单槽收割/浇水按钮；湿润蓝色水滴、未湿润「缺水」橙色警示
+- [x] 空槽卡片：占位 + 「点击播种」，点击打开 09 弹窗；挂机开启时空槽显示「挂机托管中」并禁用播种
+- [x] 按钮区一行 flex：左侧批量浇水（上）/批量收割（下，只收割不播种）；右侧挂机区域（开关/选种/状态文案，未驻守禁用启用按钮并提示）
+- [x] 驻守卡片显示 dutyMeta 加成徽章（生长速度/收割产量/产线原料）与效果文案；移除「生长翻倍」表述
+- [x] 删除连播选择器、replantCropId、handleBatchHarvestAndReplant；GameContext 移除 batchHarvestAndReplant action；greenhouse.ts 删除 batchHarvestAndReplantUpdate
+- [x] 播种与挂机选种接入 SeedSelectModal（`seedModal` 状态区分 plant/autofarm 模式）
+- [x] 组件测试更新（ShelterTab.test.tsx 8 条：卡片/按钮/挂机区域/缺水湿润/指派驻守加成/挂机流程）；`npx tsc -b` 通过；全量 vitest 除装备系统 3 个 baseline 既有失败外全绿（546 passed）
