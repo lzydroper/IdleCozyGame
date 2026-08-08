@@ -18,8 +18,11 @@ import {
   healWoundedHeroesUpdate,
   heroToCombatant,
   recomputeCombatant,
-  type CombatantState
+  combatantFromSnapshot,
+  type CombatantState,
+  type CombatantSnapshot
 } from './combat';
+import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import type { ActiveBuff } from './buffSystem';
 import { STAR_MAX } from '../data/awakening';
 
@@ -78,6 +81,53 @@ describe('recomputeCombatant (B 方案：可重算快照)', () => {
   it('无快照的单位（敌人/手动构造）原样返回', () => {
     const enemy: CombatantState = { id: 'e', name: '敌', hp: 50, maxHp: 50, attack: 5, defense: 2 };
     expect(recomputeCombatant(enemy, [])).toBe(enemy);
+  });
+});
+
+describe('统一实体：敌人与英雄同走 statSystem 配方（stat-bonus-unification）', () => {
+  it('敌人式配方（元属性全 0）→ 面板 = 配置值，快照可重算且幂等', () => {
+    const snapshot: CombatantSnapshot = {
+      baseAttributes: { attack: 20, defense: 8, maxHp: 150, maxMp: 0, critRate: 0, critDmg: 1.5 },
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
+      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
+      permanentModifiers: []
+    };
+    const e = combatantFromSnapshot('mutant', '畸变体', snapshot);
+    expect(e.attack).toBe(20);
+    expect(e.defense).toBe(8);
+    expect(e.maxHp).toBe(150);
+    expect(e.hp).toBe(150); // 满血进场
+    expect(e.snapshot).toBeDefined(); // 敌人也带快照（统一实体）
+    // 无 buff 重算 = 入场值（幂等）
+    const r = recomputeCombatant(e, []);
+    expect(r.attack).toBe(e.attack);
+    expect(r.defense).toBe(e.defense);
+    expect(r.maxHp).toBe(e.maxHp);
+    expect(r.hp).toBe(e.hp);
+  });
+
+  it('敌人配置扩展属性走同一管道：元属性折算/修饰符/debuff 全部生效', () => {
+    const snapshot: CombatantSnapshot = {
+      baseAttributes: { attack: 20, defense: 8, maxHp: 150, maxMp: 0, critRate: 0, critDmg: 1.5 },
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, strength: 5 }, // 力量 5 → 攻击 +10
+      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
+      permanentModifiers: [{ stat: 'maxHp', kind: 'percent', value: 0.2 }]
+    };
+    const e = combatantFromSnapshot('mutant', '畸变体', snapshot);
+    expect(e.attack).toBe(30); // 20 + 5×2（元属性折算对敌人同样生效）
+    expect(e.maxHp).toBe(180); // 150 × 1.2
+    // 敌人也会被 debuff：意志 0 → 无减免，-10 全额生效
+    const debuffed = recomputeCombatant(e, [
+      {
+        id: 'd1',
+        name: '虚弱',
+        type: 'debuff',
+        duration: 2,
+        maxDuration: 2,
+        statModifiers: [{ stat: 'attack', kind: 'flat', value: -10 }]
+      }
+    ]);
+    expect(debuffed.attack).toBe(20);
   });
 });
 

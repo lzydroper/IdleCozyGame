@@ -10,6 +10,7 @@ import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import { aggregateBonus } from './bonds';
 import type { StatModifier, BaseAttributes, PrimaryAttributes, SpecialAttributes } from './statSystem';
 import { calculateEntityStats } from './statSystem';
+import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { collectBuffModifiers, type ActiveBuff } from './buffSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { getHeroGrowth, getLevelMilestoneBonus } from '../data/heroGrowth';
@@ -29,9 +30,9 @@ export interface CombatantState {
   attack: number;
   defense: number;
   skill?: AwakenSkillConfig; // 觉醒专属战斗技能（ticket 12，仅英雄携带）
-  // 可重算快照（stat-bonus-unification B 方案）：英雄单位携带「配方」——三层输入 + 常驻修饰符。
+  // 可重算快照（stat-bonus-unification B 方案 + 统一实体）：英雄与敌人同为「三层输入 + 常驻修饰符」配方，
   // 战斗内 buff/技能变化 → 更新 ActiveBuff 列表 → recomputeCombatant 重算，保证与面板规则一致。
-  // 敌人/手动构造单位无快照（配置直取，无需重算）。
+  // 敌人元属性恒 0、无加成来源 → 重算恒等于入场值（幂等，无重算需求）；仅手动构造的裸单位无快照。
   snapshot?: CombatantSnapshot;
 }
 
@@ -227,6 +228,28 @@ export const simulateBattle = (
   };
 };
 
+// 统一实体构造原语（stat-bonus-unification 统一实体）：任意「三层属性 + 常驻修饰符」配方 → 战斗单位。
+// 英雄与敌人同路径（敌人的元属性/特殊属性缺省为 statSystem 默认——全 0，无加成来源 → 面板 = 配置值）。
+// hpRatio 保持已损比例（缺省满血）。skill 等英雄专属字段由调用方追加。
+export const combatantFromSnapshot = (
+  id: string,
+  name: string,
+  snapshot: CombatantSnapshot,
+  hpRatio = 1
+): CombatantState => {
+  const stats = calculateEntityStats(snapshot, snapshot.permanentModifiers);
+  const maxHp = Math.round(stats.maxHp);
+  return {
+    id,
+    name,
+    hp: Math.round(maxHp * Math.min(1, Math.max(0, hpRatio))),
+    maxHp,
+    attack: Math.round(stats.attack),
+    defense: Math.round(stats.defense),
+    snapshot
+  };
+};
+
 // 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成统一为修饰符，经 statSystem 面板快照生效；
 // 退出战斗即复原。stat-bonus-unification 02/03 + B 方案：单位持有可重算配方 snapshot，
 // 面板 = 战斗初始值（元属性/特殊属性同口径接入））
@@ -272,23 +295,14 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
   ];
 
   // 面板快照：统一聚合全部来源修饰符（羁绊/装备/天赋/觉醒均已直连）
-  const stats = calculateEntityStats(
-    { baseAttributes, primaryAttributes, specialAttributes },
-    permanentModifiers
+  const snapshot: CombatantSnapshot = { baseAttributes, primaryAttributes, specialAttributes, permanentModifiers };
+  const combatant = combatantFromSnapshot(
+    heroId,
+    config.name,
+    snapshot,
+    hero.maxHp > 0 ? hero.hp / hero.maxHp : 1 // 当前血量按同比例缩放，保持战斗中已损比例不变
   );
-
-  const maxHp = Math.round(stats.maxHp);
-  return {
-    id: heroId,
-    name: config.name,
-    // 当前血量按同比例缩放，保持战斗中已损比例不变
-    hp: hero.maxHp > 0 ? Math.round((hero.hp / hero.maxHp) * maxHp) : maxHp,
-    maxHp,
-    attack: Math.round(stats.attack),
-    defense: Math.round(stats.defense),
-    skill: getAwakenSkill(heroId, hero),
-    snapshot: { baseAttributes, primaryAttributes, specialAttributes, permanentModifiers }
-  };
+  return { ...combatant, skill: getAwakenSkill(heroId, hero) };
 };
 
 // 战斗内任意时刻重算面板（B 方案）：常驻修饰符 + 当前 buff 修饰符，一次管道计算。
@@ -324,9 +338,24 @@ export const recomputeCombatant = (combatant: CombatantState, activeBuffs: Activ
 const isKnownHero = (state: GameState, heroId: string): boolean =>
   !!state.heroes[heroId] && !!HEROES_CONFIG[heroId];
 
-// 敌人配置 → 战斗单位（自动战斗区域与探索遭遇共用）
+// 敌人配置 → 战斗单位（自动战斗区域与探索遭遇共用；与英雄同走统一实体原语，
+// 元属性/特殊属性缺省 statSystem 默认 → 面板 = 配置值，快照配方供将来敌人 buff/debuff 重算）
 const enemiesToCombatants = (enemies: CombatEnemyConfig[]): CombatantState[] =>
-  enemies.map(en => ({ id: en.id, name: en.name, hp: en.hp, maxHp: en.hp, attack: en.attack, defense: en.defense }));
+  enemies.map(en =>
+    combatantFromSnapshot(en.id, en.name, {
+      baseAttributes: {
+        attack: en.attack,
+        defense: en.defense,
+        maxHp: en.hp,
+        maxMp: en.maxMp ?? 0,
+        critRate: en.critRate ?? 0,
+        critDmg: en.critDmg ?? 1.5
+      },
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, ...en.primaryAttributes },
+      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES, ...en.specialAttributes },
+      permanentModifiers: en.modifiers ?? []
+    })
+  );
 
 // 战斗日志条目构造（自动战斗/探索遭遇共用）
 const makeCombatLog = (text: string): LogEntry => ({

@@ -1,10 +1,22 @@
 // 战斗区域配置（ticket 05）：线性递进的自动战斗场所；区域链与 BOSS 见 ticket 07
+// 敌人也是战斗实体（stat-bonus-unification 统一实体）：与英雄同走 statSystem 三层配置，
+// 缺省值 = statSystem 默认（元属性/特殊属性全 0，暴击 0/1.5），现有配置只需 hp/attack/defense
+import type { PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
+import type { StatModifier } from '../state/statSystem';
+
 export interface CombatEnemyConfig {
   id: string;
   name: string;
   hp: number;
   attack: number;
   defense: number;
+  // 可选扩展属性：与 statSystem 三层同口径，缺省时与 statSystem 默认一致
+  maxMp?: number;
+  critRate?: number;
+  critDmg?: number;
+  primaryAttributes?: Partial<PrimaryAttributes>;
+  specialAttributes?: Partial<SpecialAttributes>;
+  modifiers?: StatModifier[]; // 配置级修饰符（如 BOSS 光环），与英雄来源修饰符同形态
 }
 
 export interface CombatDropConfig {

@@ -1,5 +1,6 @@
 import type { BattleResult, GameState } from '../types/game';
-import type { CombatantState } from './combat';
+import { combatantFromSnapshot } from './combat';
+import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { simulateBattle, heroToCombatant } from './combat';
 import { aggregateBonus } from './bonds';
@@ -65,14 +66,20 @@ export const defendDreamLeakUpdate = (
   let battle: BattleResult | null = null;
 
   if (nightmareHp > 0) {
-    const nightmare: CombatantState = {
-      id: 'dream_leak_nightmare',
-      name: NIGHTMARE_CONFIG.leakName,
-      hp: nightmareHp,
-      maxHp: nightmareHp,
-      attack: NIGHTMARE_CONFIG.leakAttack,
-      defense: NIGHTMARE_CONFIG.leakDefense
-    };
+    // 梦魇也是战斗实体：与英雄/敌人同走统一实体原语（元属性/特殊属性全 0 → 面板 = 配置值）
+    const nightmare = combatantFromSnapshot('dream_leak_nightmare', NIGHTMARE_CONFIG.leakName, {
+      baseAttributes: {
+        attack: NIGHTMARE_CONFIG.leakAttack,
+        defense: NIGHTMARE_CONFIG.leakDefense,
+        maxHp: nightmareHp,
+        maxMp: 0,
+        critRate: 0,
+        critDmg: 1.5
+      },
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
+      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
+      permanentModifiers: []
+    });
     battle = simulateBattle(
       party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
       [nightmare]
