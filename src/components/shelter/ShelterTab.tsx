@@ -65,7 +65,7 @@ const ShelterTab: React.FC = () => {
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 border-b border-zinc-800/80 pb-2">
           <Settings className="w-4 h-4 text-cyan-400" />
-          避难所基建 Core Upgrades
+          避难所基建升级
         </h2>
 
         <div className="space-y-3">
@@ -154,7 +154,7 @@ const ShelterTab: React.FC = () => {
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-magic-blue flex items-center gap-2 border-b border-zinc-800/80 pb-2">
           <Cpu className="w-4 h-4 text-magic-blue" />
-          工业自动生产流水线 Automated Assemblers
+          工业生产流水线
         </h2>
 
         <div className="space-y-4">
