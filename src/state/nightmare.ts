@@ -1,6 +1,6 @@
 import type { BattleResult, GameState } from '../types/game';
 import { combatantFromSnapshot } from './combat';
-import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
+import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
 import { simulateBattle, heroToCombatant } from './combat';
 import { aggregateBonus } from './bonds';
@@ -66,15 +66,13 @@ export const defendDreamLeakUpdate = (
   let battle: BattleResult | null = null;
 
   if (nightmareHp > 0) {
-    // 梦魇也是战斗实体：与英雄/敌人同走统一实体原语（元属性/特殊属性全 0 → 面板 = 配置值）
+    // 梦魇也是战斗实体：与英雄/敌人同走统一实体原语（baseAttributes 缺省 = DEFAULT_BASE_ATTRIBUTES）
     const nightmare = combatantFromSnapshot('dream_leak_nightmare', NIGHTMARE_CONFIG.leakName, {
       baseAttributes: {
+        ...DEFAULT_BASE_ATTRIBUTES,
         attack: NIGHTMARE_CONFIG.leakAttack,
         defense: NIGHTMARE_CONFIG.leakDefense,
-        maxHp: nightmareHp,
-        maxMp: 0,
-        critRate: 0,
-        critDmg: 1.5
+        maxHp: nightmareHp
       },
       primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
       specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },

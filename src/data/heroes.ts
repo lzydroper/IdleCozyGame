@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import { FlaskConical, Footprints, Hammer, HandMetal, HeartPulse, Rocket, Shield, Wheat, Wrench } from 'lucide-react';
 import type { ItemSprite } from './items/types';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
+import type { BaseStatsSeed } from './statConfig';
 
 // 英雄后勤 Meta 属性定义：英雄驻守设施时提供的产能/速度加成
 export interface HeroDutyMeta {
@@ -19,10 +20,11 @@ export interface HeroConfig {
   name: string;
   heroClass: HeroClass;
   faction: HeroFaction;
-  baseHp: number;
-  baseAttack: number;
-  baseDefense: number;
+  // Lv1 基础种子（stat-bonus-unification 统一实体：与 statSystem 三层同口径，
+  // maxMp/critRate/critDmg 缺省 = DEFAULT_BASE_ATTRIBUTES；成长由职阶系数推导，等级不降 → 无需回调）
+  baseAttributes: BaseStatsSeed;
   primaryAttributes: PrimaryAttributes;   // 初始元属性（力量/体质/敏捷/智慧/意志/超越）
+  specialAttributes?: Partial<SpecialAttributes>; // 初始特殊属性（缺省全 0）
   levelMilestones?: Record<number, Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes>>; // 里程碑：如 { 10: { attack: 5 }, 20: { strength: 2, critRate: 0.01 } }
   dutyMeta?: HeroDutyMeta; // 后勤驻守 Meta 属性
   sprite?: ItemSprite;      // 立绘雪碧图（survivors sheet，3x3）
@@ -61,9 +63,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'attacker',
     faction: 'mechanical',
-    baseHp: 100,
-    baseAttack: 35,
-    baseDefense: 8,
+    baseAttributes: { maxHp: 100, attack: 35, defense: 8 },
     primaryAttributes: { strength: 7, constitution: 3, agility: 3, intelligence: 6, willpower: 1, transcendence: 2 },
     levelMilestones: { 10: { attack: 5 }, 20: { critRate: 0.02 } },
     dutyMeta: { facilitySpeedMultiplier: 0.25 }, // +25% 设施运行速度
@@ -77,9 +77,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'attacker',
     faction: 'astral',
-    baseHp: 110,
-    baseAttack: 32,
-    baseDefense: 10,
+    baseAttributes: { maxHp: 110, attack: 32, defense: 10 },
     primaryAttributes: { strength: 8, constitution: 5, agility: 3, intelligence: 2, willpower: 2, transcendence: 2 },
     levelMilestones: { 10: { attack: 4 }, 25: { maxHp: 20 } },
     dutyMeta: { facilityYieldMultiplier: 0.20 }, // +20% 产出数量
@@ -93,9 +91,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'guardian',
     faction: 'spirit',
-    baseHp: 160,
-    baseAttack: 15,
-    baseDefense: 16,
+    baseAttributes: { maxHp: 160, attack: 15, defense: 16 },
     primaryAttributes: { strength: 4, constitution: 8, agility: 2, intelligence: 2, willpower: 4, transcendence: 2 },
     levelMilestones: { 10: { maxHp: 30 }, 20: { defense: 3 } },
     dutyMeta: { facilityCostReduction: 0.15 }, // -15% 原料消耗
@@ -109,9 +105,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'guardian',
     faction: 'nightmare',
-    baseHp: 150,
-    baseAttack: 15,
-    baseDefense: 15,
+    baseAttributes: { maxHp: 150, attack: 15, defense: 15 },
     primaryAttributes: { strength: 2, constitution: 6, agility: 3, intelligence: 5, willpower: 6, transcendence: 1 },
     levelMilestones: { 10: { maxHp: 25 }, 20: { defense: 2 } },
     dutyMeta: { facilitySpeedMultiplier: 0.15, facilityYieldMultiplier: 0.10 },
@@ -125,9 +119,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'conductor',
     faction: 'mechanical',
-    baseHp: 115,
-    baseAttack: 20,
-    baseDefense: 12,
+    baseAttributes: { maxHp: 115, attack: 20, defense: 12 },
     primaryAttributes: { strength: 4, constitution: 4, agility: 3, intelligence: 7, willpower: 2, transcendence: 3 },
     levelMilestones: { 10: { attack: 3, maxHp: 10 } },
     dutyMeta: { facilitySpeedMultiplier: 0.30 }, // +30% 设施运行速度
@@ -141,9 +133,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'conductor',
     faction: 'arcane',
-    baseHp: 120,
-    baseAttack: 18,
-    baseDefense: 10,
+    baseAttributes: { maxHp: 120, attack: 18, defense: 10 },
     primaryAttributes: { strength: 2, constitution: 4, agility: 3, intelligence: 8, willpower: 3, transcendence: 3 },
     levelMilestones: { 10: { maxHp: 15 }, 20: { defense: 2 } },
     dutyMeta: { facilityYieldMultiplier: 0.25 }, // +25% 作物/温室产出
@@ -157,9 +147,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'conductor',
     faction: 'soulseal',
-    baseHp: 110,
-    baseAttack: 22,
-    baseDefense: 9,
+    baseAttributes: { maxHp: 110, attack: 22, defense: 9 },
     primaryAttributes: { strength: 3, constitution: 3, agility: 8, intelligence: 4, willpower: 2, transcendence: 3 },
     levelMilestones: { 10: { attack: 3 }, 20: { critRate: 0.01 } },
     dutyMeta: { facilitySpeedMultiplier: 0.20 },
@@ -173,9 +161,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'conductor',
     faction: 'arcane',
-    baseHp: 115,
-    baseAttack: 16,
-    baseDefense: 11,
+    baseAttributes: { maxHp: 115, attack: 16, defense: 11 },
     primaryAttributes: { strength: 1, constitution: 4, agility: 3, intelligence: 7, willpower: 6, transcendence: 2 },
     levelMilestones: { 10: { maxHp: 15 }, 20: { attack: 2 } },
     dutyMeta: { facilityCostReduction: 0.20 }, // -20% 药剂/配方消耗
@@ -189,9 +175,7 @@ export const HEROES_CONFIG: Record<string, HeroConfig> = {
 
     heroClass: 'conductor',
     faction: 'astral',
-    baseHp: 108,
-    baseAttack: 19,
-    baseDefense: 10,
+    baseAttributes: { maxHp: 108, attack: 19, defense: 10 },
     primaryAttributes: { strength: 3, constitution: 4, agility: 4, intelligence: 5, willpower: 3, transcendence: 4 },
     levelMilestones: { 10: { attack: 2, defense: 1 } },
     dutyMeta: { facilityYieldMultiplier: 0.15, facilityCostReduction: 0.10 },

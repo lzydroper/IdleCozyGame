@@ -19,8 +19,8 @@ export const createInitialHero = (configId: string): HeroState => {
   return {
     level: 1,
     exp: 0,
-    hp: config.baseHp,
-    maxHp: config.baseHp,
+    hp: config.baseAttributes.maxHp,
+    maxHp: config.baseAttributes.maxHp,
     star: 1,
     wounded: false,
     talentPoints: 0,   // 升级获得天赋点（ticket 11）

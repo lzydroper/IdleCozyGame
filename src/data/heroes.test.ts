@@ -14,8 +14,8 @@ describe('Heroes data config', () => {
       expect(c.id).toBe(id);
       expect(HERO_CLASS_LABELS[c.heroClass]).toBeDefined();
       expect(HERO_FACTION_LABELS[c.faction]).toBeDefined();
-      expect(c.baseHp).toBeGreaterThan(0);
-      expect(c.baseAttack).toBeGreaterThan(0);
+      expect(c.baseAttributes.maxHp).toBeGreaterThan(0);
+      expect(c.baseAttributes.attack).toBeGreaterThan(0);
     });
   });
 
@@ -35,8 +35,8 @@ describe('Initial heroes', () => {
     expect(nova.exp).toBe(0);
     expect(nova.star).toBe(1);
     expect(nova.wounded).toBe(false);
-    expect(nova.hp).toBe(HEROES_CONFIG[STARTER_HERO_ID].baseHp);
-    expect(nova.maxHp).toBe(HEROES_CONFIG[STARTER_HERO_ID].baseHp);
+    expect(nova.hp).toBe(HEROES_CONFIG[STARTER_HERO_ID].baseAttributes.maxHp);
+    expect(nova.maxHp).toBe(HEROES_CONFIG[STARTER_HERO_ID].baseAttributes.maxHp);
   });
 
   it('createInitialHero throws for unknown config id', () => {

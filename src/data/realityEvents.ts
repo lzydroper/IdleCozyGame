@@ -759,8 +759,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 70,
     battle: {
       enemies: [
-        { id: 'wasteland_hound', name: '废土鬣狗', hp: 45, attack: 9, defense: 3 },
-        { id: 'mutant_rat', name: '变异鼠群', hp: 30, attack: 7, defense: 1 }
+        { id: 'wasteland_hound', name: '废土鬣狗', baseAttributes: { maxHp: 45, attack: 9, defense: 3 } },
+        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 30, attack: 7, defense: 1 } }
       ],
       expReward: 15,
       drops: [
@@ -777,8 +777,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 55,
     battle: {
       enemies: [
-        { id: 'ruin_scavenger', name: '废墟拾荒者', hp: 80, attack: 16, defense: 4 },
-        { id: 'mutant_rat', name: '变异鼠群', hp: 35, attack: 8, defense: 1 }
+        { id: 'ruin_scavenger', name: '废墟拾荒者', baseAttributes: { maxHp: 80, attack: 16, defense: 4 } },
+        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
       ],
       expReward: 25,
       drops: [
@@ -796,9 +796,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 40,
     battle: {
       enemies: [
-        { id: 'radiation_mutant', name: '辐射变异体', hp: 130, attack: 20, defense: 6 },
-        { id: 'rogue_machine', name: '失控机器仆从', hp: 90, attack: 15, defense: 8 },
-        { id: 'aberrant_subject', name: '畸变实验体', hp: 70, attack: 18, defense: 5 }
+        { id: 'radiation_mutant', name: '辐射变异体', baseAttributes: { maxHp: 130, attack: 20, defense: 6 } },
+        { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } },
+        { id: 'aberrant_subject', name: '畸变实验体', baseAttributes: { maxHp: 70, attack: 18, defense: 5 } }
       ],
       expReward: 40,
       drops: [

@@ -10,10 +10,10 @@ import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import { aggregateBonus } from './bonds';
 import type { StatModifier, BaseAttributes, PrimaryAttributes, SpecialAttributes } from './statSystem';
 import { calculateEntityStats } from './statSystem';
-import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
+import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { collectBuffModifiers, type ActiveBuff } from './buffSystem';
 import { ITEMS_CONFIG } from '../data/items';
-import { getHeroGrowth, getLevelMilestoneBonus } from '../data/heroGrowth';
+import { heroBaseAttributes, getLevelMilestoneBonus } from '../data/heroGrowth';
 import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenSkill } from './awakening';
 import type { UpdateResult } from './types';
@@ -51,24 +51,8 @@ export interface CombatOutcome {  settlement: CombatSettlement | null;
 }
 
 // 英雄属性成长：随等级线性提升（装备/天赋见 ticket 10/11）
-// 等级成长（16 号，08 决策 D1）：读职阶基础成长系数 + 英雄级里程碑加成（每级唯一真相源，详情面板共用）
-export const heroMaxHp = (config: HeroConfig, level: number): number => {
-  const g = getHeroGrowth(config);
-  const bonus = getLevelMilestoneBonus(config, level);
-  return config.baseHp + (level - 1) * g.hpPerLevel + (bonus.maxHp ?? 0);
-};
-
-export const heroAttack = (config: HeroConfig, level: number): number => {
-  const g = getHeroGrowth(config);
-  const bonus = getLevelMilestoneBonus(config, level);
-  return config.baseAttack + (level - 1) * g.attackPerLevel + (bonus.attack ?? 0);
-};
-
-export const heroDefense = (config: HeroConfig, level: number): number => {
-  const g = getHeroGrowth(config);
-  const bonus = getLevelMilestoneBonus(config, level);
-  return config.baseDefense + (level - 1) * g.defensePerLevel + (bonus.defense ?? 0);
-};
+// 等级成长（16 号，08 决策 D1）：读职阶基础成长系数 + 英雄级里程碑加成；
+// 唯一真相源 = data/heroGrowth.heroBaseAttributes（返回完整六项 BaseAttributes，详情面板共用）
 
 // 经验入账：累计经验并升级（升到下一级所需经验 = 当前等级 * expPerLevel）；
 // 每次升级获得 1 天赋点（ticket 11：天赋点仅来自战斗经验）
@@ -79,7 +63,7 @@ export const applyHeroExp = (hero: HeroState, config: HeroConfig, exp: number): 
     curExp -= level * COMBAT_CONFIG.expPerLevel;
     level += 1;
   }
-  const maxHp = heroMaxHp(config, level);
+  const maxHp = heroBaseAttributes(config, level).maxHp;
   const levelGained = level - hero.level;
   // 升级带来的生命上限成长同步补回当前血量
   return {
@@ -258,15 +242,9 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
   // 调用方已通过 isKnownHero 过滤，config 必存在
   const milestone = getLevelMilestoneBonus(config, hero.level);
 
-  // 配方（与详情面板同口径）：基础三件套含成长+里程碑；暴击/魔力含里程碑；元属性/特殊属性全接入
-  const baseAttributes: BaseAttributes = {
-    attack: heroAttack(config, hero.level),
-    defense: heroDefense(config, hero.level),
-    maxHp: heroMaxHp(config, hero.level),
-    maxMp: 50 + (milestone.maxMp ?? 0),
-    critRate: 0.05 + (milestone.critRate ?? 0),
-    critDmg: 1.5 + (milestone.critDmg ?? 0)
-  };
+  // 配方（与详情面板同口径）：heroBaseAttributes 返回成长后完整六项（含里程碑 base 部分）；
+  // 元属性/特殊属性全接入（特殊属性 = 英雄初始配置 + 里程碑）
+  const baseAttributes: BaseAttributes = heroBaseAttributes(config, hero.level);
   const primaryAttributes: PrimaryAttributes = {
     ...config.primaryAttributes,
     strength: config.primaryAttributes.strength + (milestone.strength ?? 0),
@@ -277,15 +255,17 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
     transcendence: config.primaryAttributes.transcendence + (milestone.transcendence ?? 0)
   };
   const specialAttributes: SpecialAttributes = {
-    arcaneBoost: milestone.arcaneBoost ?? 0,
-    arcaneResistance: milestone.arcaneResistance ?? 0,
-    mechanicalLoad: milestone.mechanicalLoad ?? 0,
-    mechanicalEvolution: milestone.mechanicalEvolution ?? 0,
-    nightmareErosion: milestone.nightmareErosion ?? 0,
-    voidSpirit: milestone.voidSpirit ?? 0,
-    spiritInspire: milestone.spiritInspire ?? 0,
-    astralGuidance: milestone.astralGuidance ?? 0,
-    soulsealDrive: milestone.soulsealDrive ?? 0
+    ...DEFAULT_SPECIAL_ATTRIBUTES,
+    ...config.specialAttributes,
+    arcaneBoost: (config.specialAttributes?.arcaneBoost ?? 0) + (milestone.arcaneBoost ?? 0),
+    arcaneResistance: (config.specialAttributes?.arcaneResistance ?? 0) + (milestone.arcaneResistance ?? 0),
+    mechanicalLoad: (config.specialAttributes?.mechanicalLoad ?? 0) + (milestone.mechanicalLoad ?? 0),
+    mechanicalEvolution: (config.specialAttributes?.mechanicalEvolution ?? 0) + (milestone.mechanicalEvolution ?? 0),
+    nightmareErosion: (config.specialAttributes?.nightmareErosion ?? 0) + (milestone.nightmareErosion ?? 0),
+    voidSpirit: (config.specialAttributes?.voidSpirit ?? 0) + (milestone.voidSpirit ?? 0),
+    spiritInspire: (config.specialAttributes?.spiritInspire ?? 0) + (milestone.spiritInspire ?? 0),
+    astralGuidance: (config.specialAttributes?.astralGuidance ?? 0) + (milestone.astralGuidance ?? 0),
+    soulsealDrive: (config.specialAttributes?.soulsealDrive ?? 0) + (milestone.soulsealDrive ?? 0)
   };
   const permanentModifiers: StatModifier[] = [
     ...bonus,
@@ -339,18 +319,12 @@ const isKnownHero = (state: GameState, heroId: string): boolean =>
   !!state.heroes[heroId] && !!HEROES_CONFIG[heroId];
 
 // 敌人配置 → 战斗单位（自动战斗区域与探索遭遇共用；与英雄同走统一实体原语，
-// 元属性/特殊属性缺省 statSystem 默认 → 面板 = 配置值，快照配方供将来敌人 buff/debuff 重算）
+// baseAttributes 缺省值 = DEFAULT_BASE_ATTRIBUTES（与英雄同口径），元属性/特殊属性缺省全 0，
+// 快照配方供将来敌人 buff/debuff 重算）
 const enemiesToCombatants = (enemies: CombatEnemyConfig[]): CombatantState[] =>
   enemies.map(en =>
     combatantFromSnapshot(en.id, en.name, {
-      baseAttributes: {
-        attack: en.attack,
-        defense: en.defense,
-        maxHp: en.hp,
-        maxMp: en.maxMp ?? 0,
-        critRate: en.critRate ?? 0,
-        critDmg: en.critDmg ?? 1.5
-      },
+      baseAttributes: { ...DEFAULT_BASE_ATTRIBUTES, ...en.baseAttributes },
       primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, ...en.primaryAttributes },
       specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES, ...en.specialAttributes },
       permanentModifiers: en.modifiers ?? []

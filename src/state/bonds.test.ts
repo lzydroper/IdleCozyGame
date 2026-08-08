@@ -105,7 +105,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
       { stat: 'defense', kind: 'percent', value: 0.10 },
       { stat: 'maxHp', kind: 'percent', value: 0.10 }
     ]);
-    expect(boosted.attack).toBe(Math.round((HEROES_CONFIG.nova.baseAttack + HEROES_CONFIG.nova.primaryAttributes.strength * 2) * 1.1)); // 54（含元属性折算）
+    expect(boosted.attack).toBe(Math.round((HEROES_CONFIG.nova.baseAttributes.attack + HEROES_CONFIG.nova.primaryAttributes.strength * 2) * 1.1)); // 54（含元属性折算）
     expect(boosted.defense).toBe(12); // round((8 + 体质 3) × 1.1)
     expect(boosted.maxHp).toBe(143); // round((100 + 体质 3×10) × 1.1)
     expect(boosted.hp).toBe(143); // 当前血量同比例缩放

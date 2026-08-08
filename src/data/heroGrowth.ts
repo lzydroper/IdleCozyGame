@@ -2,6 +2,7 @@
 // 每级成长唯一真相源：战斗计算（state/combat.ts）与详情面板（HeroDetailModal）共用本文件。
 import type { HeroClass } from '../types/game';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
+import { DEFAULT_BASE_ATTRIBUTES } from './statConfig';
 import type { HeroConfig } from './heroes';
 
 export interface HeroGrowthConfig {
@@ -37,6 +38,22 @@ export const getLevelMilestoneBonus = (
     });
   });
   return bonus;
+};
+
+// 英雄基础属性推导（stat-bonus-unification 统一实体；战斗与详情面板唯一真相源）：
+// Lv1 种子（config.baseAttributes）+ 职阶成长 × (level-1) + 里程碑 base 部分，返回完整六项 BaseAttributes。
+// 纯推导：level 是唯一状态（等级不会下降 → 基础值无需回调/持久化）。
+export const heroBaseAttributes = (config: HeroConfig, level: number): BaseAttributes => {
+  const g = getHeroGrowth(config);
+  const bonus = getLevelMilestoneBonus(config, level);
+  return {
+    attack: config.baseAttributes.attack + (level - 1) * g.attackPerLevel + (bonus.attack ?? 0),
+    defense: config.baseAttributes.defense + (level - 1) * g.defensePerLevel + (bonus.defense ?? 0),
+    maxHp: config.baseAttributes.maxHp + (level - 1) * g.hpPerLevel + (bonus.maxHp ?? 0),
+    maxMp: (config.baseAttributes.maxMp ?? DEFAULT_BASE_ATTRIBUTES.maxMp) + (bonus.maxMp ?? 0),
+    critRate: (config.baseAttributes.critRate ?? DEFAULT_BASE_ATTRIBUTES.critRate) + (bonus.critRate ?? 0),
+    critDmg: (config.baseAttributes.critDmg ?? DEFAULT_BASE_ATTRIBUTES.critDmg) + (bonus.critDmg ?? 0)
+  };
 };
 
 // 元属性作用说明（08 决策 D4：详情界面展示；数值与 statConfig.PRIMARY_STAT_SCALING_CONFIG 一致）

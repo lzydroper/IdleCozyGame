@@ -12,8 +12,9 @@ import { getAwakenedName } from '../state/awakening';
 import { ITEMS_CONFIG } from '../data/items';
 import { EQUIPMENT_CONFIG } from '../data/equipment';
 import { getEquippedFlatStats, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
-import { applyHeroExp, heroMaxHp, heroAttack, heroDefense } from '../state/combat';
-import { getLevelMilestoneBonus } from '../data/heroGrowth';
+import { applyHeroExp } from '../state/combat';
+import { heroBaseAttributes, getLevelMilestoneBonus } from '../data/heroGrowth';
+import { DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats, type StatKey } from '../state/statSystem';
 import { useToast } from './ToastSystem';
@@ -83,21 +84,22 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     [heroEquip, config?.faction]
   );
 
-  // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)：统一走职阶成长 + 里程碑 + 装备加成，元属性增益首次实装（16 号）
-  // 里程碑三层（stat-bonus-unification 06）：元/基础/特殊全覆盖；基础三件套已含在 heroAttack 等内
+  // 核心基础面板属性计算 (Memoized 避免频繁 Tick 重复计算)：统一走 heroBaseAttributes（三层同口径，
+  // 含成长+里程碑 base 六项）+ 装备 flat + 元属性增益（stat-bonus-unification 统一实体）
   const calculatedStats = useMemo(() => {
     if (!config || !hero) return null;
     const milestone = getLevelMilestoneBonus(config, hero.level);
+    const base = heroBaseAttributes(config, hero.level);
     const flatOf = (stat: StatKey): number => equipFlat.find(m => m.stat === stat)?.value ?? 0;
     return calculateEntityStats(
       {
               baseAttributes: {
-                attack: heroAttack(config, hero.level) + flatOf('attack'),
-                defense: heroDefense(config, hero.level) + flatOf('defense'),
-                maxHp: heroMaxHp(config, hero.level) + flatOf('maxHp'),
-                maxMp: 50 + (milestone.maxMp ?? 0),
-                critRate: 0.05 + (milestone.critRate ?? 0),
-                critDmg: 1.50 + (milestone.critDmg ?? 0)
+                attack: base.attack + flatOf('attack'),
+                defense: base.defense + flatOf('defense'),
+                maxHp: base.maxHp + flatOf('maxHp'),
+                maxMp: base.maxMp,
+                critRate: base.critRate,
+                critDmg: base.critDmg
               },
               primaryAttributes: {
                 ...config.primaryAttributes,
@@ -109,15 +111,17 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                 transcendence: config.primaryAttributes.transcendence + (milestone.transcendence ?? 0)
               },
               specialAttributes: {
-                arcaneBoost: milestone.arcaneBoost ?? 0,
-                arcaneResistance: milestone.arcaneResistance ?? 0,
-                mechanicalLoad: milestone.mechanicalLoad ?? 0,
-                mechanicalEvolution: milestone.mechanicalEvolution ?? 0,
-                nightmareErosion: milestone.nightmareErosion ?? 0,
-                voidSpirit: milestone.voidSpirit ?? 0,
-                spiritInspire: milestone.spiritInspire ?? 0,
-                astralGuidance: milestone.astralGuidance ?? 0,
-                soulsealDrive: milestone.soulsealDrive ?? 0
+                ...DEFAULT_SPECIAL_ATTRIBUTES,
+                ...config.specialAttributes,
+                arcaneBoost: (config.specialAttributes?.arcaneBoost ?? 0) + (milestone.arcaneBoost ?? 0),
+                arcaneResistance: (config.specialAttributes?.arcaneResistance ?? 0) + (milestone.arcaneResistance ?? 0),
+                mechanicalLoad: (config.specialAttributes?.mechanicalLoad ?? 0) + (milestone.mechanicalLoad ?? 0),
+                mechanicalEvolution: (config.specialAttributes?.mechanicalEvolution ?? 0) + (milestone.mechanicalEvolution ?? 0),
+                nightmareErosion: (config.specialAttributes?.nightmareErosion ?? 0) + (milestone.nightmareErosion ?? 0),
+                voidSpirit: (config.specialAttributes?.voidSpirit ?? 0) + (milestone.voidSpirit ?? 0),
+                spiritInspire: (config.specialAttributes?.spiritInspire ?? 0) + (milestone.spiritInspire ?? 0),
+                astralGuidance: (config.specialAttributes?.astralGuidance ?? 0) + (milestone.astralGuidance ?? 0),
+                soulsealDrive: (config.specialAttributes?.soulsealDrive ?? 0) + (milestone.soulsealDrive ?? 0)
               }
             }
           );

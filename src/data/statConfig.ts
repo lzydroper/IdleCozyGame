@@ -36,6 +36,11 @@ export const DEFAULT_SPECIAL_ATTRIBUTES: Readonly<SpecialAttributes> = {
   soulsealDrive: 0
 };
 
+// 基础属性种子（英雄 Lv1 / 敌人固定面板共用）：攻击/防御/生命必填，其余缺省与 DEFAULT_BASE_ATTRIBUTES 一致。
+// stat-bonus-unification 统一实体：HeroConfig 与 CombatEnemyConfig 同用此形状，不再各自声明扁平字段。
+export type BaseStatsSeed = Required<Pick<BaseAttributes, 'attack' | 'defense' | 'maxHp'>> &
+  Partial<Omit<BaseAttributes, 'attack' | 'defense' | 'maxHp'>>;
+
 // === 2. 元属性向基础属性加成映射配置系数 ===
 export const PRIMARY_STAT_SCALING_CONFIG = {
   STRENGTH_TO_ATTACK: 2.0,                  // 1 力量 = +2.0 攻击

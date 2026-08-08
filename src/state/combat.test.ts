@@ -5,10 +5,8 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { COMBAT_ZONES } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { applyTick } from './tick';
+import { heroBaseAttributes } from '../data/heroGrowth';
 import {
-  heroMaxHp,
-  heroAttack,
-  heroDefense,
   applyHeroExp,
   consumeExpTomesUpdate,
   simulateBattle,
@@ -150,17 +148,18 @@ const unit = (id: string, hp: number, attack: number, defense: number, name = id
 describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)', () => {
   it('scales maxHp / attack / defense with level by class growth', () => {
     const cfg = HEROES_CONFIG.nova; // attacker：每级 生命 +6 / 攻击 +4 / 防御 +1
-    expect(heroMaxHp(cfg, 1)).toBe(cfg.baseHp);
-    expect(heroMaxHp(cfg, 5)).toBe(cfg.baseHp + 4 * 6);
-    expect(heroAttack(cfg, 5)).toBe(cfg.baseAttack + 4 * 4);
-    expect(heroDefense(cfg, 5)).toBe(cfg.baseDefense + 4 * 1);
+    expect(heroBaseAttributes(cfg, 1).maxHp).toBe(cfg.baseAttributes.maxHp);
+    expect(heroBaseAttributes(cfg, 5).maxHp).toBe(cfg.baseAttributes.maxHp + 4 * 6);
+    expect(heroBaseAttributes(cfg, 5).attack).toBe(cfg.baseAttributes.attack + 4 * 4);
+    expect(heroBaseAttributes(cfg, 5).defense).toBe(cfg.baseAttributes.defense + 4 * 1);
   });
 
   it('applies level milestones once the level is reached (英雄级微调)', () => {
     const cfg = HEROES_CONFIG.nova; // { 10: { attack: 5 }, 20: { critRate: 0.02 } }
-    expect(heroAttack(cfg, 9)).toBe(cfg.baseAttack + 8 * 4);
-    expect(heroAttack(cfg, 10)).toBe(cfg.baseAttack + 9 * 4 + 5);
-    expect(heroAttack(cfg, 25)).toBe(cfg.baseAttack + 24 * 4 + 5);
+    expect(heroBaseAttributes(cfg, 9).attack).toBe(cfg.baseAttributes.attack + 8 * 4);
+    expect(heroBaseAttributes(cfg, 10).attack).toBe(cfg.baseAttributes.attack + 9 * 4 + 5);
+    expect(heroBaseAttributes(cfg, 25).attack).toBe(cfg.baseAttributes.attack + 24 * 4 + 5);
+    expect(heroBaseAttributes(cfg, 20).critRate).toBe(0.05 + 0.02); // 里程碑暴击：默认 0.05 + 20 级 +2%
   });
 
   it('applies exp and levels up, growing maxHp and keeping hp delta', () => {
@@ -168,7 +167,7 @@ describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)',
     const leveled = applyHeroExp(hero, HEROES_CONFIG.nova, COMBAT_CONFIG.expPerLevel * 2);
     expect(leveled.level).toBe(2); // 1→2 需 100 经验，剩余 100 不足以升 3 级
     expect(leveled.exp).toBe(100); // 200 - 100
-    expect(leveled.maxHp).toBe(heroMaxHp(HEROES_CONFIG.nova, 2));
+    expect(leveled.maxHp).toBe(heroBaseAttributes(HEROES_CONFIG.nova, 2).maxHp);
     expect(leveled.hp).toBe(hero.hp + (leveled.maxHp - hero.maxHp)); // 保留当前血量差值
   });
 });

@@ -1,22 +1,18 @@
 // 战斗区域配置（ticket 05）：线性递进的自动战斗场所；区域链与 BOSS 见 ticket 07
 // 敌人也是战斗实体（stat-bonus-unification 统一实体）：与英雄同走 statSystem 三层配置，
-// 缺省值 = statSystem 默认（元属性/特殊属性全 0，暴击 0/1.5），现有配置只需 hp/attack/defense
+// baseAttributes 复用 BaseStatsSeed（攻击/防御/生命必填，maxMp/critRate/critDmg 缺省 = DEFAULT_BASE_ATTRIBUTES），
+// 元属性/特殊属性缺省全 0，modifiers 为配置级修饰符（如 BOSS 光环）
 import type { PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
 import type { StatModifier } from '../state/statSystem';
+import type { BaseStatsSeed } from './statConfig';
 
 export interface CombatEnemyConfig {
   id: string;
   name: string;
-  hp: number;
-  attack: number;
-  defense: number;
-  // 可选扩展属性：与 statSystem 三层同口径，缺省时与 statSystem 默认一致
-  maxMp?: number;
-  critRate?: number;
-  critDmg?: number;
+  baseAttributes: BaseStatsSeed;
   primaryAttributes?: Partial<PrimaryAttributes>;
   specialAttributes?: Partial<SpecialAttributes>;
-  modifiers?: StatModifier[]; // 配置级修饰符（如 BOSS 光环），与英雄来源修饰符同形态
+  modifiers?: StatModifier[];
 }
 
 export interface CombatDropConfig {
@@ -65,7 +61,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     expReward: 50,
     isTestZone: true,
     enemies: [
-      { id: 'test_dummy', name: '测试靶机', hp: 10, attack: 1, defense: 0 }
+      { id: 'test_dummy', name: '测试靶机', baseAttributes: { maxHp: 10, attack: 1, defense: 0 } }
     ],
     drops: [
       { itemId: 'wasteland_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
@@ -83,7 +79,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
       name: '测试领主',
 
       enemies: [
-        { id: 'test_boss', name: '测试领主', hp: 20, attack: 2, defense: 0 }
+        { id: 'test_boss', name: '测试领主', baseAttributes: { maxHp: 20, attack: 2, defense: 0 } }
       ],
       staminaCost: 10,
       expReward: 100,
@@ -110,8 +106,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
     staminaCost: 10,
     expReward: 20,
     enemies: [
-      { id: 'wasteland_hound', name: '废土鬣狗', hp: 45, attack: 9, defense: 3 },
-      { id: 'mutant_rat', name: '变异鼠群', hp: 30, attack: 7, defense: 1 }
+      { id: 'wasteland_hound', name: '废土鬣狗', baseAttributes: { maxHp: 45, attack: 9, defense: 3 } },
+      { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 30, attack: 7, defense: 1 } }
     ],
     drops: [
       { itemId: 'scrap_metal', chance: 0.6, minQty: 1, maxQty: 2 },
@@ -125,7 +121,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
       name: '废土鬣狗王',
 
       enemies: [
-        { id: 'wasteland_hound_king', name: '废土鬣狗王', hp: 90, attack: 13, defense: 5 }
+        { id: 'wasteland_hound_king', name: '废土鬣狗王', baseAttributes: { maxHp: 90, attack: 13, defense: 5 } }
       ],
       staminaCost: 12,
       expReward: 30,
@@ -149,8 +145,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
     staminaCost: 15,
     expReward: 35,
     enemies: [
-      { id: 'ruin_scavenger', name: '废墟拾荒者', hp: 80, attack: 16, defense: 4 },
-      { id: 'mutant_rat', name: '变异鼠群', hp: 35, attack: 8, defense: 1 }
+      { id: 'ruin_scavenger', name: '废墟拾荒者', baseAttributes: { maxHp: 80, attack: 16, defense: 4 } },
+      { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
     ],
     drops: [
       { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
@@ -165,8 +161,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
       name: '废墟霸主',
 
       enemies: [
-        { id: 'ruin_overlord', name: '废墟霸主', hp: 150, attack: 20, defense: 8 },
-        { id: 'mutant_rat', name: '变异鼠群', hp: 35, attack: 8, defense: 1 }
+        { id: 'ruin_overlord', name: '废墟霸主', baseAttributes: { maxHp: 150, attack: 20, defense: 8 } },
+        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
       ],
       staminaCost: 18,
       expReward: 50,
@@ -192,9 +188,9 @@ export const COMBAT_ZONES: CombatZonesMap = {
     staminaCost: 20,
     expReward: 60,
     enemies: [
-      { id: 'radiation_mutant', name: '辐射变异体', hp: 130, attack: 20, defense: 6 },
-      { id: 'rogue_machine', name: '失控机器仆从', hp: 90, attack: 15, defense: 8 },
-      { id: 'aberrant_subject', name: '畸变实验体', hp: 70, attack: 18, defense: 5 }
+      { id: 'radiation_mutant', name: '辐射变异体', baseAttributes: { maxHp: 130, attack: 20, defense: 6 } },
+      { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } },
+      { id: 'aberrant_subject', name: '畸变实验体', baseAttributes: { maxHp: 70, attack: 18, defense: 5 } }
     ],
     drops: [
       { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
@@ -210,8 +206,8 @@ export const COMBAT_ZONES: CombatZonesMap = {
       name: '车间之主·畸变聚合体',
 
       enemies: [
-        { id: 'workshop_abomination', name: '车间之主·畸变聚合体', hp: 260, attack: 26, defense: 10 },
-        { id: 'rogue_machine', name: '失控机器仆从', hp: 90, attack: 15, defense: 8 }
+        { id: 'workshop_abomination', name: '车间之主·畸变聚合体', baseAttributes: { maxHp: 260, attack: 26, defense: 10 } },
+        { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } }
       ],
       staminaCost: 25,
       expReward: 80,

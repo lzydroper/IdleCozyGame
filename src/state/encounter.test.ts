@@ -33,8 +33,8 @@ describe('Encounter events data (战斗遭遇事件池)', () => {
       expect(evt.battle!.enemies.length, evt.id).toBeGreaterThan(0);
       expect(evt.battle!.expReward, evt.id).toBeGreaterThan(0);
       evt.battle!.enemies.forEach(en => {
-        expect(en.hp).toBeGreaterThan(0);
-        expect(en.attack).toBeGreaterThan(0);
+        expect(en.baseAttributes.maxHp).toBeGreaterThan(0);
+        expect(en.baseAttributes.attack).toBeGreaterThan(0);
       });
       evt.battle!.drops.forEach(d => {
         expect(ITEMS_CONFIG[d.itemId], evt.id).toBeDefined();
