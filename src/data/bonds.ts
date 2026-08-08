@@ -1,4 +1,5 @@
 import type { HeroFaction } from '../types/game';
+import type { StatModifier } from '../state/statSystem';
 
 // 羁绊配置（ticket 09）：队伍构筑策略层 —— 特定英雄组合 / 阵营条件上阵触发数值加成，
 // 生效于战斗数值（攻击/防御/生命），由 state/bonds.ts 计算，combat.ts 应用。
@@ -61,3 +62,12 @@ export const formatBonus = (bonus: CombatBonus): string =>
     .filter(k => !!bonus[k])
     .map(k => `${COMBAT_BONUS_META[k].label} +${bonus[k]!}${COMBAT_BONUS_META[k].unit ?? ''}`)
     .join('、');
+
+// 兼容转换（stat-bonus-unification 01，Contract 时删除）：旧 CombatBonus → 统一修饰符数组
+export const toModifiers = (bonus: CombatBonus): StatModifier[] => {
+  const mods: StatModifier[] = [];
+  if (bonus.attackPercent) mods.push({ stat: 'attack', kind: 'percent', value: bonus.attackPercent / 100 });
+  if (bonus.defensePercent) mods.push({ stat: 'defense', kind: 'percent', value: bonus.defensePercent / 100 });
+  if (bonus.maxHpPercent) mods.push({ stat: 'maxHp', kind: 'percent', value: bonus.maxHpPercent / 100 });
+  return mods;
+};
