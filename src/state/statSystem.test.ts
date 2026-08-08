@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateEntityStats, aggregateModifiers, aggregateModifiersBySource, getStatSourcesByStat, formatModifiers, DEFAULT_PRIMARY_ATTRIBUTES } from './statSystem';
-import type { BaseAttributes, PrimaryAttributes } from './statSystem';
+import { calculateEntityStats, aggregateModifiers, aggregateModifiersBySource, getStatSourcesByStat, getDerivedStatContributions, formatModifiers, DEFAULT_PRIMARY_ATTRIBUTES } from './statSystem';
+import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from './statSystem';
 
 describe('statSystem - Primary Attribute Bonus Engine', () => {
   const sampleBaseStats: BaseAttributes = {
@@ -337,5 +337,172 @@ describe('statSystem - Source-Grouped Aggregation (detailed-stats-panel-rework 0
       expect(attackSources).toHaveLength(1);
       expect(attackSources[0].source).toBe('来源B');
     });
+  });
+});
+
+describe('statSystem - Derived Stat Contributions (detailed-stats-panel-rework 02)', () => {
+  const base: BaseAttributes = {
+    attack: 100,
+    defense: 50,
+    maxHp: 1000,
+    maxMp: 200,
+    critRate: 0.05,
+    critDmg: 1.5
+  };
+
+  it('traces critResist back to agility with correct coefficient', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: base,
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, agility: 25 }
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.critResist).toHaveLength(1);
+    expect(contributions.critResist[0].source).toBe('敏捷');
+    expect(contributions.critResist[0].sourceValue).toBe(25);
+    expect(contributions.critResist[0].coefficient).toBeCloseTo(0.001);
+    expect(contributions.critResist[0].contribution).toBeCloseTo(0.025);
+  });
+
+  it('traces durationReduction and effectReduction back to willpower', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: base,
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, willpower: 10 }
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.durationReduction).toHaveLength(1);
+    expect(contributions.durationReduction[0].source).toBe('意志');
+    expect(contributions.durationReduction[0].sourceValue).toBe(10);
+    expect(contributions.durationReduction[0].coefficient).toBeCloseTo(0.005);
+    expect(contributions.durationReduction[0].contribution).toBeCloseTo(0.05);
+
+    expect(contributions.effectReduction).toHaveLength(1);
+    expect(contributions.effectReduction[0].source).toBe('意志');
+    expect(contributions.effectReduction[0].contribution).toBeCloseTo(0.05);
+  });
+
+  it('traces cooldownReduction back to transcendence', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: base,
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, transcendence: 5 }
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.cooldownReduction).toHaveLength(1);
+    expect(contributions.cooldownReduction[0].source).toBe('超越');
+    expect(contributions.cooldownReduction[0].sourceValue).toBe(5);
+    expect(contributions.cooldownReduction[0].coefficient).toBeCloseTo(0.003);
+    expect(contributions.cooldownReduction[0].contribution).toBeCloseTo(0.015);
+  });
+
+  it('traces damageReduction to the defense formula', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: { ...base, defense: 100 },
+      primaryAttributes: DEFAULT_PRIMARY_ATTRIBUTES
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.damageReduction).toHaveLength(1);
+    expect(contributions.damageReduction[0].source).toBe('防御公式');
+    expect(contributions.damageReduction[0].sourceValue).toBe(100);
+    expect(contributions.damageReduction[0].contribution).toBeCloseTo(0.5); // 100/(100+100)
+  });
+
+  it('traces voidSpirit to intrinsic specialAttributes value', () => {
+    const special: Partial<SpecialAttributes> = { voidSpirit: 15 };
+    const stats = calculateEntityStats({
+      baseAttributes: base,
+      primaryAttributes: DEFAULT_PRIMARY_ATTRIBUTES,
+      specialAttributes: special
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.voidSpirit).toHaveLength(1);
+    expect(contributions.voidSpirit[0].source).toBe('固有值');
+    expect(contributions.voidSpirit[0].sourceValue).toBe(15);
+    expect(contributions.voidSpirit[0].coefficient).toBe(1);
+    expect(contributions.voidSpirit[0].contribution).toBe(15);
+  });
+
+  it('returns empty contribution lists when primary attributes are all zero', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: { ...base, defense: 0 },
+      primaryAttributes: DEFAULT_PRIMARY_ATTRIBUTES,
+      specialAttributes: { voidSpirit: 0 } as SpecialAttributes
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.critResist).toEqual([]);
+    expect(contributions.durationReduction).toEqual([]);
+    expect(contributions.effectReduction).toEqual([]);
+    expect(contributions.cooldownReduction).toEqual([]);
+    expect(contributions.damageReduction).toEqual([]); // defense=0 -> no contribution
+    expect(contributions.voidSpirit).toEqual([]);
+  });
+
+  it('returns all 6 derived stat keys', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: base,
+      primaryAttributes: DEFAULT_PRIMARY_ATTRIBUTES
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(Object.keys(contributions)).toEqual(
+      expect.arrayContaining([
+        'critResist', 'damageReduction', 'durationReduction',
+        'effectReduction', 'cooldownReduction', 'voidSpirit'
+      ])
+    );
+    expect(Object.keys(contributions)).toHaveLength(6);
+  });
+
+  it('contribution values match the actual derived stat values in CalculatedEntityStats', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: base,
+      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, agility: 30, willpower: 8, transcendence: 3 },
+      specialAttributes: { voidSpirit: 10 } as SpecialAttributes
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    // critResist: agility 30 × 0.001 = 0.03
+    expect(contributions.critResist[0].contribution).toBeCloseTo(stats.critResist);
+    // durationReduction: willpower 8 × 0.005 = 0.04
+    expect(contributions.durationReduction[0].contribution).toBeCloseTo(stats.durationReduction);
+    // effectReduction: willpower 8 × 0.005 = 0.04
+    expect(contributions.effectReduction[0].contribution).toBeCloseTo(stats.effectReduction);
+    // cooldownReduction: transcendence 3 × 0.003 = 0.009
+    expect(contributions.cooldownReduction[0].contribution).toBeCloseTo(stats.cooldownReduction);
+    // damageReduction: defense formula 50/(100+50) ≈ 0.333
+    expect(contributions.damageReduction[0].contribution).toBeCloseTo(stats.damageReduction);
+    // voidSpirit: intrinsic 10
+    expect(contributions.voidSpirit[0].contribution).toBeCloseTo(stats.specialAttributes.voidSpirit);
+  });
+
+  it('damageReduction contribution has no coefficient (non-linear formula)', () => {
+    const stats = calculateEntityStats({
+      baseAttributes: { ...base, defense: 100 },
+      primaryAttributes: DEFAULT_PRIMARY_ATTRIBUTES
+    });
+    const contributions = getDerivedStatContributions(stats);
+
+    expect(contributions.damageReduction).toHaveLength(1);
+    expect(contributions.damageReduction[0].coefficient).toBeUndefined();
+  });
+
+  it('shows contributions for negative primary attributes (debuff scenario)', () => {
+    const stats = calculateEntityStats(
+      {
+        baseAttributes: base,
+        primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, agility: 5 }
+      },
+      [{ stat: 'agility', kind: 'flat', value: -10 }] // agility -> -5
+    );
+    const contributions = getDerivedStatContributions(stats);
+
+    // agility is -5 (5 + (-10) * (1+0) = -5); contribution should be negative
+    expect(contributions.critResist).toHaveLength(1);
+    expect(contributions.critResist[0].sourceValue).toBe(-5);
+    expect(contributions.critResist[0].contribution).toBeCloseTo(-0.005);
   });
 });

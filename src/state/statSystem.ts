@@ -280,3 +280,124 @@ export function calculateEntityStats(params: CalculateStatsParams, modifiers: St
     }
   };
 }
+
+// === 5. 派生属性贡献分解（detailed-stats-panel-rework 02） ===
+
+// 派生属性 key（CalculatedEntityStats 中非 BaseAttributes 的计算属性）
+export type DerivedStatKey =
+  | 'critResist'
+  | 'damageReduction'
+  | 'durationReduction'
+  | 'effectReduction'
+  | 'cooldownReduction'
+  | 'voidSpirit';
+
+// 单条贡献：某元属性/来源对某派生属性贡献了多少
+export interface DerivedStatContribution {
+  source: string;         // 贡献来源名称（元属性名 / "防御公式" / "固有值"）
+  sourceValue: number;    // 来源当前值（如敏捷 3、防御 50）
+  coefficient?: number;   // 映射系数（如 0.001 = 每点敏捷 0.1%）；非线性公式（如防御减伤）时不设
+  contribution: number;   // 实际贡献值（sourceValue × coefficient，或公式直接结果）
+}
+
+// 派生属性 -> 贡献列表
+export type DerivedStatContributions = Record<DerivedStatKey, DerivedStatContribution[]>;
+
+// 派生属性展示元数据（数据驱动）：label + 是否百分比展示
+export const DERIVED_STAT_META: Record<DerivedStatKey, { label: string; percentDisplay: boolean }> = {
+  critResist: { label: '免暴击率', percentDisplay: true },
+  damageReduction: { label: '减伤率', percentDisplay: true },
+  durationReduction: { label: '负面持续减免', percentDisplay: true },
+  effectReduction: { label: '负面数值减免', percentDisplay: true },
+  cooldownReduction: { label: '冷却缩减', percentDisplay: true },
+  voidSpirit: { label: '伤害豁免', percentDisplay: true }
+};
+
+/**
+ * 计算每个派生属性的来源贡献分解。
+ * 供详细属性面板展开派生属性行时展示"该属性由哪些元属性贡献了多少"。
+ *
+ * 贡献来源：
+ * - critResist         <- 敏捷 × AGILITY_TO_CRIT_RESIST
+ * - damageReduction    <- 防御公式 DEF / (100 + DEF)，贡献来源为"防御公式"
+ * - durationReduction  <- 意志 × WILLPOWER_TO_DURATION_REDUCE
+ * - effectReduction    <- 意志 × WILLPOWER_TO_EFFECT_REDUCE
+ * - cooldownReduction  <- 超越 × TRANSCENDENCE_TO_COOLDOWN_REDUCE
+ * - voidSpirit         <- specialAttributes.voidSpirit 固有值（非元属性映射）
+ */
+export function getDerivedStatContributions(stats: CalculatedEntityStats): DerivedStatContributions {
+  const { primaryAttributes: primary, specialAttributes: special } = stats;
+
+  // critResist <- 敏捷
+  const critResistContributions: DerivedStatContribution[] = primary.agility !== 0
+    ? [{
+        source: '敏捷',
+        sourceValue: primary.agility,
+        coefficient: PRIMARY_STAT_SCALING_CONFIG.AGILITY_TO_CRIT_RESIST,
+        contribution: primary.agility * PRIMARY_STAT_SCALING_CONFIG.AGILITY_TO_CRIT_RESIST
+      }]
+    : [];
+
+  // damageReduction <- 防御公式 DEF / (100 + DEF)
+  // 防御本身由多种来源构成（base + 体质 + 装备 flat + percent），
+  // 此处只标注最终防御值与公式结果，不拆解防御本身的来源（那属于"防御"属性行的展开）
+  // coefficient 不设：非线性公式，无固定系数
+  const damageReductionContributions: DerivedStatContribution[] = stats.defense > 0
+    ? [{
+        source: '防御公式',
+        sourceValue: stats.defense,
+        contribution: stats.damageReduction
+      }]
+    : [];
+
+  // durationReduction <- 意志
+  const durationReductionContributions: DerivedStatContribution[] = primary.willpower !== 0
+    ? [{
+        source: '意志',
+        sourceValue: primary.willpower,
+        coefficient: PRIMARY_STAT_SCALING_CONFIG.WILLPOWER_TO_DURATION_REDUCE,
+        contribution: primary.willpower * PRIMARY_STAT_SCALING_CONFIG.WILLPOWER_TO_DURATION_REDUCE
+      }]
+    : [];
+
+  // effectReduction <- 意志
+  const effectReductionContributions: DerivedStatContribution[] = primary.willpower !== 0
+    ? [{
+        source: '意志',
+        sourceValue: primary.willpower,
+        coefficient: PRIMARY_STAT_SCALING_CONFIG.WILLPOWER_TO_EFFECT_REDUCE,
+        contribution: primary.willpower * PRIMARY_STAT_SCALING_CONFIG.WILLPOWER_TO_EFFECT_REDUCE
+      }]
+    : [];
+
+  // cooldownReduction <- 超越
+  const cooldownReductionContributions: DerivedStatContribution[] = primary.transcendence !== 0
+    ? [{
+        source: '超越',
+        sourceValue: primary.transcendence,
+        coefficient: PRIMARY_STAT_SCALING_CONFIG.TRANSCENDENCE_TO_COOLDOWN_REDUCE,
+        contribution: primary.transcendence * PRIMARY_STAT_SCALING_CONFIG.TRANSCENDENCE_TO_COOLDOWN_REDUCE
+      }]
+    : [];
+
+  // voidSpirit <- specialAttributes.voidSpirit 固有值（非元属性映射）
+  // 注意：voidSpirit 不是 CalculatedEntityStats 的顶层字段，而是 specialAttributes 的成员；
+  // DERIVED_STAT_META 中 label 为"伤害豁免"，与 STAT_META.voidSpirit ("虚无灵体") 不同。
+  const voidSpiritContributions: DerivedStatContribution[] = special.voidSpirit !== 0
+    ? [{
+        source: '固有值',
+        sourceValue: special.voidSpirit,
+        coefficient: 1,
+        contribution: special.voidSpirit
+      }]
+    : [];
+
+  return {
+    critResist: critResistContributions,
+    damageReduction: damageReductionContributions,
+    durationReduction: durationReductionContributions,
+    effectReduction: effectReductionContributions,
+    cooldownReduction: cooldownReductionContributions,
+    voidSpirit: voidSpiritContributions
+  };
+}
