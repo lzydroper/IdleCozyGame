@@ -6,10 +6,13 @@ import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { CombatBonus } from '../data/bonds';
+import { toModifiers } from '../data/bonds';
 import type { AwakenSkillConfig } from '../data/awakening';
 import { aggregateBonus } from './bonds';
 import type { EquipmentStats } from '../data/equipment';
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
+import type { StatModifier } from './statSystem';
+import { calculateEntityStats } from './statSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { getHeroGrowth, getLevelMilestoneBonus } from '../data/heroGrowth';
 import { getTalentBonus } from './talents';
@@ -214,27 +217,54 @@ export const simulateBattle = (
   };
 };
 
-// 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成在战斗场景内生效：攻击/防御/生命按百分比放大，
-// 装备提供平值属性；觉醒英雄附带专属技能；退出战斗即复原。ticket 10/11/12）
-export const heroToCombatant = (heroId: string, hero: HeroState, bonus: CombatBonus = {}, gear: HeroEquipment | null = null): CombatantState => {
+// 兼容辅助（stat-bonus-unification 02，03 装备来源迁移后删除）：装备平值 → flat 修饰符
+const equipmentFlatToModifiers = (flat: EquipmentStats): StatModifier[] => {
+  const mods: StatModifier[] = [];
+  if (flat.attack) mods.push({ stat: 'attack', kind: 'flat', value: flat.attack });
+  if (flat.defense) mods.push({ stat: 'defense', kind: 'flat', value: flat.defense });
+  if (flat.maxHp) mods.push({ stat: 'maxHp', kind: 'flat', value: flat.maxHp });
+  return mods;
+};
+
+// 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成统一为修饰符，经 statSystem 面板快照生效；
+// 退出战斗即复原。stat-bonus-unification 02）
+export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModifier[] = [], gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
   const { flat, percent } = gear ? getHeroEquipmentBonus(gear) : { flat: {} as EquipmentStats, percent: {} as CombatBonus };
   const talentPercent = getTalentBonus(heroId, hero);
   const awakenPercent = getAwakenBonus(heroId, hero);
-  const attackFactor = 1 + ((bonus.attackPercent || 0) + (percent.attackPercent || 0) + (talentPercent.attackPercent || 0) + (awakenPercent.attackPercent || 0)) / 100;
-  const defenseFactor = 1 + ((bonus.defensePercent || 0) + (percent.defensePercent || 0) + (talentPercent.defensePercent || 0) + (awakenPercent.defensePercent || 0)) / 100;
-  const hpFactor = 1 + ((bonus.maxHpPercent || 0) + (percent.maxHpPercent || 0) + (talentPercent.maxHpPercent || 0) + (awakenPercent.maxHpPercent || 0)) / 100;
-  const baseMaxHp = heroMaxHp(config, hero.level) + (flat.maxHp || 0);
-  const maxHp = Math.round(baseMaxHp * hpFactor);
+
+  // 面板快照：统一聚合全部来源修饰符（未迁移来源经 toModifiers 兼容，数值与旧实现一致）
+  const stats = calculateEntityStats(
+    {
+      baseAttributes: {
+        attack: heroAttack(config, hero.level),
+        defense: config.baseDefense,
+        maxHp: heroMaxHp(config, hero.level),
+        maxMp: 50,
+        critRate: 0.05,
+        critDmg: 1.5
+      }
+    },
+    [
+      ...bonus,
+      ...equipmentFlatToModifiers(flat),
+      ...toModifiers(percent),
+      ...toModifiers(talentPercent),
+      ...toModifiers(awakenPercent)
+    ]
+  );
+
+  const maxHp = Math.round(stats.maxHp);
   return {
     id: heroId,
     name: config.name,
     // 当前血量按同比例缩放，保持战斗中已损比例不变
     hp: hero.maxHp > 0 ? Math.round((hero.hp / hero.maxHp) * maxHp) : maxHp,
     maxHp,
-    attack: Math.round((heroAttack(config, hero.level) + (flat.attack || 0)) * attackFactor),
-    defense: Math.round((config.baseDefense + (flat.defense || 0)) * defenseFactor),
+    attack: Math.round(stats.attack),
+    defense: Math.round(stats.defense),
     skill: getAwakenSkill(heroId, hero)
   };
 };
@@ -355,7 +385,7 @@ export const startCombatUpdate = (
   if ((state.stamina || 0) < zone.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
+    party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
     enemiesToCombatants(zone.enemies)
   );
 
@@ -426,7 +456,7 @@ export const resolveEncounterBattleUpdate = (
   if ((state.stamina || 0) < COMBAT_CONFIG.encounterStaminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
+    party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
     enemiesToCombatants(battleConfig.enemies)
   );
 
@@ -566,7 +596,7 @@ export const startBossBattleUpdate = (
 
   const boss = zone.boss;
   const battle = simulateBattle(
-    party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
+    party.map(id => heroToCombatant(id, state.heroes[id], toModifiers(aggregateBonus(party)), state.equipment?.[id] || null)),
     enemiesToCombatants(boss.enemies)
   );
 
@@ -732,7 +762,7 @@ export const settleIdleUpdate = (
 
   for (let i = 0; i < battleCount; i++) {
     const battle = simulateBattle(
-      party.map(id => heroToCombatant(id, next.heroes[id], aggregateBonus(party), next.equipment?.[id] || null)),
+      party.map(id => heroToCombatant(id, next.heroes[id], toModifiers(aggregateBonus(party)), next.equipment?.[id] || null)),
       enemiesToCombatants(zone.enemies)
     );
     const settled = settleBattle(next, battle, party, {

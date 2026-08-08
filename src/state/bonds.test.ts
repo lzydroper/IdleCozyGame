@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
-import { BONDS, formatBonus } from '../data/bonds';
+import { BONDS, formatBonus, toModifiers } from '../data/bonds';
 import type { HeroFaction } from '../types/game';
 import { getActiveBonds, aggregateBonus } from './bonds';
 import { heroToCombatant, simulateBattle, startBossBattleUpdate, startCombatUpdate } from './combat';
@@ -100,7 +100,7 @@ describe('getActiveBonds (触发与失效)', () => {
 describe('Bond combat application (羁绊在战斗中生效)', () => {
   it('heroToCombatant applies attack/defense/maxHp percent bonuses', () => {
     const nova = createInitialHero('nova');
-    const boosted = heroToCombatant('nova', nova, { attackPercent: 10, defensePercent: 10, maxHpPercent: 10 });
+    const boosted = heroToCombatant('nova', nova, toModifiers({ attackPercent: 10, defensePercent: 10, maxHpPercent: 10 }));
     expect(boosted.attack).toBe(Math.round(HEROES_CONFIG.nova.baseAttack * 1.1)); // 39
     expect(boosted.defense).toBe(Math.round(HEROES_CONFIG.nova.baseDefense * 1.1)); // 9
     expect(boosted.maxHp).toBe(Math.round(nova.maxHp * 1.1)); // 110
@@ -134,7 +134,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const enemy = { id: 'e', name: '强敌', hp: 9999, maxHp: 9999, attack: 13, defense: 0 };
     const without = simulateBattle([heroToCombatant('healer', healer)], [enemy]);
     expect(without.partyWiped).toBe(true);
-    const withBond = simulateBattle([heroToCombatant('healer', healer, { maxHpPercent: 10 })], [enemy]);
+    const withBond = simulateBattle([heroToCombatant('healer', healer, toModifiers({ maxHpPercent: 10 }))], [enemy]);
     expect(withBond.partyWiped).toBe(false);
     expect(withBond.victory).toBe(false); // 打不死 → 回合上限平局，说明是"存活"而非"反杀"
   });
@@ -144,7 +144,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const party = ['mei', 'healer'];
     const bonus = aggregateBonus(party);
     expect(bonus).toEqual({ maxHpPercent: 10 });
-    const combatant = heroToCombatant('mei', createInitialHero('mei'), bonus);
+    const combatant = heroToCombatant('mei', createInitialHero('mei'), toModifiers(bonus));
     expect(combatant.maxHp).toBe(Math.round(120 * 1.1)); // 132
     expect(combatant.hp).toBe(Math.round(120 * 1.1));
   });

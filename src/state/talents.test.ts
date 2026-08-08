@@ -14,6 +14,7 @@ import {
   isTalentNodeUnlocked
 } from './talents';
 import type { TalentNodeConfig } from '../data/talents';
+import { toModifiers } from '../data/bonds';
 import { applyHeroExp, heroToCombatant } from './combat';
 import { mergeSavedState } from './persistence';
 
@@ -171,7 +172,7 @@ describe('天赋加成计算与战斗生效', () => {
       trinket: null
     };
     const bond = { attackPercent: 10 };
-    const c = heroToCombatant('nova', hero, bond, gear);
+    const c = heroToCombatant('nova', hero, toModifiers(bond), gear);
     // 攻击 = round((35 + 10) × 1.16) = round(52.2) = 52
     expect(c.attack).toBe(52);
   });

@@ -10,6 +10,7 @@ import {
 } from '../data/equipment';
 import { ITEMS_CONFIG } from '../data/items';
 import { RECIPES_CONFIG } from '../data/recipes';
+import { toModifiers } from '../data/bonds';
 import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import {
@@ -323,7 +324,7 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
       trinket: { itemId: 'ember_trinket', enhance: 0, mythic: false }  // maxHp +30
     };
     const hero = { ...novaLv1(), hp: 80 }; // 已损 20%
-    const c = heroToCombatant('nova', hero, {}, gear);
+    const c = heroToCombatant('nova', hero, [], gear);
     expect(c.attack).toBe(35 + 16);
     expect(c.maxHp).toBe(130);
     expect(c.hp).toBe(104); // 80% × 130
@@ -336,7 +337,7 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
       trinket: null
     };
     const bond = { attackPercent: 10 }; // 羁绊攻击 +10%
-    const c = heroToCombatant('nova', novaLv1(), bond, gear);
+    const c = heroToCombatant('nova', novaLv1(), toModifiers(bond), gear);
     // 攻击 = round((35 + 20) × 1.15) = round(63.25) = 63
     expect(c.attack).toBe(63);
   });
@@ -347,7 +348,7 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
       armor: { itemId: 'starcore_armor', enhance: 30, mythic: true },
       trinket: { itemId: 'starcore_trinket', enhance: 30, mythic: true }
     };
-    const c = heroToCombatant('nova', novaLv1(), {}, gear);
+    const c = heroToCombatant('nova', novaLv1(), [], gear);
     // 星核满编 90：特效攻击 +10%、防御 +12%、生命 +18%；神话词条（每系列一次）攻击+5% 防御+5%
     expect(c.maxHp).toBe(Math.round((100 + 45 * 3 * 1.5) * 1.18));
     expect(c.attack).toBe(Math.round((35 + (22 + 2 * 30) * 1.5) * 1.15));
