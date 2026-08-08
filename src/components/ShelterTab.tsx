@@ -25,7 +25,6 @@ import {
   Sparkles,
   Info,
   Timer,
-  Lightbulb,
   Rocket,
   Search,
   X
@@ -73,6 +72,7 @@ const ShelterTab: React.FC = () => {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [showSeedSelector, setShowSeedSelector] = useState(false);
   const [showWatererPicker, setShowWatererPicker] = useState(false);
+  const [showExplorerPicker, setShowExplorerPicker] = useState(false);
   const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
 
   // 触发飘字特效
@@ -152,21 +152,11 @@ const ShelterTab: React.FC = () => {
     return 0; // 未知升级类型，默认 0
   };
 
-  // 2. 英雄列表（ADR-0013：已获得英雄全部可指派，岗位状态由 shelter 字段判定）
-  const heroesList = Object.keys(state.heroes);
-
-  // 英雄的职阶/阵营（ADR-0018：远征门槛迁移为 heroClass/faction）
+  // 2. 英雄的职阶/阵营（ADR-0018：远征门槛迁移为 heroClass/faction）
   const getHeroClassLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_CLASS_LABELS[HEROES_CONFIG[heroId].heroClass] : '';
   const getHeroFactionLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_FACTION_LABELS[HEROES_CONFIG[heroId].faction] : '';
-
-  // 英雄当前岗位状态文案（由 shelter 指派字段派生）
-  const getHeroStatus = (heroId: string): string => {
-    if (state.shelter.assignedWatererId === heroId) return ' (当前岗位: 浇水)';
-    if (state.shelter.assignedExplorerId === heroId) return ' (当前岗位: 探索)';
-    return ' (空闲)';
-  };
 
   // 英雄显示名（heroes 状态无 name，从配置读取）
   const getHeroName = (heroId: string): string =>
@@ -637,26 +627,39 @@ const ShelterTab: React.FC = () => {
 
         {exp.locationId && currentExplorer && expLocation ? (
           /* 已派遣状态 */
-          <div className="space-y-3.5">
-            <div className="bg-cyan-950/20 border border-cyan-500/25 p-3.5 rounded-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full blur-2xl" />
-              
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-cyan-400 font-bold text-xs flex items-center gap-1"><Rocket className="w-3.5 h-3.5" /> 探索员正在荒野派遣中</div>
-                  <h3 className="font-extrabold text-zinc-100 text-sm mt-1 flex items-center gap-1.5">
-                    {expLocation.name}
-                  </h3>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">
-                    带队英雄: <strong className="text-zinc-200 font-bold">{getHeroName(state.shelter.assignedExplorerId || '')}</strong> 
-                    <span className="text-zinc-500 ml-1">[{getHeroClassLabel(state.shelter.assignedExplorerId || '')} · {getHeroFactionLabel(state.shelter.assignedExplorerId || '')}]</span>
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+            <div className="h-0.5 w-full bg-cyan-500/30" />
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center">
+                    <Rocket className="w-3.5 h-3.5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
+                      {expLocation.name}
+                    </div>
+                    <div className="text-[9px] text-zinc-500">
+                      探索员: <strong className="text-zinc-200 font-bold">{getHeroName(state.shelter.assignedExplorerId || '')}</strong>
+                      <span className="ml-1">[{getHeroClassLabel(state.shelter.assignedExplorerId || '')} · {getHeroFactionLabel(state.shelter.assignedExplorerId || '')}]</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[9px] px-2 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-md font-semibold">
-                    挂机进行中
-                  </span>
-                </div>
+                <button
+                  onClick={() => {
+                    const explorerName = getHeroName(state.shelter.assignedExplorerId || '');
+                    const locName = expLocation?.name || '未知区域';
+                    if (assignHeroToDuty(state.shelter.assignedExplorerId || '', null)) {
+                      addLog(`远征探索员 ${explorerName} 已从 ${locName} 安全召回`, 'logistics');
+                      showToast('远征探索员已成功安全召回，拾荒所得物资已全部存入避难所储藏箱！', 'success');
+                    } else {
+                      showToast('召回失败，请稍后重试！', 'error');
+                    }
+                  }}
+                  className="text-[9px] px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 cursor-pointer"
+                >
+                  <LogOut className="w-3 h-3" /> 召回
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-2 mt-4 pt-3.5 border-t border-cyan-900/30 text-[10px]">
@@ -699,56 +702,47 @@ const ShelterTab: React.FC = () => {
               </div>
             </div>
 
-            {/* 召回操作 */}
-            <button
-              onClick={() => {
-                const explorerName = getHeroName(state.shelter.assignedExplorerId || '');
-                const locName = expLocation?.name || '未知区域';
-                if (assignHeroToDuty(state.shelter.assignedExplorerId || '', null)) {
-                  addLog(`远征探索员 ${explorerName} 已从 ${locName} 安全召回`, 'logistics');
-                  showToast('远征探索员已成功安全召回，拾荒所得物资已全部存入避难所储藏箱！', 'success');
-                } else {
-                  showToast('召回失败，请稍后重试！', 'error');
-                }
-              }}
-              className="w-full bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md"
-            >
-              <LogOut className="w-4 h-4 text-rose-400" />
-              一键召回 / 结算远征收益
-            </button>
           </div>
         ) : (
           /* 未派遣状态 - 允许派遣配置 */
-          <div className="space-y-4">
-            {/* 步骤1：指派远征英雄 */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] text-zinc-400 font-bold block">1. 指派远征探索员：</label>
-              <select
-                value={selectedExpExplorerId}
-                onChange={(e) => setSelectedExpExplorerId(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 p-2 rounded-xl outline-none text-xs"
-              >
-                <option value="">-- 选择派遣的英雄 --</option>
-                {heroesList.map(s => {
-                  const statusStr = getHeroStatus(s);
-                  const heroCfg = HEROES_CONFIG[s];
-                  const dutyLabel = heroCfg ? `${HERO_CLASS_LABELS[heroCfg.heroClass]}/${HERO_FACTION_LABELS[heroCfg.faction]}` : '无职阶';
-                  return (
-                    <option key={s} value={s}>
-                      {getHeroName(s)} ({dutyLabel}) {statusStr}
-                    </option>
-                  );
-                })}
-              </select>
-              <p className="text-[9px] text-zinc-500">
-                <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> 部分地点需要特定职阶或阵营的英雄才能派遣。
-              </p>
-            </div>
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+            <div className="h-0.5 w-full bg-cyan-500/30" />
+            <div className="p-4 space-y-3">
+              {/* 标题栏：探索员选择 */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center">
+                    <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-zinc-100">远征派遣</div>
+                    <div className="text-[9px] text-zinc-500">
+                      {selectedExpExplorerId
+                        ? `探索员: ${getHeroName(selectedExpExplorerId)} [${getHeroClassLabel(selectedExpExplorerId)} · ${getHeroFactionLabel(selectedExpExplorerId)}]`
+                        : '未指派探索员'}
+                    </div>
+                  </div>
+                </div>
+                {selectedExpExplorerId ? (
+                  <button
+                    onClick={() => setShowExplorerPicker(true)}
+                    className="text-[9px] px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer"
+                  >
+                    更换
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowExplorerPicker(true)}
+                    className="text-[9px] px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer"
+                  >
+                    派遣
+                  </button>
+                )}
+              </div>
 
-            {/* 步骤2：选择荒野地点 */}
-            <div className="space-y-2">
-              <label className="text-[10px] text-zinc-400 font-bold block">2. 选择挂机探索地点：</label>
-              <div className="grid grid-cols-1 gap-2.5">
+              {/* 地点选择 */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2.5">
                 {Object.entries(EXPEDITION_LOCATIONS).map(([key, loc]) => {
                   const isSelected = selectedLocationId === key;
                   
@@ -799,22 +793,22 @@ const ShelterTab: React.FC = () => {
                     </div>
                   );
                 })}
+                </div>
               </div>
-            </div>
 
-            {/* 步骤3：探索消耗提示 */}
-            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-900 text-[10px] space-y-1.5">
+              {/* 口粮消耗提示 */}
+              <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-900 text-[10px] space-y-1.5">
               <div className="flex justify-between items-center text-zinc-400">
                 <span className="flex items-center gap-1">
                   <Info className="w-3.5 h-3.5 text-zinc-500" />
                   派遣口粮消耗给养：
                 </span>
-                <span className={getInvQty('ration') >= 1 ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
-                  {getInvQty('ration') >= 1 ? '口粮充足' : '口粮不足'} (持有: {getInvQty('ration')}/1)
+                <span className={getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
+                  {getInvQty('ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: {getInvQty('ration')}/{EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})
                 </span>
               </div>
               <p className="text-[9px] text-zinc-500 leading-normal">
-                荒野深处充满核辐射与变异威胁，探索员出发前必须消耗 1 份压缩口粮用于补给。如果储藏箱口粮不足，将无法开始派遣。
+                荒野深处充满核辐射与变异威胁，探索员出发前必须消耗压缩口粮用于补给。如果储藏箱口粮不足，将无法开始派遣。
               </p>
             </div>
 
@@ -844,10 +838,22 @@ const ShelterTab: React.FC = () => {
                 </button>
               );
             })()}
+            </div>
           </div>
         )}
       </section>
       )}
+
+      {/* 远征探索员选择弹窗 */}
+      <DutyAssignModal
+        isOpen={showExplorerPicker}
+        title="指派远征探索员"
+        heroes={state.heroes}
+        onSelect={(id) => {
+          setSelectedExpExplorerId(id);
+        }}
+        onClose={() => setShowExplorerPicker(false)}
+      />
 
       {/* 播种选择模态框 */}
       {showSeedSelector && typeof document !== 'undefined' && createPortal(
