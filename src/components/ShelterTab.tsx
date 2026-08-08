@@ -9,6 +9,7 @@ import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../data/h
 import { useToast } from './ToastSystem';
 import GameIcon from './GameIcon';
 import ShelterTabBar from './shelter/ShelterTabBar';
+import DutyAssignModal from './DutyAssignModal';
 import type { ShelterTabId } from './shelter/constants';
 import {
   Settings,
@@ -71,6 +72,7 @@ const ShelterTab: React.FC = () => {
   // 嵌入温室控制需要的状态
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [showSeedSelector, setShowSeedSelector] = useState(false);
+  const [showWatererPicker, setShowWatererPicker] = useState(false);
   const [flyingRewards, setFlyingRewards] = useState<FlyingReward[]>([]);
 
   // 触发飘字特效
@@ -535,25 +537,12 @@ const ShelterTab: React.FC = () => {
                       解除
                     </button>
                   ) : (
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) {
-                          assignHeroToDuty(val, { type: 'waterer', targetId: 'greenhouse' });
-                          const name = getHeroName(val);
-                          addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
-                          showToast(`指派 ${name} 负责温室浇水！`, 'success');
-                        }
-                      }}
-                      className="text-[9px] px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 cursor-pointer bg-zinc-950"
+                    <button
+                      onClick={() => setShowWatererPicker(true)}
+                      className="text-[9px] px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 cursor-pointer"
                     >
-                      <option value="">驻守</option>
-                      {heroesList.filter(s => !state.heroes[s].logisticsFacilityId).map(s => {
-                        const cfg = HEROES_CONFIG[s];
-                        return <option key={s} value={s}>{cfg?.name || s}</option>;
-                      })}
-                    </select>
+                      驻守
+                    </button>
                   )}
                 </div>
                 <div className="text-[10px] text-zinc-400 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
@@ -565,6 +554,20 @@ const ShelterTab: React.FC = () => {
             </div>
           );
         })()}
+
+        {/* 浇水操作员选择弹窗 */}
+        <DutyAssignModal
+          isOpen={showWatererPicker}
+          title="指派浇水操作员"
+          heroes={state.heroes}
+          onSelect={(id) => {
+            assignHeroToDuty(id, { type: 'waterer', targetId: 'greenhouse' });
+            const name = getHeroName(id);
+            addLog(`指派 ${name} 负责温室自动浇水`, 'logistics');
+            showToast(`指派 ${name} 负责温室浇水！`, 'success');
+          }}
+          onClose={() => setShowWatererPicker(false)}
+        />
 
         {/* 控制按钮与循环播种配置 */}
         <div className="grid grid-cols-2 gap-3">
