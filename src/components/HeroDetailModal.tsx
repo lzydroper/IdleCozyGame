@@ -321,7 +321,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         {/* 充实饱满的主体区域（紧凑堆叠：上半 + 下半紧贴，不留 justify-between 空隙） */}
         <div className="flex-1 flex flex-col pt-1 pb-0.5 min-h-0">
           {/* 上半部分三列布局 (装备框/技能框放大为 w-15 h-15，大头像放大为 w-22 h-22) */}
-          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2 rounded-xl border border-zinc-800/80 shrink-0">
+          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2 rounded-xl border border-zinc-800/80 shrink-0 min-h-[275px]">
             {/* 左侧列：三槽装备 + 底部【一键装备/一键卸下】 */}
             <div className="flex flex-col items-center justify-between">
               <div className="flex flex-col gap-0.5 items-center w-full">
