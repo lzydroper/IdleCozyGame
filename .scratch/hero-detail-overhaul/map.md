@@ -34,10 +34,11 @@
 - [英雄详情弹窗性能测量与优化范围](issues/01-hero-detail-perf-measurement.md) — 根因排序：R1 saveState 每秒全量写 localStorage 无节流（GameContext:167-171）；R2 体力未满（regen 3s/点 + 战斗消耗）使 13 号短路几乎不生效 → 每秒 tick 常态；R3 context value 无 memo + 全仓零 React.memo → 全 useGame 消费者每秒重渲染；R4 弹窗 useMemo 依赖均稳定（不重算，不动）；R5 DetailedStatsModal 是纯 props 组件（memo 有效）、其余 5 个订阅 context（memo 无效）。范围：04a saveState 节流 + 04b 体力跨整点才 tick + 04c 弹窗 memo（DetailedStatsModal/HeroDetailModal + HeroTab useCallback）；context 拆分留后续。已毕业出实施 ticket [英雄详情弹窗性能优化实施（存档节流 + tick 短路 + 弹窗 memo）](issues/04-hero-detail-perf-implementation.md)。
 - [英雄详情弹窗性能优化实施（存档节流 + tick 短路 + 弹窗 memo）](issues/04-hero-detail-perf-implementation.md) — 04a `createSaveThrottle`（5s 窗口 + 测试环境不节流）+ beforeunload/pagehide 关闭兑底（persistence.test 2 例）；04b applyTick 体力跨整点才 tick（无活跃系统时每秒重渲染 → 每 3 秒 1 次，tick.test 适配+新增跨整点用例）；04c DetailedStatsModal/HeroDetailModal React.memo + HeroDetailModal 内 onClose useCallback + HeroTab useCallback（code-review 修复 memo 恒失效问题）。全量 429/429、build 通过，提交 2a476af。
 - [装备详情滚动卡顿修复：移除弹窗 backdrop blur + 滚动容器优化](issues/05-equipment-modal-scroll-lag-fix.md) — 用户实证反馈装备详情滚动明显卡顿：根因是 EquipmentDetailModal 用 UI_TOKENS.modalBackdrop（backdrop-blur-sm）+ 可滚动容器（max-h-85vh overflow-y-auto），滚动时全屏 blur 每帧重绘（17 号结论的 token 路径遗漏）。修复：UI_TOKENS 两个 backdrop 去 blur（保留透明度）+ modalContainerEquipment overscroll-contain；code-review 补漏 ShelterTab 播种选择、App 离线结算（同为可滚动+全屏 blur）。全量 429/429、build 通过，提交 bc38254。
+- [英雄详情弹窗放大优化原型](issues/02-hero-detail-zoom-prototype.md) — 用户选定**变体 C（激进放大，紧凑）**并经三轮反馈迭代定稿（溢出修复 → 垂直预算 → 属性边框拥挤）。规格：字号阶梯 正文/数值/按钮 11px · 标签 10px · 辅助 9px（装备名/技能名保持 8.5px）；图标 框内 w-7 · 属性项 w-4.5 · 按钮内 w-4；头像 w-20；按钮 py-1；下半部 h-112px；属性项 py-0.5 + gap-2。关键发现：460px 定高容器下放大有垂直预算约束（必须从间距/区块挤出空间）。已折入 HeroDetailModal（提交 1806503），原型归档至 prototype-archive/。**此规格为 03 号（子弹窗设计语言统一）的字号阶梯依据，03 阻塞已解除**。
 
 ## Not yet specified
 
-- **放大规格数值**：新字号阶梯（7.5px → ?）、图标尺寸、间距 token 的具体值——待 02 原型选定后明确。
+- **放大规格数值**：新字号阶梯（7.5px → ?）、图标尺寸、间距 token 的具体值——已由 02 原型选定（变体 C：11/10/9px + 图标 w-7/w-4.5/w-4 + 头像 w-20 + 按钮 py-1 + 下半部 h-112px + 属性 py-0.5 gap-2），03 号据其统一子弹窗。
 - **UI_TOKENS 扩展设计**：字号阶梯/卡片/按钮 token、z-index 规范的具体形态——待 02 选定字号后由 03 决定。
 - **性能优化实施清单**：01 测量的结果将毕业出实施 ticket；若测量证明「设施活跃时每秒全树重渲染」是主要瓶颈，全局渲染优化（memo 隔离 / context 拆分）是否纳入范围待 01 结论。
 - **各弹窗内部密度细节**：装备详情属性展示、天赋树面板节点尺寸/连线、批量升级滑条布局——在 02/03 或其后续实施中明确。
