@@ -127,6 +127,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   // 4. 挂机探索派遣 Tick
   const exp = prev.shelter.expedition;
   let nextLastScavengeTime = exp.lastScavengeTime;
+  let autoRecallExplorer = false;
   if (exp.locationId && prev.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
@@ -159,6 +160,23 @@ export const applyTick = (prev: GameState, now: number): GameState => {
           logsToAdd.push({ text: `探索员 ${HEROES_CONFIG[prev.shelter.assignedExplorerId]?.name || '英雄'} 拾荒带回: ${itemsStr}`, type: 'logistics' as const });
         }
       }
+
+      // 持续口粮消耗（ADR-0018）：按 rationConsumptionRate 计算消耗，耗尽自动召回
+      if (loc.rationConsumptionRate && loc.rationConsumptionRate > 0) {
+        const elapsedSinceLastTick = now - prev.lastTick;
+        const rationsToConsume = Math.floor(elapsedSinceLastTick / (loc.rationConsumptionRate * 1000));
+        if (rationsToConsume > 0) {
+          const currentRations = currentInventory['ration'] || 0;
+          if (currentRations <= rationsToConsume) {
+            // 口粮耗尽：自动召回
+            currentInventory['ration'] = 0;
+            autoRecallExplorer = true;
+            logsToAdd.push({ text: `口粮耗尽，远征探索员 ${HEROES_CONFIG[prev.shelter.assignedExplorerId]?.name || '英雄'} 被自动召回。`, type: 'logistics' as const });
+          } else {
+            currentInventory['ration'] = currentRations - rationsToConsume;
+          }
+        }
+      }
     }
   }
 
@@ -182,22 +200,40 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     newLogs = [...logEntries, ...prev.logs].slice(0, 100);
   }
 
+  // 自动召回处理（口粮耗尽）：清除 explorer 的 logisticsFacilityId + 缓存 + expedition
+  let updatedHeroes = prev.heroes;
+  let finalShelter = {
+    ...prev.shelter,
+    facilities: updatedFacilities,
+    expedition: {
+      ...exp,
+      lastScavengeTime: nextLastScavengeTime
+    },
+    accumulatedEnergy: nextAccumulatedEnergy,
+    accumulatedScrap: nextAccumulatedScrap
+  };
+
+  if (autoRecallExplorer && prev.shelter.assignedExplorerId) {
+    const explorerId = prev.shelter.assignedExplorerId;
+    updatedHeroes = {
+      ...prev.heroes,
+      [explorerId]: { ...prev.heroes[explorerId], logisticsFacilityId: null }
+    };
+    finalShelter = {
+      ...finalShelter,
+      assignedExplorerId: null,
+      expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+    };
+  }
+
   return {
     ...prev,
     player: { ...prev.player, energy: currentEnergy, days: newDays },
     stamina: nextStamina,
     inventory: currentInventory,
     greenhouse: { ...prev.greenhouse, slots: updatedSlots },
-    shelter: {
-      ...prev.shelter,
-      facilities: updatedFacilities,
-      expedition: {
-        ...exp,
-        lastScavengeTime: nextLastScavengeTime
-      },
-      accumulatedEnergy: nextAccumulatedEnergy,
-      accumulatedScrap: nextAccumulatedScrap
-    },
+    shelter: finalShelter,
+    heroes: updatedHeroes,
     logs: newLogs,
     lastTick: now,
     dayStartTime: newDayStartTime

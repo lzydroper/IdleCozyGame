@@ -169,6 +169,7 @@ export function calculateDetailedOfflineProgress(
   // 3. 挂机派遣拾荒结算
   const exp = state.shelter.expedition;
   let nextLastScavengeTime = exp.lastScavengeTime;
+  let autoRecallExplorerId: string | null = null;
   if (exp.locationId && state.shelter.assignedExplorerId) {
     const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
     if (loc) {
@@ -202,6 +203,23 @@ export function calculateDetailedOfflineProgress(
 
       if (Object.keys(scavengedCount).length > 0) {
         reportLogs.push(`英雄 ${HEROES_CONFIG[state.shelter.assignedExplorerId]?.name || '探索员'} 挂机探索 ${loc.name} 结束，带回了物资。`);
+      }
+
+      // 持续口粮消耗（ADR-0018）：离线期间按 rationConsumptionRate 消耗口粮
+      if (loc.rationConsumptionRate && loc.rationConsumptionRate > 0) {
+        const rationsToConsume = Math.floor(elapsedSeconds / loc.rationConsumptionRate);
+        if (rationsToConsume > 0) {
+          const currentRations = currentInventory['ration'] || 0;
+          if (currentRations <= rationsToConsume) {
+            // 口粮耗尽：自动召回
+            currentInventory['ration'] = 0;
+            reportLogs.push(`口粮耗尽，远征探索员 ${HEROES_CONFIG[state.shelter.assignedExplorerId]?.name || '英雄'} 被自动召回。`);
+            // 标记需要自动召回（在返回 state 时处理）
+            autoRecallExplorerId = state.shelter.assignedExplorerId;
+          } else {
+            currentInventory['ration'] = currentRations - rationsToConsume;
+          }
+        }
       }
     }
   }
@@ -254,7 +272,7 @@ export function calculateDetailedOfflineProgress(
     };
   });
 
-  const updatedState: GameState = {
+  let updatedState: GameState = {
     ...state,
     player: { ...state.player, energy: currentEnergy },
     stamina: finalStamina,
@@ -274,6 +292,26 @@ export function calculateDetailedOfflineProgress(
       accumulatedScrap: finalAccumulatedScrap
     }
   };
+
+  // 自动召回处理（口粮耗尽）：清除 explorer 的 logisticsFacilityId + 缓存 + expedition
+  if (autoRecallExplorerId) {
+    const explorerHero = currentHeroes[autoRecallExplorerId];
+    if (explorerHero) {
+      currentHeroes = {
+        ...currentHeroes,
+        [autoRecallExplorerId]: { ...explorerHero, logisticsFacilityId: null }
+      };
+    }
+    updatedState = {
+      ...updatedState,
+      heroes: currentHeroes,
+      shelter: {
+        ...updatedState.shelter,
+        assignedExplorerId: null,
+        expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+      }
+    };
+  }
 
   return {
     updatedState,

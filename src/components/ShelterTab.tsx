@@ -5,8 +5,7 @@ import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { ITEMS_CONFIG } from '../data/items';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { SURVIVORS_CONFIG } from '../data/survivors';
-import { HEROES_CONFIG } from '../data/heroes';
+import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../data/heroes';
 import { useToast } from './ToastSystem';
 import GameIcon from './GameIcon';
 import {
@@ -194,9 +193,11 @@ const ShelterTab: React.FC = () => {
   const heroesList = Object.keys(state.heroes);
   const meiHero = state.heroes.mei;
 
-  // 英雄的废土职业（SURVIVORS_CONFIG 剧情档案，用于远征职业判定）
-  const getHeroRole = (heroId: string): string | undefined =>
-    SURVIVORS_CONFIG.find(c => c.id === heroId)?.role;
+  // 英雄的职阶/阵营（ADR-0018：远征门槛迁移为 heroClass/faction）
+  const getHeroClassLabel = (heroId: string): string =>
+    HEROES_CONFIG[heroId] ? HERO_CLASS_LABELS[HEROES_CONFIG[heroId].heroClass] : '';
+  const getHeroFactionLabel = (heroId: string): string =>
+    HEROES_CONFIG[heroId] ? HERO_FACTION_LABELS[HEROES_CONFIG[heroId].faction] : '';
 
   // 英雄当前岗位状态文案（由 shelter 指派字段派生）
   const getHeroStatus = (heroId: string): string => {
@@ -207,7 +208,7 @@ const ShelterTab: React.FC = () => {
 
   // 英雄显示名（heroes 状态无 name，从配置读取）
   const getHeroName = (heroId: string): string =>
-    HEROES_CONFIG[heroId]?.name || SURVIVORS_CONFIG.find(c => c.id === heroId)?.name || heroId;
+    HEROES_CONFIG[heroId]?.name || heroId;
 
   // 一键浇水操作
   const handleBatchWater = () => {
@@ -296,17 +297,7 @@ const ShelterTab: React.FC = () => {
       showToast('派遣失败！未找到该英雄。', 'error');
       return;
     }
-    if (loc.requiredRole && getHeroRole(selectedExpExplorerId) !== loc.requiredRole) {
-      const roleLabel = SURVIVORS_CONFIG.find(c => c.role === loc.requiredRole)?.roleLabel || loc.requiredRole;
-      showToast(`派遣失败！该地点需要【${roleLabel}】职业。`, 'error');
-      return;
-    }
-
-    // 口粮判定
-    if (getInvQty('ration') < 1) {
-      showToast('压缩口粮不足！请至少携带 1 份压缩口粮以作探索给养。', 'error');
-      return;
-    }
+    // 远征门槛校验已内化到 assignHeroToDuty（ADR-0018），UI 仅做视觉提示
 
     const success = assignHeroToDuty(selectedExpExplorerId, { type: 'explorer', targetId: selectedLocationId });
     if (success) {
@@ -610,10 +601,11 @@ const ShelterTab: React.FC = () => {
               {heroesList.map(s => {
                 const isRecommended = s === 'mei';
                 const statusStr = getHeroStatus(s);
-                const roleLabel = SURVIVORS_CONFIG.find(c => c.id === s)?.roleLabel || '';
+                const heroCfg = HEROES_CONFIG[s];
+                const dutyLabel = heroCfg ? `${HERO_CLASS_LABELS[heroCfg.heroClass]}/${HERO_FACTION_LABELS[heroCfg.faction]}` : '';
                 return (
                   <option key={s} value={s}>
-                    {getHeroName(s)}{roleLabel ? ` (${roleLabel})` : ''}
+                    {getHeroName(s)}{dutyLabel ? ` (${dutyLabel})` : ''}
                     {isRecommended ? ' [优先推荐]' : ''} {statusStr}
                   </option>
                 );
@@ -721,7 +713,7 @@ const ShelterTab: React.FC = () => {
                   </h3>
                   <div className="text-[10px] text-zinc-400 mt-0.5">
                     带队英雄: <strong className="text-zinc-200 font-bold">{getHeroName(state.shelter.assignedExplorerId || '')}</strong> 
-                    <span className="text-zinc-500 ml-1">[{SURVIVORS_CONFIG.find(c => c.id === state.shelter.assignedExplorerId)?.roleLabel || getHeroRole(state.shelter.assignedExplorerId || '') || ''}]</span>
+                    <span className="text-zinc-500 ml-1">[{getHeroClassLabel(state.shelter.assignedExplorerId || '')} · {getHeroFactionLabel(state.shelter.assignedExplorerId || '')}]</span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -803,16 +795,17 @@ const ShelterTab: React.FC = () => {
                 <option value="">-- 选择派遣的英雄 --</option>
                 {heroesList.map(s => {
                   const statusStr = getHeroStatus(s);
-                  const cfg = SURVIVORS_CONFIG.find(c => c.id === s);
+                  const heroCfg = HEROES_CONFIG[s];
+                  const dutyLabel = heroCfg ? `${HERO_CLASS_LABELS[heroCfg.heroClass]}/${HERO_FACTION_LABELS[heroCfg.faction]}` : '无职阶';
                   return (
                     <option key={s} value={s}>
-                      {getHeroName(s)} ({s === 'zero' || cfg?.role === 'scout' ? `${cfg?.roleLabel || '侦察兵'} [推荐]` : cfg?.roleLabel || '无职业'}) {statusStr}
+                      {getHeroName(s)} ({dutyLabel}) {statusStr}
                     </option>
                   );
                 })}
               </select>
               <p className="text-[9px] text-zinc-500">
-                <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> 部分地点需要特定职业的英雄才能派遣（如侦察兵、工程师、卫兵）。
+                <Lightbulb className="w-3 h-3 inline-block text-amber-400" /> 部分地点需要特定职阶或阵营的英雄才能派遣。
               </p>
             </div>
 
@@ -822,10 +815,12 @@ const ShelterTab: React.FC = () => {
               <div className="grid grid-cols-1 gap-2.5">
                 {Object.entries(EXPEDITION_LOCATIONS).map(([key, loc]) => {
                   const isSelected = selectedLocationId === key;
-                  const explorer = selectedExpExplorerId ? state.heroes[selectedExpExplorerId] : null;
                   
-                  // 职业要求校验
-                  const roleUnmatch = loc.requiredRole && explorer && getHeroRole(selectedExpExplorerId) !== loc.requiredRole;
+                  // 门槛校验（ADR-0018：heroClass/faction）
+                  const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
+                  const classUnmatch = loc.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
+                  const factionUnmatch = loc.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
+                  const requirementUnmatch = !!(classUnmatch || factionUnmatch);
                   
                   return (
                     <div
@@ -841,13 +836,13 @@ const ShelterTab: React.FC = () => {
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-extrabold text-zinc-200 text-xs">{loc.name}</span>
-                        {loc.requiredRole && (
+                        {(loc.requiredHeroClass || loc.requiredFaction) && (
                           <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                            roleUnmatch 
-                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20' 
+                            requirementUnmatch
+                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20'
                               : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                           }`}>
-                            需【{SURVIVORS_CONFIG.find(c => c.role === loc.requiredRole)?.roleLabel || loc.requiredRole}】
+                            需【{loc.requiredHeroClass ? HERO_CLASS_LABELS[loc.requiredHeroClass] : ''}{loc.requiredFaction ? `/${HERO_FACTION_LABELS[loc.requiredFaction]}` : ''}】
                           </span>
                         )}
                       </div>
@@ -859,10 +854,10 @@ const ShelterTab: React.FC = () => {
                       </div>
 
                       {/* 警告信息 */}
-                      {roleUnmatch && (
+                      {requirementUnmatch && (
                         <div className="mt-2 text-[9px] text-rose-500 font-semibold flex items-center gap-1">
                           <ShieldAlert className="w-3 h-3 text-rose-500 animate-bounce" />
-                          指派探索员职业不匹配，无法出发！
+                          指派探索员职阶/阵营不匹配，无法出发！
                         </div>
                       )}
                     </div>
@@ -890,10 +885,13 @@ const ShelterTab: React.FC = () => {
             {/* 开始派遣按钮 */}
             {(() => {
               const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
-              const explorer = selectedExpExplorerId ? state.heroes[selectedExpExplorerId] : null;
-              const roleUnmatch = loc?.requiredRole && explorer && getHeroRole(selectedExpExplorerId) !== loc.requiredRole;
-              const rationShortage = getInvQty('ration') < 1;
-              const isDisabled = !selectedExpExplorerId || roleUnmatch || rationShortage;
+              const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
+              const classUnmatch = loc?.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
+              const factionUnmatch = loc?.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
+              const requirementUnmatch = !!(classUnmatch || factionUnmatch);
+              const rationCost = loc?.rationCost ?? 0;
+              const rationShortage = rationCost > 0 && getInvQty('ration') < rationCost;
+              const isDisabled = !selectedExpExplorerId || requirementUnmatch || rationShortage;
 
               return (
                 <button

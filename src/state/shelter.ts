@@ -2,12 +2,7 @@ import type { GameState, DutyAssignment } from '../types/game';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
-import { SURVIVORS_CONFIG } from '../data/survivors';
-
-// 英雄的废土职业档案（ADR-0013）：SURVIVORS_CONFIG 已降级为英雄的剧情档案，
-// 其 role/roleLabel 仅用于远征派遣的职业判定（ticket 03 将迁移为 heroClass/faction）
-const getHeroRole = (heroId: string): string | undefined =>
-  SURVIVORS_CONFIG.find(c => c.id === heroId)?.role;
+import { HEROES_CONFIG } from '../data/heroes';
 
 // 清除英雄在所有后勤岗位的占用（排他性：强制单岗）
 // 更新 hero.logisticsFacilityId + shelter 缓存索引 + expedition 状态
@@ -73,10 +68,23 @@ export const assignHeroToDutyUpdate = (
     }
     updatedShelter.assignedWatererId = heroId;
   } else if (duty.type === 'explorer') {
-    // 远征探索员（单值岗）：校验地点 + 职业（ticket 03 将迁移为 heroClass/faction）
+    // 远征探索员（单值岗）：校验地点 + heroClass/faction 门槛 + 口粮消耗（ADR-0018）
     const loc = EXPEDITION_LOCATIONS[duty.targetId as keyof typeof EXPEDITION_LOCATIONS];
     if (!loc) return NO_OP(state);
-    if (loc.requiredRole && getHeroRole(heroId) !== loc.requiredRole) return NO_OP(state);
+
+    const heroConfig = HEROES_CONFIG[heroId];
+    if (!heroConfig) return NO_OP(state);
+    if (loc.requiredHeroClass && heroConfig.heroClass !== loc.requiredHeroClass) return NO_OP(state);
+    if (loc.requiredFaction && heroConfig.faction !== loc.requiredFaction) return NO_OP(state);
+
+    // 口粮校验 + 扣减（内化到 state 层，UI 不校验）
+    const rationCost = loc.rationCost ?? 0;
+    const updatedInventory = { ...nextState.inventory };
+    if (rationCost > 0) {
+      const rationQty = updatedInventory['ration'] || 0;
+      if (rationQty < rationCost) return NO_OP(state);
+      updatedInventory['ration'] = rationQty - rationCost;
+    }
 
     // 清除旧占位英雄的 logisticsFacilityId + 写缓存索引 + 初始化远征运行状态
     const prevExplorerId = updatedShelter.assignedExplorerId;
@@ -89,6 +97,11 @@ export const assignHeroToDutyUpdate = (
       locationId: duty.targetId,
       startTime: now,
       lastScavengeTime: now
+    };
+
+    return {
+      state: { ...nextState, heroes: updatedHeroes, shelter: updatedShelter, inventory: updatedInventory },
+      result: true
     };
   } else if (duty.type === 'facility') {
     // 设施驻守：校验目标设施存在（targetId 格式 '${facilityType}_${unitIndex}'）
