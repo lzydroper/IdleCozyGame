@@ -3,7 +3,7 @@ import type { GameState } from '../types/game';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, STARTER_HERO_ID } from './heroes';
 import { INITIAL_HEROES, createInitialHero, INITIAL_STATE } from './initialState';
 import { mergeSavedState } from '../state/persistence';
-import { getLevelMilestoneBonus } from './heroGrowth';
+import { getLevelMilestoneBonus, getMilestoneModifiers } from './heroGrowth';
 
 describe('Heroes data config', () => {
   it('has 9 heroes with valid class and faction labels', () => {
@@ -63,6 +63,30 @@ describe('Level milestones (stat-bonus-unification 06: 三层全覆盖)', () => 
     const custom = { ...HEROES_CONFIG.nova, levelMilestones: { 10: { attack: 2 }, 15: { attack: 3 } } };
     expect(getLevelMilestoneBonus(custom, 14)).toEqual({ attack: 2 });
     expect(getLevelMilestoneBonus(custom, 20)).toEqual({ attack: 5 });
+  });
+
+  it('getMilestoneModifiers converts milestones to flat StatModifiers with source (04号)', () => {
+    const nova = HEROES_CONFIG.nova; // { 10: { attack: 5 }, 20: { critRate: 0.02 } }
+    // Lv5: 未达任何里程碑
+    expect(getMilestoneModifiers(nova, 5)).toEqual([]);
+    // Lv10: 达到 10 级里程碑
+    expect(getMilestoneModifiers(nova, 10)).toEqual([
+      { stat: 'attack', kind: 'flat', value: 5, source: 'Lv10里程碑' }
+    ]);
+    // Lv20: 10 级 + 20 级叠加
+    expect(getMilestoneModifiers(nova, 20)).toEqual([
+      { stat: 'attack', kind: 'flat', value: 5, source: 'Lv10里程碑' },
+      { stat: 'critRate', kind: 'flat', value: 0.02, source: 'Lv20里程碑' }
+    ]);
+  });
+
+  it('getMilestoneModifiers covers all three tiers (base/primary/special)', () => {
+    const custom = { ...HEROES_CONFIG.nova, levelMilestones: { 10: { strength: 2, arcaneBoost: 0.1, attack: 5 } } };
+    const mods = getMilestoneModifiers(custom, 10);
+    expect(mods).toHaveLength(3);
+    expect(mods).toContainEqual({ stat: 'strength', kind: 'flat', value: 2, source: 'Lv10里程碑' });
+    expect(mods).toContainEqual({ stat: 'arcaneBoost', kind: 'flat', value: 0.1, source: 'Lv10里程碑' });
+    expect(mods).toContainEqual({ stat: 'attack', kind: 'flat', value: 5, source: 'Lv10里程碑' });
   });
 });
 

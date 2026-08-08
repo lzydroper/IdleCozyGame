@@ -147,19 +147,20 @@ const unit = (id: string, hp: number, attack: number, defense: number, name = id
 
 describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)', () => {
   it('scales maxHp / attack / defense with level by class growth', () => {
-    const cfg = HEROES_CONFIG.nova; // attacker：每级 生命 +6 / 攻击 +4 / 防御 +1
+    const cfg = HEROES_CONFIG.nova; // attacker：每级 生命 +3 / 攻击 +3 / 防御 +1
     expect(heroBaseAttributes(cfg, 1).maxHp).toBe(cfg.baseAttributes.maxHp);
-    expect(heroBaseAttributes(cfg, 5).maxHp).toBe(cfg.baseAttributes.maxHp + 4 * 6);
-    expect(heroBaseAttributes(cfg, 5).attack).toBe(cfg.baseAttributes.attack + 4 * 4);
+    expect(heroBaseAttributes(cfg, 5).maxHp).toBe(cfg.baseAttributes.maxHp + 4 * 3);
+    expect(heroBaseAttributes(cfg, 5).attack).toBe(cfg.baseAttributes.attack + 4 * 3);
     expect(heroBaseAttributes(cfg, 5).defense).toBe(cfg.baseAttributes.defense + 4 * 1);
   });
 
-  it('applies level milestones once the level is reached (英雄级微调)', () => {
+  it('heroBaseAttributes no longer includes milestone bonus (milestones走modifier管道, 04号)', () => {
     const cfg = HEROES_CONFIG.nova; // { 10: { attack: 5 }, 20: { critRate: 0.02 } }
-    expect(heroBaseAttributes(cfg, 9).attack).toBe(cfg.baseAttributes.attack + 8 * 4);
-    expect(heroBaseAttributes(cfg, 10).attack).toBe(cfg.baseAttributes.attack + 9 * 4 + 5);
-    expect(heroBaseAttributes(cfg, 25).attack).toBe(cfg.baseAttributes.attack + 24 * 4 + 5);
-    expect(heroBaseAttributes(cfg, 20).critRate).toBe(0.05 + 0.02); // 里程碑暴击：默认 0.05 + 20 级 +2%
+    // heroBaseAttributes 只含职阶成长，不含里程碑
+    expect(heroBaseAttributes(cfg, 9).attack).toBe(cfg.baseAttributes.attack + 8 * 3);
+    expect(heroBaseAttributes(cfg, 10).attack).toBe(cfg.baseAttributes.attack + 9 * 3); // 不含 +5
+    expect(heroBaseAttributes(cfg, 25).attack).toBe(cfg.baseAttributes.attack + 24 * 3); // 不含 +5
+    expect(heroBaseAttributes(cfg, 20).critRate).toBe(0.05 + 19 * 0.002); // 不含 +0.02
   });
 
   it('applies exp and levels up, growing maxHp and keeping hp delta', () => {

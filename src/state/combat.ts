@@ -13,7 +13,7 @@ import { calculateEntityStats } from './statSystem';
 import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import { collectBuffModifiers, type ActiveBuff } from './buffSystem';
 import { ITEMS_CONFIG } from '../data/items';
-import { heroBaseAttributes, getLevelMilestoneBonus } from '../data/heroGrowth';
+import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
 import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenSkill } from './awakening';
 import type { UpdateResult } from './types';
@@ -240,35 +240,18 @@ export const combatantFromSnapshot = (
 export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModifier[] = [], gear: HeroEquipment | null = null): CombatantState => {
   const config = HEROES_CONFIG[heroId];
   // 调用方已通过 isKnownHero 过滤，config 必存在
-  const milestone = getLevelMilestoneBonus(config, hero.level);
 
-  // 配方（与详情面板同口径）：heroBaseAttributes 返回成长后完整六项（含里程碑 base 部分）；
-  // 元属性/特殊属性全接入（特殊属性 = 英雄初始配置 + 里程碑）
+  // 配方（与详情面板同口径）：heroBaseAttributes 返回成长后六项（不含里程碑，里程碑走 modifier 管道）；
+  // 元属性/特殊属性 = 英雄初始配置（里程碑加成经 getMilestoneModifiers 纳入 permanentModifiers）
   const baseAttributes: BaseAttributes = heroBaseAttributes(config, hero.level);
-  const primaryAttributes: PrimaryAttributes = {
-    ...config.primaryAttributes,
-    strength: config.primaryAttributes.strength + (milestone.strength ?? 0),
-    constitution: config.primaryAttributes.constitution + (milestone.constitution ?? 0),
-    agility: config.primaryAttributes.agility + (milestone.agility ?? 0),
-    intelligence: config.primaryAttributes.intelligence + (milestone.intelligence ?? 0),
-    willpower: config.primaryAttributes.willpower + (milestone.willpower ?? 0),
-    transcendence: config.primaryAttributes.transcendence + (milestone.transcendence ?? 0)
-  };
+  const primaryAttributes: PrimaryAttributes = { ...config.primaryAttributes };
   const specialAttributes: SpecialAttributes = {
     ...DEFAULT_SPECIAL_ATTRIBUTES,
-    ...config.specialAttributes,
-    arcaneBoost: (config.specialAttributes?.arcaneBoost ?? 0) + (milestone.arcaneBoost ?? 0),
-    arcaneResistance: (config.specialAttributes?.arcaneResistance ?? 0) + (milestone.arcaneResistance ?? 0),
-    mechanicalLoad: (config.specialAttributes?.mechanicalLoad ?? 0) + (milestone.mechanicalLoad ?? 0),
-    mechanicalEvolution: (config.specialAttributes?.mechanicalEvolution ?? 0) + (milestone.mechanicalEvolution ?? 0),
-    nightmareErosion: (config.specialAttributes?.nightmareErosion ?? 0) + (milestone.nightmareErosion ?? 0),
-    voidSpirit: (config.specialAttributes?.voidSpirit ?? 0) + (milestone.voidSpirit ?? 0),
-    spiritInspire: (config.specialAttributes?.spiritInspire ?? 0) + (milestone.spiritInspire ?? 0),
-    astralGuidance: (config.specialAttributes?.astralGuidance ?? 0) + (milestone.astralGuidance ?? 0),
-    soulsealDrive: (config.specialAttributes?.soulsealDrive ?? 0) + (milestone.soulsealDrive ?? 0)
+    ...config.specialAttributes
   };
   const permanentModifiers: StatModifier[] = [
     ...bonus,
+    ...getMilestoneModifiers(config, hero.level),
     ...(gear ? getHeroEquipmentBonus(gear) : []),
     ...getTalentBonus(heroId, hero),
     ...getAwakenBonus(heroId, hero)
