@@ -33,21 +33,36 @@ const DERIVED_ORDER: DerivedStatKey[] = [
   'critResist', 'damageReduction', 'durationReduction', 'effectReduction', 'cooldownReduction', 'voidSpirit'
 ];
 
+// 属性配色（参考 EquipmentDetailModal 风格：Base 暖色、Primary 各异、Special 紫系、Derived 青绿系）
+const STAT_COLOR: Record<string, string> = {
+  // Base
+  attack: 'text-amber-300', defense: 'text-sky-300', maxHp: 'text-rose-300', maxMp: 'text-violet-300',
+  critRate: 'text-orange-300', critDmg: 'text-orange-300',
+  // Primary
+  strength: 'text-amber-300', constitution: 'text-rose-300', agility: 'text-purple-300',
+  intelligence: 'text-sky-300', willpower: 'text-emerald-300', transcendence: 'text-fuchsia-300',
+  // Special
+  arcaneBoost: 'text-violet-300', arcaneResistance: 'text-violet-300',
+  mechanicalLoad: 'text-amber-300', mechanicalEvolution: 'text-amber-300',
+  nightmareErosion: 'text-rose-300', voidSpirit: 'text-teal-300',
+  spiritInspire: 'text-emerald-300', astralGuidance: 'text-indigo-300', soulsealDrive: 'text-fuchsia-300',
+};
+const DERIVED_COLOR: Record<string, string> = {
+  critResist: 'text-sky-300', damageReduction: 'text-emerald-300',
+  durationReduction: 'text-emerald-300', effectReduction: 'text-emerald-300',
+  cooldownReduction: 'text-fuchsia-300', voidSpirit: 'text-teal-300',
+};
+
 // 获取某属性当前总值（从 CalculatedEntityStats 中读取）
 const getStatValue = (stats: CalculatedEntityStats, stat: StatKey): { value: number; isPercent: boolean } => {
   const meta = STAT_META[stat];
   const { primaryAttributes: primary, specialAttributes: special, ...base } = stats;
-
-  if (stat in primary) {
-    return { value: primary[stat as keyof typeof primary], isPercent: !!meta.percentDisplay };
-  }
-  if (stat in special) {
-    return { value: special[stat as keyof typeof special], isPercent: !!meta.percentDisplay };
-  }
+  if (stat in primary) return { value: primary[stat as keyof typeof primary], isPercent: !!meta.percentDisplay };
+  if (stat in special) return { value: special[stat as keyof typeof special], isPercent: !!meta.percentDisplay };
   return { value: base[stat as keyof typeof base], isPercent: !!meta.percentDisplay };
 };
 
-// 获取某属性的基础值（不含 modifier 贡献），用于展开时显示"基础值"来源
+// 获取某属性的基础值（不含 modifier 贡献）
 const getBaseStatValue = (stats: CalculatedEntityStats, stat: StatKey): number => {
   const { primaryAttributes: primary, specialAttributes: special, ...base } = stats;
   if (stat in primary) return primary[stat as keyof typeof primary];
@@ -61,7 +76,7 @@ const formatValue = (value: number, isPercent: boolean): string => {
   return String(Math.round(value * 10) / 10);
 };
 
-// 格式化 modifier 贡献值
+// 格式化 modifier 贡献值（带正负号）
 const formatContribution = (flat: number, percent: number, isPercentStat: boolean): string => {
   const parts: string[] = [];
   if (flat !== 0) {
@@ -81,31 +96,17 @@ const formatDerivedContribution = (contribution: number, isPercent: boolean): st
   return String(Math.round(contribution * 10) / 10);
 };
 
-// 字号常量：从 text-[10px] 提升到 text-xs (12px)
-const TEXT_ROW = 'text-xs';
-const TEXT_DETAIL = 'text-[11px]';
+// 字号：行 13px，详情 12px
+const TEXT_ROW = 'text-[13px]';
+const TEXT_DETAIL = 'text-xs';
 
 export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
-  isOpen,
-  heroName,
-  stats,
-  modifiers,
-  onClose
+  isOpen, heroName, stats, modifiers, onClose
 }) => {
-  // 支持多行同时展开（Set 存储已展开的 key）
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
-  // 按来源分组聚合 modifiers（Memoized）
-  const groupedMods = useMemo(
-    () => aggregateModifiersBySource(modifiers ?? []),
-    [modifiers]
-  );
-
-  // 派生属性贡献分解（Memoized）
-  const derivedContributions = useMemo(
-    () => getDerivedStatContributions(stats),
-    [stats]
-  );
+  const groupedMods = useMemo(() => aggregateModifiersBySource(modifiers ?? []), [modifiers]);
+  const derivedContributions = useMemo(() => getDerivedStatContributions(stats), [stats]);
 
   if (!isOpen) return null;
 
@@ -127,34 +128,32 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
     const rowKey = `stat-${stat}`;
     const isExpanded = expandedKeys.has(rowKey);
     const baseValue = getBaseStatValue(stats, stat);
+    const color = STAT_COLOR[stat] ?? 'text-zinc-100';
 
     return (
       <div key={rowKey} className="flex flex-col">
         <button
           onClick={() => hasSources && toggleExpand(rowKey)}
-          className={`flex justify-between items-center py-1 px-1.5 rounded-lg transition-colors ${
+          className={`flex justify-between items-center py-1 px-2 rounded-lg transition-colors ${
             hasSources ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
           }`}
         >
-          <span className={`${TEXT_ROW} text-zinc-400 font-bold`}>{meta.label}</span>
-          <div className="flex items-center gap-1">
-            <span className={`${TEXT_ROW} font-black text-zinc-100`}>
+          <span className={`${TEXT_ROW} text-zinc-300 font-bold`}>{meta.label}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`${TEXT_ROW} font-black ${color} tabular-nums`}>
               {formatValue(value, isPercent)}
             </span>
-            {/* 箭头占位：无来源的行也保留同宽空间，确保数值对齐 */}
-            <ChevronRight
-              className={`w-3 h-3 shrink-0 transition-transform ${
-                hasSources ? (isExpanded ? 'rotate-90 text-zinc-400' : 'text-zinc-500') : 'invisible'
-              }`}
-            />
+            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+              hasSources ? (isExpanded ? 'rotate-90 text-zinc-300' : 'text-zinc-500') : 'invisible'
+            }`} />
           </div>
         </button>
         {isExpanded && hasSources && (
-          <div className="flex flex-col gap-0.5 pl-3 pr-1.5 pb-1 border-l border-zinc-800 ml-1.5">
-            {/* 基础值来源 */}
+          <div className="flex flex-col gap-0.5 pl-4 pr-2 pb-1.5 border-l-2 border-zinc-700/60 ml-2 mt-0.5">
+            {/* 基础值 */}
             <div className="flex justify-between items-center">
-              <span className={`${TEXT_DETAIL} text-zinc-600`}>基础值</span>
-              <span className={`${TEXT_DETAIL} text-zinc-500 font-bold`}>
+              <span className={`${TEXT_DETAIL} text-zinc-500`}>基础值</span>
+              <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
                 {formatValue(baseValue, isPercent)}
               </span>
             </div>
@@ -162,7 +161,7 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
             {sources.map(s => (
               <div key={s.source} className="flex justify-between items-center">
                 <span className={`${TEXT_DETAIL} text-zinc-500`}>{s.source}</span>
-                <span className={`${TEXT_DETAIL} text-zinc-400 font-bold`}>
+                <span className={`${TEXT_DETAIL} text-emerald-300/90 font-bold tabular-nums`}>
                   {formatContribution(s.flat, s.percent, isPercent)}
                 </span>
               </div>
@@ -180,43 +179,39 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
     const hasContributions = contributions.length > 0;
 
     let value = 0;
-    if (key === 'voidSpirit') {
-      value = stats.specialAttributes.voidSpirit;
-    } else {
-      value = stats[key as keyof CalculatedEntityStats] as number;
-    }
+    if (key === 'voidSpirit') value = stats.specialAttributes.voidSpirit;
+    else value = stats[key as keyof CalculatedEntityStats] as number;
 
     const rowKey = `derived-${key}`;
     const isExpanded = expandedKeys.has(rowKey);
+    const color = DERIVED_COLOR[key] ?? 'text-zinc-100';
 
     return (
       <div key={rowKey} className="flex flex-col">
         <button
           onClick={() => hasContributions && toggleExpand(rowKey)}
-          className={`flex justify-between items-center py-1 px-1.5 rounded-lg transition-colors ${
+          className={`flex justify-between items-center py-1 px-2 rounded-lg transition-colors ${
             hasContributions ? 'cursor-pointer hover:bg-zinc-800/60' : 'cursor-default'
           }`}
         >
-          <span className={`${TEXT_ROW} text-zinc-400 font-bold`}>{meta.label}</span>
-          <div className="flex items-center gap-1">
-            <span className={`${TEXT_ROW} font-black text-zinc-100`}>
+          <span className={`${TEXT_ROW} text-zinc-300 font-bold`}>{meta.label}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`${TEXT_ROW} font-black ${color} tabular-nums`}>
               {formatValue(value, meta.percentDisplay)}
             </span>
-            <ChevronRight
-              className={`w-3 h-3 shrink-0 transition-transform ${
-                hasContributions ? (isExpanded ? 'rotate-90 text-zinc-400' : 'text-zinc-500') : 'invisible'
-              }`}
-            />
+            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+              hasContributions ? (isExpanded ? 'rotate-90 text-zinc-300' : 'text-zinc-500') : 'invisible'
+            }`} />
           </div>
         </button>
         {isExpanded && hasContributions && (
-          <div className="flex flex-col gap-0.5 pl-3 pr-1.5 pb-1 border-l border-zinc-800 ml-1.5">
+          <div className="flex flex-col gap-0.5 pl-4 pr-2 pb-1.5 border-l-2 border-zinc-700/60 ml-2 mt-0.5">
             {contributions.map((c, i) => (
               <div key={i} className="flex justify-between items-center">
                 <span className={`${TEXT_DETAIL} text-zinc-500`}>
-                  {c.source}{c.coefficient !== undefined ? ` (${c.sourceValue}×${c.coefficient})` : ` (${c.sourceValue})`}
+                  {c.source}（{c.sourceValue}）
                 </span>
-                <span className={`${TEXT_DETAIL} text-zinc-400 font-bold`}>
+                <span className={`${TEXT_DETAIL} text-zinc-400 font-bold tabular-nums`}>
                   {formatDerivedContribution(c.contribution, meta.percentDisplay)}
                 </span>
               </div>
@@ -228,36 +223,22 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   };
 
   const modalContent = (
-    <div
-      onClick={onClose}
-      className={UI_TOKENS.modalBackdropChild}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={UI_TOKENS.modalContainerStandard}
-      >
+    <div onClick={onClose} className={UI_TOKENS.modalBackdropChild}>
+      <div onClick={(e) => e.stopPropagation()} className={UI_TOKENS.modalContainerStandard}>
         <header className={UI_TOKENS.modalHeader}>
           <div className={UI_TOKENS.modalHeaderTitle}>
             <Award className="w-4 h-4 text-amber-400" />
             <h3>【{heroName}】详细属性面板</h3>
           </div>
-          <button
-            onClick={onClose}
-            className={UI_TOKENS.modalCloseButton}
-          >
+          <button onClick={onClose} className={UI_TOKENS.modalCloseButton}>
             <X className="w-4.5 h-4.5" />
           </button>
         </header>
 
         {/* 定高可滑动属性列表：不分大类，27 条属性依次平铺 */}
         <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col gap-0.5 pr-1 mt-3">
-          {/* 21 项可修饰属性 */}
           {STAT_ORDER.map(renderStatRow)}
-
-          {/* 分隔线 */}
-          <div className="border-t border-zinc-800 my-1" />
-
-          {/* 6 项派生属性 */}
+          <div className="border-t border-zinc-700/60 my-1.5" />
           {DERIVED_ORDER.map(renderDerivedRow)}
         </div>
       </div>
@@ -267,6 +248,4 @@ export const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({
   return createPortal(modalContent, document.body);
 };
 
-// 04 号 04c：纯 props 展示组件，React.memo 直接有效（内部无 context 订阅）--
-// HeroDetailModal 每秒重渲染时（04b 后已消除）props 引用稳定则跳过。
 export default React.memo(DetailedStatsModal);
