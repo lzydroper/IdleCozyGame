@@ -1,6 +1,6 @@
 # 废除幸存者系统，全面升级转向英雄系统与设施驻守
 
-Status: accepted
+Status: superseded（被 ADR-0018 覆盖：logisticsFacilityId 改为结构化对象 DutyAssignment，设施驻守机制完整实现）
 
 废除旧有的幸存者 (Survivor) 系统，将所有角色统一重构为英雄 (Hero) 实体。同时将英雄定位扩展至“工厂设施后勤驻守 (Facility Duty)”。
 
