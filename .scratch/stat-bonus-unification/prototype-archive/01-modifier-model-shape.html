@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>01 修饰符数据模型形态 — 原型</title>
+<style>
+  body { font-family: "Microsoft YaHei", system-ui, sans-serif; max-width: 1080px; margin: 0 auto; padding: 20px; color: #222; background: #faf9f6; }
+  h1 { font-size: 20px; } .proto-banner { background:#fff3cd; border:1px solid #e0b64c; border-radius:6px; padding:8px 12px; font-size:13px; }
+  .tabs { display:flex; gap:8px; margin:16px 0 0; } .tab { padding:8px 16px; border:1px solid #ccc; border-radius:6px 6px 0 0; background:#eee; cursor:pointer; font-size:14px; }
+  .tab.active { background:#fff; border-bottom:1px solid #fff; font-weight:bold; }
+  .panel { border:1px solid #ccc; border-top:none; background:#fff; padding:16px; border-radius:0 6px 6px 6px; }
+  pre { background:#1e1e2e; color:#e6e6e6; padding:12px; border-radius:6px; overflow-x:auto; font-size:13px; line-height:1.5; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+  .card { border:1px solid #ddd; border-radius:6px; padding:12px; background:#fff; }
+  .card h3 { margin:0 0 8px; font-size:14px; }
+  label { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; margin:4px 0; }
+  input[type=range] { flex:1; }
+  .out { font-variant-numeric: tabular-nums; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th,td { border:1px solid #ddd; padding:4px 8px; text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  .hl { background:#fff8e1; }
+  .note { font-size:12px; color:#666; margin-top:8px; }
+  .tag { display:inline-block; font-size:11px; padding:1px 8px; border-radius:10px; margin-left:6px; }
+  .tag.pro { background:#e3f2fd; color:#1565c0; } .tag.con { background:#fdecea; color:#c62828; }
+</style>
+</head>
+<body>
+<h1>修饰符数据模型形态 — 候选对比原型</h1>
+<div class="proto-banner">⚠️ 这是 wayfinder ticket 01 的 <b>PROTOTYPE</b>（可丢弃，非生产代码）。目标：为「统一加成修饰符的数据形状」拍板。</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-t="A">候选 A — StatModifier[]</div>
+  <div class="tab" data-t="B">候选 B — ModifierMap</div>
+  <div class="tab" data-t="C">候选 C — SourceModifier[]</div>
+</div>
+<div class="panel" id="panel"></div>
+
+<div class="grid" style="margin-top:20px">
+  <div class="card">
+    <h3>🎮 场景演示：同一英雄的混合叠加</h3>
+    <div id="sources"></div>
+    <div class="note">每个滑条对应一个真实来源的修饰符。移动任意滑条，右侧实时重算。</div>
+  </div>
+  <div class="card">
+    <h3>🧮 计算结果</h3>
+    <div id="shape"></div>
+    <h3 style="margin-top:12px">最终面板 <span id="finalmode"></span></h3>
+    <table><thead><tr><th>属性</th><th>base</th><th>+flat</th><th>×percent</th><th>final</th></tr></thead><tbody id="final"></tbody></table>
+    <div id="primaryNote" class="note"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <h3>📏 统一计算语义（三种候选都走同一管道）</h3>
+  <ol style="font-size:13px; margin:4px 0">
+    <li><b>percent 加算</b>：同属性的所有来源百分比直接求和（0.10 + 0.05 = 0.15），不乘算。</li>
+    <li><b>叠加顺序</b>：<code>final = (base + Σflat) × (1 + Σpercent)</code> —— flat 先加、percent 后乘。</li>
+    <li><b>clamp 在最终级</b>：critRate ∈ [0, 1]、critDmg ≥ 1、maxHp ≥ 1、其余 ≥ 0（沿用 BUFF_LIMIT_CONFIG）。</li>
+    <li><b>元属性先折算</b>：修饰符里的 strength 等 primary 项，按 statConfig 系数折算成基础属性 flat 后再叠加（strength +5 → attack +10、critDmg +0.025）。</li>
+    <li><b>maxHp 的当前血量缩放</b>：属战斗入场快照职责（02 号 ticket），计算层只出面板。</li>
+  </ol>
+</div>
+
+<script>
+// ============ 语义配置（与 src/data/statConfig.ts 一致） ============
+const SCALING = {
+  strength:     { attack: 2.0, critDmg: 0.005 },
+  constitution: { maxHp: 10.0, defense: 1.0 },
+  agility:      { critRate: 0.002, critResist: 0.001 },
+  intelligence: { maxMp: 5.0, arcaneBoost: 0.005 },
+  willpower:    { durationReduction: 0.005, effectReduction: 0.005 },
+  transcendence:{ cooldownReduction: 0.003 },
+};
+const BASE_DEFAULT = { attack: 50, defense: 30, maxHp: 300, maxMp: 50, critRate: 0.05, critDmg: 1.5 };
+
+// ============ 五来源的修饰符（可调滑条） ============
+// 每个来源：label 说明 + mods（含初始值、范围）
+const SOURCE_DEFS = [
+  { name: '羁绊「机械搭档」', mods: [
+    { label: 'attack +%', stat: 'attack', kind: 'percent', init: 0.10, min: 0, max: 0.5, step: 0.01 },
+  ]},
+  { name: '装备', mods: [
+    { label: 'attack +flat', stat: 'attack', kind: 'flat', init: 15, min: 0, max: 60, step: 1 },
+    { label: 'maxHp +%（套装）', stat: 'maxHp', kind: 'percent', init: 0.08, min: 0, max: 0.5, step: 0.01 },
+  ]},
+  { name: '天赋（2 级）', mods: [
+    { label: 'defense +%', stat: 'defense', kind: 'percent', init: 0.10, min: 0, max: 0.5, step: 0.01 },
+  ]},
+  { name: '觉醒（2 星 + 被动）', mods: [
+    { label: 'maxHp +%（星级）', stat: 'maxHp', kind: 'percent', init: 0.08, min: 0, max: 0.4, step: 0.01 },
+    { label: 'attack +%（被动）', stat: 'attack', kind: 'percent', init: 0.05, min: 0, max: 0.3, step: 0.01 },
+  ]},
+  { name: 'buff（临时）', mods: [
+    { label: 'attack +flat', stat: 'attack', kind: 'flat', init: 20, min: 0, max: 80, step: 1 },
+    { label: 'critRate +%', stat: 'critRate', kind: 'percent', init: 0.10, min: 0, max: 0.6, step: 0.01 },
+    { label: 'strength +flat（元属性）', stat: 'strength', kind: 'flat', init: 5, min: 0, max: 20, step: 1 },
+  ]},
+];
+
+// ============ 计算引擎（统一管道） ============
+function aggregate(mods) { // → { [stat]: { flat, percent } }
+  const acc = {};
+  for (const m of mods) {
+    acc[m.stat] = acc[m.stat] || { flat: 0, percent: 0 };
+    acc[m.stat][m.kind] += m.value;
+  }
+  return acc;
+}
+function applyMods(base, mods) {
+  const agg = aggregate(mods);
+  // 1. primary 折算（strength/constitution/... 的 flat → base flat）
+  const primaryAgg = {};
+  for (const stat of ['strength','constitution','agility','intelligence','willpower','transcendence']) {
+    if (agg[stat]) { primaryAgg[stat] = agg[stat].flat + agg[stat].percent; agg[stat] = undefined; }
+  }
+  const flatExtra = {}; const primaryDetail = {};
+  for (const [p, targets] of Object.entries(SCALING)) {
+    const v = primaryAgg[p]; if (!v) continue;
+    primaryDetail[p] = v;
+    for (const [t, k] of Object.entries(targets)) flatExtra[t] = (flatExtra[t] || 0) + v * k;
+  }
+  // 2. flat 先加、percent 后乘
+  const final = { ...base };
+  const rows = [];
+  for (const [stat, v] of Object.entries(agg)) {
+    if (!v) continue;
+    const flat = v.flat + (flatExtra[stat] || 0);
+    let f = (base[stat] + flat) * (1 + v.percent);
+    if (stat === 'critRate') f = Math.min(1, Math.max(0, f));
+    if (stat === 'critDmg') f = Math.max(1, f);
+    if (stat === 'maxHp') f = Math.max(1, f);
+    else if (stat !== 'critRate' && stat !== 'critDmg') f = Math.max(0, f);
+    final[stat] = f;
+    rows.push({ stat, base: base[stat], flat: +(flat).toFixed(2), percent: v.percent, final: +f.toFixed(1) });
+  }
+  final.damageReduction = final.defense / (100 + final.defense);
+  return { final, rows, agg, primaryDetail, flatExtra };
+}
+
+// ============ 渲染 ============
+let currentShape = 'A';
+const mods = []; // 扁平数组，含 source
+for (const src of SOURCE_DEFS) for (const m of src.mods) mods.push({ source: src.name, ...m });
+
+function fmtPct(v) { return (v * 100).toFixed(0) + '%'; }
+
+const TYPE_SIGS = {
+  A: `// 候选 A — StatModifier[]（buffSystem 现有形态推广）
+type StatKey = 'attack' | 'defense' | 'maxHp' | 'maxMp' | 'critRate' | 'critDmg'
+            | 'strength' | 'constitution' | 'agility' | 'intelligence'
+            | 'willpower' | 'transcendence' | 'arcaneBoost' | 'voidSpirit'
+            | 'critResist' | 'damageReduction' | 'cooldownReduction';
+
+interface StatModifier {
+  stat: StatKey;
+  kind: 'flat' | 'percent';
+  value: number;   // flat 为绝对值；percent 为小数（0.10 = +10%）
+}
+
+// 五来源聚合后（数组，天然可携带顺序/重复项）：
+const mods: StatModifier[] = [
+  { stat: 'attack',   kind: 'percent', value: 0.10 },  // 羁绊
+  { stat: 'attack',   kind: 'flat',    value: 15 },    // 装备
+  { stat: 'maxHp',    kind: 'percent', value: 0.08 },  // 套装
+  { stat: 'defense',  kind: 'percent', value: 0.10 },  // 天赋
+  { stat: 'maxHp',    kind: 'percent', value: 0.08 },  // 觉醒星
+  { stat: 'attack',   kind: 'percent', value: 0.05 },  // 觉醒被动
+  { stat: 'attack',   kind: 'flat',    value: 20 },    // buff
+  { stat: 'critRate', kind: 'percent', value: 0.10 },  // buff
+  { stat: 'strength', kind: 'flat',    value: 5 },     // buff（元属性）
+];`,
+  B: `// 候选 B — ModifierMap（按属性聚合的对象）
+type StatKey = /* 同 A */;
+interface StatModifiers { flat?: number; percent?: number; }
+type ModifierMap = Partial&lt;Record&lt;StatKey, StatModifiers&gt;&gt;;
+
+// 同一场景（已聚合，同属性 flat/percent 各自求和）：
+const mods: ModifierMap = {
+  attack:   { flat: 35,   percent: 0.15 },  // 15+20 flat；10%+5% percent
+  maxHp:    { percent: 0.16 },              // 8%+8%
+  defense:  { percent: 0.10 },
+  critRate: { percent: 0.10 },
+  strength: { flat: 5 },                    // 元属性直接可加
+};`,
+  C: `// 候选 C — SourceModifier[]（强制来源追踪）
+type BonusSource = 'bond' | 'equipment' | 'talent' | 'awakening' | 'buff';
+interface SourceModifier {
+  source: BonusSource;   // 来源标识
+  stat: StatKey;
+  kind: 'flat' | 'percent';
+  value: number;
+}
+// 与 A 同构，每条多一个 source 字段；
+// 未来 UI 来源分解 / 优先级系统可直接消费。`,
+};
+
+const TRADES = {
+  A: [
+    ['与 buffSystem 现有 StatModifier 完全同构，统一成本最低', 'pro'],
+    ['天然保留顺序与重复项；未来加 source 字段即成候选 C', 'pro'],
+    ['同一来源多条需展开写；聚合需工具函数（但管道本来就要聚）', 'con'],
+  ],
+  B: [
+    ['配置紧凑可读（一个羁绊一行对象）；formatBonus 遍历天然', 'pro'],
+    ['聚合即形态，计算管道最简', 'pro'],
+    ['丢失来源信息与顺序；与 buffSystem 形态不同，需一层转换', 'con'],
+  ],
+  C: [
+    ['UI 来源分解 / 调试 / 将来优先级系统开箱即用', 'pro'],
+    ['source 枚举需维护；数据结构最重', 'con'],
+    ['若 UI 不需要来源分解则属过度设计（可后续再叠加）', 'con'],
+  ],
+};
+
+function renderShape() {
+  // 把滑条值收集成当前形态视图
+  const agg = aggregate(mods.map(m => ({ stat: m.stat, kind: m.kind, value: m.value })));
+  const view = {
+    A: mods.map(m => `{ stat: '${m.stat}', kind: '${m.kind}', value: ${m.kind === 'flat' ? m.value : m.value} }`).join(',\n  '),
+    B: Object.entries(agg).map(([s, v]) => `  ${s}: { ${v.flat ? 'flat: ' + v.flat + ', ' : ''}${v.percent ? 'percent: ' + v.percent : ''} },`).join('\n'),
+    C: mods.map(m => `{ source: '${m.source}', stat: '${m.stat}', kind: '${m.kind}', value: ${m.value} }`).join(',\n  '),
+  };
+  document.getElementById('shape').innerHTML = `
+    <div class="note">当前形态 <b>${currentShape}</b> 下，这 5 来源的全部修饰符长这样：</div>
+    <pre style="font-size:12px">${view[currentShape]}</pre>`;
+}
+
+function renderAll() {
+  renderShape();
+  const { final, rows, primaryDetail, flatExtra } = applyMods(BASE_DEFAULT, mods.map(m => ({ stat: m.stat, kind: m.kind, value: m.value })));
+  document.getElementById('finalmode').textContent = `（攻击者：attack ${BASE_DEFAULT.attack} / def ${BASE_DEFAULT.defense} / hp ${BASE_DEFAULT.maxHp}）`;
+  const shown = ['attack', 'defense', 'maxHp', 'maxMp', 'critRate', 'critDmg'];
+  document.getElementById('final').innerHTML = shown.map(s => {
+    const row = rows.find(r => r.stat === s);
+    if (!row) return `<tr><td>${s}</td><td>${BASE_DEFAULT[s]}</td><td>+0</td><td>×1.00</td><td>${BASE_DEFAULT[s]}</td></tr>`;
+    return `<tr><td>${s}</td><td>${row.base}</td><td>+${row.flat}</td><td>×${(1 + row.percent).toFixed(2)}</td><td class="hl">${row.final}</td></tr>`;
+  }).join('') +
+  `<tr><td>damageReduction</td><td colspan="3">def/(100+def) 派生</td><td class="hl">${(final.damageReduction * 100).toFixed(1)}%</td></tr>`;
+  const pd = Object.entries(primaryDetail);
+  document.getElementById('primaryNote').innerHTML = pd.length
+    ? `元属性折算：${pd.map(([p, v]) => `${p} +${v} → ${Object.entries(SCALING[p]).map(([t, k]) => `${t} +${(v * k).toFixed(1)}`).join('、')}`).join('；')}`
+    : '（无元属性修饰符）';
+}
+
+function renderSources() {
+  const box = document.getElementById('sources');
+  box.innerHTML = SOURCE_DEFS.map((src, si) => `
+    <div style="margin:6px 0">
+      <div style="font-size:13px; font-weight:bold; margin-bottom:2px">${src.name}</div>
+      ${src.mods.map((m, mi) => `
+        <label><span style="min-width:110px">${m.label}</span>
+          <input type="range" min="${m.min}" max="${m.max}" step="${m.step}" value="${m.init}"
+                 data-si="${si}" data-mi="${mi}">
+          <span class="out" id="out-${si}-${mi}"></span></label>`).join('')}
+    </div>`).join('');
+  document.querySelectorAll('input[type=range]').forEach(r => {
+    r.addEventListener('input', () => {
+      const si = +r.dataset.si, mi = +r.dataset.mi;
+      const def = SOURCE_DEFS[si].mods[mi];
+      mods.find(m => m.source === SOURCE_DEFS[si].name && m.label === def.label).value = +r.value;
+      renderAll();
+    });
+  });
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const t = e.target.dataset.t; if (!t) return;
+  currentShape = t;
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.t === t));
+  document.getElementById('panel').innerHTML = `
+    <h3 style="margin-top:0">${t === 'A' ? '候选 A — StatModifier[]' : t === 'B' ? '候选 B — ModifierMap' : '候选 C — SourceModifier[]'}</h3>
+    <pre>${TYPE_SIGS[t]}</pre>
+    <div style="font-size:13px">
+      ${TRADES[t].map(([txt, cls]) => `<div><span class="tag ${cls}">${cls === 'pro' ? '优' : '劣'}</span> ${txt}</div>`).join('')}
+    </div>
+    <div class="note">切换上方 tab 不会改变滑条数值——三种形态表达的是同一份数据，只是形状不同。</div>`;
+  document.querySelector('.tab[data-t="' + t + '"]') && renderShape();
+});
+
+// init
+document.getElementById('panel').innerHTML = `
+  <h3 style="margin-top:0">候选 A — StatModifier[]</h3>
+  <pre>${TYPE_SIGS.A}</pre>
+  <div style="font-size:13px">
+    ${TRADES.A.map(([txt, cls]) => `<div><span class="tag ${cls}">${cls === 'pro' ? '优' : '劣'}</span> ${txt}</div>`).join('')}
+  </div>
+  <div class="note">切换上方 tab 不会改变滑条数值——三种形态表达的是同一份数据，只是形状不同。</div>`;
+renderSources();
+renderAll();
+</script>
+</body>
+</html>
