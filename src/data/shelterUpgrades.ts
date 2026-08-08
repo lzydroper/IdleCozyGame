@@ -1,4 +1,5 @@
 import type { UpgradePath } from '../types/config';
+import { Battery, Zap, RefreshCw, Flame, Cpu } from 'lucide-react';
 
 export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
   battery: {
@@ -8,8 +9,7 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     maxLevel: 10,
     category: 'base',
     effectLabel: '离线最大挂机续航时间',
-    icon: 'battery',
-    theme: { glow: 'bg-cyan-500/30' },
+    icon: Battery,
     levels: [
       { level: 1, cost: {}, effectValue: 14400, effectText: '4.0h' },
       { level: 2, cost: { scrap_metal: 20 }, effectValue: 18000, effectText: '5.0h' },
@@ -30,8 +30,7 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     maxLevel: 10,
     category: 'base',
     effectLabel: '能量凝结率',
-    icon: 'generator',
-    theme: { glow: 'bg-amber-500/30' },
+    icon: Zap,
     levels: [
       { level: 0, cost: {}, effectValue: 0, effectText: '已停机' },
       { level: 1, cost: { scrap_metal: 15 }, effectValue: 0.005, effectText: '0.30 能量/分' },
@@ -53,8 +52,7 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     maxLevel: 10,
     category: 'base',
     effectLabel: '废铁提炼率',
-    icon: 'recycler',
-    theme: { glow: 'bg-emerald-500/30' },
+    icon: RefreshCw,
     levels: [
       { level: 0, cost: {}, effectValue: 0, effectText: '已停机' },
       { level: 1, cost: { scrap_metal: 15 }, effectValue: 0.002, effectText: '0.12 废铁/分' },
@@ -76,8 +74,7 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     maxLevel: 5,
     category: 'facility',
     effectLabel: '效率',
-    icon: 'smelter',
-    theme: { glow: 'bg-amber-500/30' },
+    icon: Flame,
     levels: [
       { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1' },
       { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2' },
@@ -93,8 +90,7 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     maxLevel: 5,
     category: 'facility',
     effectLabel: '效率',
-    icon: 'assembler',
-    theme: { glow: 'bg-purple-500/30' },
+    icon: Cpu,
     levels: [
       { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1' },
       { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2' },

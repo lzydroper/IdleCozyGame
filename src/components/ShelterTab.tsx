@@ -11,11 +11,8 @@ import GameIcon from './GameIcon';
 import ShelterTabBar from './shelter/ShelterTabBar';
 import type { ShelterTabId } from './shelter/constants';
 import {
-  Zap,
   Settings,
   ShieldAlert,
-  Battery,
-  RefreshCw,
   Cpu,
   Sprout,
   Compass,
@@ -43,52 +40,13 @@ interface FlyingReward {
   offsetY: number;
 }
 
-// 基建升级图标映射（数据驱动，从 upgrade.icon 查找）
-const UPGRADE_ICONS: Record<string, React.ReactNode> = {
-  battery: <Battery className="w-4 h-4 text-cyan-400" />,
-  generator: <Zap className="w-4 h-4 text-amber-400" />,
-  recycler: <RefreshCw className="w-4 h-4 text-emerald-400" />,
-  smelter: <Cpu className="w-4 h-4 text-amber-400" />,
-  assembler: <Cpu className="w-4 h-4 text-purple-400" />,
-};
-const getUpgradeIcon = (id: string) => UPGRADE_ICONS[id] || <Settings className="w-4 h-4 text-zinc-400" />;
-
-// 基建升级配色（从 upgrade.theme.glow 派生）
-const THEME_COLORS: Record<string, { iconBg: string; iconBorder: string; buttonClass: (isMax: boolean, canAfford: boolean) => string }> = {
-  'bg-cyan-500/30': {
-    iconBg: 'bg-cyan-950/50', iconBorder: 'border-cyan-500/30',
-    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
-      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  },
-  'bg-amber-500/30': {
-    iconBg: 'bg-amber-950/50', iconBorder: 'border-amber-500/30',
-    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 active:scale-95 cursor-pointer'
-      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  },
-  'bg-emerald-500/30': {
-    iconBg: 'bg-emerald-950/50', iconBorder: 'border-emerald-500/30',
-    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 cursor-pointer'
-      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  },
-  'bg-purple-500/30': {
-    iconBg: 'bg-purple-950/50', iconBorder: 'border-purple-500/30',
-    buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30 hover:bg-purple-500/20 active:scale-95 cursor-pointer'
-      : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-  },
-};
-
-const getTheme = (glow?: string) => {
-  const key = glow || '';
-  return THEME_COLORS[key] || {
-    iconBg: 'bg-zinc-950/50', iconBorder: 'border-zinc-500/30',
-    buttonClass: (isMax: boolean, canAfford: boolean) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
-      : canAfford ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
-      : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
-  };
+// 基建升级配色：全站统一一套 cyan 主题（ADR-0018 后不再按升级项区分）
+const UPGRADE_THEME: { iconBg: string; iconBorder: string; buttonClass: (isMax: boolean, canAfford: boolean) => string } = {
+  iconBg: 'bg-cyan-950/50',
+  iconBorder: 'border-cyan-500/30',
+  buttonClass: (isMax, canAfford) => isMax ? 'bg-zinc-800/30 text-zinc-600 border border-zinc-800/50 cursor-default'
+    : canAfford ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 active:scale-95 cursor-pointer'
+    : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
 };
 
 const ShelterTab: React.FC = () => {
@@ -354,26 +312,20 @@ const ShelterTab: React.FC = () => {
               const currentConfig = upgrade.levels.find((l) => l.level === currentLevel);
               const nextConfig = upgrade.levels.find((l) => l.level === currentLevel + 1);
               const canAfford = nextConfig ? Object.entries(nextConfig.cost).every(([item, qty]) => getInvQty(item) >= qty) : false;
-              const theme = getTheme(upgrade.theme?.glow);
-              const accentText = upgrade.theme?.glow === 'bg-cyan-500/30' ? 'text-cyan-400'
-                : upgrade.theme?.glow === 'bg-amber-500/30' ? 'text-amber-400'
-                : upgrade.theme?.glow === 'bg-emerald-500/30' ? 'text-emerald-400'
-                : upgrade.theme?.glow === 'bg-purple-500/30' ? 'text-purple-400'
-                : 'text-zinc-400';
 
               return (
                 <div key={upgrade.id} className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
-                  <div className={`h-0.5 w-full ${upgrade.theme?.glow || 'bg-zinc-500/30'}`} />
+                  <div className="h-0.5 w-full bg-cyan-500/30" />
                   <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg ${theme.iconBg} border ${theme.iconBorder} flex items-center justify-center`}>
-                        {getUpgradeIcon(upgrade.id)}
+                      <div className={`w-7 h-7 rounded-lg ${UPGRADE_THEME.iconBg} border ${UPGRADE_THEME.iconBorder} flex items-center justify-center`}>
+                        <GameIcon type="upgrade" id={upgrade.id} className="w-4 h-4 text-cyan-400" />
                       </div>
                       <div>
                         <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
                           {upgrade.name}
-                          <span className={`text-[9px] font-mono ${accentText} bg-white/5 px-1 py-0.5 rounded`}>Lv.{currentLevel}</span>
+                          <span className="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">Lv.{currentLevel}</span>
                         </div>
                         <div className="text-[9px] text-zinc-500">
                           {upgrade.effectLabel}：<span className={currentLevel > 0 ? 'text-zinc-200 font-bold' : 'text-zinc-500'}>{currentConfig ? currentConfig.effectText : '已停机'}</span>
@@ -391,7 +343,7 @@ const ShelterTab: React.FC = () => {
                       }
                     }}
                     disabled={isMax || !canAfford}
-                    className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${theme.buttonClass(isMax, canAfford)}`}
+                    className={`py-1.5 rounded-xl font-bold transition-all text-[10px] w-[88px] flex-shrink-0 flex flex-col items-center justify-center ${UPGRADE_THEME.buttonClass(isMax, canAfford)}`}
                   >
                     {isMax ? (
                       <>
@@ -399,26 +351,14 @@ const ShelterTab: React.FC = () => {
                         <span className="block text-[8px] font-normal text-zinc-600 mt-0.5">MAX</span>
                       </>
                     ) : (
-                      <>
-                        <span className="flex items-center gap-0.5 justify-center flex-wrap">
-                          升级
-                          {nextConfig && Object.entries(nextConfig.cost).map(([item, qty]) => (
-                            <React.Fragment key={item}>
-                              <GameIcon type="item" id={item} className="w-3 h-3" title={item} />
-                              {qty}
-                            </React.Fragment>
-                          ))}
-                        </span>
-                        <span className="block text-[9px] font-normal text-zinc-500 mt-0.5">
-                          下一级: {nextConfig ? nextConfig.effectText : 'MAX'}
-                        </span>
-                      </>
+                      <span className="font-extrabold text-[11px]">升级</span>
                     )}
                   </button>
                   </div>
                   <div className="text-[10px] text-zinc-400 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
                     <div className="flex justify-between"><span>当前效果</span><span className="text-zinc-200 font-bold">{currentConfig ? currentConfig.effectText : '已停机'}</span></div>
-                    {!isMax && nextConfig && <div className="flex justify-between mt-1"><span>下一级消耗</span><span className="text-amber-400">{Object.entries(nextConfig.cost).map(([item, qty]) => `${qty}×${item}`).join(', ')}</span></div>}
+                    {!isMax && nextConfig && <div className="flex justify-between mt-1"><span>下一级</span><span className="text-zinc-300 font-bold">{nextConfig.effectText}</span></div>}
+                    {!isMax && nextConfig && <div className="flex justify-between mt-1"><span>下一级消耗</span><span className="text-amber-400">{Object.entries(nextConfig.cost).map(([item, qty]) => `${ITEMS_CONFIG[item]?.name || item}×${qty}`).join(' · ')}</span></div>}
                   </div>
                   </div>
                 </div>

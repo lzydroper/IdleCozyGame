@@ -4,9 +4,10 @@ import type { LucideIcon } from 'lucide-react';
 import { ENEMY_ICON_MAP, ZONE_ICON_MAP } from './iconMaps';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
+import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import type { ItemSheet, ItemSprite } from '../data/items/types';
 
-export type GameIconType = 'item' | 'hero' | 'enemy' | 'zone';
+export type GameIconType = 'item' | 'hero' | 'enemy' | 'zone' | 'upgrade';
 
 export interface GameIconProps extends React.HTMLAttributes<HTMLDivElement> {
   id: string;
@@ -29,6 +30,7 @@ const ICON_SOURCE_REGISTRY: Record<
   item: { source: (id) => ITEMS_CONFIG[id], expectsSprite: true },
   enemy: { source: (id) => ({ icon: ENEMY_ICON_MAP[id] }), expectsSprite: false },
   zone: { source: (id) => ({ icon: ZONE_ICON_MAP[id] }), expectsSprite: false },
+  upgrade: { source: (id) => SHELTER_UPGRADES[id], expectsSprite: false },
 };
 
 // spritesheet 网格规格：英雄立绘（survivors）3x3，物品类（seeds/materials/supplies）4x4
