@@ -4,7 +4,7 @@
 
 **Blocked by:** None - can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] 新增函数（如 `getDerivedStatContributions`），输入 `CalculatedEntityStats`（或 `PrimaryAttributes`），返回每个派生属性的元属性贡献列表
 - [ ] 贡献列表格式：每条包含元属性名、当前值、系数、贡献值

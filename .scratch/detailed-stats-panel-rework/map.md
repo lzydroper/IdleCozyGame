@@ -17,6 +17,7 @@
 ## Decisions so far
 
 - [01 - StatModifier source 字段 + 分组聚合](issues/01-statmodifier-source-field-and-grouped-aggregation.md) - StatModifier 加可选 source?: string；新增 aggregateModifiersBySource 按来源分组 + getStatSourcesByStat 提取单属性来源贡献；8 个新测试全绿；现有 aggregateModifiers/calculateEntityStats 不受影响
+- [02 - 派生属性贡献计算](issues/02-derived-stat-contribution-calculation.md) - 新增 getDerivedStatContributions 追溯 6 个派生属性来源（critResist<-敏捷、damageReduction<-防御公式、durationReduction/effectReduction<-意志、cooldownReduction<-超越、voidSpirit<-固有值）；coefficient 可选（非线性公式不设）；守卫用 !==0 处理负值；10 个新测试全绿
 
 ## Not yet specified
 
