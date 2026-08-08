@@ -11,6 +11,11 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
   });
 
+  // 辅助：切换到产线 tab
+  const switchToFacility = () => {
+    fireEvent.click(screen.getByText('产线'));
+  };
+
   it('renders queue controls and has no survivor-assignment interaction (纯自动)', () => {
     render(
       <GameProvider>
@@ -19,6 +24,8 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
         </ToastProvider>
       </GameProvider>
     );
+
+    switchToFacility();
 
     // 两个设施都渲染出"加入配方队列"与"执行队列（FIFO）"面板
     expect(screen.getAllByText(/加入配方队列/).length).toBe(2);
@@ -35,6 +42,8 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
         </ToastProvider>
       </GameProvider>
     );
+
+    switchToFacility();
 
     // 找到冶炼炉的配方下拉框（含"合成 合金金属板 ×1"选项，ticket 01 文案推导）
     const smelterSelect = screen

@@ -8,6 +8,8 @@ import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../data/heroes';
 import { useToast } from './ToastSystem';
 import GameIcon from './GameIcon';
+import ShelterTabBar from './shelter/ShelterTabBar';
+import type { ShelterTabId } from './shelter/constants';
 import {
   Zap,
   Settings,
@@ -28,7 +30,6 @@ import {
   Lightbulb,
   Rocket,
   Search,
-  Cog,
   X
 } from 'lucide-react';
 import { SmelterCard, AssemblerCard } from './FacilityCard';
@@ -103,7 +104,8 @@ const ShelterTab: React.FC = () => {
   } = useGame();
 
   const { showToast } = useToast();
-  
+  const [activeTab, setActiveTab] = useState<ShelterTabId>('base');
+
   // 本地每秒 tick，用于平滑更新远征计时和倒计时
   const [nowTime, setNowTime] = useState(Date.now());
 
@@ -308,52 +310,34 @@ const ShelterTab: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-6 pb-20 text-xs">
-      {/* 废土资源微型指示器 */}
-      <div className="grid grid-cols-4 gap-2 bg-zinc-950/80 border border-zinc-800 p-2.5 rounded-2xl backdrop-blur-md">
-        <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <GameIcon type="item" id="scrap_metal" className="w-7 h-7 flex-shrink-0" title="废旧金属" />
-          <div>
-            <div className="text-[10px] text-zinc-500 font-semibold">废旧金属</div>
-            <div className="text-zinc-200 font-bold text-xs">{getInvQty('scrap_metal')}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <GameIcon type="item" id="alloy_plate" className="w-7 h-7 flex-shrink-0" title="合金金属板" />
-          <div>
-            <div className="text-[10px] text-zinc-500 font-semibold">合金金属板</div>
-            <div className="text-zinc-200 font-bold text-xs">{getInvQty('alloy_plate')}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <GameIcon type="item" id="ration" className="w-7 h-7 flex-shrink-0" title="压缩口粮" />
-          <div>
-            <div className="text-[10px] text-zinc-500 font-semibold">压缩口粮</div>
-            <div className="text-zinc-200 font-bold text-xs">{getInvQty('ration')}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 justify-center py-0.5">
-          <Battery className="w-7 h-7 flex-shrink-0 text-cyan-400" />
-          <div>
-            <div className="text-[10px] text-zinc-500 font-semibold">魔能储备</div>
-            <div className="text-cyan-400 font-bold text-xs">{Math.floor(state.player.energy)}/{state.player.maxEnergy}</div>
-          </div>
-        </div>
-      </div>
+  // 状态计数：温室可收割数 / 产线队列数 / 远征进行中
+  const harvestableCount = state.greenhouse.slots.filter(s => s.cropId && s.growthProgress >= 100).length;
+  const facilityQueueCount = Object.values(state.shelter.facilities).flat().reduce((sum, f) => sum + (f.queue?.length ?? 0), 0);
+  const expeditionBadge = exp.locationId ? '进行中' : null;
+  const tabCounts: Record<ShelterTabId, string | null> = {
+    base: null,
+    greenhouse: harvestableCount > 0 ? String(harvestableCount) : null,
+    facility: facilityQueueCount > 0 ? String(facilityQueueCount) : null,
+    expedition: expeditionBadge,
+  };
 
-      {/* 梦魇入侵警报控制台（ticket 05：迁出工坊 → 避难所运营页顶部） */}
+  return (
+    <div className="space-y-4 pb-20 text-xs">
+      {/* 梦魇入侵警报控制台（常驻顶部） */}
       <DreamLeakAlertPanel />
 
-      {/* 1. 避难所基建与挂机控制 */}
-      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -z-10" />
+      {/* 分 tab 导航 */}
+      <ShelterTabBar active={activeTab} onChange={setActiveTab} counts={tabCounts} />
+
+      {/* 基建 tab */}
+      {activeTab === 'base' && (
+      <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-4 backdrop-blur-md">
         <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
           <Settings className="w-4 h-4 text-cyan-400 animate-spin-slow" />
           避难所基建与挂机控制 Core Upgrades
         </h2>
 
-        <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1">
+        <div className="space-y-3.5">
           {Object.values(SHELTER_UPGRADES)
             .filter((upg) => upg.category === 'base')
             .map((upgrade) => {
@@ -422,9 +406,11 @@ const ShelterTab: React.FC = () => {
             })}
         </div>
       </section>
+      )}
 
-      {/* 2. 温室控制中心 */}
-      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40">
+      {/* 温室 tab */}
+      {activeTab === 'greenhouse' && (
+      <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-4 backdrop-blur-md">
         <h2 className="text-sm font-bold text-emerald-400 flex items-center justify-between mb-3 border-b border-zinc-800/80 pb-2">
           <span className="flex items-center gap-2">
             <Sprout className="w-4 h-4 text-emerald-400" />
@@ -436,7 +422,7 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         {/* 培养槽全功能监视网格 */}
-        <div className="max-h-72 overflow-y-auto pr-1 mb-4">
+        <div className="mb-4">
           <div className="grid grid-cols-2 gap-3">
             {state.greenhouse.slots.map(slot => {
               const crop = slot.cropId ? CROPS_CONFIG[slot.cropId as keyof typeof CROPS_CONFIG] : null;
@@ -678,22 +664,26 @@ const ShelterTab: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
-      {/* 3. 工业自动生产流水线 */}
+      {/* 产线 tab */}
+      {activeTab === 'facility' && (
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-magic-blue flex items-center gap-2 border-b border-zinc-800/80 pb-2">
           <Cpu className="w-4 h-4 text-magic-blue" />
           工业自动生产流水线 Automated Assemblers
         </h2>
 
-        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+        <div className="space-y-4">
           <SmelterCard />
           <AssemblerCard />
         </div>
       </section>
+      )}
 
-      {/* 4. 挂机探索远征 */}
-      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40">
+      {/* 远征 tab */}
+      {activeTab === 'expedition' && (
+      <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-4 backdrop-blur-md">
         <h2 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
           <Compass className="w-4 h-4 text-cyan-400" />
           挂机探索远征 Base Expeditions
@@ -911,34 +901,7 @@ const ShelterTab: React.FC = () => {
           </div>
         )}
       </section>
-
-      {/* 5. 后勤工作日志 */}
-      <section className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 rounded-3xl p-4 shadow-lg shadow-black/40">
-        <h2 className="text-sm font-bold text-amber-400 flex items-center gap-2 mb-3 border-b border-zinc-800/80 pb-2">
-          <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-          后勤工作日志 Logistics Logs
-        </h2>
-        <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-900/50 max-h-48 overflow-y-auto space-y-2 text-[10px] leading-relaxed">
-          {state.logs.filter(log => log.type === 'logistics').length === 0 ? (
-            <p className="text-zinc-650 italic text-center py-4">暂无后勤工作日志</p>
-          ) : (
-            state.logs
-              .filter(log => log.type === 'logistics')
-              .map(log => (
-                <div key={log.id} className="flex gap-2.5 pb-2 border-b border-zinc-900/20 last:border-b-0">
-                  <Cog className="w-3 h-3 shrink-0 text-amber-400" />
-                  <div className="flex-1 text-left">
-                    <p className="text-zinc-300">{log.text}</p>
-                    <span className="text-[8px] text-zinc-600 font-bold block mt-0.5 flex items-center gap-0.5">
-                      <Clock className="w-2.5 h-2.5" />
-                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                  </div>
-                </div>
-              ))
-          )}
-        </div>
-      </section>
+      )}
 
       {/* 播种选择模态框 */}
       {showSeedSelector && typeof document !== 'undefined' && createPortal(
