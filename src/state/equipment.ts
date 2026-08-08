@@ -1,5 +1,4 @@
 import type { GameState, HeroEquipment, EquippedItem, EquipmentSlot, HeroFaction } from '../types/game';
-import type { EquipmentStats } from '../data/equipment';
 import {
   EQUIPMENT_CONFIG,
   EQUIPMENT_SETS,
@@ -9,7 +8,7 @@ import {
   enhanceCost,
   FORGE_COST
 } from '../data/equipment';
-import type { StatModifier } from './statSystem';
+import type { StatModifier, StatKey } from './statSystem';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
@@ -45,9 +44,10 @@ export const addItemRewards = (
 export const emptyEquipment = (): HeroEquipment => ({ weapon: null, armor: null, trinket: null });
 
 // 单件装备单属性拆分（基础值 / 强化成长，含神话倍率与阵营加成），UI 属性行与聚合共用
+// （stat-bonus-unification 收尾：配置/输出统一为 flat 修饰符，stat 支持任意 StatKey）
 export const getEquippedStatParts = (
   item: EquippedItem,
-  stat: keyof EquipmentStats,
+  stat: StatKey,
   heroFaction?: HeroFaction
 ): { base: number; enhance: number } => {
   const cfg = EQUIPMENT_CONFIG[item.itemId];
@@ -56,36 +56,36 @@ export const getEquippedStatParts = (
   const isFactionMatched = Boolean(heroFaction && cfg.faction === heroFaction);
   const factionMult = isFactionMatched ? FACTION_EQUIPMENT_BONUS_MULTIPLIER : 1.0;
   return {
-    base: (cfg.baseStats[stat] || 0) * mult * factionMult,
-    enhance: (cfg.statPerEnhance[stat] || 0) * item.enhance * mult * factionMult
+    base: (cfg.baseStats.find(m => m.stat === stat)?.value ?? 0) * mult * factionMult,
+    enhance: (cfg.statPerEnhance.find(m => m.stat === stat)?.value ?? 0) * item.enhance * mult * factionMult
   };
 };
 
-// 单件装备的总属性：基础 + 强化成长；神话锻造后整体 ×1.5；英雄穿戴同阵营装备时附带阵营加成 (+30%)
-export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): EquipmentStats => {
-  const stats: EquipmentStats = {};
-  (['attack', 'defense', 'maxHp'] as const).forEach(key => {
-    const { base, enhance } = getEquippedStatParts(item, key, heroFaction);
+// 单件装备的总属性（flat 修饰符数组）：基础 + 强化成长；神话锻造后整体 ×1.5；英雄穿戴同阵营装备时附带阵营加成 (+30%)
+export const getEquippedItemStats = (item: EquippedItem, heroFaction?: HeroFaction): StatModifier[] => {
+  const cfg = EQUIPMENT_CONFIG[item.itemId];
+  if (!cfg) return [];
+  return cfg.baseStats.map(m => {
+    const { base, enhance } = getEquippedStatParts(item, m.stat, heroFaction);
     const total = base + enhance;
-    if (total > 0) stats[key] = Math.round(total * 10) / 10;
+    return { stat: m.stat, kind: 'flat' as const, value: Math.round(total * 10) / 10 };
   });
-  return stats;
 };
 
-// 三槽装备汇总的平值属性（战斗内直接加在英雄基础属性上）
-export const getEquippedFlatStats = (equip: HeroEquipment | null, heroFaction?: HeroFaction): EquipmentStats => {
-  const flat: EquipmentStats = {};
-  if (!equip) return flat;
+// 三槽装备汇总的平值属性（flat 修饰符，战斗内直接作用于英雄面板）
+export const getEquippedFlatStats = (equip: HeroEquipment | null, heroFaction?: HeroFaction): StatModifier[] => {
+  const mods: StatModifier[] = [];
+  if (!equip) return mods;
   (['weapon', 'armor', 'trinket'] as const).forEach(slot => {
     const item = equip[slot];
     if (!item) return;
-    const stats = getEquippedItemStats(item, heroFaction);
-    (['attack', 'defense', 'maxHp'] as const).forEach(key => {
-      const v = stats[key] || 0;
-      if (v !== 0) flat[key] = (flat[key] || 0) + v;
+    getEquippedItemStats(item, heroFaction).forEach(m => {
+      const existing = mods.find(x => x.stat === m.stat);
+      if (existing) existing.value = Math.round((existing.value + m.value) * 10) / 10;
+      else mods.push({ ...m });
     });
   });
-  return flat;
+  return mods;
 };
 
 // 套装进度：同系列穿戴装备的强化等级总和（3 槽相加，满编 +30 为 90）
@@ -133,16 +133,12 @@ export const getSetBonuses = (equip: HeroEquipment | null): StatModifier[] => {
   return bonus;
 };
 
-// 英雄装备加成汇总（平值 + 百分比统一为修饰符数组），战斗计算与 UI 共用
-// （stat-bonus-unification 03：EquipmentStats 仅保留为装备静态属性定义，加成输出统一 StatModifier[]）
-export const getHeroEquipmentBonus = (equip: HeroEquipment | null, heroFaction?: HeroFaction): StatModifier[] => {
-  const flat = getEquippedFlatStats(equip, heroFaction);
-  const mods: StatModifier[] = [];
-  if (flat.attack) mods.push({ stat: 'attack', kind: 'flat', value: flat.attack });
-  if (flat.defense) mods.push({ stat: 'defense', kind: 'flat', value: flat.defense });
-  if (flat.maxHp) mods.push({ stat: 'maxHp', kind: 'flat', value: flat.maxHp });
-  return [...mods, ...getSetBonuses(equip)];
-};
+// 英雄装备加成汇总（平值 + 百分比全为修饰符数组），战斗计算与 UI 共用
+// （stat-bonus-unification 收尾：装备来源唯一渠道 StatModifier[]，EquipmentStats 已删除）
+export const getHeroEquipmentBonus = (equip: HeroEquipment | null, heroFaction?: HeroFaction): StatModifier[] => [
+  ...getEquippedFlatStats(equip, heroFaction),
+  ...getSetBonuses(equip)
+];
 
 const writeEquipment = (state: GameState, heroId: string, equip: HeroEquipment): GameState => ({
   ...state,

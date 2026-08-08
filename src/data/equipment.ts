@@ -4,12 +4,8 @@
 import type { EquipmentSlot, HeroFaction } from '../types/game';
 import type { StatModifier } from '../state/statSystem';
 
-// 装备提供的属性（平值，直接加在英雄基础属性上）
-export interface EquipmentStats {
-  attack?: number;
-  defense?: number;
-  maxHp?: number;
-}
+// 装备属性（基础/强化成长）：全部以 flat 修饰符表达（stat-bonus-unification 收尾——唯一渠道）
+// 新增可加属性只需在配置追加 { stat, kind: 'flat', value }，无需改类型/遍历代码
 
 // 装备静态配置：同一装备在背包中为普通物品（ITEMS_CONFIG），穿戴后才成为装备实例
 export interface EquipmentConfig {
@@ -19,8 +15,8 @@ export interface EquipmentConfig {
   slot: EquipmentSlot;
   set: string;                // 所属系列 id（EQUIPMENT_SETS）
   faction: HeroFaction;       // 专属阵营加成类型（同阵营英雄穿戴享受 +30% 基础加成）
-  baseStats: EquipmentStats;  // 0 强化时的属性
-  statPerEnhance: EquipmentStats; // 每 +1 强化增加的属性
+  baseStats: StatModifier[];  // 0 强化时的属性（flat 修饰符）
+  statPerEnhance: StatModifier[]; // 每 +1 强化增加的属性（flat 修饰符）
   source: 'workshop' | 'blueprint' | 'dreamscape' | 'boss'; // 主要获取途径（分层标注）
   blueprintId?: string;       // source === 'blueprint' 时：解锁合成所需图纸物品 id
   description: string;
@@ -127,8 +123,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'weapon',
     set: 'wasteland',
     faction: 'mechanical',
-    baseStats: { attack: 10 },
-    statPerEnhance: { attack: 1 },
+    baseStats: [{ stat: 'attack', kind: 'flat', value: 10 }],
+    statPerEnhance: [{ stat: 'attack', kind: 'flat', value: 1 }],
     source: 'workshop',
     description: '用废旧金属打磨的求生刀刃，废土猎人的第一把武器。'
   },
@@ -139,8 +135,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'armor',
     set: 'wasteland',
     faction: 'mechanical',
-    baseStats: { defense: 6 },
-    statPerEnhance: { defense: 0.6 },
+    baseStats: [{ stat: 'defense', kind: 'flat', value: 6 }],
+    statPerEnhance: [{ stat: 'defense', kind: 'flat', value: 0.6 }],
     source: 'workshop',
     description: '合金板拼接的简易护甲，能挡下大部分变异生物的爪牙。'
   },
@@ -151,8 +147,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'trinket',
     set: 'wasteland',
     faction: 'mechanical',
-    baseStats: { maxHp: 20 },
-    statPerEnhance: { maxHp: 2 },
+    baseStats: [{ stat: 'maxHp', kind: 'flat', value: 20 }],
+    statPerEnhance: [{ stat: 'maxHp', kind: 'flat', value: 2 }],
     source: 'workshop',
     description: '用荧光纤维编成的护身挂饰，寄托着废土生存者的执念。'
   },
@@ -165,8 +161,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'weapon',
     set: 'ember',
     faction: 'spirit',
-    baseStats: { attack: 16 },
-    statPerEnhance: { attack: 1.5 },
+    baseStats: [{ stat: 'attack', kind: 'flat', value: 16 }],
+    statPerEnhance: [{ stat: 'attack', kind: 'flat', value: 1.5 }],
     source: 'blueprint',
     blueprintId: 'blueprint_ember_armory',
     description: '旧城废墟中淬炼的长刃，刃口残留着废墟霸主的余烬。'
@@ -178,8 +174,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'armor',
     set: 'ember',
     faction: 'spirit',
-    baseStats: { defense: 10 },
-    statPerEnhance: { defense: 0.8 },
+    baseStats: [{ stat: 'defense', kind: 'flat', value: 10 }],
+    statPerEnhance: [{ stat: 'defense', kind: 'flat', value: 0.8 }],
     source: 'blueprint',
     blueprintId: 'blueprint_ember_armory',
     description: '废墟合金锻造的重铠，装甲缝隙间隐隐透出暗红火光。'
@@ -191,8 +187,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'trinket',
     set: 'ember',
     faction: 'spirit',
-    baseStats: { maxHp: 30 },
-    statPerEnhance: { maxHp: 2.5 },
+    baseStats: [{ stat: 'maxHp', kind: 'flat', value: 30 }],
+    statPerEnhance: [{ stat: 'maxHp', kind: 'flat', value: 2.5 }],
     source: 'blueprint',
     blueprintId: 'blueprint_ember_armory',
     description: '旧城霸主陨落后留下的徽记，佩戴者能感受到灼热的战意。'
@@ -206,8 +202,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'weapon',
     set: 'dreamveil',
     faction: 'arcane',
-    baseStats: { attack: 14 },
-    statPerEnhance: { attack: 1.5 },
+    baseStats: [{ stat: 'attack', kind: 'flat', value: 14 }],
+    statPerEnhance: [{ stat: 'attack', kind: 'flat', value: 1.5 }],
     source: 'dreamscape',
     description: '梦境深处凝结的匕首，刃身如水雾般若有若无。'
   },
@@ -218,8 +214,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'armor',
     set: 'dreamveil',
     faction: 'arcane',
-    baseStats: { defense: 12 },
-    statPerEnhance: { defense: 0.8 },
+    baseStats: [{ stat: 'defense', kind: 'flat', value: 12 }],
+    statPerEnhance: [{ stat: 'defense', kind: 'flat', value: 0.8 }],
     source: 'dreamscape',
     description: '以梦境丝线织成的纱衣，能卸去大部分物理冲击。'
   },
@@ -230,8 +226,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'trinket',
     set: 'dreamveil',
     faction: 'arcane',
-    baseStats: { maxHp: 35 },
-    statPerEnhance: { maxHp: 2.5 },
+    baseStats: [{ stat: 'maxHp', kind: 'flat', value: 35 }],
+    statPerEnhance: [{ stat: 'maxHp', kind: 'flat', value: 2.5 }],
     source: 'dreamscape',
     description: '封存着一缕梦境的坠饰，佩戴者气血循环如入梦境般绵长。'
   },
@@ -244,8 +240,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'weapon',
     set: 'starcore',
     faction: 'astral',
-    baseStats: { attack: 22 },
-    statPerEnhance: { attack: 2 },
+    baseStats: [{ stat: 'attack', kind: 'flat', value: 22 }],
+    statPerEnhance: [{ stat: 'attack', kind: 'flat', value: 2 }],
     source: 'boss',
     description: '以失控机器核心锻造的神兵，挥动时带起星屑残影。'
   },
@@ -256,8 +252,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'armor',
     set: 'starcore',
     faction: 'astral',
-    baseStats: { defense: 15 },
-    statPerEnhance: { defense: 1 },
+    baseStats: [{ stat: 'defense', kind: 'flat', value: 15 }],
+    statPerEnhance: [{ stat: 'defense', kind: 'flat', value: 1 }],
     source: 'boss',
     description: '镶嵌星核碎片的甲胄，防御力随核心共鸣节节攀升。'
   },
@@ -268,8 +264,8 @@ export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = {
     slot: 'trinket',
     set: 'starcore',
     faction: 'astral',
-    baseStats: { maxHp: 45 },
-    statPerEnhance: { maxHp: 3 },
+    baseStats: [{ stat: 'maxHp', kind: 'flat', value: 45 }],
+    statPerEnhance: [{ stat: 'maxHp', kind: 'flat', value: 3 }],
     source: 'boss',
     description: '畸变聚合体核心凝成的圣印，蕴含磅礴的生命能量。'
   }

@@ -15,7 +15,7 @@ import { getEquippedFlatStats, equipItemUpdate, unequipItemUpdate } from '../sta
 import { applyHeroExp, heroMaxHp, heroAttack, heroDefense } from '../state/combat';
 import { getLevelMilestoneBonus } from '../data/heroGrowth';
 import { COMBAT_CONFIG } from '../data/combatConfig';
-import { calculateEntityStats, type CalculatedEntityStats } from '../state/statSystem';
+import { calculateEntityStats, type CalculatedEntityStats, type StatKey } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
 import HeroTalentModal from './HeroTalentModal';
@@ -77,7 +77,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const heroEquip = (heroId && state.equipment?.[heroId]) || EMPTY_EQUIP;
   const awakenedName = hero && config ? getAwakenedName(heroId || '', hero) || config.name : '';
 
-  // 装备加成属性（含同阵营 30% 穿戴加成）
+  // 装备平值加成（flat 修饰符，含同阵营 30% 穿戴加成）
   const equipFlat = useMemo(
     () => getEquippedFlatStats(heroEquip, config?.faction ?? 'mechanical'),
     [heroEquip, config?.faction]
@@ -88,12 +88,13 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const calculatedStats = useMemo(() => {
     if (!config || !hero) return null;
     const milestone = getLevelMilestoneBonus(config, hero.level);
+    const flatOf = (stat: StatKey): number => equipFlat.find(m => m.stat === stat)?.value ?? 0;
     return calculateEntityStats(
       {
               baseAttributes: {
-                attack: heroAttack(config, hero.level) + (equipFlat.attack || 0),
-                defense: heroDefense(config, hero.level) + (equipFlat.defense || 0),
-                maxHp: heroMaxHp(config, hero.level) + (equipFlat.maxHp || 0),
+                attack: heroAttack(config, hero.level) + flatOf('attack'),
+                defense: heroDefense(config, hero.level) + flatOf('defense'),
+                maxHp: heroMaxHp(config, hero.level) + flatOf('maxHp'),
                 maxMp: 50 + (milestone.maxMp ?? 0),
                 critRate: 0.05 + (milestone.critRate ?? 0),
                 critDmg: 1.50 + (milestone.critDmg ?? 0)

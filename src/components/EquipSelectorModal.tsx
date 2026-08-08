@@ -13,6 +13,7 @@ import { ITEMS_CONFIG } from '../data/items';
 // 空背包默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，12 号收尾）
 const EMPTY_EQUIPMENT_INVENTORY: Record<string, unknown[]> = {};
 import { getEquippedItemStats } from '../state/equipment';
+import { formatModifiers } from '../state/statSystem';
 import { HEROES_CONFIG } from '../data/heroes';
 import { UI_TOKENS } from '../data/uiConstants';
 import { X, Shield, Sword, Sparkles, PackageOpen } from 'lucide-react';
@@ -120,11 +121,7 @@ export const EquipSelectorModal: React.FC<EquipSelectorModalProps> = ({
               const setCfg = EQUIPMENT_SETS[eqCfg.set];
               const stats = getEquippedItemStats(instance, heroConfig?.faction);
 
-              const statSummary = [
-                stats.attack ? `攻击 +${stats.attack}` : null,
-                stats.defense ? `防御 +${stats.defense}` : null,
-                stats.maxHp ? `生命 +${stats.maxHp}` : null
-              ].filter(Boolean).join('  ');
+              const statSummary = formatModifiers(stats);
 
               return (
                 <div

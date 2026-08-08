@@ -5,10 +5,9 @@ import { useToast } from './ToastSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { UI_TOKENS } from '../data/uiConstants';
 import { EQUIPMENT_CONFIG, EQUIPMENT_SETS, EQUIPMENT_SLOT_LABELS } from '../data/equipment';
-import type { EquipmentStats } from '../data/equipment';
 import { HEROES_CONFIG } from '../data/heroes';
 import { getEquippedItemStats } from '../state/equipment';
-import { formatModifiers } from '../state/statSystem';
+import { formatModifiers, type StatModifier } from '../state/statSystem';
 import GameIcon from './GameIcon';
 import HeroHealModal from './HeroHealModal';
 import { X } from 'lucide-react';
@@ -30,12 +29,7 @@ const STAT_LABEL: Record<string, string> = {
   energy: '魔能',
   sanity: '理智',
 };
-// 装备属性 / 获取途径标签（ticket 10 装备生态）
-const EQUIP_STAT_LABEL: Record<string, string> = {
-  attack: '攻击',
-  defense: '防御',
-  maxHp: '生命',
-};
+// 装备获取途径标签（ticket 10 装备生态）
 const EQUIP_SOURCE_LABEL: Record<string, string> = {
   workshop: '工坊合成',
   blueprint: '图纸解锁',
@@ -43,10 +37,7 @@ const EQUIP_SOURCE_LABEL: Record<string, string> = {
   boss: '区域 BOSS 掉落',
 };
 
-const fmtEquipStats = (s: EquipmentStats): string =>
-  Object.entries(s)
-    .map(([k, v]) => `${EQUIP_STAT_LABEL[k] ?? k} +${v}`)
-    .join(' ｜ ') || '—';
+const fmtEquipStats = (mods: StatModifier[]): string => formatModifiers(mods);
 
 // 物品详情弹窗（ADR-0016）：固定尺寸（复用 UI_TOKENS.modalContainerStandard），
 // 顶部统一展示图标/名称/持有数量/介绍（装备类附属性信息），底部使用区按类型：

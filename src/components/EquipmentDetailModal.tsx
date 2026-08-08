@@ -14,8 +14,7 @@ import {
 import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
 import { ITEMS_CONFIG } from '../data/items';
 import { getEquippedItemStats, getEquippedStatParts, getSetEnhanceProgress } from '../state/equipment';
-import type { EquipmentStats } from '../data/equipment';
-import { formatModifiers } from '../state/statSystem';
+import { formatModifiers, type StatKey } from '../state/statSystem';
 import EquipSelectorModal from './EquipSelectorModal';
 import { UI_TOKENS } from '../data/uiConstants';
 import GameIcon from './GameIcon';
@@ -95,9 +94,9 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
   // 装备总战力/分值（ATK + DEF*2 + HP/5）
   const gearScore = Math.round(
-    (statsWithFaction.attack || 0) * 10 +
-    (statsWithFaction.defense || 0) * 15 +
-    (statsWithFaction.maxHp || 0) * 2
+    (statsWithFaction.find(m => m.stat === 'attack')?.value ?? 0) * 10 +
+    (statsWithFaction.find(m => m.stat === 'defense')?.value ?? 0) * 15 +
+    (statsWithFaction.find(m => m.stat === 'maxHp')?.value ?? 0) * 2
   );
 
   // 1. 【卸下】动作
@@ -143,7 +142,7 @@ export const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   const renderStatRow = (
     label: string,
     IconComp: React.ComponentType<{ className?: string }>,
-    stat: keyof EquipmentStats,
+    stat: StatKey,
     colorClass: string = 'text-amber-400'
   ) => {
     const { base, enhance } = getEquippedStatParts(item, stat, heroConfig?.faction);

@@ -236,23 +236,27 @@ describe('神话锻造（+30 装备）', () => {
 });
 
 describe('属性与套装特效计算', () => {
-  it('单件属性 = 基础 + 强化成长；神话整体 ×1.5', () => {
+  it('单件属性 = 基础 + 强化成长；神话整体 ×1.5（flat 修饰符形态）', () => {
     const base: EquippedItem = { itemId: 'ember_weapon', enhance: 0, mythic: false };
-    expect(getEquippedItemStats(base)).toEqual({ attack: 16 });
+    expect(getEquippedItemStats(base)).toEqual([{ stat: 'attack', kind: 'flat', value: 16 }]);
     const plus5: EquippedItem = { itemId: 'ember_weapon', enhance: 5, mythic: false };
-    expect(getEquippedItemStats(plus5)).toEqual({ attack: 23.5 }); // 16 + 1.5*5
+    expect(getEquippedItemStats(plus5)).toEqual([{ stat: 'attack', kind: 'flat', value: 23.5 }]); // 16 + 1.5*5
     const mythic: EquippedItem = { itemId: 'ember_weapon', enhance: 30, mythic: true };
-    expect(getEquippedItemStats(mythic)).toEqual({ attack: (16 + 1.5 * 30) * 1.5 }); // 91.5
+    expect(getEquippedItemStats(mythic)).toEqual([{ stat: 'attack', kind: 'flat', value: Math.round((16 + 1.5 * 30) * 1.5 * 10) / 10 }]); // 91.5
   });
 
-  it('三槽平值属性汇总', () => {
+  it('三槽平值属性汇总（flat 修饰符，同属性合并）', () => {
     const equip: HeroEquipment = {
       weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false },   // attack 10
       armor: { itemId: 'wasteland_armor', enhance: 0, mythic: false },     // defense 6
       trinket: { itemId: 'wasteland_trinket', enhance: 0, mythic: false }  // maxHp 20
     };
-    expect(getEquippedFlatStats(equip)).toEqual({ attack: 10, defense: 6, maxHp: 20 });
-    expect(getEquippedFlatStats(emptyEquipment())).toEqual({});
+    expect(getEquippedFlatStats(equip)).toEqual([
+      { stat: 'attack', kind: 'flat', value: 10 },
+      { stat: 'defense', kind: 'flat', value: 6 },
+      { stat: 'maxHp', kind: 'flat', value: 20 }
+    ]);
+    expect(getEquippedFlatStats(emptyEquipment())).toEqual([]);
   });
 
   it('套装进度 = 同系列三槽强化总和', () => {

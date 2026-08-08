@@ -152,11 +152,7 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   {stats && (
                     <span className="text-[8px] text-zinc-500 font-bold">
-                      {[
-                        stats.attack ? `攻击+${stats.attack}` : null,
-                        stats.defense ? `防御+${stats.defense}` : null,
-                        stats.maxHp ? `生命+${stats.maxHp}` : null
-                      ].filter(Boolean).join(' ') || '无属性'}
+                      {formatModifiers(stats) || '无属性'}
                     </span>
                   )}
                   <span className="flex-1" />
