@@ -588,7 +588,7 @@ const CombatPanel: React.FC = () => {
   const clearedZones = state.combat?.zonesCleared || [];
   // 羁绊加成（ticket 09）：当前上阵队伍命中的羁绊
   const activeBonds = getActiveBonds(state.party || []);
-  // 确认式离线挂机（ticket 08）
+  // 挂机（ticket 08 + 修复 09）：在线也持续自动战斗
   const idle = state.combat?.idle || null;
   const idleZone = idle?.zoneId ? COMBAT_ZONES[idle.zoneId] : null;
 
@@ -618,7 +618,7 @@ const CombatPanel: React.FC = () => {
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
     else if (outcome.failure === 'already_idling') showToast('已在其他区域挂机中，请先停止当前挂机。', 'warning');
     else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
-    else showToast('挂机已开启：离线期间将自动战斗，重连时结算掉落与经验。', 'success');
+    else showToast('挂机已开启：将自动持续战斗，体力耗尽自动停止。', 'success');
   };
 
   const handleStopIdle = () => {
@@ -668,7 +668,7 @@ const CombatPanel: React.FC = () => {
         <span className="text-[8px] text-zinc-600 font-bold">每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点，战斗消耗后随时间自动回满。</span>
       </div>
 
-      {/* 确认式离线挂机状态（ticket 08）：开启后离线期间战斗才推进 */}
+      {/* 挂机状态（ticket 08 + 修复 09）：开启后在线/离线均持续推进战斗 */}
       {idleZone && (
         <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
           <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
@@ -678,7 +678,7 @@ const CombatPanel: React.FC = () => {
                 自 {new Date(idle.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 起
               </span>
             )}
-            <span className="text-[8px] font-bold text-amber-500/80">离线期间自动战斗，重连时结算掉落与经验；体力耗尽自动停止。</span>
+            <span className="text-[8px] font-bold text-amber-500/80">在线自动持续战斗；体力不足时等待恢复，耗尽后自动停止。</span>
           </span>
           <button
             onClick={handleStopIdle}
@@ -770,10 +770,10 @@ const CombatPanel: React.FC = () => {
           const prevZone = zoneIdx > 0 ? ALL_COMBAT_ZONES[zoneIdx - 1] : null;
           const insufficient = !unlocked || stamina < zone.staminaCost || party.length === 0 || anyWounded;
           const bossReady = unlocked && party.length > 0 && !anyWounded && stamina >= zone.boss.staminaCost;
-          // 确认式离线挂机（ticket 08）：单区域挂机开关
+          // 挂机（ticket 08 + 修复 09）：在线也持续自动战斗；仅已通关区域可挂机（线性递进刷材料）
           const idleActiveHere = idle?.zoneId === zone.id;
           const idlingElsewhere = !!idle?.zoneId && idle.zoneId !== zone.id;
-          const idleDisabled = !unlocked || party.length === 0 || anyWounded || stamina < zone.staminaCost || idlingElsewhere;
+          const idleDisabled = !cleared || party.length === 0 || anyWounded || stamina < zone.staminaCost || idlingElsewhere;
           return (
             <div
               key={zone.id}

@@ -148,6 +148,7 @@ export interface CombatSettlement {
 export interface CombatIdleState {
   zoneId: string | null;       // 正在挂机的区域（null = 未挂机）
   startTime: number | null;    // 开始挂机时间戳（UI 展示用）
+  accumulatedSeconds?: number; // 已累计的战斗秒数（在线逐秒累计，够一场 battleDurationSeconds 结算一场；离线结算后未用满一战的秒数保留）
 }
 
 // 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）

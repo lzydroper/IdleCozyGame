@@ -693,8 +693,9 @@ export interface IdleStartOutcome {
 }
 
 /**
- * 开始挂机：校验区域/队伍/体力后开启挂机开关（仅记录意图，不立即战斗）。
- * 开启后离线期间（lastTick 之后）战斗才推进；未开启时离线不产生任何战斗结算。
+ * 开始挂机：校验区域已通关/队伍/体力后开启挂机开关（仅记录意图，不立即战斗）。
+ * 开启后在线逐秒累计战斗时间，够一场结算一场；离线期间（lastTick 之后）也持续推进。
+ * 仅允许在已通关区域挂机（修复：未通关区域不可开启自动挂机）。
  */
 export const startIdleUpdate = (
   state: GameState,
@@ -705,7 +706,9 @@ export const startIdleUpdate = (
 
   const zone = COMBAT_ZONES[zoneId];
   if (!zone) return { state, result: { ok: false, failure: 'unknown_zone' } };
-  if (!isZoneUnlocked(state, zoneId)) return { state, result: { ok: false, failure: 'locked' } };
+  // 挂机必须已通关该区域（线性递进：通关后刷材料）
+  const clearedZones = state.combat?.zonesCleared || [];
+  if (!clearedZones.includes(zoneId)) return { state, result: { ok: false, failure: 'locked' } };
 
   const party = (state.party || []).filter(id => isKnownHero(state, id));
   if (party.length === 0) return { state, result: { ok: false, failure: 'no_party' } };
@@ -715,7 +718,7 @@ export const startIdleUpdate = (
   return {
     state: {
       ...state,
-      combat: { ...state.combat, idle: { zoneId, startTime: now } }
+      combat: { ...state.combat, idle: { zoneId, startTime: now, accumulatedSeconds: 0 } }
     },
     result: { ok: true }
   };
@@ -729,7 +732,7 @@ export const stopIdleUpdate = (state: GameState): UpdateResult<boolean> => {
   return {
     state: {
       ...state,
-      combat: { ...state.combat, idle: { zoneId: null, startTime: null } }
+      combat: { ...state.combat, idle: { zoneId: null, startTime: null, accumulatedSeconds: 0 } }
     },
     result: true
   };
@@ -755,15 +758,15 @@ const emptyIdleOutcome = (): IdleSettlementOutcome => ({
 });
 
 /**
- * 离线挂机战斗结算（ticket 08）：仅在挂机开启的时段生效。
- * 战斗场数 = min(离线时长, maxIdleSettlementSeconds) / battleDurationSeconds，且受体力上限约束；
- * 胜利 → 掉落 + 灵魂残响 + 经验入账（战后修整满血）；战败 → 全员重伤并自动停止；
- * 体力耗尽 → 自动停止；未自动停止时挂机开关保留（下个离线时段继续）。
+ * 挂机战斗结算（ticket 08 + 修复 09）：在线逐秒累计（accumulatedSeconds），够一场 battleDurationSeconds 结算一场；
+ * 离线传长时段秒数一次结算多场。胜利 → 掉落 + 灵魂残响 + 经验入账（战后修整满血）并写最近一场回放（lastSettlement）；
+ * 战败 → 全员重伤并自动停止；体力耗尽 → 离线自动停止（autoStopOnEmptyStamina=true），在线保持等待体力恢复（false）。
  */
 export const settleIdleUpdate = (
   state: GameState,
   elapsedSeconds: number,
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
+  autoStopOnEmptyStamina: boolean = true
 ): UpdateResult<IdleSettlementOutcome> => {
   const idle = state.combat?.idle;
   const zoneId = idle?.zoneId;
@@ -774,28 +777,45 @@ export const settleIdleUpdate = (
   // 防御性兜底：区域未知 / 队伍为空 / 有重伤 → 无法继续挂机，自动停止且不结算
   if (!zone || party.length === 0 || party.some(id => state.heroes[id].wounded)) {
     return {
-      state: { ...state, combat: { ...state.combat, idle: { zoneId: null, startTime: null } } },
+      state: { ...state, combat: { ...state.combat, idle: { zoneId: null, startTime: null, accumulatedSeconds: 0 } } },
       result: emptyIdleOutcome()
     };
   }
 
-  const idleSeconds = Math.min(elapsedSeconds, COMBAT_CONFIG.maxIdleSettlementSeconds);
+  // 累计秒数：上次遗留 + 本次经过；封顶离线结算上限（等待期累计也被封顶，避免无限膨胀）
+  const totalSeconds = (idle.accumulatedSeconds || 0) + elapsedSeconds;
+  const cappedSeconds = Math.min(totalSeconds, COMBAT_CONFIG.maxIdleSettlementSeconds);
   const staminaBattles = Math.floor((state.stamina || 0) / zone.staminaCost);
-  // 体力已不足一场（挂机开启后在线消耗致体力见底）→ 视为体力耗尽，自动停止且不结算
+  // 体力已不足一场 → 离线视为体力耗尽自动停止；在线保持挂机等待（体力恢复后继续，累计秒数保留）
   if (staminaBattles === 0) {
+    if (!autoStopOnEmptyStamina) {
+      return {
+        state: {
+          ...state,
+          combat: { ...state.combat, idle: { ...idle, accumulatedSeconds: cappedSeconds } }
+        },
+        result: { ...emptyIdleOutcome(), battlesFought: 0 }
+      };
+    }
     return {
-      state: { ...state, combat: { ...state.combat, idle: { zoneId: null, startTime: null } } },
+      state: { ...state, combat: { ...state.combat, idle: { zoneId: null, startTime: null, accumulatedSeconds: 0 } } },
       result: { ...emptyIdleOutcome(), autoStopped: true, stopReason: 'stamina' as const }
     };
   }
   const battleCount = Math.min(
-    Math.floor(idleSeconds / COMBAT_CONFIG.battleDurationSeconds),
+    Math.floor(cappedSeconds / COMBAT_CONFIG.battleDurationSeconds),
     staminaBattles
+  );
+  // 未用满一战的秒数保留到下次（在线逐秒累积的关键）
+  const leftoverSeconds = Math.min(
+    totalSeconds - battleCount * COMBAT_CONFIG.battleDurationSeconds,
+    COMBAT_CONFIG.maxIdleSettlementSeconds
   );
 
   const outcome = emptyIdleOutcome();
   const drops = outcome.drops;
   let next = state;
+  let lastSettlement: CombatSettlement | null = null;
 
   for (let i = 0; i < battleCount; i++) {
     const battle = simulateBattle(
@@ -821,6 +841,15 @@ export const settleIdleUpdate = (
     outcome.battlesFought++;
     outcome.staminaConsumed += zone.staminaCost;
 
+    // 写最近一场回放（挂机战斗后回放区可查看；与手动战斗共用 lastSettlement）
+    lastSettlement = {
+      battle,
+      drops: settled.drops,
+      soulEchoes: settled.soulEchoesGained,
+      expPerHero: battle.victory ? zone.expReward : 0,
+      woundedHeroIds: settled.woundedHeroIds
+    };
+
     if (battle.victory) {
       outcome.victories++;
       Object.entries(settled.drops).forEach(([itemId, qty]) => {
@@ -836,8 +865,8 @@ export const settleIdleUpdate = (
       outcome.draws++;
     }
 
-    // 体力耗尽（不足一场）→ 自动停止
-    if (settled.nextStamina < zone.staminaCost) {
+    // 体力耗尽（不足一场）→ 离线自动停止；在线由调用方传 autoStopOnEmptyStamina=false 保持等待
+    if (settled.nextStamina < zone.staminaCost && autoStopOnEmptyStamina) {
       outcome.autoStopped = true;
       outcome.stopReason = 'stamina';
       break;
@@ -851,7 +880,10 @@ export const settleIdleUpdate = (
       ...next,
       combat: {
         ...next.combat,
-        idle: idleStopped ? { zoneId: null, startTime: null } : next.combat.idle
+        lastSettlement: lastSettlement ?? next.combat.lastSettlement,
+        idle: idleStopped
+          ? { zoneId: null, startTime: null, accumulatedSeconds: 0 }
+          : { ...idle, accumulatedSeconds: leftoverSeconds }
       }
     },
     result: outcome
@@ -860,7 +892,7 @@ export const settleIdleUpdate = (
 
 // 战斗状态构造时保留挂机开关（防御旧存档/损坏数据缺 idle 字段）
 const idleOrDefault = (state: GameState): CombatIdleState =>
-  state.combat?.idle || { zoneId: null, startTime: null };
+  state.combat?.idle || { zoneId: null, startTime: null, accumulatedSeconds: 0 };
 
 // 上阵队伍管理：最多 3 人、无重复、必须已拥有且未重伤
 export const setPartyUpdate = (state: GameState, heroIds: string[]): UpdateResult<boolean> => {

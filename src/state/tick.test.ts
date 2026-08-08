@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_ZONES } from '../data/combatZones';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { applyTick } from './tick';
 import type { GameState, GreenhouseSlot } from '../types/game';
@@ -229,5 +230,66 @@ describe('applyTick 远征探索员加成（作用域化）', () => {
     // 零加成：300 × 0.8 = 240s → 触发一次拾荒，lastScavengeTime 推进一个间隔
     const boosted = applyTick(makeExpeditionState('zero', 240, now), now);
     expect(boosted.shelter.expedition.lastScavengeTime).toBe(now); // lastScavengeTime + 1×240s = now
+  });
+});
+
+// 挂机在线推进（修复 09：在线也持续自动战斗，不再只在离线重连时结算）
+describe('applyTick 挂机在线推进（修复 09）', () => {
+  const makeIdleState = (stamina = COMBAT_CONFIG.maxStamina): GameState => ({
+    ...INITIAL_STATE,
+    stamina,
+    party: ['nova', 'soldier'],
+    heroes: {
+      nova: createInitialHero('nova'),
+      soldier: createInitialHero('soldier')
+    },
+    combat: {
+      ...INITIAL_STATE.combat,
+      zonesCleared: ['wasteland_entrance'],
+      idle: { zoneId: 'wasteland_entrance', startTime: 1000, accumulatedSeconds: 0 }
+    },
+    lastTick: 1000
+  });
+
+  const tickSeconds = (initial: GameState, seconds: number): GameState => {
+    let state = initial;
+    const base = 1000;
+    for (let i = 1; i <= seconds; i++) {
+      state = applyTick(state, base + i * 1000);
+    }
+    return state;
+  };
+
+  it('在线 20 秒结算一场：写回放、扣体力、挂机保持', () => {
+    const state = tickSeconds(makeIdleState(), 20);
+    // 够一场 → 写最近一场回放（问题 2：挂机后回放区可查看）
+    expect(state.combat.lastSettlement).not.toBeNull();
+    expect(state.combat.lastSettlement?.battle.victory).toBe(true);
+    // 体力被消耗（20 秒回复 +6，扣 10 → 低于上限）
+    expect(state.stamina).toBeLessThan(COMBAT_CONFIG.maxStamina);
+    // 挂机保持开启（问题 1：在线持续推进）
+    expect(state.combat.idle.zoneId).toBe('wasteland_entrance');
+    // 秒数清零（一场 20 秒已结算）
+    expect(state.combat.idle.accumulatedSeconds).toBe(0);
+  });
+
+  it('在线不足一场的秒数继续累计（19 秒不结算）', () => {
+    const state = tickSeconds(makeIdleState(), 19);
+    expect(state.combat.lastSettlement).toBeNull();
+    expect(state.combat.idle.accumulatedSeconds).toBe(19);
+  });
+
+  it('在线结算一场后写入挂机战斗日志（修复：挂机日志不丢失）', () => {
+    const state = tickSeconds(makeIdleState(), 20);
+    // 挂机日志出现在最新日志中
+    expect(state.logs.some(l => l.text.includes('挂机战斗：在【') && l.text.includes('1 场'))).toBe(true);
+  });
+
+  it('体力不足一场时挂机保持等待，不自动停止（问题 4）', () => {
+    const state = tickSeconds(makeIdleState(COMBAT_ZONES.wasteland_entrance.staminaCost - 1), 60);
+    // 挂机未被自动停止（体力恢复期间持续等待/战斗）
+    expect(state.combat.idle.zoneId).toBe('wasteland_entrance');
+    // 体力随时间恢复（问题 4：挂机期间体力正常回复）
+    expect(state.stamina).toBeGreaterThan(COMBAT_ZONES.wasteland_entrance.staminaCost - 1);
   });
 });

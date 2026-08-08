@@ -15,6 +15,13 @@ const armed = (zoneId: string, startTime = 1000): Partial<GameState> => ({
   combat: { ...INITIAL_STATE.combat, idle: { zoneId, startTime } }
 });
 
+// 已通关首区的状态（修复：挂机仅允许在已通关区域开启）
+const clearedEntrance = (overrides?: Partial<GameState>): GameState =>
+  makeState({
+    combat: { ...INITIAL_STATE.combat, zonesCleared: ['wasteland_entrance'] },
+    ...overrides
+  });
+
 // 可编程 RNG：按序列循环返回（每场战斗的掉落判定/数量/残响调用顺序一致）
 const sequenceRng = (values: number[]): (() => number) => {
   let i = 0;
@@ -32,21 +39,25 @@ const WINNING_STATE = makeState({
 });
 
 describe('startIdleUpdate / stopIdleUpdate (挂机开关)', () => {
-  it('arms idle in an unlocked zone with a startTime', () => {
-    const { state: next, result } = startIdleUpdate(makeState(), 'wasteland_entrance', 5000);
+  it('arms idle in a cleared zone with a startTime and accumulatedSeconds', () => {
+    const { state: next, result } = startIdleUpdate(clearedEntrance(), 'wasteland_entrance', 5000);
     expect(result.ok).toBe(true);
     expect(result.failure).toBeUndefined();
-    expect(next.combat.idle).toEqual({ zoneId: 'wasteland_entrance', startTime: 5000 });
+    expect(next.combat.idle).toEqual({ zoneId: 'wasteland_entrance', startTime: 5000, accumulatedSeconds: 0 });
     // 仅开启开关：不立即战斗、不消耗体力
     expect(next.stamina).toBe(INITIAL_STATE.stamina);
     expect(next.combat.lastSettlement).toBeNull();
   });
 
-  it('rejects unknown zone / locked zone without state change', () => {
+  it('rejects unknown zone / not-cleared zone without state change', () => {
     const state = makeState();
     const unknown = startIdleUpdate(state, 'unknown_zone');
     expect(unknown.result.failure).toBe('unknown_zone');
     expect(unknown.state).toBe(state);
+
+    // 未通关（含首区）→ locked（修复：挂机必须已通关）
+    const notClearedFirst = startIdleUpdate(makeState(), 'wasteland_entrance');
+    expect(notClearedFirst.result.failure).toBe('locked');
 
     const lockedState = makeState();
     const locked = startIdleUpdate(lockedState, COMBAT_ZONE_LIST[1].id);
@@ -55,15 +66,15 @@ describe('startIdleUpdate / stopIdleUpdate (挂机开关)', () => {
   });
 
   it('rejects empty party / wounded hero / insufficient stamina', () => {
-    const noParty = startIdleUpdate(makeState({ party: [] }), 'wasteland_entrance');
+    const noParty = startIdleUpdate(clearedEntrance({ party: [] }), 'wasteland_entrance');
     expect(noParty.result.failure).toBe('no_party');
 
-    const wounded = startIdleUpdate(makeState({
+    const wounded = startIdleUpdate(clearedEntrance({
       heroes: { nova: { ...createInitialHero('nova'), wounded: true } }
     }), 'wasteland_entrance');
     expect(wounded.result.failure).toBe('wounded');
 
-    const noStamina = startIdleUpdate(makeState({
+    const noStamina = startIdleUpdate(clearedEntrance({
       stamina: COMBAT_ZONES.wasteland_entrance.staminaCost - 1
     }), 'wasteland_entrance');
     expect(noStamina.result.failure).toBe('no_stamina');
@@ -106,6 +117,57 @@ describe('settleIdleUpdate (离线挂机结算)', () => {
     expect(result.battlesFought).toBe(0);
     expect(next).toBe(state);
     expect(next.combat.idle.zoneId).toBe('wasteland_entrance'); // 挂机开关保留
+  });
+
+  it('accumulates battle seconds across online ticks (修复 09：在线逐秒累计，够一场结算一场)', () => {
+    const state = makeState({
+      ...WINNING_STATE,
+      combat: {
+        ...INITIAL_STATE.combat,
+        zonesCleared: ['wasteland_entrance'],
+        idle: { zoneId: 'wasteland_entrance', startTime: 1000, accumulatedSeconds: 0 }
+      },
+      stamina: 100
+    });
+    // 15 秒：不够一场（battleDurationSeconds=20），不结算，秒数保留
+    const r1 = settleIdleUpdate(state, 15, sequenceRng([0.1, 0.99, 0.1, 0.99]));
+    expect(r1.result.battlesFought).toBe(0);
+    expect(r1.state.combat.idle.accumulatedSeconds).toBe(15);
+    expect(r1.state.combat.lastSettlement).toBeNull();
+    // 再 5 秒：累计 20 → 结算 1 场，剩余 0
+    const r2 = settleIdleUpdate(r1.state, 5, sequenceRng([0.1, 0.99, 0.1, 0.99]));
+    expect(r2.result.battlesFought).toBe(1);
+    expect(r2.result.victories).toBe(1);
+    expect(r2.state.combat.idle.accumulatedSeconds).toBe(0);
+    // 写最近一场回放（挂机战斗后回放区可查看）
+    expect(r2.state.combat.lastSettlement).not.toBeNull();
+    expect(r2.state.combat.lastSettlement?.battle.victory).toBe(true);
+    // 体力已消耗（含每场 10 点），但挂机保持
+    expect(r2.state.stamina).toBeLessThan(100);
+    expect(r2.state.combat.idle.zoneId).toBe('wasteland_entrance');
+  });
+
+  it('keeps idling and waits for stamina recovery online (autoStopOnEmptyStamina=false)', () => {
+    const state = makeState({
+      ...WINNING_STATE,
+      combat: {
+        ...INITIAL_STATE.combat,
+        zonesCleared: ['wasteland_entrance'],
+        idle: { zoneId: 'wasteland_entrance', startTime: 1000, accumulatedSeconds: 0 }
+      },
+      stamina: COMBAT_ZONES.wasteland_entrance.staminaCost - 1 // 不足一场
+    });
+    // 在线（false）：体力不足 → 不自动停止，挂机保持，秒数继续累计
+    const r = settleIdleUpdate(state, 30, sequenceRng([0.1]), false);
+    expect(r.result.battlesFought).toBe(0);
+    expect(r.result.autoStopped).toBe(false);
+    expect(r.state.combat.idle.zoneId).toBe('wasteland_entrance');
+    expect(r.state.combat.idle.accumulatedSeconds).toBe(30);
+    // 离线默认（true）：体力不足 → 自动停止
+    const rOffline = settleIdleUpdate(state, 30, sequenceRng([0.1]));
+    expect(rOffline.result.autoStopped).toBe(true);
+    expect(rOffline.result.stopReason).toBe('stamina');
+    expect(rOffline.state.combat.idle.zoneId).toBeNull();
   });
 
   it('fights battles limited by stamina, accumulates drops/exp, auto-stops on exhaustion', () => {

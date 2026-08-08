@@ -66,11 +66,27 @@ export const describeDutyBonuses = (dutyMeta: HeroDutyMeta | null | undefined): 
   if (!dutyMeta || !dutyMeta.bonuses || dutyMeta.bonuses.length === 0) return '';
   return dutyMeta.bonuses
     .map(b => {
-      const scope =
-        b.scope.kind === 'all' ? '' :
-        b.scope.kind === 'facility' ? (b.scope.facilityType === 'smelter' ? '熔炉' : '组装台') :
-        b.scope.kind === 'greenhouse' ? (b.scope.cropIds && b.scope.cropIds.length > 0 ? `温室·${b.scope.cropIds.map(id => CROPS_CONFIG[id]?.name || id).join('、')}` : '温室') :
-        '远征';
+      let scope = '';
+      switch (b.scope.kind) {
+        case 'all':
+          scope = '全体';
+          break;
+        case 'facility':
+          scope = b.scope.facilityType === 'smelter' ? '熔炉' : '组装台';
+          break;
+        case 'greenhouse':
+          scope = b.scope.cropIds && b.scope.cropIds.length > 0
+            ? `温室·${b.scope.cropIds.map(id => CROPS_CONFIG[id]?.name || id).join('、')}`
+            : '温室全体';
+          break;
+        case 'expedition':
+          scope = '远征';
+          break;
+        default:
+          scope = '远征';
+          break;
+      }
+
       const parts: string[] = [];
       if (b.speedMultiplier) parts.push(`${scope}生产速度 +${Math.round(b.speedMultiplier * 100)}%`);
       if (b.yieldMultiplier) parts.push(`${scope}额外产出 +${Math.round(b.yieldMultiplier * 100)}%`);

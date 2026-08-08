@@ -445,7 +445,12 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/已通关/)).toBeDefined();
   });
 
-  it('arms offline idle from the combat panel and stops it preserving stamina (确认式离线挂机)', () => {
+  it('arms idle from the combat panel in a cleared zone and stops it preserving stamina (挂机需已通关)', () => {
+    // 修复：挂机仅限已通关区域
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.combat.zonesCleared = ['wasteland_entrance'];
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
     render(
       <GameProvider>
         <ToastProvider>
@@ -456,10 +461,11 @@ describe('WildernessTab Component', () => {
 
     fireEvent.click(screen.getByText(/战斗挂机/));
 
-    // 区域卡上的挂机开关（首区可挂机，其余未解锁禁用）
+    // 首区已通关可挂机；其余区域未通关 → 挂机按钮禁用
     const idleButtons = screen.getAllByText(/开始挂机/);
     expect(idleButtons.length).toBe(COMBAT_ZONE_LIST.length);
     expect(idleButtons[0].hasAttribute('disabled')).toBe(false);
+    expect(idleButtons[1].hasAttribute('disabled')).toBe(true); // 未通关不可挂机（修复）
     fireEvent.click(idleButtons[0]);
 
     // 挂机状态横幅出现：不立即战斗、不消耗体力
@@ -478,8 +484,9 @@ describe('WildernessTab Component', () => {
   });
 
   it('blocks idle arming when stamina is insufficient', () => {
-    const save = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     save.stamina = 0;
+    save.combat.zonesCleared = ['wasteland_entrance']; // 已通关，纯体力不足场景
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
     render(
