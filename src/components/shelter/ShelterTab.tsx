@@ -188,8 +188,7 @@ function FacilityUpgradeSection({ type }: { type: FacilityType }) {
       <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5 pt-1">
         <Cpu className="w-3.5 h-3.5 text-cyan-400" />
         {upgrade.name}
-        {units.length > 1 && <span className="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">×{units.length} 台并行</span>}
-        <span className="text-[9px] text-zinc-600 font-normal">（任务管理见「产线」页签）</span>
+        {units.length > 1 && <span className="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">×{units.length} 台</span>}
       </h3>
 
       {units.map((_, unitIndex) => (
@@ -240,7 +239,7 @@ function ExpansionCard({ type }: { type: FacilityType }) {
               <span className="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">×{units.length} 台</span>
             </div>
             <div className="text-[9px] text-zinc-500">
-              当前规模：<span className="text-zinc-200 font-bold">{units.length} 台并行运转</span>
+              当前规模：<span className="text-zinc-200 font-bold">{units.length} 台</span>
             </div>
           </div>
         </div>
