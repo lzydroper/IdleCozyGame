@@ -8,6 +8,7 @@ import { UI_TOKENS } from '../../data/uiConstants';
 import GameIcon from '../GameIcon';
 import { getActualDuration, resolveDutyBonus, getMaxAffordableBatches, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeDisplayName } from '../../state/workshop';
+import { formatDuration } from '../../utils/gameUtils';
 import type { FacilityType } from '../../data/facilities';
 import { X, Zap, Hammer } from 'lucide-react';
 
@@ -41,6 +42,7 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
 
   const maxBatch = recipe ? getMaxAffordableBatches(recipe.id, state.inventory, costReduction) : 0;
   const safeCount = Math.max(0, Math.min(count, maxBatch));
+  const cycleTime = recipe ? getActualDuration(recipe.id, level, speedMult) : 0;
 
   // 每批折扣消耗（与开始任务扣料同价）与加成产出
   const perBatchCost = recipe ? getBatchDiscountedCost({ cost: recipe.cost }, costReduction) : {};
@@ -144,6 +146,11 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
           <div className="flex items-center justify-between">
             <span className="text-xs text-zinc-400 font-bold">生产批次</span>
             <span className="text-xs font-black text-cyan-400">{safeCount} / {maxBatch}</span>
+          </div>
+          {/* 每批耗时与预期总耗时（issue 08 bugfix：选生产时显示预期时间） */}
+          <div className="flex items-center justify-between text-[10px] text-zinc-400 px-0.5">
+            <span>每批耗时 {formatDuration(cycleTime)}</span>
+            <span>预计总耗时 {safeCount > 0 ? formatDuration(cycleTime * safeCount) : '—'}</span>
           </div>
           <input
             data-testid="start-task-slider"

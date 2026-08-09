@@ -31,19 +31,18 @@ export const FACILITIES_CONFIG = {
     id: 'smelter',
     name: '魔导冶炼炉',
     shortName: '熔炉',
-    description: '自动熔炼金属（队列容量 = 等级）',
+    description: '自动熔炼金属',
     icon: Flame,
     maxLevel: 5,
     effectLabel: '效率',
     // 长节奏耗时：30m → 24h
     levels: [
-      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1', duration: 0 },
-      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2', duration: 1800 },
-      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%，队列 3', duration: 7200 },
-      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%，队列 4', duration: 28800 },
-      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%，队列 5', duration: 86400 }
-    ] as UpgradeLevel[],
-    // 扩建（ticket 13）：同一类型设施可扩建多台并行运转；第 2 台 1h / 第 3 台 6h
+      { level: 1, cost: {}, effectValue: 0, effectText: '效率 100%', duration: 0 },
+      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.1, effectText: '效率 110%', duration: 1800 },
+      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.2, effectText: '效率 120%', duration: 7200 },
+      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.3, effectText: '效率 130%', duration: 28800 },
+      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.4, effectText: '效率 140%', duration: 86400 }
+    ] as UpgradeLevel[],    // 扩建（ticket 13）：同一类型设施可扩建多台并行运转；第 2 台 1h / 第 3 台 6h
     expansion: {
       maxUnits: 3,
       costs: [
@@ -60,19 +59,18 @@ export const FACILITIES_CONFIG = {
     id: 'assembler',
     name: '微型芯片组装台',
     shortName: '组装台',
-    description: '自动组装物品（队列容量 = 等级）',
+    description: '自动组装物品',
     icon: Cpu,
     maxLevel: 5,
     effectLabel: '效率',
     // 长节奏耗时：30m → 24h
     levels: [
-      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1', duration: 0 },
-      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2', duration: 1800 },
-      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%，队列 3', duration: 7200 },
-      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%，队列 4', duration: 28800 },
-      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%，队列 5', duration: 86400 }
-    ] as UpgradeLevel[],
-    expansion: {
+      { level: 1, cost: {}, effectValue: 0, effectText: '效率 100%', duration: 0 },
+      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.1, effectText: '效率 110%', duration: 1800 },
+      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.2, effectText: '效率 120%', duration: 7200 },
+      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.3, effectText: '效率 130%', duration: 28800 },
+      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.4, effectText: '效率 140%', duration: 86400 }
+    ] as UpgradeLevel[],    expansion: {
       maxUnits: 3,
       costs: [
         { scrap_metal: 40 },

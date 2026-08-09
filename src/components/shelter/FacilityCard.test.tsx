@@ -33,6 +33,8 @@ describe('FacilityCard 单任务状态摘要 UI（issue 06）', () => {
     expect(screen.getAllByText('待机 · 空闲').length).toBe(2);
     expect(screen.getAllByText('未驻守英雄').length).toBe(2);
     expect(screen.getAllByText('驻守').length).toBe(2);
+    // 初始 Lv1 效率 = 100%（bugfix：非 110%）
+    expect(screen.getAllByText('100%').length).toBe(2);
     // 队列 UI 已移除
     expect(screen.queryByText(/加入配方队列/)).toBeNull();
     expect(screen.queryByText(/执行队列（FIFO）/)).toBeNull();
@@ -102,6 +104,9 @@ describe('生产/取消弹窗（issue 08 变体 B）', () => {
 
     // 配方下拉（combobox）
     expect(screen.getByRole('combobox')).toBeDefined();
+    // 每批耗时与预计总耗时（bugfix：选生产时显示预期时间）
+    expect(screen.getByText(/每批耗时/)).toBeDefined();
+    expect(screen.getByText(/预计总耗时/)).toBeDefined();
     // 滑条上限 = floor(材料 / 每批折扣成本) = 10 废铁 / 2 = 5 批
     const slider = screen.getByTestId('start-task-slider') as HTMLInputElement;
     expect(slider.max).toBe('5');

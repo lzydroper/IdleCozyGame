@@ -9,7 +9,7 @@ import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
-// === 产线配方队列（ticket 13）：纯函数状态机 ===
+// === 产线单任务批量生产（issue 06）：纯函数状态机 ===
 
 // 基建升级项：单实例（battery/generator/recycler/greenhouse_dock）+ 产线设施（按台索引）
 // 设施部分由 FACILITIES_CONFIG 推导（新增设备种类自动扩展）；单实例部分为全局升级
@@ -22,12 +22,15 @@ const getUpgradeLevels = (statType: UpgradeStatType): UpgradeLevel[] =>
 const getUpgradeName = (statType: UpgradeStatType): string | undefined =>
   isFacilityType(statType) ? FACILITIES_CONFIG[statType].name : SHELTER_UPGRADES[statType]?.name;
 
-// 单次加工实际耗时：效率随设施等级提升（每级 +10%），驻守英雄 dutyMeta 速度加成乘算叠加
-// speedMultiplier = 0 时无加成（向后兼容）
+// 单次加工实际耗时：效率随设备等级提升（累计加成 = 配置表 levels.effectValue，Lv1 = 100% x1），
+// 驻守英雄 dutyMeta 速度加成乘算叠加；speedMultiplier = 0 时无加成（向后兼容）
 export const getActualDuration = (recipeId: string, level: number, speedMultiplier = 0): number => {
   const recipe = AUTO_RECIPES[recipeId];
   if (!recipe) return 0;
-  return Math.max(1, Math.floor((recipe.duration ?? 0) / ((1 + level * 0.1) * (1 + speedMultiplier))));
+  const effBonus = recipe.facilityId
+    ? (FACILITIES_CONFIG[recipe.facilityId]?.levels.find(l => l.level === level)?.effectValue ?? 0)
+    : 0;
+  return Math.max(1, Math.floor((recipe.duration ?? 0) / ((1 + effBonus) * (1 + speedMultiplier))));
 };
 
 // 每批折扣成本（issue 06）：dutyMeta 原料减免 max(1, floor(qty * (1 - costReduction)))，最低 1
@@ -160,7 +163,7 @@ export function processFacility(
   };
 }
 
-// === 队列操作（入队/移除/启停/扩建/升级） ===
+// === 单任务批量生产（issue 06）：开始任务 / 取消任务 ===
 
 const getUnits = (state: GameState, type: FacilityType): AutomationFacility[] | undefined =>
   state.shelter.facilities[type];
@@ -379,7 +382,7 @@ export const expandFacilityUpdate = (state: GameState, type: FacilityType, start
 
 // 应用一条已完成的升级/扩建（应用后移除施工条目）
 const applyPendingUpgrade = (state: GameState, key: string): { state: GameState; text: string } | null => {
-  // 扩建：新增一台同类型设施（Lv1、空队列、默认启用）
+  // 扩建：新增一台同类型设施（Lv1、待机、默认启用）
   if (key.startsWith('expand_')) {
     const type = key.slice('expand_'.length);
     if (!isFacilityType(type)) return null;

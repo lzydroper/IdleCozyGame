@@ -89,14 +89,14 @@ describe('单任务批量生产（issue 06）', () => {
       state.inventory.scrap_metal = 100;
       state = startSmelterTask(state, 'smelt_alloy', 2).state;
 
-      const r1 = processFacility(smelter(state), state.inventory, 27);
+      const r1 = processFacility(smelter(state), state.inventory, 30);
       expect(r1.facility.completedCount).toBe(1);
       expect(r1.facility.recipeId).toBe('smelt_alloy');
-      expect(r1.facility.timeLeft).toBe(27); // 第二批开始
+      expect(r1.facility.timeLeft).toBe(30); // 第二批开始（Lv1 每批 30s）
       expect(r1.produced.alloy_plate).toBe(1);
       expect(state.inventory.alloy_plate).toBe(1);
 
-      const r2 = processFacility(r1.facility, state.inventory, 27);
+      const r2 = processFacility(r1.facility, state.inventory, 30);
       expect(r2.facility.recipeId).toBeNull(); // 达目标回待机
       expect(r2.facility.targetCount).toBe(0);
       expect(r2.facility.completedCount).toBe(0);
@@ -111,11 +111,11 @@ describe('单任务批量生产（issue 06）', () => {
 
       const r1 = processFacility(smelter(state), state.inventory, 10);
       expect(r1.facility.completedCount).toBe(0);
-      expect(r1.facility.timeLeft).toBe(17); // 27 - 10
-      expect(r1.facility.currentProgress).toBe(Math.round((10 / 27) * 100));
+      expect(r1.facility.timeLeft).toBe(20); // 30 - 10
+      expect(r1.facility.currentProgress).toBe(Math.round((10 / 30) * 100));
       expect(state.inventory.alloy_plate).toBeUndefined();
 
-      const r2 = processFacility(r1.facility, state.inventory, 17);
+      const r2 = processFacility(r1.facility, state.inventory, 20);
       expect(r2.facility.completedCount).toBe(1);
       expect(state.inventory.alloy_plate).toBe(1);
     });
@@ -149,11 +149,11 @@ describe('单任务批量生产（issue 06）', () => {
       let state = baseState();
       state.inventory.scrap_metal = 100;
       state = startSmelterTask(state, 'smelt_alloy', 2).state;
-      // +25% 速度：30 / 1.1 / 1.25 = 21.8 → floor 21
+      // +25% 速度：Lv1 每批 30 / (1.0 × 1.25) = 24s；首批 30s 完成后第二批 timeLeft=24
       const dutyResolved = { ...EMPTY_DUTY_BONUS, speedMultiplier: 0.25 };
-      const r = processFacility(smelter(state), state.inventory, 27, dutyResolved);
+      const r = processFacility(smelter(state), state.inventory, 30, dutyResolved);
       expect(r.facility.completedCount).toBe(1);
-      expect(r.facility.timeLeft).toBe(21);
+      expect(r.facility.timeLeft).toBe(24);
     });
 
     it('产量加成 floor 入账：floor(reward × (1 + yield))', () => {
@@ -162,7 +162,7 @@ describe('单任务批量生产（issue 06）', () => {
       state = startSmelterTask(state, 'smelt_alloy', 2).state;
       // smelt_alloy reward = 1；+100% 产量 → floor(1 × 2) = 2
       const dutyResolved = { ...EMPTY_DUTY_BONUS, yieldMultiplier: 1.0 };
-      processFacility(smelter(state), state.inventory, 27, dutyResolved);
+      processFacility(smelter(state), state.inventory, 30, dutyResolved);
       expect(state.inventory.alloy_plate).toBe(2);
     });
   });
@@ -174,7 +174,7 @@ describe('单任务批量生产（issue 06）', () => {
       expect(state.inventory.scrap_metal).toBe(94);
 
       // 完成 1 批后取消：剩余 2 批 × 2 = 退 4
-      const afterOne = processFacility(smelter(state), state.inventory, 27);
+      const afterOne = processFacility(smelter(state), state.inventory, 30);
       state = { ...state, shelter: { ...state.shelter, facilities: { ...state.shelter.facilities, smelter: [afterOne.facility] } } };
       const r = cancelTaskUpdate(state, 'smelter', 0);
 
@@ -244,8 +244,8 @@ describe('单任务批量生产（issue 06）', () => {
       state = startTaskUpdate(state, 'smelter', 1, 'smelt_alloy', 2).state;
       expect(state.inventory.scrap_metal).toBe(100 - 40 - 8); // 扩建 40 + 各扣 4
 
-      const result0 = processFacility(state.shelter.facilities.smelter[0], state.inventory, 27);
-      const result1 = processFacility(state.shelter.facilities.smelter[1], state.inventory, 27);
+      const result0 = processFacility(state.shelter.facilities.smelter[0], state.inventory, 30);
+      const result1 = processFacility(state.shelter.facilities.smelter[1], state.inventory, 30);
       expect(result0.facility.completedCount).toBe(1);
       expect(result1.facility.completedCount).toBe(1);
       expect(state.inventory.alloy_plate).toBe(2);
@@ -439,7 +439,7 @@ describe('基建升级耗时（时间戳驱动）', () => {
   it('离线：升级施工先应用再结算，顺序影响任务批次耗时（issue 07）', () => {
     const state = baseState();
     state.inventory = { scrap_metal: 1000 };
-    // 任务：Lv1 smelt_alloy × 2，首批剩 25s（timeLeft 绝对推进，与等级无关）
+    // 任务：Lv1 smelt_alloy × 2，首批剩 22s（timeLeft 绝对推进，与等级无关）
     state.shelter.facilities.smelter[0] = {
       id: 'smelter',
       name: '魔导冶炼炉',
@@ -447,7 +447,7 @@ describe('基建升级耗时（时间戳驱动）', () => {
       recipeId: 'smelt_alloy',
       targetCount: 2,
       completedCount: 0,
-      timeLeft: 25,
+      timeLeft: 22,
       currentProgress: 0
     };
     const now = 3600 * 1000 + 51 * 1000;
@@ -459,29 +459,29 @@ describe('基建升级耗时（时间戳驱动）', () => {
     const fac = updatedState.shelter.facilities.smelter[0];
     expect(fac.level).toBe(2); // 升级先应用（Lv1→2）
     expect(updatedState.shelter.upgrades['smelter_0']).toBeUndefined();
-    // 顺序锁定：先应用升级（Lv2 每批 30/1.2=25s）→ 首批 25s + 第二批 25s = 50s ≤ 51s 完成回待机；
-    // 若升级后应用（Lv1 每批 30/1.1=27s）→ 25 + 27 = 52s > 51s 未完成（仅产 1 批）——两种顺序结果不同
+    // 顺序锁定：先应用升级（Lv2 每批 30/1.1=27s）→ 首批 22s + 第二批 27s = 49s ≤ 51s 完成回待机；
+    // 若升级后应用（Lv1 每批 30/1.0=30s）→ 22 + 30 = 52s > 51s 未完成（仅产 1 批）——两种顺序结果不同
     expect(fac.recipeId).toBeNull();
     expect(fac.timeLeft).toBe(0);
     expect(updatedState.inventory.alloy_plate).toBe(2); // 离线推进完成 2 批
   });
 });
 describe('加工耗时', () => {
-  it('耗时随等级缩短（每级 +10%）', () => {
-    expect(getActualDuration('smelt_alloy', 1)).toBe(27); // 30 / 1.1
-    expect(getActualDuration('smelt_alloy', 5)).toBe(20); // 30 / 1.5
+  it('耗时随等级缩短（Lv1 = 100% 基准，每级 +10%）', () => {
+    expect(getActualDuration('smelt_alloy', 1)).toBe(30); // 30 / 1.0（Lv1 初始效率）
+    expect(getActualDuration('smelt_alloy', 5)).toBe(21); // 30 / 1.4
   });
 
   it('getActualDuration 扩展第三参：speedMultiplier=0 时向后兼容', () => {
-    expect(getActualDuration('smelt_alloy', 1, 0)).toBe(27); // 30 / 1.1
-    expect(getActualDuration('smelt_alloy', 1)).toBe(27);    // 不传第三参，默认 0
+    expect(getActualDuration('smelt_alloy', 1, 0)).toBe(30); // 30 / 1.0
+    expect(getActualDuration('smelt_alloy', 1)).toBe(30);    // 不传第三参，默认 0
   });
 
   it('速度加成乘算叠加：level + speedMultiplier', () => {
-    // 30 / ((1 + 1*0.1) * (1 + 0.25)) = 30 / 1.375 = 21.8 -> floor 21
-    expect(getActualDuration('smelt_alloy', 1, 0.25)).toBe(21);
-    // 30 / ((1 + 5*0.1) * (1 + 0.25)) = 30 / 1.875 = 16
-    expect(getActualDuration('smelt_alloy', 5, 0.25)).toBe(16);
+    // 30 / ((1 + 0) × (1 + 0.25)) = 30 / 1.25 = 24
+    expect(getActualDuration('smelt_alloy', 1, 0.25)).toBe(24);
+    // 30 / ((1 + 0.4) × (1 + 0.25)) = 30 / 1.75 = 17.1 -> floor 17
+    expect(getActualDuration('smelt_alloy', 5, 0.25)).toBe(17);
   });
 });
 

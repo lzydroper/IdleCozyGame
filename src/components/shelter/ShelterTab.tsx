@@ -74,6 +74,10 @@ const getUpgradeCardConfig = (
 ): { id: string; name: string; maxLevel: number; effectLabel: string; levels: UpgradeLevel[] } | undefined =>
   isFacilityType(statType) ? FACILITIES_CONFIG[statType] : SHELTER_UPGRADES[statType];
 
+// 设施当前等级效率加成（读设备配置表累计 effectValue；Lv1 = 0 → 100%）
+const getFacilityEffBonus = (statType: UpgradeStatType, level: number): number =>
+  isFacilityType(statType) ? (FACILITIES_CONFIG[statType]?.levels.find(l => l.level === level)?.effectValue ?? 0) : 0;
+
 // ─────────────────────────────────────────────
 // 升级卡：当前等级/效果/下一级消耗 + 升级耗时 + 升级中进度条（时间戳驱动）
 // ─────────────────────────────────────────────
@@ -116,7 +120,7 @@ function UpgradeCard({ statType, unitIndex = 0 }: { statType: UpgradeStatType; u
               {upgrade.name}{unitLabel}
               <span className="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">Lv.{currentLevel}</span>
               {isFacility && (
-                <span className="text-[9px] text-zinc-500">效率 {Math.floor((1 + currentLevel * 0.1) * 100)}% · 队列 {Math.max(1, currentLevel)}</span>
+                <span className="text-[9px] text-zinc-500">效率 {Math.floor((1 + getFacilityEffBonus(statType, currentLevel)) * 100)}%</span>
               )}
             </div>
             <div className="text-[9px] text-zinc-500">
@@ -184,7 +188,7 @@ function FacilityUpgradeSection({ type }: { type: FacilityType }) {
         <Cpu className="w-3.5 h-3.5 text-cyan-400" />
         {upgrade.name}
         {units.length > 1 && <span className="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">×{units.length} 台并行</span>}
-        <span className="text-[9px] text-zinc-600 font-normal">（队列管理见「产线」页签）</span>
+        <span className="text-[9px] text-zinc-600 font-normal">（任务管理见「产线」页签）</span>
       </h3>
 
       {units.map((_, unitIndex) => (
@@ -358,7 +362,7 @@ const ShelterTab: React.FC = () => {
         <GreenhousePanel />
       )}
 
-      {/* 产线 tab：仅队列运转管理（升级/扩建已整合至基建 tab） */}
+      {/* 产线 tab：仅任务管理（升级/扩建已整合至基建 tab） */}
       {activeTab === 'facility' && (
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-magic-blue flex items-center gap-2 border-b border-zinc-800/80 pb-2">

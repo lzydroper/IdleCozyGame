@@ -232,7 +232,7 @@ describe('GameContext Integration', () => {
                 recipeId: 'smelt_alloy',
                 targetCount: 3,
                 completedCount: 0,
-                timeLeft: 23, // Lv3 单批 30/1.3 = 23s
+                timeLeft: 25, // Lv3 单批 30/1.2 = 25s
                 currentProgress: 0
               }
             ],
@@ -299,7 +299,7 @@ describe('GameContext Integration', () => {
                 recipeId: 'smelt_alloy',
                 targetCount: 2,
                 completedCount: 1,
-                timeLeft: 16, // 第二批 23s 已推进 7s
+                timeLeft: 18, // 第二批 25s 已推进 7s
                 currentProgress: 0
               }
             ],
@@ -321,8 +321,8 @@ describe('GameContext Integration', () => {
       const smelter = updatedState.shelter.facilities.smelter[0];
       expect(smelter.recipeId).toBe('smelt_alloy'); // 任务保留
       expect(smelter.completedCount).toBe(1);
-      expect(smelter.timeLeft).toBe(6); // 第二批剩余
-      expect(smelter.currentProgress).toBe(Math.round((17 / 23) * 100)); // 已推进 17s
+      expect(smelter.timeLeft).toBe(8); // 第二批剩余（18 - 10）
+      expect(smelter.currentProgress).toBe(Math.round((17 / 25) * 100)); // 已推进 17s
     });
   });
 

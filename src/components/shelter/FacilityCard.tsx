@@ -129,8 +129,9 @@ function FacilityUnitCard({
   if (!fac) return null;
 
   const level = fac.level || 1;
-  // 效率由设施等级决定（每级 +10%，与设备配置一致）；升级入口已整合至基建 tab
-  const speedBonus = 1 + level * 0.1;
+  // 效率由设备等级决定（累计加成读配置表，Lv1 = 100%）；升级入口已整合至基建 tab
+  const effBonus = FACILITIES_CONFIG[type]?.levels.find(l => l.level === level)?.effectValue ?? 0;
+  const speedBonus = 1 + effBonus;
   const task = fac.recipeId ? AUTO_RECIPES[fac.recipeId] : null;
   const isRunning = !!fac.recipeId;
   const progress = fac.currentProgress || 0;

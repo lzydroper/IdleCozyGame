@@ -92,6 +92,8 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
 
     // 默认在基建 tab，资源指示器已移除
     expect(screen.queryByText('废旧金属')).toBeNull();
+    // 基建 tab 升级卡：无队列字样残留（bugfix），设备效率 100%（Lv1 初始）
+    expect(screen.queryByText(/队列/)).toBeNull();
 
     // 切换到温室 tab
     fireEvent.click(screen.getByText('温室'));
