@@ -237,7 +237,7 @@ export function calculateDetailedOfflineProgress(
     }
   }
 
-  // 4. 工厂自动化流水线结算（FIFO 配方队列，ticket 13）
+  // 4. 工厂自动化流水线结算（单任务批量推进，issue 06）
   const updatedFacilities = { ...state.shelter.facilities };
   (Object.keys(updatedFacilities) as FacilityType[]).forEach(type => {
     const units = updatedFacilities[type];

@@ -225,15 +225,19 @@ export interface UpgradeInProgress {
 // - 产线设施升级：key = `${facilityType}_${unitIndex}`（如 'smelter_0'）
 // - 产线扩建：key = `expand_${facilityType}`（如 'expand_smelter'）
 
-// 产线设施实例（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级
+// 产线设施实例（issue 06：单任务批量生产模型，源自 01 决议）
+// 每台设备同时只跑一个「配方 × 批次」任务；recipeId 为 null 时待机。
+// 队列模型（queue/active）已移除：开始任务即扣全部材料，取消退款 = 剩余批次 × 折扣单价。
 export interface AutomationFacility {
   id: FacilityType;
   name: string;
-  level: number;                  // 设施等级：决定加工速度（每级 +10%）与队列容量（容量 = 等级）
-  queue: string[];                // FIFO 配方队列：队首 = 正在生产，其余排队等待
-  currentProgress: number;        // 队首配方单次加工进度 (0 - 100)
-  timeLeft: number;               // 队首配方当前单次加工剩余时间 (秒)
-  active?: boolean;               // 控制启用状态，默认为 true
+  level: number;                  // 设施等级：决定加工速度（每级 +10%）
+  recipeId: string | null;        // 进行中配方 id（null = 待机）
+  targetCount: number;            // 目标批次数（开始任务时扣 targetCount × 每批折扣成本）
+  completedCount: number;         // 已完成批次数
+  timeLeft: number;               // 当前批剩余秒（推进真相）
+  currentProgress: number;        // 当前批进度 (0 - 100，由 timeLeft 推导)
+  costReduction?: number;         // 任务开始时刻的驻守原料减免快照（0-1；取消退款按此单价，扣/退同价）
 }
 
 export interface ShelterStats {

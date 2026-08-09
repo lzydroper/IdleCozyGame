@@ -312,14 +312,14 @@ const ShelterTab: React.FC = () => {
     }
   }, [state.shelter.upgrades, showToast]);
 
-  // 状态计数：温室可收割数 / 产线队列数 / 远征进行中
+  // 状态计数：温室可收割数 / 产线进行中任务数 / 远征进行中
   const harvestableCount = state.greenhouse.slots.filter(s => s.cropId && s.growthProgress >= 100).length;
-  const facilityQueueCount = Object.values(state.shelter.facilities).flat().reduce((sum, f) => sum + (f.queue?.length ?? 0), 0);
+  const facilityTaskCount = Object.values(state.shelter.facilities).flat().reduce((sum, f) => sum + (f.recipeId != null ? 1 : 0), 0);
   const expeditionBadge = state.shelter.expedition.locationId ? '进行中' : null;
   const tabCounts: Record<ShelterTabId, string | null> = {
     base: null,
     greenhouse: harvestableCount > 0 ? String(harvestableCount) : null,
-    facility: facilityQueueCount > 0 ? String(facilityQueueCount) : null,
+    facility: facilityTaskCount > 0 ? String(facilityTaskCount) : null,
     expedition: expeditionBadge,
   };
 

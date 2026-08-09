@@ -99,7 +99,7 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
 
     // 切换到产线 tab
     fireEvent.click(screen.getByText('产线'));
-    expect(screen.getAllByText(/加入配方队列/).length).toBe(2);
+    expect(screen.getAllByText('待机 · 空闲').length).toBe(2);
 
     // 切换到远征 tab
     fireEvent.click(screen.getByText('远征'));

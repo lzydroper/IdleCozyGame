@@ -4,7 +4,7 @@ import { FACILITIES_CONFIG } from '../data/facilities';
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
-import { getQueueCapacity, getActualDuration } from './facility';
+import { getActualDuration } from './facility';
 import { isWearableEquipment } from './equipment';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 
@@ -120,9 +120,12 @@ export const createFreshState = (initialState: GameState, now: number): GameStat
   dayStartTime: now
 });
 
-// 产线设施实例归一化（ticket 13）：旧存档（单设施对象 + activeRecipeId）→ 多台数组 + FIFO 队列
-// ticket 01 去重：被删除的自动配方 id 先经迁移映射（目标为工坊侧保留配方 id），
-// 映射后仍按 AUTO_RECIPES + facilityId 校验——目标为手动配方不在自动表，条目被清出而非触发未知 id 异常路径
+// 产线设施实例归一化（issue 06：单任务批量模型）
+// 旧队列字段（queue 数组 / activeRecipeId 单设施格式）一次性清空不转换：
+// - queue 数组直接丢弃（旧 FIFO 队列不保留）
+// - activeRecipeId（更早的单设施在制配方格式）有效则迁移为单批任务（targetCount=1，保留在制进度）
+// - 新字段任务（recipeId/targetCount/completedCount/timeLeft）校验有效后保留（完成态回待机）
+// ticket 01 去重：被删除的自动配方 id 先经迁移映射（目标为工坊侧保留配方 id）
 const RECIPE_ID_MIGRATIONS: Record<string, string> = {
   craft_rusted_spring: 'rusted_spring_craft',
   craft_nanite_slurry: 'nanite_slurry_recipe',
@@ -133,6 +136,37 @@ const RECIPE_ID_MIGRATIONS: Record<string, string> = {
 
 export const migrateRecipeId = (id: string): string => RECIPE_ID_MIGRATIONS[id] ?? id;
 
+// 配方是否仍属于该设备且可自动生产（任务保留/迁移校验）
+const isUsableAutoRecipe = (id: string, type: FacilityType): boolean =>
+  !!AUTO_RECIPES[id] && AUTO_RECIPES[id].facilityId === type;
+
+// 解析进行中任务（有效则保留；配置失效/已完成/损坏值回待机）
+const parseTask = (
+  recipeId: string | null,
+  targetRaw: unknown,
+  completedRaw: unknown,
+  timeLeftRaw: unknown,
+  type: FacilityType,
+  level: number
+): { recipeId: string | null; targetCount: number; completedCount: number; timeLeft: number } => {
+  if (!recipeId || !isUsableAutoRecipe(recipeId, type)) {
+    return { recipeId: null, targetCount: 0, completedCount: 0, timeLeft: 0 };
+  }
+  const target = Number.isFinite(targetRaw) ? Math.max(0, Math.floor(targetRaw as number)) : 0;
+  const completed = Number.isFinite(completedRaw) ? Math.max(0, Math.floor(completedRaw as number)) : 0;
+  if (target <= completed) {
+    return { recipeId: null, targetCount: 0, completedCount: 0, timeLeft: 0 }; // 已完成/损坏 → 待机
+  }
+  const rawTimeLeft = Number.isFinite(timeLeftRaw) ? Math.max(0, Math.floor(timeLeftRaw as number)) : 0;
+  // 防御损坏存档：在制进度钳制到该配方单次耗时以内
+  return {
+    recipeId,
+    targetCount: target,
+    completedCount: completed,
+    timeLeft: Math.min(rawTimeLeft, getActualDuration(recipeId, level))
+  };
+};
+
 const normalizeFacilityUnit = (
   type: FacilityType,
   saved: any,
@@ -142,33 +176,34 @@ const normalizeFacilityUnit = (
   const level = Number.isFinite(saved?.level)
     ? Math.min(Math.max(Math.floor(saved.level), 1), maxLevel)
     : 1;
-  const rawQueue = Array.isArray(saved?.queue)
-    ? saved.queue
-    : typeof saved?.activeRecipeId === 'string' && saved.activeRecipeId
-      ? [saved.activeRecipeId]
-      : [];
-  const migratedQueue = rawQueue.map((id: unknown) => (typeof id === 'string' ? migrateRecipeId(id) : id));
-  // 队首是否有效须看过滤前的原队首：若原队首已失效（在制进度作废），
-  // 其 timeLeft 不得转嫁给后续有效配方
-  const headWasValid =
-    typeof migratedQueue[0] === 'string' &&
-    !!AUTO_RECIPES[migratedQueue[0]] &&
-    AUTO_RECIPES[migratedQueue[0]].facilityId === type;
-  const queue = migratedQueue
-    .filter((id: unknown) => typeof id === 'string' && AUTO_RECIPES[id]?.facilityId === type)
-    .slice(0, getQueueCapacity(level));
-  // 防御损坏存档：在制进度仅在队首配方仍有效时保留，并钳制到该配方单次耗时以内；
-  // 队列为空或队首失效时残留的 timeLeft 会白送给下一配方进度，必须清零
-  const rawTimeLeft = Number.isFinite(saved?.timeLeft) ? Math.max(0, Math.floor(saved.timeLeft)) : 0;
-  const timeLeft = headWasValid && queue.length > 0 ? Math.min(rawTimeLeft, getActualDuration(queue[0], level)) : 0;
+
+  // 新字段任务优先；否则回退旧格式 activeRecipeId（queue 数组一律清空）
+  let task = parseTask(
+    typeof saved?.recipeId === 'string' ? migrateRecipeId(saved.recipeId) : null,
+    saved?.targetCount,
+    saved?.completedCount,
+    saved?.timeLeft,
+    type,
+    level
+  );
+  if (!task.recipeId && typeof saved?.activeRecipeId === 'string') {
+    task = parseTask(migrateRecipeId(saved.activeRecipeId), 1, 0, saved?.timeLeft, type, level);
+  }
+
+  // 任务开始时刻的减免快照（0-1，非法值丢弃 → 回退当前驻守减免）
+  const rawReduction = Number.isFinite(saved?.costReduction) ? (saved.costReduction as number) : undefined;
+  const costReduction = rawReduction !== undefined ? Math.min(Math.max(rawReduction, 0), 1) : undefined;
+
   return {
     id: type,
     name: typeof saved?.name === 'string' ? saved.name : fallback.name,
     level,
-    queue,
+    recipeId: task.recipeId,
+    targetCount: task.targetCount,
+    completedCount: task.completedCount,
+    timeLeft: task.timeLeft,
     currentProgress: 0,
-    timeLeft,
-    active: saved?.active !== false
+    ...(costReduction !== undefined ? { costReduction } : {})
   };
 };
 
@@ -185,7 +220,7 @@ const normalizeFacilities = (
     if (Array.isArray(savedVal) && savedVal.length > 0) {
       out[type] = savedVal.map(u => normalizeFacilityUnit(type, u, fallback));
     } else if (savedVal && typeof savedVal === 'object') {
-      // 旧版单设施对象存档：迁移为单台数组，activeRecipeId → 队首
+      // 旧版单设施对象存档：迁移为单台数组（activeRecipeId → 单批任务）
       out[type] = [normalizeFacilityUnit(type, savedVal, fallback)];
     } else {
       out[type] = [fallback];

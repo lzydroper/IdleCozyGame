@@ -21,9 +21,8 @@ import {
   assignHeroToDutyUpdate
 } from '../state/shelter';
 import {
-  enqueueRecipeUpdate,
-  removeQueueEntryUpdate,
-  setFacilityActiveUpdate,
+  startTaskUpdate,
+  cancelTaskUpdate,
   expandFacilityUpdate,
   upgradeShelterStatUpdate,
   type UpgradeStatType
@@ -99,10 +98,9 @@ interface GameContextType {
   downloadCloudCharacter: (charId: string) => Promise<boolean>;
   supplyItem: (itemId: string, qty?: number) => boolean;
   assignHeroToDuty: (heroId: string, duty: DutyAssignment | null) => boolean;
-  enqueueRecipe: (facilityType: FacilityType, unitIndex: number, recipeId: string) => boolean;
-  removeQueueEntry: (facilityType: FacilityType, unitIndex: number, queueIndex: number) => boolean;
+  startTask: (facilityType: FacilityType, unitIndex: number, recipeId: string, targetCount: number) => boolean;
+  cancelTask: (facilityType: FacilityType, unitIndex: number) => boolean;
   expandFacility: (facilityType: FacilityType) => boolean;
-  setFacilityActive: (facilityType: FacilityType, unitIndex: number, active: boolean) => boolean;
   upgradeShelterStat: (statType: UpgradeStatType, unitIndex?: number) => boolean;
   // 远征派遣/召回通过 assignHeroToDuty 统一接口完成（ADR-0018）
   summonHero: () => SummonOutcome;
@@ -511,31 +509,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   };
 
-  // 产线配方队列（ticket 13）：入队 / 移除 / 启停 / 扩建，纯自动运转、无需指派人员
-  const enqueueRecipe = (facilityType: FacilityType, unitIndex: number, recipeId: string): boolean => {
+  // 产线单任务批量生产（issue 06）：开始任务（扣全部材料）/ 取消任务（退剩余批次），纯函数层见 state/facility
+  const startTask = (facilityType: FacilityType, unitIndex: number, recipeId: string, targetCount: number): boolean => {
     let ok = false;
     setState(prev => {
-      const r = enqueueRecipeUpdate(prev, facilityType, unitIndex, recipeId);
+      const r = startTaskUpdate(prev, facilityType, unitIndex, recipeId, targetCount);
       ok = r.result;
       return r.state;
     });
     return ok;
   };
 
-  const removeQueueEntry = (facilityType: FacilityType, unitIndex: number, queueIndex: number): boolean => {
+  const cancelTask = (facilityType: FacilityType, unitIndex: number): boolean => {
     let ok = false;
     setState(prev => {
-      const r = removeQueueEntryUpdate(prev, facilityType, unitIndex, queueIndex);
-      ok = r.result;
-      return r.state;
-    });
-    return ok;
-  };
-
-  const setFacilityActive = (facilityType: FacilityType, unitIndex: number, active: boolean): boolean => {
-    let ok = false;
-    setState(prev => {
-      const r = setFacilityActiveUpdate(prev, facilityType, unitIndex, active);
+      const r = cancelTaskUpdate(prev, facilityType, unitIndex);
       ok = r.result;
       return r.state;
     });
@@ -805,10 +793,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       supplyItem,
       batchWater,
       assignHeroToDuty,
-      enqueueRecipe,
-      removeQueueEntry,
+      startTask,
+      cancelTask,
       expandFacility,
-      setFacilityActive,
       upgradeShelterStat,
       // 远征派遣/召回通过 assignHeroToDuty 完成
       summonHero,

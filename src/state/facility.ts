@@ -22,15 +22,34 @@ const getUpgradeLevels = (statType: UpgradeStatType): UpgradeLevel[] =>
 const getUpgradeName = (statType: UpgradeStatType): string | undefined =>
   isFacilityType(statType) ? FACILITIES_CONFIG[statType].name : SHELTER_UPGRADES[statType]?.name;
 
-// 队列容量 = 设施等级（Lv1 = 1 个配方位，Lv5 = 5 个）
-export const getQueueCapacity = (level: number): number => Math.max(1, Math.floor(level));
-
 // 单次加工实际耗时：效率随设施等级提升（每级 +10%），驻守英雄 dutyMeta 速度加成乘算叠加
 // speedMultiplier = 0 时无加成（向后兼容）
 export const getActualDuration = (recipeId: string, level: number, speedMultiplier = 0): number => {
   const recipe = AUTO_RECIPES[recipeId];
   if (!recipe) return 0;
   return Math.max(1, Math.floor((recipe.duration ?? 0) / ((1 + level * 0.1) * (1 + speedMultiplier))));
+};
+
+// 每批折扣成本（issue 06）：dutyMeta 原料减免 max(1, floor(qty * (1 - costReduction)))，最低 1
+// 开始任务扣料与取消退款共用同一折扣单价（扣/退同价，退款不赚差价）
+export const getBatchDiscountedCost = (recipe: { cost: Record<string, number> }, costReduction: number): Record<string, number> => {
+  const out: Record<string, number> = {};
+  Object.entries(recipe.cost).forEach(([itemId, qty]) => {
+    out[itemId] = Math.max(1, Math.floor(qty * (1 - costReduction)));
+  });
+  return out;
+};
+
+// 给定库存可支撑的批次数：floor(库存 / 每批折扣成本)，材料不足时上限为 0（UI 滑条用）
+export const getMaxAffordableBatches = (recipeId: string, inventory: Record<string, number>, costReduction = 0): number => {
+  const recipe = AUTO_RECIPES[recipeId];
+  if (!recipe) return 0;
+  const perBatch = getBatchDiscountedCost(recipe, costReduction);
+  const perBatchEntries = Object.entries(perBatch);
+  if (perBatchEntries.length === 0) return 0; // 无成本配方（防御 Infinity）
+  return Math.floor(
+    Math.min(...perBatchEntries.map(([itemId, qty]) => (inventory[itemId] || 0) / qty))
+  );
 };
 
 // 解析设施驻守英雄的加成（作用域化：bonuses 中匹配该设备的加成聚合生效）
@@ -49,20 +68,6 @@ export const resolveDutyBonus = (state: GameState, type: FacilityType, unitIndex
   return { heroId: null, bonuses: EMPTY_DUTY_BONUS };
 };
 
-// dutyMeta 原料消耗减免：max(1, floor(qty * (1 - costReduction)))，最低消耗 1
-const canAffordWithReduction = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>, costReduction: number): boolean =>
-  Object.entries(recipe.cost).every(([itemId, qty]) => {
-    const reducedQty = Math.max(1, Math.floor(qty * (1 - costReduction)));
-    return (inventory[itemId] || 0) >= reducedQty;
-  });
-
-const consumeInputsWithReduction = (recipe: { cost: Record<string, number> }, inventory: Record<string, number>, costReduction: number): void => {
-  Object.entries(recipe.cost).forEach(([itemId, qty]) => {
-    const reducedQty = Math.max(1, Math.floor(qty * (1 - costReduction)));
-    inventory[itemId] = (inventory[itemId] || 0) - reducedQty;
-  });
-};
-
 // 平坦费用表（扩建/升级成本）：{ itemId: qty }
 const canAffordCost = (cost: Record<string, number>, inventory: Record<string, number>): boolean =>
   Object.entries(cost).every(([itemId, qty]) => (inventory[itemId] || 0) >= qty);
@@ -79,9 +84,11 @@ export interface FacilityProcessResult {
   completed: Record<string, number>;  // recipeId -> 完成批次数（供日志）
 }
 
-// 推进一台设施运转 seconds 秒（在线 tick 传 1，离线结算传总秒数）。
-// inventory 就地修改（启动扣料、完成加产出）；资源不足时暂停等待，队首不跳过。
-// resolved（必传）：驻守英雄的加成，已按设备作用域解析（无驻守传 EMPTY_DUTY_BONUS）
+// 推进一台设施运转 seconds 秒（在线 tick 传经过秒数，离线结算传总秒数）。
+// 单任务批量模型（issue 06）：recipeId 为 null（待机）时直接返回；
+// 每完成一批 completedCount + 1 并产出入账（yield 加成 floor(qty × (1 + yield))），
+// 达到 targetCount 自动回待机；时间不足则保留 timeLeft 进度。
+// inventory 就地修改；resolved（必传）：驻守英雄的加成，已按设备作用域解析（无驻守传 EMPTY_DUTY_BONUS）
 export function processFacility(
   fac: AutomationFacility,
   inventory: Record<string, number>,
@@ -90,76 +97,64 @@ export function processFacility(
 ): FacilityProcessResult {
   const produced: Record<string, number> = {};
   const completed: Record<string, number> = {};
-  if (fac.active === false || seconds <= 0) {
+  if (seconds <= 0 || !fac.recipeId) {
     return { facility: fac, produced, completed };
+  }
+
+  const recipe = AUTO_RECIPES[fac.recipeId];
+  if (!recipe) {
+    // 防御：配置中已删除的配方 → 任务作废（材料已扣无法精确退还，直接清空回待机）
+    return {
+      facility: { ...fac, recipeId: null, targetCount: 0, completedCount: 0, timeLeft: 0, currentProgress: 0, costReduction: undefined },
+      produced,
+      completed
+    };
   }
 
   const speedMult = resolved.speedMultiplier;
   const yieldMult = resolved.yieldMultiplier;
-  const costReduction = resolved.costReduction;
-
-  let queue = [...fac.queue];
+  const duration = getActualDuration(fac.recipeId, fac.level, speedMult);
   let timeLeft = fac.timeLeft;
-  // 防御：丢弃配置中已不存在的条目（迁移时已过滤，这里防运行期配置变更）；
-  // 若在制队首被丢弃，其已扣原料与进度一并作废，避免白送给下一配方
-  if (queue.some(id => !AUTO_RECIPES[id])) {
-    queue = queue.filter(id => AUTO_RECIPES[id]);
-    if (!AUTO_RECIPES[fac.queue[0]]) timeLeft = 0;
-  }
-  let headId = queue[0] ?? null;
-  let head = headId ? AUTO_RECIPES[headId] : null;
   let remaining = seconds;
+  let completedCount = fac.completedCount;
 
-  while (remaining > 0 && head) {
-    const duration = getActualDuration(head.id, fac.level, speedMult);
-    if (timeLeft > 0) {
-      // 进行中的一轮
-      const consume = Math.min(timeLeft, remaining);
-      timeLeft -= consume;
-      remaining -= consume;
-      if (timeLeft > 0) break; // 本轮未完成，剩余进度保留到下次
+  while (remaining > 0 && timeLeft > 0) {
+    const consume = Math.min(timeLeft, remaining);
+    timeLeft -= consume;
+    remaining -= consume;
+    if (timeLeft > 0) break; // 当前批未完成，剩余进度保留到下次
 
-      // 一轮完成：产出并入账（dutyMeta 产量加成：floor(qty * (1 + yieldMult))）
-      Object.entries(head.reward).forEach(([itemId, qty]) => {
-        const boostedQty = Math.floor(qty * (1 + yieldMult));
-        inventory[itemId] = (inventory[itemId] || 0) + boostedQty;
-        produced[itemId] = (produced[itemId] || 0) + boostedQty;
-      });
-      completed[head.id] = (completed[head.id] || 0) + 1;
-      queue.shift();
-      headId = queue[0] ?? null;
-      head = headId ? AUTO_RECIPES[headId] : null;
-      if (!head) {
-        timeLeft = 0;
-        break;
-      }
-      // 尝试启动下一配方（dutyMeta 原料加成：max(1, floor(qty * (1 - costReduction)))）
-      if (canAffordWithReduction(head, inventory, costReduction)) {
-        consumeInputsWithReduction(head, inventory, costReduction);
-        timeLeft = duration;
-      } else {
-        timeLeft = 0;
-        break; // 资源不足：暂停等待（队首保留）
-      }
-    } else {
-      // 空闲：尝试启动队首配方
-      if (canAffordWithReduction(head, inventory, costReduction)) {
-        consumeInputsWithReduction(head, inventory, costReduction);
-        timeLeft = duration;
-      } else {
-        break; // 资源不足：暂停等待
-      }
+    // 一批完成：产出并入账（dutyMeta 产量加成：floor(qty * (1 + yieldMult))）
+    Object.entries(recipe.reward).forEach(([itemId, qty]) => {
+      const boostedQty = Math.floor(qty * (1 + yieldMult));
+      inventory[itemId] = (inventory[itemId] || 0) + boostedQty;
+      produced[itemId] = (produced[itemId] || 0) + boostedQty;
+    });
+    completedCount += 1;
+    completed[fac.recipeId] = (completed[fac.recipeId] || 0) + 1;
+
+    if (completedCount >= fac.targetCount) {
+      timeLeft = 0; // 达到目标批数：任务完成
+      break;
     }
+    timeLeft = duration; // 继续下一批
   }
 
-  const currentHead = headId ? AUTO_RECIPES[headId] : null;
-  const currentDuration = currentHead ? getActualDuration(currentHead.id, fac.level, speedMult) : 0;
-  const progress = timeLeft > 0 && currentDuration > 0
-    ? Math.min(100, Math.round(((currentDuration - timeLeft) / currentDuration) * 100))
+  const done = completedCount >= fac.targetCount;
+  const progress = timeLeft > 0 && duration > 0
+    ? Math.min(100, Math.round(((duration - timeLeft) / duration) * 100))
     : 0;
 
   return {
-    facility: { ...fac, queue, timeLeft, currentProgress: progress },
+    facility: {
+      ...fac,
+      recipeId: done ? null : fac.recipeId,
+      targetCount: done ? 0 : fac.targetCount,
+      completedCount: done ? 0 : completedCount, // 完成回待机：任务字段一并清空
+      timeLeft: done ? 0 : timeLeft,
+      currentProgress: progress,
+      costReduction: done ? undefined : fac.costReduction // 完成回待机：清除减免快照残留
+    },
     produced,
     completed
   };
@@ -181,78 +176,86 @@ const withUnits = (state: GameState, type: FacilityType, units: AutomationFacili
   }
 });
 
-// 配方入队：FIFO 尾部追加；队列已满（容量 = 等级）或配方不属于该设施类型时拒绝
-export const enqueueRecipeUpdate = (
+// === 单任务批量生产（issue 06）：开始任务 / 取消任务 ===
+// 每台设备同时只跑一个「配方 × 批次」任务；已在生产中时拒绝开始新任务。
+
+// 开始任务：校验 目标批次数 × 每批折扣成本 足够 → 扣全部材料（折扣价）→ 置任务。
+// 拒绝：未知配方 / 配方不属于该设备 / 台索引无效 / 已在生产中 / 批次非法 / 材料不足（均不扣料）
+export const startTaskUpdate = (
   state: GameState,
   type: FacilityType,
   unitIndex: number,
-  recipeId: string
+  recipeId: string,
+  targetCount: number
 ): UpdateResult<boolean> => {
   const recipe = AUTO_RECIPES[recipeId];
   if (!recipe || recipe.facilityId !== type) return NO_OP(state);
   const units = getUnits(state, type);
   if (!units || !units[unitIndex]) return NO_OP(state);
   const fac = units[unitIndex];
-  if (fac.queue.length >= getQueueCapacity(fac.level)) return NO_OP(state);
+  if (fac.recipeId) return NO_OP(state); // 已在生产中
+  const target = Math.floor(targetCount);
+  if (!Number.isFinite(targetCount) || target <= 0) return NO_OP(state);
 
-  const updatedUnits = units.map((u, i) =>
-    i === unitIndex ? { ...u, queue: [...u.queue, recipeId] } : u
-  );
-  return { state: withUnits(state, type, updatedUnits), result: true };
-};
+  const { bonuses } = resolveDutyBonus(state, type, unitIndex);
+  const perBatch = getBatchDiscountedCost(recipe, bonuses.costReduction);
+  const canAfford = Object.entries(perBatch).every(([itemId, qty]) => (state.inventory[itemId] || 0) >= qty * target);
+  if (!canAfford) return NO_OP(state);
 
-// 移除队列条目：队首在生产中时退还该配方已扣除的原料；移除队首后重置进度
-export const removeQueueEntryUpdate = (
-  state: GameState,
-  type: FacilityType,
-  unitIndex: number,
-  queueIndex: number
-): UpdateResult<boolean> => {
-  const units = getUnits(state, type);
-  if (!units || !units[unitIndex]) return NO_OP(state);
-  const fac = units[unitIndex];
-  if (queueIndex < 0 || queueIndex >= fac.queue.length) return NO_OP(state);
-
-  let updatedInventory = { ...state.inventory };
-  const removingHead = queueIndex === 0;
-  if (removingHead && fac.timeLeft > 0) {
-    const recipe = AUTO_RECIPES[fac.queue[0]];
-    if (recipe) {
-      Object.entries(recipe.cost).forEach(([itemId, qty]) => {
-        updatedInventory[itemId] = (updatedInventory[itemId] || 0) + qty;
-      });
-    }
-  }
-
-  const updatedUnits = units.map((u, i) => {
-    if (i !== unitIndex) return u;
-    const queue = u.queue.filter((_, idx) => idx !== queueIndex);
-    return {
-      ...u,
-      queue,
-      // 队首被移除：重置进度，新队首从下一 tick 起按需启动
-      timeLeft: removingHead ? 0 : u.timeLeft,
-      currentProgress: removingHead ? 0 : u.currentProgress
-    };
+  // 扣全部材料（折扣价）并置任务：当前批从首批耗时开始计时
+  // costReduction 快照：取消退款按任务开始时刻的减免单价（扣/退同价，换驻守不赚差价）
+  const updatedInventory = { ...state.inventory };
+  Object.entries(perBatch).forEach(([itemId, qty]) => {
+    updatedInventory[itemId] = (updatedInventory[itemId] || 0) - qty * target;
   });
-
+  const updatedUnits = units.map((u, i) =>
+    i === unitIndex
+      ? {
+          ...u,
+          recipeId,
+          targetCount: target,
+          completedCount: 0,
+          timeLeft: getActualDuration(recipeId, fac.level, bonuses.speedMultiplier),
+          currentProgress: 0,
+          costReduction: bonuses.costReduction
+        }
+      : u
+  );
   return {
     state: { ...withUnits(state, type, updatedUnits), inventory: updatedInventory },
     result: true
   };
 };
 
-// 启用/停用设施（纯自动运转开关，无需指派人员）
-export const setFacilityActiveUpdate = (
-  state: GameState,
-  type: FacilityType,
-  unitIndex: number,
-  active: boolean
-): UpdateResult<boolean> => {
+// 取消任务：退款 = (目标批数 − 已完成批数) × 每批折扣成本（未开始 + 进行中批次全额退）。
+// 已产出批次保留；退款不赚差价（与扣款同折扣单价）。待机时拒绝。
+export const cancelTaskUpdate = (state: GameState, type: FacilityType, unitIndex: number): UpdateResult<boolean> => {
   const units = getUnits(state, type);
   if (!units || !units[unitIndex]) return NO_OP(state);
-  const updatedUnits = units.map((u, i) => (i === unitIndex ? { ...u, active } : u));
-  return { state: withUnits(state, type, updatedUnits), result: true };
+  const fac = units[unitIndex];
+  if (!fac.recipeId) return NO_OP(state); // 待机无任务可取消
+
+  const recipe = AUTO_RECIPES[fac.recipeId];
+  // 退款按任务开始时刻的减免快照（扣/退同价）；旧存档无快照时回退当前驻守减免
+  const costReduction = fac.costReduction ?? resolveDutyBonus(state, type, unitIndex).bonuses.costReduction;
+  const remainingBatches = Math.max(0, fac.targetCount - fac.completedCount);
+  const updatedInventory = { ...state.inventory };
+  if (recipe && remainingBatches > 0) {
+    const perBatch = getBatchDiscountedCost(recipe, costReduction);
+    Object.entries(perBatch).forEach(([itemId, qty]) => {
+      updatedInventory[itemId] = (updatedInventory[itemId] || 0) + qty * remainingBatches;
+    });
+  }
+
+  const updatedUnits = units.map((u, i) =>
+    i === unitIndex
+      ? { ...u, recipeId: null, targetCount: 0, completedCount: 0, timeLeft: 0, currentProgress: 0, costReduction: undefined }
+      : u
+  );
+  return {
+    state: { ...withUnits(state, type, updatedUnits), inventory: updatedInventory },
+    result: true
+  };
 };
 
 // === 基建升级（耗时施工，时间戳驱动）：开始升级扣材料 → 升级中 → resolve 完成应用 ===
@@ -388,10 +391,11 @@ const applyPendingUpgrade = (state: GameState, key: string): { state: GameState;
       id: type,
       name: template?.name || FACILITIES_CONFIG[type].name || '产线设施',
       level: 1,
-      queue: [],
-      currentProgress: 0,
+      recipeId: null,
+      targetCount: 0,
+      completedCount: 0,
       timeLeft: 0,
-      active: true
+      currentProgress: 0
     };
     const next = {
       ...state,

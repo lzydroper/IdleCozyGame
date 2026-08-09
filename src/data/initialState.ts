@@ -46,9 +46,11 @@ const createInitialFacilities = (): Record<FacilityType, AutomationFacility[]> =
         id: type,
         name: cfg.name,
         level: 1,
-        queue: [],
-        currentProgress: 0,
-        timeLeft: 0
+        recipeId: null,
+        targetCount: 0,
+        completedCount: 0,
+        timeLeft: 0,
+        currentProgress: 0
       }
     ];
   });

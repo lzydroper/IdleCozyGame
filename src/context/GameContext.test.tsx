@@ -190,14 +190,14 @@ describe('GameContext Integration', () => {
     });
   });
 
-  describe('calculateDetailedOfflineProgress - Factory Automation Pipelines', () => {
-    it('should execute the FIFO recipe queue during offline (one batch per entry)', () => {
+  describe('calculateDetailedOfflineProgress - Factory Automation Pipelines (issue 06 单任务)', () => {
+    it('should complete all batches of a single task during offline and return to idle', () => {
       const mockState: GameState = {
         player: {
           food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
-        inventory: { scrap_metal: 6 },
+        inventory: { scrap_metal: 100 },
         greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
         heroes: {},
         equipment: {},
@@ -223,17 +223,17 @@ describe('GameContext Integration', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: {
-            // Lv3 → 队列容量 3，每项配方各产一批（ticket 13）
             ...structuredClone(INITIAL_STATE.shelter.facilities),
             smelter: [
               {
                 id: 'smelter',
                 name: '魔导冶炼炉',
                 level: 3,
-                queue: ['smelt_alloy', 'smelt_alloy', 'smelt_alloy'],
-                currentProgress: 0,
-                timeLeft: 0,
-                active: true
+                recipeId: 'smelt_alloy',
+                targetCount: 3,
+                completedCount: 0,
+                timeLeft: 23, // Lv3 单批 30/1.3 = 23s
+                currentProgress: 0
               }
             ],
             assembler: []
@@ -247,24 +247,24 @@ describe('GameContext Integration', () => {
 
       const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
 
-      // Lv3 单轮 23s（30/1.3）：3 批 × 23s = 69s 全部完成，余 31s 空转
-      expect(updatedState.inventory.scrap_metal).toBe(0);
+      // 单任务 3 批 × 23s = 69s 全部完成，余 31s 空转
       expect(updatedState.inventory.alloy_plate).toBe(3);
       expect(report.recoveredItems.alloy_plate).toBe(3);
 
       const smelter = updatedState.shelter.facilities.smelter[0];
-      expect(smelter.queue).toEqual([]);
+      expect(smelter.recipeId).toBeNull(); // 达目标回待机
+      expect(smelter.completedCount).toBe(0);
       expect(smelter.timeLeft).toBe(0);
       expect(smelter.currentProgress).toBe(0);
     });
 
-    it('should pause the queue when raw materials run out (head entry kept)', () => {
+    it('should keep unfinished batch progress during offline (timeLeft 保留继续计时)', () => {
       const mockState: GameState = {
         player: {
           food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
-        inventory: { scrap_metal: 2 },
+        inventory: { scrap_metal: 100, alloy_plate: 1 }, // 已完成 1 批的产出（离线只结算推进期间完成的批次）
         greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
         heroes: {},
         equipment: {},
@@ -296,10 +296,11 @@ describe('GameContext Integration', () => {
                 id: 'smelter',
                 name: '魔导冶炼炉',
                 level: 3,
-                queue: ['smelt_alloy', 'smelt_alloy'],
-                currentProgress: 0,
-                timeLeft: 0,
-                active: true
+                recipeId: 'smelt_alloy',
+                targetCount: 2,
+                completedCount: 1,
+                timeLeft: 16, // 第二批 23s 已推进 7s
+                currentProgress: 0
               }
             ],
             assembler: []
@@ -311,17 +312,17 @@ describe('GameContext Integration', () => {
         }
       };
 
-      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
+      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 10);
 
-      // 只有 2 废铁：第一批完成，第二批原料不足 → 暂停，队首保留
-      expect(updatedState.inventory.scrap_metal).toBe(0);
-      expect(updatedState.inventory.alloy_plate).toBe(1);
-      expect(report.recoveredItems.alloy_plate).toBe(1);
+      // 第二批推进 10s：16 - 10 = 6s 未完成，进度保留
+      expect(updatedState.inventory.alloy_plate).toBe(1); // 已完成 1 批的产出（夹具带入）
+      expect(report.recoveredItems.alloy_plate).toBeUndefined(); // 本次离线无完成批次
 
       const smelter = updatedState.shelter.facilities.smelter[0];
-      expect(smelter.queue).toEqual(['smelt_alloy']);
-      expect(smelter.timeLeft).toBe(0);
-      expect(smelter.currentProgress).toBe(0);
+      expect(smelter.recipeId).toBe('smelt_alloy'); // 任务保留
+      expect(smelter.completedCount).toBe(1);
+      expect(smelter.timeLeft).toBe(6); // 第二批剩余
+      expect(smelter.currentProgress).toBe(Math.round((17 / 23) * 100)); // 已推进 17s
     });
   });
 

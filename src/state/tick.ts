@@ -31,7 +31,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     prev.shelter.generatorLevel > 0 ||
     prev.shelter.recyclerLevel > 0 ||
     prev.greenhouse.slots.some(s => s.cropId) ||
-    Object.values(prev.shelter.facilities).some(units => units.some(u => (u.queue?.length ?? 0) > 0)) ||
+    Object.values(prev.shelter.facilities).some(units => units.some(u => u.recipeId != null)) || // 产线单任务进行中
     Object.keys(prev.shelter.upgrades || {}).length > 0 || // 基建升级施工中：保证进度条每秒刷新
     (prev.shelter.expedition.locationId != null && prev.shelter.assignedExplorerId != null) ||
     (prev.combat?.idle?.zoneId != null) ||
@@ -159,7 +159,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     }
   }
 
-  // 3. 工厂流水线 Tick：FIFO 配方队列顺序执行，纯自动运转（ticket 13）
+  // 3. 工厂流水线 Tick：单任务批量推进（issue 06），每台设备一个「配方 × 批次」任务并行
   const updatedFacilities = { ...prev.shelter.facilities };
 
   (Object.keys(updatedFacilities) as FacilityType[]).forEach(type => {

@@ -4,8 +4,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
+import { INITIAL_STATE } from '../../data/initialState';
+import type { GameState } from '../../types/game';
 
-describe('FacilityCard 配方队列 UI（ticket 13）', () => {
+describe('FacilityCard 单任务状态摘要 UI（issue 06）', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
@@ -16,7 +18,7 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
     fireEvent.click(screen.getByText('产线'));
   };
 
-  it('renders queue controls and has no survivor-assignment interaction (纯自动)', () => {
+  it('渲染待机态状态摘要：每台设备显示「待机 · 空闲」与驻守入口，无队列 UI', () => {
     render(
       <GameProvider>
         <ToastProvider>
@@ -27,14 +29,33 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
 
     switchToFacility();
 
-    // 两个设施都渲染出"加入配方队列"与"执行队列（FIFO）"面板
-    expect(screen.getAllByText(/加入配方队列/).length).toBe(2);
-    expect(screen.getAllByText(/执行队列（FIFO）/).length).toBe(2);
-    // 产线纯自动：设施面板没有任何"指派人员"交互
-    expect(screen.queryByText(/指派.*产线|派遣.*设施|指派.*加工/)).toBeNull();
+    // 两个设施（冶炼炉/组装台）都渲染待机态摘要与驻守按钮
+    expect(screen.getAllByText('待机 · 空闲').length).toBe(2);
+    expect(screen.getAllByText('未驻守英雄').length).toBe(2);
+    expect(screen.getAllByText('驻守').length).toBe(2);
+    // 队列 UI 已移除
+    expect(screen.queryByText(/加入配方队列/)).toBeNull();
+    expect(screen.queryByText(/执行队列（FIFO）/)).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 
-  it('enqueues a recipe and shows it in the FIFO queue list', () => {
+  it('渲染生产中任务状态摘要：配方名、已产/目标、进度条与剩余时间', () => {
+    const save = structuredClone(INITIAL_STATE) as GameState;
+    save.shelter.facilities.smelter[0] = {
+      id: 'smelter',
+      name: '魔导冶炼炉',
+      level: 2,
+      recipeId: 'smelt_alloy',
+      targetCount: 3,
+      completedCount: 1,
+      timeLeft: 10, // 当前批剩余（Lv2 单批 25s）
+      currentProgress: 60
+    };
+    // 避免模块级 lastTick 时间戳导致渲染触发离线结算推进任务
+    save.lastTick = Date.now();
+    save.dayStartTime = Date.now();
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
     render(
       <GameProvider>
         <ToastProvider>
@@ -45,17 +66,12 @@ describe('FacilityCard 配方队列 UI（ticket 13）', () => {
 
     switchToFacility();
 
-    // 找到冶炼炉的配方下拉框（含"合成 合金金属板 ×1"选项，ticket 01 文案推导）
-    const smelterSelect = screen
-      .getAllByRole('combobox')
-      .find(s => Array.from(s.querySelectorAll('option')).some(o => o.textContent?.includes('合成 合金金属板 ×1')));
-    expect(smelterSelect).toBeDefined();
-
-    fireEvent.change(smelterSelect!, { target: { value: 'smelt_alloy' } });
-    fireEvent.click(screen.getAllByText('入队')[0]);
-
-    // 队列中出现该配方条目（选项文本带耗时后缀，此处精确匹配到的即队列条目），且处于"等待启动"
+    // 生产中摘要：配方名（ticket 01 文案推导）+ 已产/目标 + 剩余时间（嵌套节点分片，宽松匹配）
     expect(screen.getByText('合成 合金金属板 ×1')).toBeDefined();
-    expect(screen.getByText('等待启动')).toBeDefined();
+    expect(screen.getByText(/已产/)).toBeDefined();
+    expect(screen.getByText(/\/ 3 批/)).toBeDefined();
+    expect(screen.getByText(/当前批剩余 10s/)).toBeDefined();
+    // 组装台仍为待机
+    expect(screen.getAllByText('待机 · 空闲').length).toBe(1);
   });
 });
