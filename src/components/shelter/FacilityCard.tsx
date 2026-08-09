@@ -9,10 +9,12 @@ import { getActualDuration, resolveDutyBonus, getBatchDiscountedCost } from '../
 import { getRecipeDisplayName } from '../../state/workshop';
 import GameIcon from '../GameIcon';
 import DutyAssignModal from './DutyAssignModal';
+import StartTaskModal from './StartTaskModal';
+import CancelTaskModal from './CancelTaskModal';
 import type { AutomationFacility } from '../../types/game';
 import type { FacilityType } from '../../data/facilities';
 import { FACILITIES_CONFIG } from '../../data/facilities';
-import { TrendingUp, UserCog } from 'lucide-react';
+import { TrendingUp, UserCog, Plus, XCircle } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // 共用子组件：配方消耗/产出展示行
@@ -118,6 +120,8 @@ function FacilityUnitCard({
   const { state, assignHeroToDuty } = useGame();
   const { showToast } = useToast();
   const [showGarrisonPicker, setShowGarrisonPicker] = useState(false);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const { accent, glow, barClass, iconBg, iconBorder } = theme;
   const units = state.shelter.facilities[type];
@@ -233,10 +237,26 @@ function FacilityUnitCard({
           onClose={() => setShowGarrisonPicker(false)}
         />
 
-        {/* ── 任务状态摘要（issue 06）── */}
+        {/* 生产 / 取消任务弹窗（issue 08 变体 B）*/}
+        {showStartModal && (
+          <StartTaskModal type={type} unitIndex={unitIndex} onClose={() => setShowStartModal(false)} />
+        )}
+        {showCancelModal && (
+          <CancelTaskModal type={type} unitIndex={unitIndex} onClose={() => setShowCancelModal(false)} />
+        )}
+
+        {/* ── 任务状态摘要（issue 06/08）── */}
         {!isRunning ? (
           <div className="flex items-center justify-between bg-zinc-950/60 rounded-lg px-2.5 py-2 border border-zinc-800/50">
             <span className="text-[10px] text-zinc-500">待机 · 空闲</span>
+            <button
+              data-testid={`start-task-btn-${type}-${unitIndex}`}
+              onClick={() => setShowStartModal(true)}
+              className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-cyan-600/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-600/25 active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus className="w-3 h-3" />
+              生产
+            </button>
           </div>
         ) : (
           <div className="space-y-2">
@@ -288,6 +308,16 @@ function FacilityUnitCard({
                 </div>
               </div>
             )}
+
+            {/* 取消任务入口（issue 08：确认弹窗带退款预览） */}
+            <button
+              data-testid={`cancel-task-btn-${type}-${unitIndex}`}
+              onClick={() => setShowCancelModal(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-600/30 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer text-[10px] font-bold"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              取消任务
+            </button>
           </div>
         )}
       </div>
