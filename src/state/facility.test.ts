@@ -12,6 +12,7 @@ import {
   processFacility,
   getActualDuration,
   getMaxAffordableBatches,
+  getMaxUpgradeLevel,
   resolveDutyBonus,
   isUnlocked
 } from './facility';
@@ -761,5 +762,17 @@ describe('解锁条件（unlockRequirements 机制）', () => {
     expect(isUnlocked(state, [{ type: 'upgrade_level', id: 'battery', minValue: 1 }, { type: 'item_count', id: 'scrap_metal', minValue: 100 }])).toBe(false);
     // 未知升级项 id → false（不误判满足）
     expect(isUnlocked(state, [{ type: 'upgrade_level', id: 'not_a_upgrade', minValue: 1 }])).toBe(false);
+  });
+});
+
+describe('maxLevel 推导（getMaxUpgradeLevel，issue：levels 为单一真相源）', () => {
+  it('从 levels 推导最高等级，含 level 0 基准档配置也正确', () => {
+    expect(getMaxUpgradeLevel(FACILITIES_CONFIG.smelter.levels)).toBe(5);
+    expect(getMaxUpgradeLevel(SHELTER_UPGRADES.battery.levels)).toBe(10);
+    // 含 level 0（"已停机"基准档）的配置：最高等级仍是字段原值 10/2（不能直接用 levels.length）
+    expect(getMaxUpgradeLevel(SHELTER_UPGRADES.generator.levels)).toBe(10);
+    expect(getMaxUpgradeLevel(SHELTER_UPGRADES.recycler.levels)).toBe(10);
+    expect(getMaxUpgradeLevel(SHELTER_UPGRADES.greenhouse_dock.levels)).toBe(2);
+    expect(getMaxUpgradeLevel([])).toBe(0);
   });
 });

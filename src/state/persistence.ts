@@ -4,7 +4,7 @@ import { FACILITIES_CONFIG } from '../data/facilities';
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
-import { getActualDuration } from './facility';
+import { getActualDuration, getMaxUpgradeLevel } from './facility';
 import { isWearableEquipment } from './equipment';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 
@@ -172,7 +172,8 @@ const normalizeFacilityUnit = (
   saved: any,
   fallback: AutomationFacility
 ): AutomationFacility => {
-  const maxLevel = FACILITIES_CONFIG[type]?.maxLevel ?? 5;
+  // 最高等级由设备配置 levels 推导（单一真相源）；缺省回退 1
+  const maxLevel = getMaxUpgradeLevel(FACILITIES_CONFIG[type]?.levels ?? []) || 1;
   const level = Number.isFinite(saved?.level)
     ? Math.min(Math.max(Math.floor(saved.level), 1), maxLevel)
     : 1;

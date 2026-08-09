@@ -34,12 +34,11 @@ export interface UpgradePath {
   id: string;
   name: string;
   description: string;
-  maxLevel: number;
   category: 'base' | 'facility';
   effectLabel: string;          // Label describing the effect (e.g. "离线最大挂机续航时间")
   icon?: LucideIcon;                  // 图标组件引用（同 HEROES_CONFIG.icon，经 GameIcon 注册表渲染）
   unlockRequirements?: UnlockRequirement[];  // 解锁条件（满足后才在列表中显示）
-  levels: UpgradeLevel[];
+  levels: UpgradeLevel[];       // 等级表（单一真相源）；最高等级由 levels 推导（getMaxUpgradeLevel）
 }
 
 export interface Recipe {

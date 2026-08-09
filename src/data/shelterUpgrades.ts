@@ -6,7 +6,6 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     id: 'battery',
     name: '蓄电池',
     description: '延长离线收益结算上限',
-    maxLevel: 10,
     category: 'base',
     effectLabel: '离线最大挂机续航时间',
     icon: Battery,
@@ -28,7 +27,6 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     id: 'generator',
     name: '魔导发电机',
     description: '离线自动恢复魔能',
-    maxLevel: 10,
     category: 'base',
     effectLabel: '能量凝结率',
     icon: Zap,
@@ -51,7 +49,6 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     id: 'recycler',
     name: '物资自动回收站',
     description: '离线自动收集废旧金属',
-    maxLevel: 10,
     category: 'base',
     effectLabel: '废铁提炼率',
     icon: RefreshCw,
@@ -74,7 +71,6 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     id: 'greenhouse_dock',
     name: '温室智能扩展坞',
     description: '扩建温室培养槽（原工坊建筑配方迁移至基建）',
-    maxLevel: 2,
     category: 'base',
     effectLabel: '培养槽上限',
     icon: Sprout,
@@ -87,3 +83,4 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
     ]
   }
 };
+

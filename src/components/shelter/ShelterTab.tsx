@@ -14,6 +14,7 @@ import {
   getShelterUpgradeLevel,
   getShelterUpgradeKey,
   getFacilityExpansionKey,
+  getMaxUpgradeLevel,
   isUnlocked,
   type UpgradeStatType
 } from '../../state/facility';
@@ -69,10 +70,10 @@ const upgradeNameForKey = (key: string): string | null => {
   return isFacilityType(id) ? FACILITIES_CONFIG[id].name : (SHELTER_UPGRADES[id]?.name ?? null);
 };
 
-// 升级卡配置源：设施类型读设备配置表，全局类型读 SHELTER_UPGRADES（两表字段兼容 name/maxLevel/levels/effectLabel/id）
+// 升级卡配置源：设施类型读设备配置表，全局类型读 SHELTER_UPGRADES（两表字段兼容 name/levels/effectLabel/id）
 const getUpgradeCardConfig = (
   statType: UpgradeStatType
-): { id: string; name: string; maxLevel: number; effectLabel: string; levels: UpgradeLevel[] } | undefined =>
+): { id: string; name: string; effectLabel: string; levels: UpgradeLevel[] } | undefined =>
   isFacilityType(statType) ? FACILITIES_CONFIG[statType] : SHELTER_UPGRADES[statType];
 
 // 设施当前等级效率加成（读设备配置表累计 effectValue；Lv1 = 0 → 100%）
@@ -90,7 +91,7 @@ function UpgradeCard({ statType, unitIndex = 0 }: { statType: UpgradeStatType; u
 
   const isFacility = isFacilityType(statType);
   const currentLevel = getShelterUpgradeLevel(state, statType, unitIndex);
-  const isMax = currentLevel >= upgrade.maxLevel;
+  const isMax = currentLevel >= getMaxUpgradeLevel(upgrade.levels);
   const currentConfig = upgrade.levels.find(l => l.level === currentLevel);
   const nextConfig = upgrade.levels.find(l => l.level === currentLevel + 1);
   const key = getShelterUpgradeKey(statType, unitIndex);

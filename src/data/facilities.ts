@@ -20,9 +20,8 @@ export interface FacilityConfig {
   shortName?: string;              // 徽章等紧凑场景短标签（如「熔炉」）；缺省回退 name
   description?: string;
   icon: LucideIcon;                // GameIcon upgrade 注册（与 SHELTER_UPGRADES.icon 兼容）
-  maxLevel: number;
   effectLabel: string;             // 升级效果标签（如「效率」）
-  levels: UpgradeLevel[];          // 升级等级表：复用 cost/effectValue/effectText/duration
+  levels: UpgradeLevel[];          // 升级等级表（单一真相源）；最高等级由 levels 推导（getMaxUpgradeLevel）
   expansion: FacilityExpansionConfig;
   unlockRequirements?: UnlockRequirement[]; // 解锁条件（满足后才在产线/基建 tab 显示；缺省无条件）
 }
@@ -34,7 +33,6 @@ export const FACILITIES_CONFIG = {
     shortName: '熔炉',
     description: '自动熔炼金属',
     icon: Flame,
-    maxLevel: 5,
     effectLabel: '效率',
     // 长节奏耗时：30m → 24h
     levels: [
@@ -62,7 +60,6 @@ export const FACILITIES_CONFIG = {
     shortName: '组装台',
     description: '自动组装物品',
     icon: Cpu,
-    maxLevel: 5,
     effectLabel: '效率',
     // 长节奏耗时：30m → 24h
     levels: [
@@ -90,3 +87,4 @@ export type FacilityType = keyof typeof FACILITIES_CONFIG;
 
 // 类型守卫：运行时校验字符串是否为已注册的设施类型（升级/扩建 key 解析、存档归一化共用）
 export const isFacilityType = (t: string): t is FacilityType => t in FACILITIES_CONFIG;
+

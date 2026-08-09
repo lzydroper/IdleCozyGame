@@ -20,6 +20,10 @@ export type UpgradeStatType = 'battery' | 'generator' | 'recycler' | 'greenhouse
 const getUpgradeLevels = (statType: UpgradeStatType): UpgradeLevel[] =>
   isFacilityType(statType) ? FACILITIES_CONFIG[statType].levels : (SHELTER_UPGRADES[statType]?.levels ?? []);
 
+// 从升级等级表推导最高等级（levels 为单一真相源；含 level 0 基准档的配置也正确）
+export const getMaxUpgradeLevel = (levels: UpgradeLevel[]): number =>
+  levels.reduce((max, l) => Math.max(max, l.level), 0);
+
 const getUpgradeName = (statType: UpgradeStatType): string | undefined =>
   isFacilityType(statType) ? FACILITIES_CONFIG[statType].name : SHELTER_UPGRADES[statType]?.name;
 
