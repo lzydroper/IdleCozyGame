@@ -247,12 +247,13 @@ describe('属性与套装特效计算', () => {
 
   it('三槽平值属性汇总（flat 修饰符，同属性合并）', () => {
     const equip: HeroEquipment = {
-      weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false },   // attack 10
+      weapon: { itemId: 'wasteland_weapon', enhance: 0, mythic: false },   // attack 10 + defense 2
       armor: { itemId: 'wasteland_armor', enhance: 0, mythic: false },     // defense 6
       trinket: { itemId: 'wasteland_trinket', enhance: 0, mythic: false }  // maxHp 20
     };
     expect(getEquippedFlatStats(equip)).toEqual([
       { stat: 'attack', kind: 'flat', value: 10, source: '废土利刃' },
+      { stat: 'defense', kind: 'flat', value: 2, source: '废土利刃' },
       { stat: 'defense', kind: 'flat', value: 6, source: '废土护甲' },
       { stat: 'maxHp', kind: 'flat', value: 20, source: '废土挂饰' }
     ]);
@@ -330,6 +331,7 @@ describe('属性与套装特效计算', () => {
     };
     expect(getHeroEquipmentBonus(equip)).toEqual([
       { stat: 'attack', kind: 'flat', value: 20, source: '废土利刃' },          // 10 + 1*10
+      { stat: 'defense', kind: 'flat', value: 2, source: '废土利刃' },          // 基础防御 2（无成长）
       { stat: 'attack', kind: 'percent', value: 0.05, source: '废土系列·套装特效' }      // 废土 +10 档
     ]);
   });

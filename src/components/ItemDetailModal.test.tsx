@@ -232,7 +232,7 @@ describe('ItemDetailModal Component', () => {
     expect(screen.getByText(/武器 · 废土系列/)).toBeDefined();
     // 基础属性与每级强化（span 标签与数值为相邻文本节点，分开断言）
     expect(screen.getByText(/基础属性：/)).toBeDefined();
-    expect(screen.getByText('攻击 +10')).toBeDefined();
+    expect(screen.getByText('攻击 +10、防御 +2')).toBeDefined();
     expect(screen.getByText(/每 \+1 强化：/)).toBeDefined();
     expect(screen.getByText('攻击 +1')).toBeDefined();
     // 套装特效档位
