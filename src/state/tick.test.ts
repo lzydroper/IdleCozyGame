@@ -293,3 +293,67 @@ describe('applyTick 挂机在线推进（修复 09）', () => {
     expect(state.stamina).toBeGreaterThan(COMBAT_ZONES.wasteland_entrance.staminaCost - 1);
   });
 });
+
+// 07 产线单任务推进：在线按 elapsedSeconds 推进、任务即活跃系统、与基建升级施工共存
+describe('applyTick 产线单任务推进（issue 06/07）', () => {
+  // 构造：仅冶炼炉有进行中任务（其余系统全部空闲）；lastTick 默认 2s 前 → elapsed 2s
+  const makeFacilityTaskState = (overrides: {
+    targetCount?: number; completedCount?: number; timeLeft?: number; level?: number;
+    upgrades?: Record<string, { startTime: number }>; lastTickOffsetMs?: number;
+  } = {}): GameState => {
+    const state = structuredClone(INITIAL_STATE) as GameState;
+    state.stamina = COMBAT_CONFIG.maxStamina;
+    state.inventory = { ...state.inventory, scrap_metal: 100 };
+    state.shelter.facilities.smelter[0] = {
+      id: 'smelter',
+      name: '魔导冶炼炉',
+      level: overrides.level ?? 1,
+      recipeId: 'smelt_alloy',
+      targetCount: overrides.targetCount ?? 2,
+      completedCount: overrides.completedCount ?? 0,
+      timeLeft: overrides.timeLeft ?? 27,
+      currentProgress: 0
+    };
+    if (overrides.upgrades) state.shelter.upgrades = overrides.upgrades;
+    state.lastTick = Date.now() - (overrides.lastTickOffsetMs ?? 2000);
+    return state;
+  };
+
+  it('任务进行中即活跃系统：无其他活跃系统时不短路，按 elapsedSeconds 推进 timeLeft', () => {
+    const state = makeFacilityTaskState({ timeLeft: 27 }); // Lv1 smelt_alloy 每批 27s
+    const next = applyTick(state, Date.now()); // elapsed 2s
+
+    expect(next).not.toBe(state); // 不短路（任务=活跃系统，进度条每秒刷新）
+    const fac = next.shelter.facilities.smelter[0];
+    expect(fac.timeLeft).toBe(25); // 27 - 2
+    expect(fac.completedCount).toBe(0);
+    expect(next.inventory.alloy_plate).toBeUndefined(); // 未完成批不产出
+  });
+
+  it('在线达到目标批数自动回待机并产出入账、写完成日志', () => {
+    const state = makeFacilityTaskState({ targetCount: 1, timeLeft: 2 });
+    const next = applyTick(state, Date.now()); // elapsed 2s → 完成 1 批
+
+    const fac = next.shelter.facilities.smelter[0];
+    expect(fac.recipeId).toBeNull();
+    expect(fac.completedCount).toBe(0);
+    expect(fac.timeLeft).toBe(0);
+    expect(next.inventory.alloy_plate).toBe(1);
+    expect(next.logs.some(l => l.text.includes('魔导冶炼炉') && l.text.includes('完成了'))).toBe(true);
+  });
+
+  it('任务推进与基建升级施工共存：同一 tick 内任务推进 + 到点升级完成互不干扰', () => {
+    const state = makeFacilityTaskState({
+      timeLeft: 27,
+      // 冶炼炉 Lv1→2 施工（耗时 1800s）已到点
+      upgrades: { smelter_0: { startTime: Date.now() - 1800 * 1000 } }
+    });
+    const next = applyTick(state, Date.now());
+
+    const fac = next.shelter.facilities.smelter[0];
+    expect(fac.level).toBe(2); // 升级完成应用
+    expect(next.shelter.upgrades['smelter_0']).toBeUndefined(); // 施工条目移除
+    expect(fac.recipeId).toBe('smelt_alloy'); // 任务不受升级影响
+    expect(fac.timeLeft).toBe(25); // 任务照常按 elapsedSeconds 推进
+  });
+});

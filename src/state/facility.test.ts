@@ -435,6 +435,36 @@ describe('基建升级耗时（时间戳驱动）', () => {
     expect(r.completed).toEqual([]);
     expect(r.state.inventory.scrap_metal).toBe(10); // 未误扣/误退
   });
+
+  it('离线：升级施工先应用再结算，顺序影响任务批次耗时（issue 07）', () => {
+    const state = baseState();
+    state.inventory = { scrap_metal: 1000 };
+    // 任务：Lv1 smelt_alloy × 2，首批剩 25s（timeLeft 绝对推进，与等级无关）
+    state.shelter.facilities.smelter[0] = {
+      id: 'smelter',
+      name: '魔导冶炼炉',
+      level: 1,
+      recipeId: 'smelt_alloy',
+      targetCount: 2,
+      completedCount: 0,
+      timeLeft: 25,
+      currentProgress: 0
+    };
+    const now = 3600 * 1000 + 51 * 1000;
+    // 冶炼炉升级 Lv1→2（耗时 1800s）在离线 51s 时恰好完成：startTime = now - 1841s
+    state.shelter.upgrades = { smelter_0: { startTime: now - 1841 * 1000 } };
+
+    const { updatedState } = calculateDetailedOfflineProgress(state, 51, Math.random, now);
+
+    const fac = updatedState.shelter.facilities.smelter[0];
+    expect(fac.level).toBe(2); // 升级先应用（Lv1→2）
+    expect(updatedState.shelter.upgrades['smelter_0']).toBeUndefined();
+    // 顺序锁定：先应用升级（Lv2 每批 30/1.2=25s）→ 首批 25s + 第二批 25s = 50s ≤ 51s 完成回待机；
+    // 若升级后应用（Lv1 每批 30/1.1=27s）→ 25 + 27 = 52s > 51s 未完成（仅产 1 批）——两种顺序结果不同
+    expect(fac.recipeId).toBeNull();
+    expect(fac.timeLeft).toBe(0);
+    expect(updatedState.inventory.alloy_plate).toBe(2); // 离线推进完成 2 批
+  });
 });
 describe('加工耗时', () => {
   it('耗时随等级缩短（每级 +10%）', () => {
