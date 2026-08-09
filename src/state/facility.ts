@@ -3,7 +3,8 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../data/facilities';
-import type { UpgradeLevel } from '../types/config';
+import { ITEMS_CONFIG } from '../data/items';
+import type { UpgradeLevel, UnlockRequirement } from '../types/config';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';
 import type { UpdateResult } from './types';
@@ -279,6 +280,27 @@ export const getShelterUpgradeLevel = (state: GameState, statType: UpgradeStatTy
   }
   // 设施类型：读设备配置表（按台索引取等级）
   return state.shelter.facilities[statType]?.[unitIndex]?.level || 1;
+};
+
+// 升级项 / 设备类型是否为已知（解锁条件防御：未知 id 视为未解锁而非误判满足）
+const isKnownUpgradeStat = (id: string): boolean => isFacilityType(id) || id in SHELTER_UPGRADES;
+
+// 解锁判定（unlockRequirements 机制）：全部条件满足才解锁；缺省/空 = 已解锁。
+// upgrade_level：指定升级项（含设备升级）达到 minValue；item_count：持有物品数量达到 minValue。
+// UI 按此隐藏未满足条件的升级项/产线设备（满足后自动出现）。
+export const isUnlocked = (state: GameState, reqs: UnlockRequirement[] | undefined): boolean => {
+  if (!reqs || reqs.length === 0) return true;
+  return reqs.every(req => {
+    if (req.type === 'upgrade_level') {
+      if (!isKnownUpgradeStat(req.id)) return false;
+      return getShelterUpgradeLevel(state, req.id as UpgradeStatType) >= req.minValue;
+    }
+    if (req.type === 'item_count') {
+      if (!ITEMS_CONFIG[req.id]) return false; // 未知物品 id 防御（与 upgrade_level 的 isKnownUpgradeStat 对称）
+      return (state.inventory[req.id] || 0) >= req.minValue;
+    }
+    return false;
+  });
 };
 
 // 升级中条目的目标耗时（秒）：升级 → 下一级 duration；扩建 → 对应台数 durations

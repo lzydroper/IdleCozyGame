@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
 import { ITEMS_CONFIG } from '../../data/items';
 import { SHELTER_UPGRADES } from '../../data/shelterUpgrades';
-import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../../data/facilities';
+import { FACILITIES_CONFIG, isFacilityType, type FacilityType, type FacilityConfig } from '../../data/facilities';
 import type { UpgradeLevel } from '../../types/config';
 import { useToast } from '../ToastSystem';
 import GameIcon from '../GameIcon';
@@ -14,6 +14,7 @@ import {
   getShelterUpgradeLevel,
   getShelterUpgradeKey,
   getFacilityExpansionKey,
+  isUnlocked,
   type UpgradeStatType
 } from '../../state/facility';
 import { FacilitySection } from './FacilityCard';
@@ -344,15 +345,17 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         <div className="space-y-3">
-          {SINGLE_UPGRADE_IDS.map((id) => (
+          {SINGLE_UPGRADE_IDS.filter(id => isUnlocked(state, SHELTER_UPGRADES[id]?.unlockRequirements)).map((id) => (
             <UpgradeCard key={id} statType={id} />
           ))}
         </div>
 
         <div className="space-y-5 pt-2">
-          {(Object.keys(FACILITIES_CONFIG) as FacilityType[]).map(type => (
-            <FacilityUpgradeSection key={type} type={type} />
-          ))}
+          {(Object.keys(FACILITIES_CONFIG) as FacilityType[])
+            .filter(type => isUnlocked(state, (FACILITIES_CONFIG[type] as FacilityConfig).unlockRequirements))
+            .map(type => (
+              <FacilityUpgradeSection key={type} type={type} />
+            ))}
         </div>
       </section>
       )}
@@ -371,9 +374,11 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         <div className="space-y-4">
-          {(Object.keys(FACILITIES_CONFIG) as FacilityType[]).map(type => (
-            <FacilitySection key={type} type={type} />
-          ))}
+          {(Object.keys(FACILITIES_CONFIG) as FacilityType[])
+            .filter(type => isUnlocked(state, (FACILITIES_CONFIG[type] as FacilityConfig).unlockRequirements))
+            .map(type => (
+              <FacilitySection key={type} type={type} />
+            ))}
         </div>
       </section>
       )}
@@ -387,3 +392,4 @@ const ShelterTab: React.FC = () => {
 };
 
 export default ShelterTab;
+

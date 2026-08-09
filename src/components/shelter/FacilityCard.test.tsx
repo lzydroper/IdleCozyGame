@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
 import { INITIAL_STATE } from '../../data/initialState';
+import { FACILITIES_CONFIG } from '../../data/facilities';
 import type { GameState } from '../../types/game';
 
 describe('FacilityCard 单任务状态摘要 UI（issue 06）', () => {
@@ -171,5 +172,45 @@ describe('生产/取消弹窗（issue 08 变体 B）', () => {
     expect(screen.getAllByText('待机 · 空闲').length).toBe(2);
     // 生产中态消失（无取消任务按钮）
     expect(screen.queryByText('取消任务')).toBeNull();
+  });
+});
+
+describe('解锁条件隐藏产线设备（unlockRequirements）', () => {
+  const smelterCfg = FACILITIES_CONFIG.smelter as { unlockRequirements?: unknown };
+
+  beforeEach(() => {
+    smelterCfg.unlockRequirements = [{ type: 'upgrade_level', id: 'generator', minValue: 1 }];
+  });
+  afterEach(() => {
+    smelterCfg.unlockRequirements = undefined;
+  });
+
+  const renderFacility = (save: GameState) => {
+    save.lastTick = Date.now();
+    save.dayStartTime = Date.now();
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <ShelterTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+    fireEvent.click(screen.getByText('产线'));
+  };
+
+  it('未满足前置升级条件（generator Lv1）时冶炼炉隐藏', () => {
+    const save = structuredClone(INITIAL_STATE) as GameState; // generator 0
+    renderFacility(save);
+    expect(screen.getAllByText('待机 · 空闲').length).toBe(1); // 仅组装台
+    expect(screen.queryByText('魔导冶炼炉')).toBeNull();
+  });
+
+  it('满足前置条件（generator Lv1）后冶炼炉出现', () => {
+    const save = structuredClone(INITIAL_STATE) as GameState;
+    save.shelter.generatorLevel = 1;
+    renderFacility(save);
+    expect(screen.getAllByText('待机 · 空闲').length).toBe(2); // 两设备均出现
+    expect(screen.getByText('魔导冶炼炉')).toBeDefined();
   });
 });

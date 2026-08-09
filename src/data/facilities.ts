@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { Flame, Cpu } from 'lucide-react';
-import type { UpgradeLevel } from '../types/config';
+import type { UpgradeLevel, UnlockRequirement } from '../types/config';
 
 // 产线设备配置表（生产 rework issue 05：数据驱动设备注册）
 // 每类设备内聚：名称 / 图标 / 升级等级表（含耗时）/ 扩建（上限、费用、耗时）。
@@ -24,6 +24,7 @@ export interface FacilityConfig {
   effectLabel: string;             // 升级效果标签（如「效率」）
   levels: UpgradeLevel[];          // 升级等级表：复用 cost/effectValue/effectText/duration
   expansion: FacilityExpansionConfig;
+  unlockRequirements?: UnlockRequirement[]; // 解锁条件（满足后才在产线/基建 tab 显示；缺省无条件）
 }
 
 export const FACILITIES_CONFIG = {

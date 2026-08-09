@@ -12,7 +12,8 @@ import {
   processFacility,
   getActualDuration,
   getMaxAffordableBatches,
-  resolveDutyBonus
+  resolveDutyBonus,
+  isUnlocked
 } from './facility';
 import { calculateDetailedOfflineProgress } from './offline';
 import { EMPTY_DUTY_BONUS } from './duty';
@@ -720,3 +721,45 @@ describe('数据驱动设备注册（issue 05）', () => {
 });
 
 
+
+describe('解锁条件（unlockRequirements 机制）', () => {
+  it('缺省 / 空条件 = 已解锁', () => {
+    const state = baseState();
+    expect(isUnlocked(state, undefined)).toBe(true);
+    expect(isUnlocked(state, [])).toBe(true);
+  });
+
+  it('upgrade_level：升级项达到 minValue 才解锁', () => {
+    const state = baseState(); // battery Lv1、generator Lv0
+    expect(isUnlocked(state, [{ type: 'upgrade_level', id: 'battery', minValue: 1 }])).toBe(true);
+    expect(isUnlocked(state, [{ type: 'upgrade_level', id: 'generator', minValue: 1 }])).toBe(false);
+
+    // 设备类型也可作前置（如冶炼炉 Lv2）
+    const s2 = baseState();
+    s2.shelter.facilities.smelter[0].level = 2;
+    expect(isUnlocked(s2, [{ type: 'upgrade_level', id: 'smelter', minValue: 2 }])).toBe(true);
+    expect(isUnlocked(s2, [{ type: 'upgrade_level', id: 'smelter', minValue: 3 }])).toBe(false);
+  });
+
+  it('item_count：持有物品数量达到 minValue 才解锁', () => {
+    const state = baseState(); // scrap_metal 10
+    expect(isUnlocked(state, [{ type: 'item_count', id: 'scrap_metal', minValue: 5 }])).toBe(true);
+    expect(isUnlocked(state, [{ type: 'item_count', id: 'scrap_metal', minValue: 20 }])).toBe(false);
+    // 未知物品 id 防御（不误判满足）
+    expect(isUnlocked(state, [{ type: 'item_count', id: 'not_an_item', minValue: 1 }])).toBe(false);
+  });
+
+  it('多条件全部满足才解锁；未知升级项 id 防御为未解锁', () => {
+    const state = baseState();
+    state.inventory.scrap_metal = 50;
+    const reqs = [
+      { type: 'upgrade_level' as const, id: 'battery', minValue: 1 },
+      { type: 'item_count' as const, id: 'scrap_metal', minValue: 20 }
+    ];
+    expect(isUnlocked(state, reqs)).toBe(true);
+    // 任一不满足 → 未解锁
+    expect(isUnlocked(state, [{ type: 'upgrade_level', id: 'battery', minValue: 1 }, { type: 'item_count', id: 'scrap_metal', minValue: 100 }])).toBe(false);
+    // 未知升级项 id → false（不误判满足）
+    expect(isUnlocked(state, [{ type: 'upgrade_level', id: 'not_a_upgrade', minValue: 1 }])).toBe(false);
+  });
+});

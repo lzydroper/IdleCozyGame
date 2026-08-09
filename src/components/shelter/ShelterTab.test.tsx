@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
 import { INITIAL_STATE } from '../../data/initialState';
+import { SHELTER_UPGRADES } from '../../data/shelterUpgrades';
 import type { GameState } from '../../types/game';
 
 describe('ShelterTab Component UI - Integrated Greenhouse', () => {
@@ -159,5 +160,42 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
     expect(screen.getAllByText('托管中').length).toBeGreaterThan(0);
     expect(screen.getByText('关闭')).toBeDefined();
     expect(screen.getByText(/挂机中：自动收割/)).toBeDefined();
+  });
+});
+
+describe('解锁条件隐藏升级项（unlockRequirements）', () => {
+  beforeEach(() => {
+    // 隔离：清理残留存档，确保「未解锁隐藏」用例读的是干净初始状态（recycler Lv0）
+    localStorage.clear();
+    localStorage.setItem('aether_garden_save_current_user', 'Guest');
+    SHELTER_UPGRADES.battery.unlockRequirements = [{ type: 'upgrade_level', id: 'recycler', minValue: 1 }];
+  });
+  afterEach(() => {
+    SHELTER_UPGRADES.battery.unlockRequirements = undefined;
+  });
+
+  it('未满足前置（recycler Lv1）时蓄电池升级卡隐藏', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <ShelterTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+    expect(screen.queryByText('蓄电池')).toBeNull();
+  });
+
+  it('满足前置（recycler Lv1）后蓄电池升级卡出现', () => {
+    const save = structuredClone(INITIAL_STATE) as GameState;
+    save.shelter.recyclerLevel = 1;
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <ShelterTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+    expect(screen.getByText('蓄电池')).toBeDefined();
   });
 });
