@@ -109,6 +109,7 @@ export const INITIAL_STATE: GameState = {
     batteryLevel: 1,
     generatorLevel: 0,
     recyclerLevel: 0,
+    upgrades: {}, // 基建升级施工中（时间戳驱动，长节奏设定）
     facilities: {
       smelter: [
         {

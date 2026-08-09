@@ -212,6 +212,17 @@ export interface GameState {
 // 设施类型：冶炼炉 / 组装台（ticket 13 每种设施可扩建多台并行）
 export type FacilityType = 'smelter' | 'assembler';
 
+// 基建升级施工中状态（时间戳驱动）：开始升级即扣材料并记录 startTime，
+// 完成判定 = now - startTime >= 目标等级耗时；在线由 tick 结算，离线由回归结算
+export interface UpgradeInProgress {
+  startTime: number; // 开始升级的时间戳（ms）
+}
+
+// 升级条目 key 约定（存于 shelter.upgrades）：
+// - 单实例升级项（battery/generator/recycler/greenhouse_dock）：key = 升级项 id
+// - 产线设施升级：key = `${facilityType}_${unitIndex}`（如 'smelter_0'）
+// - 产线扩建：key = `expand_${facilityType}`（如 'expand_smelter'）
+
 // 产线设施实例（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级
 export interface AutomationFacility {
   id: FacilityType;               // 设施类型 id: 'smelter' | 'assembler'
@@ -229,6 +240,7 @@ export interface ShelterStats {
   generatorLevel: number;         // 发电机等级
   recyclerLevel: number;           // 回收站等级
   facilities: Record<FacilityType, AutomationFacility[]>; // 每种设施可扩建多台并行（ticket 13）
+  upgrades: Record<string, UpgradeInProgress>;            // 基建升级施工中列表（key 约定见 UpgradeInProgress）
   
   // 岗位分配
   assignedWatererId: string | null;   // 指派自动浇水的英雄ID
@@ -250,6 +262,7 @@ export interface OfflineReport {
   recoveredStamina: number;            // 离线期间恢复的体力
   recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
   logs: string[];
+  completedUpgrades?: string[];            // 离线期间完成的基建升级（如 "魔导发电机 升级至 Lv.3"）
   idleCombat?: IdleCombatReport | null;    // 确认式离线挂机战斗结算（ticket 08）
 }
 

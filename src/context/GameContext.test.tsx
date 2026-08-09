@@ -174,6 +174,7 @@ describe('GameContext Integration', () => {
           generatorLevel: 2,
           recyclerLevel: 3,
           facilities: { smelter: [], assembler: [] },
+          upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
@@ -236,6 +237,7 @@ describe('GameContext Integration', () => {
             ],
             assembler: []
           },
+          upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
@@ -300,6 +302,7 @@ describe('GameContext Integration', () => {
             ],
             assembler: []
           },
+          upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
@@ -359,6 +362,7 @@ describe('GameContext Integration', () => {
         generatorLevel: 0,
         recyclerLevel: 0,
         facilities: { smelter: [], assembler: [] },
+        upgrades: {},
         assignedWatererId: overrides.assignedWatererId ?? null,
         assignedExplorerId: null,
         expedition: { locationId: null, startTime: null, lastScavengeTime: null }

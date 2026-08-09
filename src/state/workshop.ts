@@ -3,7 +3,6 @@ import type { Recipe } from '../types/config';
 import type { ItemCategory } from '../data/items';
 import { RECIPES_CONFIG } from '../data/recipes';
 import { ITEMS_CONFIG } from '../data/items';
-import { GAME_CONSTANTS } from '../data/gameConstants';
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
@@ -38,43 +37,33 @@ export const getRecipeDescription = (recipe: Recipe): string => {
 };
 
 // 分类：显式 category 优先，否则从 reward 主产物的物品类别推导
-export const getRecipeCategory = (recipe: Recipe): ItemCategory | 'building' => {
+// （建筑类已迁出工坊，无 building 分类）
+export const getRecipeCategory = (recipe: Recipe): ItemCategory => {
   if (recipe.category) return recipe.category;
   const main = getRecipeMainReward(recipe);
   return (main ? ITEMS_CONFIG[main[0]]?.category : undefined) ?? 'resource';
 };
 
-// 批量上限（ticket 04）：每种 cost 材料可支撑的份数取最小；温室扩建固定 1；
+// 批量上限（ticket 04）：每种 cost 材料可支撑的份数取最小；
 // 配方是否可见由 isRecipeVisible 负责，此函数仅计算批量滑条上限
 export const computeMaxBatch = (state: GameState, recipe: Recipe): number => {
-  if (recipe.special === 'greenhouse_expansion') return 1;
   const costEntries = Object.entries(recipe.cost);
   if (costEntries.length === 0) return 1;
   return Math.min(...costEntries.map(([item, qty]) => Math.floor((state.inventory[item] || 0) / qty)));
 };
 
 // 配方可见性（ticket 03）：配方可见 ⟺ 存在合成可能性——
-// 蓝图锁定（未获得图纸）与温室扩建已达上限 → 隐藏；材料不足不影响可见性
+// 蓝图锁定（未获得图纸）→ 隐藏；材料不足不影响可见性
+// （温室扩建已达上限的判定随配方迁移至基建升级项，不再属于工坊）
 export const isRecipeVisible = (state: GameState, recipe: Recipe): boolean => {
   if (recipe.blueprintId && (state.inventory[recipe.blueprintId] || 0) < 1) return false;
-  if (
-    recipe.special === 'greenhouse_expansion' &&
-    state.greenhouse.unlockedSlotsCount >= GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS
-  ) {
-    return false;
-  }
   return true;
 };
 
-// 工坊制造：校验材料后扣费，处理胶囊充能/温室扩建等特殊配方；count 支持原子批量（ticket 04）
+// 工坊制造：校验材料后扣费，处理胶囊充能等特殊配方；count 支持原子批量（ticket 04）
 export const craftItemUpdate = (state: GameState, recipeId: string, count = 1): UpdateResult<boolean> => {
   const recipe = RECIPES_CONFIG[recipeId];
   if (!recipe || count <= 0) return NO_OP(state);
-
-  if (recipe.special === 'greenhouse_expansion') {
-    if (state.greenhouse.unlockedSlotsCount >= GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS) return NO_OP(state);
-    if (count !== 1) return NO_OP(state); // 禁批量（ticket 04）
-  }
 
   // 图纸解锁（ticket 10）：配方需先获得对应图纸（背包持有，知识类物品不消耗）
   if (recipe.blueprintId && (state.inventory[recipe.blueprintId] || 0) < 1) {
@@ -95,22 +84,6 @@ export const craftItemUpdate = (state: GameState, recipeId: string, count = 1): 
     newExploration.capsulesCharge = {
       ...state.exploration.capsulesCharge,
       [recipe.capsuleTarget]: (state.exploration.capsulesCharge[recipe.capsuleTarget] || 0) + (recipe.capsuleAmount || 3) * count
-    };
-  } else if (recipe.special === 'greenhouse_expansion') {
-    const currentCount = state.greenhouse.unlockedSlotsCount;
-    const nextCount = currentCount + GAME_CONSTANTS.GREENHOUSE_EXPANSION_INCREMENT;
-    const newSlots = [...state.greenhouse.slots];
-    for (let i = currentCount + 1; i <= nextCount; i++) {
-      newSlots.push({ id: i, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false });
-    }
-    return {
-      state: {
-        ...state,
-        inventory: newInventory,
-        equipmentInventory: newEquipmentInventory,
-        greenhouse: { ...state.greenhouse, unlockedSlotsCount: nextCount, slots: newSlots }
-      },
-      result: true
     };
   } else {
     // 批量产出：reward 各项 ×count 后一次入账（装备实例化由 addItemRewards 处理）

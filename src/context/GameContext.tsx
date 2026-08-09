@@ -24,7 +24,8 @@ import {
   removeQueueEntryUpdate,
   setFacilityActiveUpdate,
   expandFacilityUpdate,
-  upgradeShelterStatUpdate
+  upgradeShelterStatUpdate,
+  type UpgradeStatType
 } from '../state/facility';
 import { applyTick } from '../state/tick';
 import { summonUpdate, summonBatchUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
@@ -101,7 +102,7 @@ interface GameContextType {
   removeQueueEntry: (facilityType: FacilityType, unitIndex: number, queueIndex: number) => boolean;
   expandFacility: (facilityType: FacilityType) => boolean;
   setFacilityActive: (facilityType: FacilityType, unitIndex: number, active: boolean) => boolean;
-  upgradeShelterStat: (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler', unitIndex?: number) => boolean;
+  upgradeShelterStat: (statType: UpgradeStatType, unitIndex?: number) => boolean;
   // 远征派遣/召回通过 assignHeroToDuty 统一接口完成（ADR-0018）
   summonHero: () => SummonOutcome;
   summonBatch: (count: number) => MultiSummonResult;
@@ -543,17 +544,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const expandFacility = (facilityType: FacilityType): boolean => {
     let ok = false;
     setState(prev => {
-      const r = expandFacilityUpdate(prev, facilityType);
+      const r = expandFacilityUpdate(prev, facilityType, Date.now());
       ok = r.result;
       return r.state;
     });
     return ok;
   };
 
-  const upgradeShelterStat = (statType: 'battery' | 'generator' | 'recycler' | 'smelter' | 'assembler', unitIndex?: number): boolean => {
+  // 基建升级（耗时施工）：开始升级即扣材料进入升级中，完成由 tick/离线结算应用
+  const upgradeShelterStat = (statType: UpgradeStatType, unitIndex?: number): boolean => {
     let ok = false;
     setState(prev => {
-      const r = upgradeShelterStatUpdate(prev, statType, unitIndex ?? 0);
+      const r = upgradeShelterStatUpdate(prev, statType, unitIndex ?? 0, Date.now());
       ok = r.result;
       return r.state;
     });

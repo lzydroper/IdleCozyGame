@@ -3,7 +3,6 @@ import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
 import { AUTO_RECIPES } from '../../data/autoRecipes';
 import { ITEMS_CONFIG } from '../../data/items';
-import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../../data/shelterUpgrades';
 import { HEROES_CONFIG } from '../../data/heroes';
 import { getInvQty } from '../../utils/gameUtils';
 import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../../state/facility';
@@ -86,12 +85,10 @@ function FacilityUnitCard({
 }) {
   const {
     state,
-    upgradeShelterStat,
     enqueueRecipe,
     removeQueueEntry,
     setFacilityActive,
     assignHeroToDuty,
-    addLog,
   } = useGame();
   const { showToast } = useToast();
   const [selectedRecipe, setSelectedRecipe] = useState('');
@@ -103,14 +100,10 @@ function FacilityUnitCard({
   if (!fac) return null;
 
   const level = fac.level || 1;
-  const upgrade = SHELTER_UPGRADES[type];
-  const isMax = level >= upgrade.maxLevel;
-  const nextConfig = upgrade.levels.find(l => l.level === level + 1);
-  // 产线纯自动：效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）
+  // 效率由设施等级决定（每级 +10%，与 shelterUpgrades 配置一致）；升级入口已整合至基建 tab
   const speedBonus = 1 + level * 0.1;
   const capacity = getQueueCapacity(level);
   const recipes = Object.values(AUTO_RECIPES).filter(r => r.facilityId === type);
-  const canAffordUpgrade = nextConfig ? Object.entries(nextConfig.cost).every(([itemId, qty]) => getInvQty(state.inventory, itemId) >= qty) : false;
 
   const headRecipe = fac.queue.length > 0 ? AUTO_RECIPES[fac.queue[0]] : null;
   const isPaused = !!headRecipe && fac.timeLeft === 0 &&
@@ -148,7 +141,7 @@ function FacilityUnitCard({
       )}
 
       <div className="p-4 space-y-3">
-        {/* ── 标题栏：名称 + 第N台 + 等级 + 升级 ── */}
+        {/* ── 标题栏：名称 + 第N台 + 等级（升级入口已整合至基建 tab） ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-7 h-7 rounded-lg ${iconBg} border ${iconBorder} flex items-center justify-center`}>
@@ -165,40 +158,6 @@ function FacilityUnitCard({
               </div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              if (isMax) return;
-              if (upgradeShelterStat(type, unitIndex)) {
-                addLog(`${fac.name} ${units.length > 1 ? `${unitIndex + 1}号 ` : ''}升级至 Lv.${level + 1}`, 'logistics');
-                showToast(`${fac.name}升级成功！效率与队列容量提升。`, 'success');
-              } else {
-                showToast('所需资源不足，无法升级！', 'error');
-              }
-            }}
-            disabled={isMax || !canAffordUpgrade}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
-              isMax
-                ? 'bg-zinc-900/40 text-zinc-600 border border-zinc-800/60 cursor-default'
-                : canAffordUpgrade
-                  ? 'bg-zinc-800 text-zinc-200 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 active:scale-95 cursor-pointer'
-                  : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
-            }`}
-          >
-            <TrendingUp className="w-2.5 h-2.5" />
-            {isMax ? (
-              <span>已满级</span>
-            ) : (
-              <>
-                <span>升级</span>
-                {nextConfig && Object.entries(nextConfig.cost).map(([itemId, qty]) => (
-                  <React.Fragment key={itemId}>
-                    <GameIcon type="item" id={itemId} className="w-3 h-3" title={itemId} />
-                    <span>{qty}</span>
-                  </React.Fragment>
-                ))}
-              </>
-            )}
-          </button>
         </div>
 
         {/* ── 驻守英雄徽章 ── */}
@@ -430,7 +389,7 @@ function FacilityUnitCard({
 }
 
 // ─────────────────────────────────────────────
-// 设施类型区块：多台并行 + 扩建入口
+// 设施类型区块：多台并行（扩建入口已整合至基建 tab）
 // ─────────────────────────────────────────────
 function FacilityTypeSection({
   type,
@@ -441,15 +400,8 @@ function FacilityTypeSection({
   theme: FacilityTheme;
   icon: React.ReactNode;
 }) {
-  const { state, expandFacility, addLog } = useGame();
-  const { showToast } = useToast();
-  const { accent, iconBg } = theme;
+  const { state } = useGame();
   const units = state.shelter.facilities[type] || [];
-  const cfg = FACILITY_EXPANSION[type];
-
-  const canExpand = units.length < cfg.maxUnits;
-  const cost = canExpand ? cfg.costs[units.length - 1] : null;
-  const canAfford = cost ? Object.entries(cost).every(([itemId, qty]) => getInvQty(state.inventory, itemId) >= qty) : false;
 
   return (
     <div className="space-y-3">
@@ -462,42 +414,6 @@ function FacilityTypeSection({
           icon={icon}
         />
       ))}
-
-      {/* 扩建：新增一台并行设施 */}
-      <button
-        onClick={() => {
-          if (!canExpand) return;
-          if (expandFacility(type)) {
-            addLog(`${units[0]?.name || type} 扩建完成，新增 ${units.length + 1} 号设施。`, 'logistics');
-            showToast('扩建成功！新增一台并行设施。', 'success');
-          } else {
-            showToast('扩建失败：资源不足。', 'error');
-          }
-        }}
-        disabled={!canExpand || !canAfford}
-        className={`w-full py-2 rounded-xl border border-dashed text-[9px] font-bold transition-all flex items-center justify-center gap-1.5 ${
-          !canExpand
-            ? 'border-zinc-800 text-zinc-700 cursor-default'
-            : canAfford
-              ? `${iconBg} ${accent} border-zinc-700 hover:brightness-125 active:scale-[0.99] cursor-pointer`
-              : 'border-zinc-800 text-zinc-600 cursor-not-allowed'
-        }`}
-      >
-        <Plus className="w-3 h-3" />
-        {canExpand ? (
-          <>
-            扩建 {units.length + 1} 号设施（并行运转）
-            {cost && Object.entries(cost).map(([itemId, qty]) => (
-              <React.Fragment key={itemId}>
-                <GameIcon type="item" id={itemId} className="w-3 h-3" title={itemId} />
-                <span>{qty}</span>
-              </React.Fragment>
-            ))}
-          </>
-        ) : (
-          '已达扩建上限'
-        )}
-      </button>
     </div>
   );
 }

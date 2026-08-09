@@ -1,7 +1,7 @@
 import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
-import { processFacility, resolveDutyBonus } from './facility';
+import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './facility';
 import { resolveDutyBonuses } from './duty';
 import { advanceGreenhouseAutomation, maybeStopAutoFarmOnSeedDepletion } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
@@ -43,9 +43,15 @@ export function calculateOfflineProgress(
 export function calculateDetailedOfflineProgress(
   state: GameState,
   elapsedSeconds: number,
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
+  now = Date.now()
 ): { updatedState: GameState; report: OfflineReport } {
+  // 0. 基建升级完成结算（先应用再结算产出）：离线期间完成的升级立即生效，
+  //    之后全部离线产出（含 maxOfflineDuration 封顶）按新等级计算
+  const upgraded = resolveShelterUpgrades(state, now);
+  state = upgraded.state; // 重新绑定为升级结算后的状态（无施工时为同一引用，纯函数不变性保持）
   const actualSeconds = Math.min(elapsedSeconds, state.shelter.maxOfflineDuration);
+  // 升级完成由 report.completedUpgrades 单独区块展示，不重复进运转明细
   const reportLogs: string[] = [];
   const recoveredItems: Record<string, number> = {};
 
@@ -357,6 +363,7 @@ export function calculateDetailedOfflineProgress(
       recoveredStamina,
       recoveredItems,
       logs: reportLogs,
+      completedUpgrades: upgraded.completed.length > 0 ? upgraded.completed.map(c => `${c.text}（离线期间完成）`) : undefined,
       idleCombat
     }
   };

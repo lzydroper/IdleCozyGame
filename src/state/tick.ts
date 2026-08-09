@@ -1,7 +1,7 @@
 import type { GameState, LogEntry } from '../types/game';
 import type { FacilityType } from '../types/game';
 import { AUTO_RECIPES } from '../data/autoRecipes';
-import { processFacility, resolveDutyBonus } from './facility';
+import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './facility';
 import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonuses } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
 import { resolveDutyBonuses } from './duty';
@@ -32,6 +32,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     prev.shelter.recyclerLevel > 0 ||
     prev.greenhouse.slots.some(s => s.cropId) ||
     Object.values(prev.shelter.facilities).some(units => units.some(u => (u.queue?.length ?? 0) > 0)) ||
+    Object.keys(prev.shelter.upgrades || {}).length > 0 || // 基建升级施工中：保证进度条每秒刷新
     (prev.shelter.expedition.locationId != null && prev.shelter.assignedExplorerId != null) ||
     (prev.combat?.idle?.zoneId != null) ||
     prev.activeAlert.type === 'dream_leak';
@@ -48,9 +49,19 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     return prev;
   }
 
-  // 梦魇入侵时冻结温室
+  // 梦魇入侵时冻结温室（基建升级仍按时间戳推进，此处先结算已完成的施工）
   if (prev.activeAlert.type === 'dream_leak') {
-    return { ...prev, lastTick: now };
+    const r = resolveShelterUpgrades(prev, now);
+    if (r.completed.length > 0) {
+      const entries: LogEntry[] = r.completed.map(c => ({
+        id: `${now}_${Math.random()}`,
+        text: c.text,
+        timestamp: now,
+        type: 'logistics'
+      }));
+      return { ...r.state, lastTick: now, logs: [...entries, ...(r.state.logs || [])].slice(0, 100) };
+    }
+    return { ...r.state, lastTick: now };
   }
 
   let currentInventory = { ...prev.inventory };
@@ -312,7 +323,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     newLogs = [...idleLogEntries, ...newLogs].slice(0, 100);
   }
 
-  return {
+  const assembled: GameState = {
     ...prev,
     player: { ...prev.player, energy: currentEnergy, days: newDays },
     stamina: finalStamina,
@@ -325,4 +336,17 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     lastTick: now,
     dayStartTime: newDayStartTime
   };
+
+  // 基建升级完成结算（时间戳驱动）：施工中已计入活跃系统，此处应用到期的升级并写日志
+  const upgradeR = resolveShelterUpgrades(assembled, now);
+  if (upgradeR.completed.length > 0) {
+    const upgradeLogEntries: LogEntry[] = upgradeR.completed.map(c => ({
+      id: `${now}_${Math.random()}`,
+      text: c.text,
+      timestamp: now,
+      type: 'logistics'
+    }));
+    return { ...upgradeR.state, logs: [...upgradeLogEntries, ...(upgradeR.state.logs || [])].slice(0, 100) };
+  }
+  return upgradeR.state;
 };

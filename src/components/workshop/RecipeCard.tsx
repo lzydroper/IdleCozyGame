@@ -9,12 +9,11 @@ import CraftBatchModal from './CraftBatchModal';
 import { WORKSHOP_TOASTS } from './constants';
 import { Zap } from 'lucide-react';
 
-// 配方显示图标：取 reward 主产物；充能配方取 capsuleTarget；温室扩建回退电芯
+// 配方显示图标：取 reward 主产物；充能配方取 capsuleTarget
 const getRecipeIconId = (recipe: Recipe): string => {
   const rewardKeys = Object.keys(recipe.reward || {});
   if (rewardKeys.length > 0) return rewardKeys[0];
   if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) return recipe.capsuleTarget;
-  if (recipe.id === 'greenhouse_expansion') return 'plasma_cell';
   return recipe.id;
 };
 
@@ -74,16 +73,14 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
             >
               合成
             </button>
-            {/* 温室扩建禁批量（ticket 04）：不显示「批量」入口 */}
-            {recipe.special !== 'greenhouse_expansion' && (
-              <button
-                onClick={() => setBatchOpen(true)}
-                disabled={!canCraft}
-                className="px-3.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none text-zinc-200 text-xs font-black rounded-lg transition-colors cursor-pointer"
-              >
-                批量
-              </button>
-            )}
+            {/* 批量合成入口 */}
+            <button
+              onClick={() => setBatchOpen(true)}
+              disabled={!canCraft}
+              className="px-3.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none text-zinc-200 text-xs font-black rounded-lg transition-colors cursor-pointer"
+            >
+              批量
+            </button>
           </div>
         </div>
         <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">{getRecipeDescription(recipe)}</p>

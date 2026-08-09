@@ -10,7 +10,6 @@ import {
 import { RECIPES_CONFIG } from '../data/recipes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { INITIAL_STATE } from '../data/initialState';
-import { GAME_CONSTANTS } from '../data/gameConstants';
 import type { GameState } from '../types/game';
 
 const makeState = (overrides?: Partial<GameState>): GameState =>
@@ -36,9 +35,9 @@ describe('配方文案推导（ticket 01）', () => {
   });
 
   it('无产出配方用显式 displayName 兜底，描述用显式 description', () => {
-    const r = RECIPES_CONFIG['greenhouse_expansion'];
-    expect(getRecipeDisplayName(r)).toBe('合成 温室智能扩展坞');
-    expect(getRecipeDescription(r)).toContain('解锁额外 2 个高阶培养槽');
+    const r = RECIPES_CONFIG['sanity_capsule'];
+    expect(getRecipeDisplayName(r)).toBe('合成 稳定胶囊');
+    expect(getRecipeDescription(r)).toBe('');
   });
 
   it('自动配方同样推导显示名', () => {
@@ -56,7 +55,6 @@ describe('配方分类推导（ticket 01）', () => {
 
   it('无产出配方用显式 category 覆盖', () => {
     expect(getRecipeCategory(RECIPES_CONFIG['sanity_capsule'])).toBe('item');
-    expect(getRecipeCategory(RECIPES_CONFIG['greenhouse_expansion'])).toBe('building');
   });
 });
 
@@ -66,15 +64,6 @@ describe('配方可见性（ticket 03：蓝图锁定/已达上限隐藏，材料
     expect(isRecipeVisible(state, RECIPES_CONFIG['ember_weapon_recipe'])).toBe(false);
     const withBlueprint = makeState({ inventory: { ...INITIAL_STATE.inventory, blueprint_ember_armory: 1 } });
     expect(isRecipeVisible(withBlueprint, RECIPES_CONFIG['ember_weapon_recipe'])).toBe(true);
-  });
-
-  it('温室扩建未达上限可见，已达上限隐藏', () => {
-    const state = makeState();
-    expect(isRecipeVisible(state, RECIPES_CONFIG['greenhouse_expansion'])).toBe(true);
-    const full = makeState({
-      greenhouse: { ...INITIAL_STATE.greenhouse, unlockedSlotsCount: GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS }
-    });
-    expect(isRecipeVisible(full, RECIPES_CONFIG['greenhouse_expansion'])).toBe(false);
   });
 
   it('材料不足不影响可见性（显示但不可合成）', () => {
@@ -101,14 +90,6 @@ describe('批量合成（ticket 04：craftItemUpdate count 原子批量）', () 
     expect(r.state.inventory.dream_shard).toBe(4); // 10 - 3×2
   });
 
-  it('温室扩建禁批量（count≠1 拒绝），材料足够时单次成功', () => {
-    const state = makeState({ inventory: { scrap_metal: 60, alloy_plate: 10, plasma_cell: 2, mana_dust: 5 } });
-    expect(craftItemUpdate(state, 'greenhouse_expansion', 2).result).toBe(false);
-    const r = craftItemUpdate(state, 'greenhouse_expansion', 1);
-    expect(r.result).toBe(true);
-    expect(r.state.greenhouse.unlockedSlotsCount).toBe(6); // 4 + 2
-  });
-
   it('材料不足整体拒绝（无部分扣料）', () => {
     const state = makeState({ inventory: { glow_fiber: 5, aether_pulp: 1 } }); // count=2 需 6+2
     const r = craftItemUpdate(state, 'ration_pack', 2);
@@ -127,10 +108,6 @@ describe('computeMaxBatch（ticket 04）', () => {
   it('取材料上限的最小值', () => {
     const state = makeState({ inventory: { glow_fiber: 10, aether_pulp: 3 } });
     expect(computeMaxBatch(state, RECIPES_CONFIG['ration_pack'])).toBe(3); // min(⌊10/3⌋, ⌊3/1⌋)
-  });
-
-  it('温室扩建批量上限固定为 1', () => {
-    expect(computeMaxBatch(makeState(), RECIPES_CONFIG['greenhouse_expansion'])).toBe(1);
   });
 
   it('材料不足时上限为 0', () => {

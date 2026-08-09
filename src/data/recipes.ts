@@ -52,15 +52,6 @@ export const RECIPES_CONFIG: Record<string, Recipe> = {
     cost: { plasma_cell: 1, frost_crystal: 1, alloy_plate: 1 },
     reward: { energy_refill: 3 }
   },
-  greenhouse_expansion: {
-    id: 'greenhouse_expansion',
-    cost: { scrap_metal: 50, alloy_plate: 10, plasma_cell: 2, mana_dust: 5 },
-    reward: {},
-    special: 'greenhouse_expansion',
-    category: 'building', // 无产物建筑类配方，显式归「建筑」
-    displayName: '温室智能扩展坞',
-    description: '使用合金与电芯建造的扩展槽位模块，能解锁额外 2 个高阶培养槽。最高支持扩展至 8 槽。'
-  },
 
   // === 新材料配方 ===
   aether_ingot_smelt: {

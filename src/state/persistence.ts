@@ -255,6 +255,12 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     assignedWatererId: null,
     assignedExplorerId: null,
     expedition: { locationId: null, startTime: null, lastScavengeTime: null },
+    // 基建升级施工条目（耗时机制）：旧存档缺失时回退空表；过滤损坏条目
+    upgrades: Object.fromEntries(
+      Object.entries(((parsed.shelter && (parsed.shelter as any).upgrades) || {})).filter(
+        ([, v]) => v && typeof (v as { startTime?: unknown }).startTime === 'number' && Number.isFinite((v as { startTime: number }).startTime)
+      )
+    ) as Record<string, { startTime: number }>,
     facilities: normalizeFacilities(
       (parsed.shelter && (parsed.shelter as any).facilities) as any,
       initialState.shelter.facilities
@@ -346,7 +352,7 @@ export const loadOrCreateState = (
       const parsed = JSON.parse(saved) as GameState;
       const elapsedSeconds = parsed.lastTick ? Math.max(0, Math.floor((now - parsed.lastTick) / 1000)) : 0;
       const mergedState = mergeSavedState(parsed, initialState);
-      const { updatedState, report } = calculateDetailedOfflineProgress(mergedState, elapsedSeconds);
+      const { updatedState, report } = calculateDetailedOfflineProgress(mergedState, elapsedSeconds, Math.random, now);
       return {
         ...updatedState,
         lastTick: now,

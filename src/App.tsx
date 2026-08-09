@@ -34,7 +34,8 @@ import {
   Zap,
   Dumbbell,
   Swords,
-  ClipboardList
+  ClipboardList,
+  Wrench
 } from 'lucide-react';
 import shelterBg from './assets/shelter_bg.jpg';
 
@@ -912,6 +913,24 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* 基建升级完成（耗时施工：离线期间完成的升级） */}
+            {state.lastOfflineReport.completedUpgrades && state.lastOfflineReport.completedUpgrades.length > 0 && (
+              <div className="bg-zinc-950/60 p-3 rounded-2xl border border-cyan-500/20 space-y-2">
+                <h3 className="text-[10px] text-cyan-400 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
+                  <Wrench className="w-3 h-3" />
+                  基建升级完成
+                </h3>
+                <div className="space-y-1 text-[10px] text-cyan-300 font-mono">
+                  {state.lastOfflineReport.completedUpgrades.map((text, idx) => (
+                    <div key={idx} className="flex items-start gap-1">
+                      <span className="text-cyan-600">▪</span>
+                      <span>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 挂机战斗报告（ticket 08：确认式离线挂机结算掉落与经验） */}
             {state.lastOfflineReport.idleCombat && (

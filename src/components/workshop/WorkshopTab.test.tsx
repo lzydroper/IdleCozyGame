@@ -36,7 +36,7 @@ describe('WorkshopTab Component', () => {
     expect(screen.getByText(/合成 废土利刃 ×1/)).toBeDefined();
   });
 
-  it('renders 5 category tabs and shows empty state for the shard category (ticket 03)', () => {
+  it('renders 4 category tabs and shows empty state for the shard category (ticket 03)', () => {
     render(
       <GameProvider>
         <ToastProvider>
@@ -45,9 +45,11 @@ describe('WorkshopTab Component', () => {
       </GameProvider>
     );
 
-    ['道具', '资源', '碎片', '装备', '建筑'].forEach(label => {
+    // 建筑分类已随温室扩展坞迁移至后勤基建，工坊仅剩 4 类
+    ['道具', '资源', '碎片', '装备'].forEach(label => {
       expect(screen.getByText(label)).toBeDefined();
     });
+    expect(screen.queryByText('建筑')).toBeNull();
 
     // 碎片分类在工坊无产出配方 → 空态
     fireEvent.click(screen.getByText('碎片'));

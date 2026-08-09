@@ -7,23 +7,28 @@ import {
   setFacilityActiveUpdate,
   expandFacilityUpdate,
   upgradeShelterStatUpdate,
+  resolveShelterUpgrades,
+  getShelterUpgradeLevel,
   processFacility,
   getQueueCapacity,
   getActualDuration,
   resolveDutyBonus
 } from './facility';
+import { calculateDetailedOfflineProgress } from './offline';
 import { EMPTY_DUTY_BONUS } from './duty';
 import { mergeSavedState } from './persistence';
 
 // 以初始存档为基底构造测试状态
 const baseState = (): GameState => structuredClone(INITIAL_STATE);
 
-// 升级冶炼炉到指定等级（初始 10 废铁不够升级费用，先补给）
+// 升级冶炼炉到指定等级（初始 10 废铁不够升级费用，先补给）；
+// 耗时施工模式：startTime=0 开始，用超大时间戳 resolve 强制完成
 const smelterAtLevel = (level: number): GameState => {
   let state = baseState();
   state.inventory.scrap_metal = 100;
   for (let lv = 1; lv < level; lv++) {
-    state = upgradeShelterStatUpdate(state, 'smelter', 0).state;
+    const started = upgradeShelterStatUpdate(state, 'smelter', 0, 0);
+    state = resolveShelterUpgrades(started.state, 10 ** 12).state;
   }
   return state;
 };
@@ -193,25 +198,43 @@ describe('配方队列（ticket 13）', () => {
     });
   });
 
-  describe('扩建（多设施并行）', () => {
-    it('扩建新增一台 Lv1 设施，费用按已有台数递增', () => {
+  describe('扩建（多设施并行，耗时施工）', () => {
+    it('扩建开始扣材料进入施工，完成后新增一台 Lv1 设施，费用按已有台数递增', () => {
       let state = baseState();
       state.inventory.scrap_metal = 200;
-      const r1 = expandFacilityUpdate(state, 'smelter');
+      // 第 2 台：开始施工（扣 40）→ 未完成前台数不变
+      const r1 = expandFacilityUpdate(state, 'smelter', 0);
       expect(r1.result).toBe(true);
-      expect(r1.state.shelter.facilities.smelter.length).toBe(2);
+      expect(r1.state.shelter.facilities.smelter.length).toBe(1); // 施工中
       expect(r1.state.inventory.scrap_metal).toBe(200 - 40);
-      expect(smelter(r1.state).queue).toEqual([]);
-      expect(r1.state.shelter.facilities.smelter[1].level).toBe(1);
+      expect(r1.state.shelter.upgrades['expand_smelter']).toEqual({ startTime: 0 });
 
-      const r2 = expandFacilityUpdate(r1.state, 'smelter');
+      const done1 = resolveShelterUpgrades(r1.state, 10 ** 12);
+      expect(done1.completed.length).toBe(1);
+      expect(done1.state.shelter.facilities.smelter.length).toBe(2);
+      expect(done1.state.shelter.facilities.smelter[1].level).toBe(1);
+      expect(done1.state.shelter.facilities.smelter[1].queue).toEqual([]);
+      expect(done1.state.shelter.upgrades['expand_smelter']).toBeUndefined();
+
+      // 第 3 台：扣 120
+      const r2 = expandFacilityUpdate(done1.state, 'smelter', 0);
       expect(r2.result).toBe(true);
-      expect(r2.state.shelter.facilities.smelter.length).toBe(3);
       expect(r2.state.inventory.scrap_metal).toBe(200 - 40 - 120);
+      const done2 = resolveShelterUpgrades(r2.state, 10 ** 12);
+      expect(done2.state.shelter.facilities.smelter.length).toBe(3);
 
-      const r3 = expandFacilityUpdate(r2.state, 'smelter'); // 已达上限 3
+      // 已达上限 3
+      const r3 = expandFacilityUpdate(done2.state, 'smelter');
       expect(r3.result).toBe(false);
       expect(r3.state.shelter.facilities.smelter.length).toBe(3);
+    });
+
+    it('扩建施工中禁止重复开始', () => {
+      const state = baseState();
+      state.inventory.scrap_metal = 200;
+      const r1 = expandFacilityUpdate(state, 'smelter', 0);
+      expect(r1.result).toBe(true);
+      expect(expandFacilityUpdate(r1.state, 'smelter').result).toBe(false);
     });
 
     it('扩建资金不足时拒绝', () => {
@@ -225,7 +248,8 @@ describe('配方队列（ticket 13）', () => {
     it('两台设施独立运转（并行）', () => {
       let state = baseState();
       state.inventory.scrap_metal = 100;
-      state = expandFacilityUpdate(state, 'smelter').state;
+      state = expandFacilityUpdate(state, 'smelter', 0).state;
+      state = resolveShelterUpgrades(state, 10 ** 12).state; // 完成扩建
       state = enqueueRecipeUpdate(state, 'smelter', 0, 'smelt_alloy').state;
       state = enqueueRecipeUpdate(state, 'smelter', 1, 'smelt_alloy').state;
       state.inventory.scrap_metal = 100;
@@ -237,6 +261,121 @@ describe('配方队列（ticket 13）', () => {
       expect(result1.facility.queue).toEqual([]);
       expect(state.inventory.alloy_plate).toBe(2);
       expect(state.inventory.scrap_metal).toBe(100 - 4);
+    });
+  });
+
+  describe('基建升级耗时（时间戳驱动）', () => {
+    it('开始升级扣材料并进入升级中，未到耗时前不应用，到期后完成', () => {
+      let state = baseState();
+      state.inventory.scrap_metal = 100;
+      const r = upgradeShelterStatUpdate(state, 'smelter', 0, 0);
+      expect(r.result).toBe(true);
+      expect(r.state.inventory.scrap_metal).toBe(100 - 20); // Lv1→2 扣 20
+      expect(r.state.shelter.upgrades['smelter_0']).toEqual({ startTime: 0 });
+      expect(smelter(r.state).level).toBe(1); // 施工中未应用
+
+      // 未到完成时刻（耗时 1800s）
+      const mid = resolveShelterUpgrades(r.state, 1800 * 1000 - 1);
+      expect(smelter(mid.state).level).toBe(1);
+      expect(mid.state.shelter.upgrades['smelter_0']).toBeDefined();
+      expect(mid.completed).toEqual([]);
+
+      // 到达完成时刻
+      const done = resolveShelterUpgrades(r.state, 1800 * 1000);
+      expect(smelter(done.state).level).toBe(2);
+      expect(done.state.shelter.upgrades['smelter_0']).toBeUndefined();
+      expect(done.completed[0].text).toContain('魔导冶炼炉 升级至 Lv.2');
+    });
+
+    it('升级中禁止重复开始同一项，不同项可并行', () => {
+      let state = baseState();
+      state.inventory.scrap_metal = 1000;
+      state = upgradeShelterStatUpdate(state, 'battery', 0, 0).state;
+      expect(upgradeShelterStatUpdate(state, 'battery', 0, 0).result).toBe(false); // 重复
+      const r = upgradeShelterStatUpdate(state, 'generator', 0, 0);
+      expect(r.result).toBe(true); // 不同项并行
+    });
+
+    it('已满级拒绝开始', () => {
+      const state = baseState();
+      state.shelter.recyclerLevel = 10;
+      expect(upgradeShelterStatUpdate(state, 'recycler').result).toBe(false);
+    });
+
+    it('材料不足拒绝开始且不扣料', () => {
+      const state = baseState(); // 初始 10 废铁，battery Lv1→2 需 20
+      const r = upgradeShelterStatUpdate(state, 'battery');
+      expect(r.result).toBe(false);
+      expect(r.state.inventory.scrap_metal).toBe(10);
+      expect(r.state.shelter.upgrades).toEqual({});
+    });
+
+    it('battery 升级完成后更新 maxOfflineDuration', () => {
+      let state = baseState();
+      state.inventory.scrap_metal = 100;
+      state = upgradeShelterStatUpdate(state, 'battery', 0, 0).state;
+      const done = resolveShelterUpgrades(state, 3600 * 1000);
+      expect(done.state.shelter.batteryLevel).toBe(2);
+      expect(done.state.shelter.maxOfflineDuration).toBe(18000);
+    });
+
+    it('温室智能扩展坞升级：每级 +2 槽并钳制到 8 槽上限', () => {
+      let state = baseState();
+      state.inventory = { scrap_metal: 1000, alloy_plate: 100, plasma_cell: 20, mana_dust: 50 };
+      state = upgradeShelterStatUpdate(state, 'greenhouse_dock', 0, 0).state;
+      const done1 = resolveShelterUpgrades(state, 7200 * 1000);
+      expect(done1.state.greenhouse.unlockedSlotsCount).toBe(6);
+      expect(done1.state.greenhouse.slots.length).toBe(6);
+
+      const r2 = upgradeShelterStatUpdate(done1.state, 'greenhouse_dock', 0, 0);
+      const done2 = resolveShelterUpgrades(r2.state, 43200 * 1000);
+      expect(done2.state.greenhouse.unlockedSlotsCount).toBe(8);
+      expect(upgradeShelterStatUpdate(done2.state, 'greenhouse_dock').result).toBe(false); // 满级
+    });
+
+    it('旧存档 6 槽自动换算为扩展坞 Lv.1（无需迁移）', () => {
+      const state = baseState();
+      state.greenhouse.unlockedSlotsCount = 6;
+      expect(getShelterUpgradeLevel(state, 'greenhouse_dock')).toBe(1); // 6 槽 → Lv.1
+      // Lv1 已是当前等级，下一步应指向 Lv2（补足材料后允许开始）
+      const rich = { ...state, inventory: { scrap_metal: 1000, alloy_plate: 100, plasma_cell: 20, mana_dust: 50 } };
+      const r = upgradeShelterStatUpdate(rich, 'greenhouse_dock', 0, 0);
+      expect(r.result).toBe(true);
+      expect(r.state.shelter.upgrades['greenhouse_dock']).toBeDefined();
+    });
+
+    it('离线回归：先应用完成的升级再结算产出，报告含 completedUpgrades', () => {
+      let state = baseState();
+      state.inventory.scrap_metal = 1000;
+      // 发电机升级 30m：开始于 0，离线 1h 后必然完成
+      state = upgradeShelterStatUpdate(state, 'generator', 0, 0).state;
+      const { updatedState, report } = calculateDetailedOfflineProgress(state, 3600, Math.random, 3600 * 1000);
+      expect(updatedState.shelter.generatorLevel).toBe(1);
+      expect(updatedState.shelter.upgrades['generator']).toBeUndefined();
+      expect(report.completedUpgrades).toContain('魔导发电机 升级至 Lv.1（离线期间完成）');
+    });
+
+    it('离线回归：未完成的升级保留施工条目继续计时', () => {
+      let state = baseState();
+      state.inventory.scrap_metal = 1000;
+      // battery 升级 1h：开始于 0，离线 30m 未完成
+      state = upgradeShelterStatUpdate(state, 'battery', 0, 0).state;
+      const { updatedState, report } = calculateDetailedOfflineProgress(state, 1800, Math.random, 1800 * 1000);
+      expect(updatedState.shelter.batteryLevel).toBe(1);
+      expect(updatedState.shelter.upgrades['battery']).toEqual({ startTime: 0 });
+      expect(report.completedUpgrades).toBeUndefined();
+    });
+
+    it('防御：无法解析的施工条目被丢弃（不应用、不崩溃）', () => {
+      const state = baseState();
+      const ghost = {
+        ...state,
+        shelter: { ...state.shelter, upgrades: { ghost_unknown: { startTime: 0 } } }
+      };
+      const r = resolveShelterUpgrades(ghost, 10 ** 12);
+      expect(r.state.shelter.upgrades['ghost_unknown']).toBeUndefined();
+      expect(r.completed).toEqual([]);
+      expect(r.state.inventory.scrap_metal).toBe(10); // 未误扣/误退
     });
   });
 

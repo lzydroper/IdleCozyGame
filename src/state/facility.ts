@@ -2,13 +2,15 @@ import type { AutomationFacility, FacilityType, GameState } from '../types/game'
 import { HEROES_CONFIG } from '../data/heroes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
+import { GAME_CONSTANTS } from '../data/gameConstants';
 import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 
 // === 产线配方队列（ticket 13）：纯函数状态机 ===
 
-type UpgradeStatType = 'battery' | 'generator' | 'recycler' | FacilityType;
+// 基建升级项：单实例（battery/generator/recycler/greenhouse_dock）+ 产线设施（按台索引）
+export type UpgradeStatType = 'battery' | 'generator' | 'recycler' | 'greenhouse_dock' | FacilityType;
 
 // 队列容量 = 设施等级（Lv1 = 1 个配方位，Lv5 = 5 个）
 export const getQueueCapacity = (level: number): number => Math.max(1, Math.floor(level));
@@ -243,8 +245,101 @@ export const setFacilityActiveUpdate = (
   return { state: withUnits(state, type, updatedUnits), result: true };
 };
 
-// 扩建：新增一台同类型设施（Lv1、空队列、默认启用），费用按已有台数递增
-export const expandFacilityUpdate = (state: GameState, type: FacilityType): UpdateResult<boolean> => {
+// === 基建升级（耗时施工，时间戳驱动）：开始升级扣材料 → 升级中 → resolve 完成应用 ===
+
+// 升级条目 key：单实例升级项 = id；产线设施 = `${type}_${unitIndex}`；扩建 = `expand_${type}`
+export const getShelterUpgradeKey = (statType: UpgradeStatType, unitIndex = 0): string =>
+  statType === 'smelter' || statType === 'assembler' ? `${statType}_${unitIndex}` : statType;
+
+export const getFacilityExpansionKey = (type: FacilityType): string => `expand_${type}`;
+
+// 当前等级（greenhouse_dock 由已解锁槽位推导：每级 +2 槽，初始 4 槽 = Lv0，旧存档自动换算）
+export const getShelterUpgradeLevel = (state: GameState, statType: UpgradeStatType, unitIndex = 0): number => {
+  if (statType === 'battery') return state.shelter.batteryLevel || 1;
+  if (statType === 'generator') return state.shelter.generatorLevel || 0;
+  if (statType === 'recycler') return state.shelter.recyclerLevel || 0;
+  if (statType === 'greenhouse_dock') {
+    return Math.max(0, Math.floor((state.greenhouse.unlockedSlotsCount - 4) / GAME_CONSTANTS.GREENHOUSE_EXPANSION_INCREMENT));
+  }
+  return state.shelter.facilities[statType]?.[unitIndex]?.level || 1;
+};
+
+// 升级中条目的目标耗时（秒）：升级 → 下一级 duration；扩建 → 对应台数 durations
+export const getUpgradeDurationSeconds = (state: GameState, key: string): number | null => {
+  if (key.startsWith('expand_')) {
+    const type = key.slice('expand_'.length) as FacilityType;
+    const cfg = FACILITY_EXPANSION[type];
+    const units = state.shelter.facilities[type];
+    if (!cfg || !units) return null;
+    const duration = cfg.durations[units.length - 1];
+    return duration === undefined ? null : duration;
+  }
+  const parsed = parseUnitUpgradeKey(key);
+  if (!parsed) return null;
+  const { statType, unitIndex } = parsed;
+  const upgrade = SHELTER_UPGRADES[statType];
+  if (!upgrade) return null;
+  const nextConfig = upgrade.levels.find(l => l.level === getShelterUpgradeLevel(state, statType, unitIndex) + 1);
+  return nextConfig ? nextConfig.duration : null;
+};
+
+// 解析 `${type}_${index}` 形式的产线设施升级 key；单实例升级项直接返回
+function parseUnitUpgradeKey(key: string): { statType: UpgradeStatType; unitIndex: number } | null {
+  const m = /^(smelter|assembler)_(\d+)$/.exec(key);
+  if (m) return { statType: m[1] as FacilityType, unitIndex: Number(m[2]) };
+  if (SHELTER_UPGRADES[key]) return { statType: key as UpgradeStatType, unitIndex: 0 };
+  return null;
+}
+
+const withUpgrade = (state: GameState, key: string, startTime: number): GameState => ({
+  ...state,
+  shelter: {
+    ...state.shelter,
+    upgrades: { ...(state.shelter.upgrades || {}), [key]: { startTime } }
+  }
+});
+
+const removeUpgrade = (state: GameState, key: string): GameState => {
+  const upgrades = { ...(state.shelter.upgrades || {}) };
+  delete upgrades[key];
+  return { ...state, shelter: { ...state.shelter, upgrades } };
+};
+
+// 开始升级（即时扣材料，进入升级中；同一 key 升级中时拒绝重复开始）
+export const upgradeShelterStatUpdate = (
+  state: GameState,
+  statType: UpgradeStatType,
+  unitIndex = 0,
+  startTime = Date.now()
+): UpdateResult<boolean> => {
+  const upgrade = SHELTER_UPGRADES[statType];
+  if (!upgrade) return NO_OP(state);
+
+  const currentLevel = getShelterUpgradeLevel(state, statType, unitIndex);
+  const nextLevelConfig = upgrade.levels.find(l => l.level === currentLevel + 1);
+  if (!nextLevelConfig) return NO_OP(state); // 已满级
+
+  const key = getShelterUpgradeKey(statType, unitIndex);
+  if (state.shelter.upgrades?.[key]) return NO_OP(state); // 升级施工中
+
+  // 校验所需材料
+  const canAffordUpgradeCost = Object.entries(nextLevelConfig.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
+  if (!canAffordUpgradeCost) return NO_OP(state);
+
+  // 扣材料并进入升级中
+  const currentInventory = { ...state.inventory };
+  Object.entries(nextLevelConfig.cost).forEach(([item, qty]) => {
+    currentInventory[item] = (currentInventory[item] || 0) - qty;
+  });
+
+  return {
+    state: { ...withUpgrade(state, key, startTime), inventory: currentInventory },
+    result: true
+  };
+};
+
+// 开始扩建（即时扣材料，进入施工中；同类型扩建中时拒绝重复开始）
+export const expandFacilityUpdate = (state: GameState, type: FacilityType, startTime = Date.now()): UpdateResult<boolean> => {
   const cfg = FACILITY_EXPANSION[type];
   const units = getUnits(state, type);
   if (!cfg || !units || units.length === 0) return NO_OP(state);
@@ -252,83 +347,150 @@ export const expandFacilityUpdate = (state: GameState, type: FacilityType): Upda
   if (nextIndex >= cfg.maxUnits) return NO_OP(state);
   const cost = cfg.costs[nextIndex - 1];
   if (!cost) return NO_OP(state);
+  const key = getFacilityExpansionKey(type);
+  if (state.shelter.upgrades?.[key]) return NO_OP(state); // 扩建施工中
   if (!canAffordCost(cost, state.inventory)) return NO_OP(state);
 
   const updatedInventory = { ...state.inventory };
   consumeCost(cost, updatedInventory);
 
-  const template = units[0];
-  const newUnit: AutomationFacility = {
-    id: type,
-    name: template?.name || SHELTER_UPGRADES[type]?.name || '产线设施',
-    level: 1,
-    queue: [],
-    currentProgress: 0,
-    timeLeft: 0,
-    active: true
-  };
-
   return {
-    state: {
-      ...withUnits(state, type, [...units, newUnit]),
-      inventory: updatedInventory
-    },
+    state: { ...withUpgrade(state, key, startTime), inventory: updatedInventory },
     result: true
   };
 };
 
-// 升级避难所设施（蓄电池/发电机/回收站/冶炼炉/组装台）；产线设施按台索引升级
-export const upgradeShelterStatUpdate = (
-  state: GameState,
-  statType: UpgradeStatType,
-  unitIndex = 0
-): UpdateResult<boolean> => {
-  const upgrade = SHELTER_UPGRADES[statType];
-  if (!upgrade) return NO_OP(state);
-
-  let currentLevel = 1;
-  if (statType === 'battery') currentLevel = state.shelter.batteryLevel || 1;
-  else if (statType === 'generator') currentLevel = state.shelter.generatorLevel || 0;
-  else if (statType === 'recycler') currentLevel = state.shelter.recyclerLevel || 0;
-  else if (statType === 'smelter' || statType === 'assembler') {
-    const fac = getUnits(state, statType)?.[unitIndex];
-    if (!fac) return NO_OP(state);
-    currentLevel = fac.level || 1;
+// 应用一条已完成的升级/扩建（应用后移除施工条目）
+const applyPendingUpgrade = (state: GameState, key: string): { state: GameState; text: string } | null => {
+  // 扩建：新增一台同类型设施（Lv1、空队列、默认启用）
+  if (key.startsWith('expand_')) {
+    const type = key.slice('expand_'.length) as FacilityType;
+    const cfg = FACILITY_EXPANSION[type];
+    const units = state.shelter.facilities[type];
+    if (!cfg || !units || units.length === 0 || units.length >= cfg.maxUnits) return null;
+    const template = units[0];
+    const newUnit: AutomationFacility = {
+      id: type,
+      name: template?.name || SHELTER_UPGRADES[type]?.name || '产线设施',
+      level: 1,
+      queue: [],
+      currentProgress: 0,
+      timeLeft: 0,
+      active: true
+    };
+    const next = {
+      ...state,
+      shelter: {
+        ...state.shelter,
+        facilities: { ...state.shelter.facilities, [type]: [...units, newUnit] }
+      }
+    };
+    return { state: removeUpgrade(next, key), text: `${template?.name || SHELTER_UPGRADES[type]?.name || type} 扩建完成：新增 ${units.length + 1} 号设施` };
   }
 
-  const nextLevelConfig = upgrade.levels.find(l => l.level === currentLevel + 1);
-  if (!nextLevelConfig) return NO_OP(state);
+  const parsed = parseUnitUpgradeKey(key);
+  if (!parsed) return null;
+  const { statType, unitIndex } = parsed;
+  const upgrade = SHELTER_UPGRADES[statType];
+  if (!upgrade) return null;
+  const nextConfig = upgrade.levels.find(l => l.level === getShelterUpgradeLevel(state, statType, unitIndex) + 1);
+  if (!nextConfig) return null;
 
-  // 校验所需材料
-  const canAffordUpgradeCost = Object.entries(nextLevelConfig.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty);
-  if (!canAffordUpgradeCost) return NO_OP(state);
-
-  // 扣材料并应用升级
-  const currentInventory = { ...state.inventory };
-  Object.entries(nextLevelConfig.cost).forEach(([item, qty]) => {
-    currentInventory[item] = (currentInventory[item] || 0) - qty;
-  });
-
-  const nextLevel = nextLevelConfig.level;
   let currentShelter = { ...state.shelter, facilities: { ...state.shelter.facilities } };
 
   if (statType === 'battery') {
-    currentShelter.batteryLevel = nextLevel;
-    currentShelter.maxOfflineDuration = nextLevelConfig.effectValue;
+    currentShelter.batteryLevel = nextConfig.level;
+    currentShelter.maxOfflineDuration = nextConfig.effectValue;
   } else if (statType === 'generator') {
-    currentShelter.generatorLevel = nextLevel;
+    currentShelter.generatorLevel = nextConfig.level;
   } else if (statType === 'recycler') {
-    currentShelter.recyclerLevel = nextLevel;
-  } else if (statType === 'smelter' || statType === 'assembler') {
+    currentShelter.recyclerLevel = nextConfig.level;
+  } else if (statType === 'greenhouse_dock') {
+    // 温室智能扩展坞：每级 +2 培养槽，钳制到上限（原工坊配方逻辑迁移至此）
+    const currentCount = state.greenhouse.unlockedSlotsCount;
+    const nextCount = Math.min(GAME_CONSTANTS.GREENHOUSE_MAX_SLOTS, currentCount + GAME_CONSTANTS.GREENHOUSE_EXPANSION_INCREMENT);
+    const newSlots = [...state.greenhouse.slots];
+    for (let i = currentCount + 1; i <= nextCount; i++) {
+      newSlots.push({ id: i, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false });
+    }
+    const next = {
+      ...state,
+      greenhouse: { ...state.greenhouse, unlockedSlotsCount: nextCount, slots: newSlots },
+      shelter: currentShelter
+    };
+    return { state: removeUpgrade(next, key), text: `${upgrade.name} 升级至 Lv.${nextConfig.level}（培养槽 ${nextCount} 槽）` };
+  } else {
     const units = currentShelter.facilities[statType];
+    if (!units?.[unitIndex]) return null;
     currentShelter.facilities = {
       ...currentShelter.facilities,
-      [statType]: units.map((u, i) => (i === unitIndex ? { ...u, level: nextLevel } : u))
+      [statType]: units.map((u, i) => (i === unitIndex ? { ...u, level: nextConfig.level } : u))
     };
   }
 
   return {
-    state: { ...state, inventory: currentInventory, shelter: currentShelter },
-    result: true
+    state: removeUpgrade({ ...state, shelter: currentShelter }, key),
+    text: `${upgrade.name} 升级至 Lv.${nextConfig.level}`
   };
+};
+
+export interface ResolvedUpgrade {
+  key: string;
+  text: string; // 完成提示（日志 / 离线报告）
+}
+
+// 结算所有已完成的升级/扩建（时间戳驱动）；未完成的保留施工条目继续计时。
+// 在线由 tick 调用；离线回归在 calculateDetailedOfflineProgress 开头调用（先应用再结算产出）。
+export const resolveShelterUpgrades = (
+  state: GameState,
+  now: number
+): { state: GameState; completed: ResolvedUpgrade[] } => {
+  const pending = state.shelter.upgrades || {};
+  if (Object.keys(pending).length === 0) return { state, completed: [] };
+
+  let current = state;
+  const completed: ResolvedUpgrade[] = [];
+
+  for (const [key, info] of Object.entries(pending)) {
+    const durationSeconds = getUpgradeDurationSeconds(current, key);
+    if (durationSeconds === null || durationSeconds <= 0) {
+      // 防御：配置失效的施工条目丢弃，并退还开始升级时已扣的材料（尽力而为）
+      current = refundPendingUpgrade(current, key);
+      continue;
+    }
+    if (now - info.startTime < durationSeconds * 1000) continue; // 未到完成时刻
+    const applied = applyPendingUpgrade(current, key);
+    if (applied) {
+      current = applied.state;
+      completed.push({ key, text: applied.text });
+    }
+  }
+
+  return { state: current, completed };
+};
+
+// 防御：配置失效的施工条目（如升级项被删除/满级）退还已扣材料后丢弃。
+// 成本可解析时退还（扩建按当前台数、升级按下一级配置），解析失败则仅丢弃。
+const refundPendingUpgrade = (state: GameState, key: string): GameState => {
+  const refund: Record<string, number> = {};
+  if (key.startsWith('expand_')) {
+    const type = key.slice('expand_'.length) as FacilityType;
+    const cfg = FACILITY_EXPANSION[type];
+    const units = state.shelter.facilities[type];
+    const cost = cfg && units ? cfg.costs[units.length - 1] : null;
+    if (cost) Object.assign(refund, cost);
+  } else {
+    const parsed = parseUnitUpgradeKey(key);
+    if (parsed) {
+      const upgrade = SHELTER_UPGRADES[parsed.statType];
+      const nextConfig = upgrade?.levels.find(l => l.level === getShelterUpgradeLevel(state, parsed.statType, parsed.unitIndex) + 1);
+      if (nextConfig) Object.assign(refund, nextConfig.cost);
+    }
+  }
+  if (Object.keys(refund).length === 0) return removeUpgrade(state, key);
+  const inventory = { ...state.inventory };
+  Object.entries(refund).forEach(([item, qty]) => {
+    inventory[item] = (inventory[item] || 0) + qty;
+  });
+  return removeUpgrade({ ...state, inventory }, key);
 };
