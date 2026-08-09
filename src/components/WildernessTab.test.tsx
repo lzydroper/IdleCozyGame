@@ -4,6 +4,7 @@ import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import WildernessTab from './WildernessTab';
 import { COMBAT_ZONE_LIST } from '../data/combatZones';
+import { COMBAT_CONFIG } from '../data/combatConfig';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 
 describe('WildernessTab Component', () => {
@@ -611,6 +612,47 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText('-28')).toBeDefined(); // strike 伤害
     expect(screen.getByText(/发动【净化之泉】/).textContent).not.toContain('→'); // heal 无目标箭头
     expect(screen.getByText('+76')).toBeDefined(); // heal 治疗量
+  });
+
+  it('plays idle battle playback automatically when a battle settles online (挂机战斗自动播放回放动画)', () => {
+    vi.useFakeTimers();
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    // 强队保证必胜（诺娃 + 铁卫）
+    save.heroes = { nova: createInitialHero('nova'), soldier: createInitialHero('soldier') };
+    save.party = ['nova', 'soldier'];
+    save.stamina = COMBAT_CONFIG.maxStamina;
+    save.combat.zonesCleared = ['wasteland_entrance'];
+    save.combat.lastSettlement = null;
+    save.combat.idle = { zoneId: 'wasteland_entrance', startTime: Date.now(), accumulatedSeconds: 0 };
+    save.lastTick = Date.now(); // 无离线结算，从零开始在线推进
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByText(/战斗挂机/));
+
+    // 挂机在线结算一场（20 秒），回放动画自动开始播放（跳过按钮 = 播放态）
+    act(() => {
+      vi.advanceTimersByTime(21000);
+    });
+    expect(screen.getByText('跳过')).toBeDefined();
+
+    // 动画逐动作自动播放至完成 → 战斗胜利横幅（挂机战斗过程完整展示）
+    // 动画定时器是链式重注册的（每步 effect 清理+重注册），fake timers 下需分步推进
+    for (let i = 0; i < 20; i++) {
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+    }
+    expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+
+    vi.useRealTimers();
   });
 
   it('replays the animation for consecutive identical battles (unique key per battle)', () => {

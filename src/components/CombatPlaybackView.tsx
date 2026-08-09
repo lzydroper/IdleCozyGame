@@ -43,6 +43,11 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   // 完成回调防重入（StrictMode 下 updater 会 double-invoke，故用 effect + ref 只触发一次）
   const completedRef = useRef<boolean>(false);
 
+  // onComplete 用 ref 稳定化：父组件每秒 tick 重渲染会产生新函数引用，
+  // 若直接作为定时器 effect 依赖会导致 800ms 定时器被反复重置（挂机动画卡在第一步）
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   // 倍速状态：1x -> 2x -> 4x
   const [speed, setSpeed] = useState<1 | 2 | 4>(1);
 
@@ -68,8 +73,8 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   useEffect(() => {
     if (!autoPlay || !isFinished || completedRef.current) return;
     completedRef.current = true;
-    if (onComplete) onComplete();
-  }, [autoPlay, isFinished, onComplete]);
+    if (onCompleteRef.current) onCompleteRef.current();
+  }, [autoPlay, isFinished]);
 
   // 自动滚动到最新日志
   useEffect(() => {
@@ -79,6 +84,7 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
   }, [actionIndex]);
 
   // 定时器驱动逐动作步进；历史静态展示（autoPlay=false）不启动
+  // 注意：不依赖 onComplete（ref 稳定化），否则父组件重渲染会重置动画定时器
   useEffect(() => {
     if (!autoPlay || isFinished || isPaused) return;
 
@@ -90,7 +96,7 @@ export const CombatPlaybackView: React.FC<CombatPlaybackViewProps> = ({
     }, intervalMs);
 
     return () => clearTimeout(timer);
-  }, [autoPlay, actionIndex, speed, isFinished, isPaused, actions.length, onComplete]);
+  }, [autoPlay, actionIndex, speed, isFinished, isPaused, actions.length]);
 
   // 循环切换倍速
   const handleToggleSpeed = () => {

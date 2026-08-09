@@ -594,8 +594,35 @@ const CombatPanel: React.FC = () => {
 
   // 本次点击开战/BOSS 产生的新结算（ticket 21 用户反馈 1/2）：
   // 历史 lastSettlement 静态展示不自动播放；只有新战斗才播放动画，播完后再提示奖励
-  const [pendingSettlement, setPendingSettlement] = useState<{ settlement: CombatSettlement; isBoss: boolean; wasCleared: boolean; seq: number } | null>(null);
+  // source：'manual'（手动开战，播完弹 toast）/ 'idle'（挂机结算自动播放，不弹 toast 避免打扰）
+  const [pendingSettlement, setPendingSettlement] = useState<{
+    settlement: CombatSettlement;
+    isBoss: boolean;
+    wasCleared: boolean;
+    seq: number;
+    source: 'manual' | 'idle';
+    zoneName: string;
+  } | null>(null);
   const pendingSeqRef = useRef(0);
+
+  // 挂机自动播放回放（修复 09：挂机每场结算自动播放动画，战斗过程实时可见，与手动开战一致）
+  const lastSettlementRef = useRef<CombatSettlement | null>(state.combat?.lastSettlement || null);
+  useEffect(() => {
+    const s = state.combat?.lastSettlement || null;
+    const idleZoneId = state.combat?.idle?.zoneId;
+    if (idleZoneId && s && s !== lastSettlementRef.current) {
+      // 挂机新结算（引用变化）→ 自动播放该场回放
+      setPendingSettlement({
+        settlement: s,
+        isBoss: false,
+        wasCleared: true,
+        seq: ++pendingSeqRef.current,
+        source: 'idle',
+        zoneName: COMBAT_ZONES[idleZoneId]?.name || '战斗区域'
+      });
+    }
+    lastSettlementRef.current = s;
+  }, [state.combat?.lastSettlement, state.combat?.idle?.zoneId]);
 
   const handleStart = (zoneId: string) => {
     const outcome = startCombat(zoneId);
@@ -606,7 +633,9 @@ const CombatPanel: React.FC = () => {
     else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
     else if (outcome.settlement) {
       // 奖励提示延迟到动画播完（onComplete）再弹，避免"先提示后播放"
-      setPendingSettlement({ settlement: outcome.settlement, isBoss: false, wasCleared: false, seq: ++pendingSeqRef.current });
+      setPendingSettlement({ settlement: outcome.settlement, isBoss: false, wasCleared: false, seq: ++pendingSeqRef.current, source: 'manual', zoneName: COMBAT_ZONES[zoneId]?.name || '战斗区域' });
+      // 手动结算已由手动流程消费：同步引用，挂机监听 effect 不会误判为挂机结算
+      lastSettlementRef.current = outcome.settlement;
     }
   };
 
@@ -633,14 +662,22 @@ const CombatPanel: React.FC = () => {
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
     else if (outcome.settlement) {
       const wasCleared = clearedZones.includes(zoneId);
-      setPendingSettlement({ settlement: outcome.settlement, isBoss: true, wasCleared, seq: ++pendingSeqRef.current });
+      setPendingSettlement({ settlement: outcome.settlement, isBoss: true, wasCleared, seq: ++pendingSeqRef.current, source: 'manual', zoneName: COMBAT_ZONES[zoneId]?.name || '战斗区域' });
+      // 手动结算已由手动流程消费：同步引用，挂机监听 effect 不会误判为挂机结算
+      lastSettlementRef.current = outcome.settlement;
     }
   };
 
   // 播放完成后再弹奖励/结果提示（ticket 21 用户反馈 2：先播放动画，播完再提示）
   const handlePlaybackComplete = () => {
     if (!pendingSettlement) return;
-    const { settlement: s, isBoss, wasCleared } = pendingSettlement;
+    const { settlement: s, isBoss, wasCleared, source } = pendingSettlement;
+    // 挂机结算自动播放：不弹 toast（每 20 秒一场，弹窗会打扰），动画本身就是战斗过程反馈；
+    // 播完清空 pendingSettlement，回放区回落历史静态展示（避免停止挂机后永久卡在完成态）
+    if (source === 'idle') {
+      setPendingSettlement(null);
+      return;
+    }
     if (s.battle.victory) {
       if (isBoss) showToast(wasCleared ? 'BOSS 再战胜利！专属掉落已入账。' : '首通 BOSS！区域已通关，解锁下一区域。', 'success');
       else showToast('战斗胜利！战利品与经验已入账。', 'success');
@@ -745,7 +782,7 @@ const CombatPanel: React.FC = () => {
         <CombatPlaybackView
           key={`pending-${pendingSettlement.seq}`}
           settlement={pendingSettlement.settlement}
-          zoneName={COMBAT_ZONES[state.combat?.zoneId || '']?.name || '战斗区域'}
+          zoneName={pendingSettlement.zoneName}
           autoPlay
           onComplete={handlePlaybackComplete}
         />
@@ -858,7 +895,8 @@ const CombatPanel: React.FC = () => {
                   </span>
                 </div>
                 <button
-                  disabled={!bossReady}
+                  // 挂机中禁用挑战 BOSS（避免手动/挂机结算竞争，且挂机时不应手动开战）
+                  disabled={!bossReady || idleActiveHere || idlingElsewhere}
                   onClick={(e) => { e.stopPropagation(); handleBoss(zone.id); }}
                   className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
                     bossReady
