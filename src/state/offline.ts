@@ -5,7 +5,7 @@ import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './fac
 import { resolveDutyBonuses } from './duty';
 import { advanceGreenhouseAutomation, maybeStopAutoFarmOnSeedDepletion } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
-import { getRecipeDisplayName } from './workshop';
+import { getRecipeName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
@@ -255,7 +255,7 @@ export function calculateDetailedOfflineProgress(
         const parts = batches
           .map(([recipeId, count]) => {
             const recipe = AUTO_RECIPES[recipeId];
-            return `${recipe ? getRecipeDisplayName(recipe) : recipeId}${count > 1 ? ` ×${count}` : ''}`;
+            return `${recipe ? getRecipeName(recipe) : recipeId} ×${count} 批`;
           })
           .join('、');
         reportLogs.push(`${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 离线运转完成: ${parts}。`);

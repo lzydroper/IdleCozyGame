@@ -16,18 +16,21 @@ export const getRecipeMainReward = (recipe: Recipe): [string, number] | null => 
   return entries.reduce((a, b) => (b[1] > a[1] ? b : a));
 };
 
-// 显示名：「合成 {主产物名} ×N」；无 reward 配方兜底（充能 → capsuleTarget 产物名；其他 → displayName）
-export const getRecipeDisplayName = (recipe: Recipe): string => {
+// 配方名（无每批数量）：「合成 {主产物名}」；用于「配方名 + 独立批次/数量」拼接
+// （日志/离线报告/生产提示），避免与 getRecipeDisplayName 的「×N」叠字（如「合成 压缩口粮 ×1 ×2 批」）
+export const getRecipeName = (recipe: Recipe): string => {
   const main = getRecipeMainReward(recipe);
-  if (main) {
-    const label = ITEMS_CONFIG[main[0]]?.name || main[0];
-    return `合成 ${label} ×${main[1]}`;
-  }
+  if (main) return `合成 ${ITEMS_CONFIG[main[0]]?.name || main[0]}`;
   if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) {
-    const label = ITEMS_CONFIG[recipe.capsuleTarget]?.name || recipe.capsuleTarget;
-    return `合成 ${label}`;
+    return `合成 ${ITEMS_CONFIG[recipe.capsuleTarget]?.name || recipe.capsuleTarget}`;
   }
   return `合成 ${recipe.displayName || recipe.id}`;
+};
+
+// 显示名：「合成 {主产物名} ×N」（N = 每批产出数量）；无 reward 配方兜底（充能 → capsuleTarget 产物名；其他 → displayName）
+export const getRecipeDisplayName = (recipe: Recipe): string => {
+  const main = getRecipeMainReward(recipe);
+  return main ? `${getRecipeName(recipe)} ×${main[1]}` : getRecipeName(recipe);
 };
 
 // 描述：取主产物的物品描述；无 reward 配方用显式 description 兜底（如建筑类温室扩建）

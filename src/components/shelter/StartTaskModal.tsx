@@ -7,7 +7,7 @@ import { ITEMS_CONFIG } from '../../data/items';
 import { UI_TOKENS } from '../../data/uiConstants';
 import GameIcon from '../GameIcon';
 import { getActualDuration, resolveDutyBonus, getMaxAffordableBatches, getBatchDiscountedCost } from '../../state/facility';
-import { getRecipeDisplayName } from '../../state/workshop';
+import { getRecipeName, getRecipeDisplayName } from '../../state/workshop';
 import { formatDuration } from '../../utils/gameUtils';
 import type { FacilityType } from '../../data/facilities';
 import { X, Zap, Hammer } from 'lucide-react';
@@ -57,8 +57,8 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
     if (!recipe || safeCount <= 0) return;
     const ok = startTask(type, unitIndex, recipe.id, safeCount);
     if (ok) {
-      showToast(`已开始生产 ${getRecipeDisplayName(recipe)} ×${safeCount} 批，材料已扣除。`, 'success');
-      addLog(`开始生产 ${getRecipeDisplayName(recipe)} ×${safeCount} 批（${fac.name}${unitIndex > 0 ? ` ${unitIndex + 1}号` : ''}）`, 'logistics');
+      showToast(`已开始生产 ${getRecipeName(recipe)} ×${safeCount} 批，材料已扣除。`, 'success');
+      addLog(`开始生产 ${getRecipeName(recipe)} ×${safeCount} 批（${fac.name}${unitIndex > 0 ? ` ${unitIndex + 1}号` : ''}）`, 'logistics');
       onClose();
     } else {
       showToast('无法开始生产：材料不足或任务进行中。', 'error');
@@ -167,7 +167,7 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
               ? '材料不足，无法开始生产'
               : safeCount <= 0
                 ? '请选择生产批次'
-                : `将扣除全部材料，逐批生产 ${getRecipeDisplayName(recipe!)} ×${safeCount} 批`}
+                : `将扣除全部材料，逐批生产 ${getRecipeName(recipe!)} ×${safeCount} 批`}
           </p>
           <button
             data-testid="start-task-button"

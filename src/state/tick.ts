@@ -5,7 +5,7 @@ import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './fac
 import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonuses } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
 import { resolveDutyBonuses } from './duty';
-import { getRecipeDisplayName } from './workshop';
+import { getRecipeName } from './workshop';
 import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
@@ -170,7 +170,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       Object.entries(r.completed).forEach(([recipeId, count]) => {
         const recipe = AUTO_RECIPES[recipeId];
         logsToAdd.push({
-          text: `${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe ? getRecipeDisplayName(recipe) : recipeId} 的加工${count > 1 ? ` ×${count}` : ''}。`,
+          text: `${fac.name}${multiUnit ? ` ${unitIndex + 1}号` : ''} 完成了 ${recipe ? getRecipeName(recipe) : recipeId} ×${count} 批。`,
           type: 'logistics'
         });
       });

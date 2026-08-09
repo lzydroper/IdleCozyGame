@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getRecipeDisplayName,
+  getRecipeName,
   getRecipeDescription,
   getRecipeCategory,
   isRecipeVisible,
@@ -43,6 +44,14 @@ describe('配方文案推导（ticket 01）', () => {
   it('自动配方同样推导显示名', () => {
     expect(getRecipeDisplayName(AUTO_RECIPES['smelt_alloy'])).toBe('合成 合金金属板 ×1');
     expect(getRecipeDisplayName(AUTO_RECIPES['smelt_sunflower'])).toBe('合成 合金金属板 ×2');
+  });
+
+  it('getRecipeName 返回无每批数量的配方名（批次拼接用，避免「×1 ×2」叠字）', () => {
+    expect(getRecipeName(RECIPES_CONFIG['ration_pack'])).toBe('合成 压缩口粮');
+    expect(getRecipeName(RECIPES_CONFIG['rusted_spring_craft'])).toBe('合成 生锈弹簧零件');
+    expect(getRecipeName(AUTO_RECIPES['smelt_alloy'])).toBe('合成 合金金属板');
+    // 多数量产出的配方，名中同样不含数量（数量由拼接处独立表达「×N 批」）
+    expect(getRecipeName(AUTO_RECIPES['smelt_sunflower'])).toBe('合成 合金金属板');
   });
 });
 
