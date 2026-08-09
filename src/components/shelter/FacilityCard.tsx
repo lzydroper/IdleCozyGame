@@ -9,8 +9,10 @@ import { getQueueCapacity, getActualDuration, resolveDutyBonus } from '../../sta
 import { getRecipeDisplayName } from '../../state/workshop';
 import GameIcon from '../GameIcon';
 import DutyAssignModal from './DutyAssignModal';
-import type { AutomationFacility, FacilityType } from '../../types/game';
-import { Flame, Wrench, Play, Square, ChevronRight, TrendingUp, Plus, X, Layers, UserCog } from 'lucide-react';
+import type { AutomationFacility } from '../../types/game';
+import type { FacilityType } from '../../data/facilities';
+import { FACILITIES_CONFIG } from '../../data/facilities';
+import { Play, Square, ChevronRight, TrendingUp, Plus, X, Layers, UserCog } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // 共用子组件：配方消耗/产出展示行
@@ -68,6 +70,36 @@ interface FacilityTheme {
   iconBg: string;
   iconBorder: string;
 }
+
+// 默认主题：新增设备未配置专属主题时回退（对齐基建升级统一 cyan 主题先例）
+const DEFAULT_THEME: FacilityTheme = {
+  accent: 'text-cyan-400',
+  glow: 'bg-gradient-to-r from-cyan-600 via-sky-500 to-cyan-400',
+  barClass: 'bg-gradient-to-r from-cyan-500 to-sky-400',
+  runningBg: 'bg-cyan-900/20',
+  iconBg: 'bg-cyan-500/10',
+  iconBorder: 'border-cyan-600/30'
+};
+
+// 设备专属主题（UI 层关注点，不进数据配置）：现有设备保留原配色，新增设备自动回退默认
+const FACILITY_THEMES: Partial<Record<FacilityType, FacilityTheme>> = {
+  smelter: {
+    accent: 'text-amber-400',
+    glow: 'bg-gradient-to-r from-amber-600 via-orange-500 to-amber-400',
+    barClass: 'bg-gradient-to-r from-amber-500 to-orange-400',
+    runningBg: 'bg-amber-900/20',
+    iconBg: 'bg-amber-500/10',
+    iconBorder: 'border-amber-600/30'
+  },
+  assembler: {
+    accent: 'text-purple-400',
+    glow: 'bg-gradient-to-r from-purple-600 via-violet-500 to-purple-400',
+    barClass: 'bg-gradient-to-r from-purple-500 to-violet-400',
+    runningBg: 'bg-purple-900/20',
+    iconBg: 'bg-purple-500/10',
+    iconBorder: 'border-purple-600/30'
+  }
+};
 
 // ─────────────────────────────────────────────
 // 单台设施卡片：FIFO 配方队列 + 等级/效率 + 启停（ticket 13）
@@ -389,8 +421,23 @@ function FacilityUnitCard({
 }
 
 // ─────────────────────────────────────────────
-// 设施类型区块：多台并行（扩建入口已整合至基建 tab）
+// 设施类型区块（配置表驱动）：多台并行（扩建入口已整合至基建 tab）
+// 新增设备种类 = FACILITIES_CONFIG 一条 + AUTO_RECIPES 配方一条，此处自动渲染
 // ─────────────────────────────────────────────
+export const FacilitySection: React.FC<{ type: FacilityType }> = ({ type }) => {
+  const cfg = FACILITIES_CONFIG[type];
+  if (!cfg) return null;
+  const theme = FACILITY_THEMES[type] ?? DEFAULT_THEME;
+  const Icon = cfg.icon;
+  return (
+    <FacilityTypeSection
+      type={type}
+      theme={theme}
+      icon={<Icon className={`w-4 h-4 ${theme.accent}`} />}
+    />
+  );
+};
+
 function FacilityTypeSection({
   type,
   theme,
@@ -417,39 +464,3 @@ function FacilityTypeSection({
     </div>
   );
 }
-
-// ─────────────────────────────────────────────
-// 魔导冶炼炉（类型区块）
-// ─────────────────────────────────────────────
-export const SmelterCard: React.FC = () => (
-  <FacilityTypeSection
-    type="smelter"
-    icon={<Flame className="w-4 h-4 text-amber-400" />}
-    theme={{
-      accent: 'text-amber-400',
-      glow: 'bg-gradient-to-r from-amber-600 via-orange-500 to-amber-400',
-      barClass: 'bg-gradient-to-r from-amber-500 to-orange-400',
-      runningBg: 'bg-amber-900/20',
-      iconBg: 'bg-amber-500/10',
-      iconBorder: 'border-amber-600/30'
-    }}
-  />
-);
-
-// ─────────────────────────────────────────────
-// 微型芯片组装台（类型区块）
-// ─────────────────────────────────────────────
-export const AssemblerCard: React.FC = () => (
-  <FacilityTypeSection
-    type="assembler"
-    icon={<Wrench className="w-4 h-4 text-purple-400" />}
-    theme={{
-      accent: 'text-purple-400',
-      glow: 'bg-gradient-to-r from-purple-600 via-violet-500 to-purple-400',
-      barClass: 'bg-gradient-to-r from-purple-500 to-violet-400',
-      runningBg: 'bg-purple-900/20',
-      iconBg: 'bg-purple-500/10',
-      iconBorder: 'border-purple-600/30'
-    }}
-  />
-);

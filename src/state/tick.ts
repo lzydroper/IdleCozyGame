@@ -1,5 +1,5 @@
 import type { GameState, LogEntry } from '../types/game';
-import type { FacilityType } from '../types/game';
+import type { FacilityType } from '../data/facilities';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './facility';
 import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonuses } from './greenhouse';

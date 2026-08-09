@@ -9,6 +9,7 @@ import {
   upgradeShelterStatUpdate,
   resolveShelterUpgrades,
   getShelterUpgradeLevel,
+  getShelterUpgradeKey,
   processFacility,
   getQueueCapacity,
   getActualDuration,
@@ -17,6 +18,8 @@ import {
 import { calculateDetailedOfflineProgress } from './offline';
 import { EMPTY_DUTY_BONUS } from './duty';
 import { mergeSavedState } from './persistence';
+import { FACILITIES_CONFIG, isFacilityType } from '../data/facilities';
+import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 
 // 以初始存档为基底构造测试状态
 const baseState = (): GameState => structuredClone(INITIAL_STATE);
@@ -643,6 +646,81 @@ describe('配方队列（ticket 13）', () => {
       const dutyResolved = { ...EMPTY_DUTY_BONUS, costReduction: 0.5 };
       processFacility(fac, state.inventory, 27, dutyResolved);
       expect(state.inventory.scrap_metal).toBe(10 - 1);
+    });
+  });
+
+  describe('数据驱动设备注册（issue 05）', () => {
+    it('初始状态设施由配置表驱动生成：key 与 FACILITIES_CONFIG 一致，每类初始 1 台 Lv1', () => {
+      const keys = Object.keys(FACILITIES_CONFIG) as (keyof typeof FACILITIES_CONFIG)[];
+      const stateKeys = Object.keys(INITIAL_STATE.shelter.facilities);
+      expect(stateKeys).toEqual(keys);
+      for (const type of keys) {
+        const units = INITIAL_STATE.shelter.facilities[type];
+        expect(units.length).toBe(1);
+        expect(units[0].level).toBe(1);
+        expect(units[0].name).toBe(FACILITIES_CONFIG[type].name);
+        expect(units[0].id).toBe(type);
+      }
+    });
+
+    it('SHELTER_UPGRADES 收敛为纯全局升级：不残留设备条目，仅 4 项全局升级', () => {
+      for (const type of Object.keys(FACILITIES_CONFIG)) {
+        expect(SHELTER_UPGRADES[type]).toBeUndefined();
+      }
+      expect(Object.keys(SHELTER_UPGRADES).sort()).toEqual(['battery', 'generator', 'greenhouse_dock', 'recycler']);
+    });
+
+    it('isFacilityType 守卫：配置表 key 为 true，全局升级/未知类型为 false', () => {
+      for (const type of Object.keys(FACILITIES_CONFIG)) {
+        expect(isFacilityType(type)).toBe(true);
+      }
+      expect(isFacilityType('battery')).toBe(false);
+      expect(isFacilityType('unknown_facility')).toBe(false);
+    });
+
+    it('存档归一化按配置表 key 遍历：未知设备类型丢弃、缺失类型回退初始', () => {
+      const saved = {
+        ...baseState(),
+        shelter: {
+          ...baseState().shelter,
+          facilities: {
+            smelter: [
+              {
+                id: 'smelter',
+                name: '魔导冶炼炉',
+                level: 2,
+                queue: ['smelt_alloy'],
+                currentProgress: 0,
+                timeLeft: 0,
+                active: true
+              }
+            ],
+            ghost_facility: [
+              {
+                id: 'ghost_facility',
+                name: '已删除的设备',
+                level: 1,
+                queue: [],
+                currentProgress: 0,
+                timeLeft: 0
+              }
+            ]
+          }
+        }
+      } as unknown as GameState;
+
+      const merged = mergeSavedState(saved, INITIAL_STATE);
+      expect(Object.keys(merged.shelter.facilities).sort()).toEqual(Object.keys(FACILITIES_CONFIG).sort());
+      expect((merged.shelter.facilities as Record<string, unknown>).ghost_facility).toBeUndefined();
+      expect(merged.shelter.facilities.smelter[0].queue).toEqual(['smelt_alloy']); // 有效类型正常保留
+    });
+
+    it('升级/扩建 key 解析自动覆盖配置表新 key（isFacilityType 驱动 getShelterUpgradeKey）', () => {
+      for (const type of Object.keys(FACILITIES_CONFIG)) {
+        const t = type as 'smelter' | 'assembler';
+        expect(getShelterUpgradeKey(t, 1)).toBe(`${t}_1`);
+      }
+      expect(getShelterUpgradeKey('battery')).toBe('battery');
     });
   });
 });

@@ -1,6 +1,7 @@
-import type { GameState, HeroState, PlayerStats } from '../types/game';
+import type { GameState, HeroState, PlayerStats, AutomationFacility } from '../types/game';
 import { HEROES_CONFIG, STARTER_HERO_ID } from './heroes';
 import { COMBAT_CONFIG } from './combatConfig';
+import { FACILITIES_CONFIG, type FacilityType } from './facilities';
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {
   food: 100,
@@ -33,6 +34,25 @@ export const createInitialHero = (configId: string): HeroState => {
 // 开局固定赠送的初始英雄（诺娃，第一位同伴）
 export const INITIAL_HEROES: Record<string, HeroState> = {
   [STARTER_HERO_ID]: createInitialHero(STARTER_HERO_ID)
+};
+
+// 初始设施：按设备配置表驱动生成（每类设备初始 1 台 Lv1），新增设备种类自动纳入
+const createInitialFacilities = (): Record<FacilityType, AutomationFacility[]> => {
+  const out = {} as Record<FacilityType, AutomationFacility[]>;
+  (Object.keys(FACILITIES_CONFIG) as FacilityType[]).forEach(type => {
+    const cfg = FACILITIES_CONFIG[type];
+    out[type] = [
+      {
+        id: type,
+        name: cfg.name,
+        level: 1,
+        queue: [],
+        currentProgress: 0,
+        timeLeft: 0
+      }
+    ];
+  });
+  return out;
 };
 
 export const INITIAL_STATE: GameState = {
@@ -110,28 +130,7 @@ export const INITIAL_STATE: GameState = {
     generatorLevel: 0,
     recyclerLevel: 0,
     upgrades: {}, // 基建升级施工中（时间戳驱动，长节奏设定）
-    facilities: {
-      smelter: [
-        {
-          id: 'smelter',
-          name: '魔导冶炼炉',
-          level: 1,
-          queue: [],
-          currentProgress: 0,
-          timeLeft: 0
-        }
-      ],
-      assembler: [
-        {
-          id: 'assembler',
-          name: '微型芯片组装台',
-          level: 1,
-          queue: [],
-          currentProgress: 0,
-          timeLeft: 0
-        }
-      ]
-    },
+    facilities: createInitialFacilities(),
     assignedWatererId: null,
     assignedExplorerId: null,
     expedition: {

@@ -1,11 +1,12 @@
-import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, FacilityType } from '../types/game';
+import type { GameState, HeroEquipment, EquippedItem, AutomationFacility } from '../types/game';
+import type { FacilityType } from '../data/facilities';
+import { FACILITIES_CONFIG } from '../data/facilities';
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
 import { getQueueCapacity, getActualDuration } from './facility';
 import { isWearableEquipment } from './equipment';
 import { AUTO_RECIPES } from '../data/autoRecipes';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 
 // 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值
 const normalizeSlot = (item: EquippedItem | null | undefined): EquippedItem | null => {
@@ -137,7 +138,7 @@ const normalizeFacilityUnit = (
   saved: any,
   fallback: AutomationFacility
 ): AutomationFacility => {
-  const maxLevel = SHELTER_UPGRADES[type]?.maxLevel ?? 5;
+  const maxLevel = FACILITIES_CONFIG[type]?.maxLevel ?? 5;
   const level = Number.isFinite(saved?.level)
     ? Math.min(Math.max(Math.floor(saved.level), 1), maxLevel)
     : 1;
@@ -171,12 +172,14 @@ const normalizeFacilityUnit = (
   };
 };
 
+// 设施归一化：按设备配置表 key 遍历（新增设备种类自动纳入；未知/过期设备类型丢弃），
+// 每类设备有存档数组则逐台归一化，旧版单设施对象迁移为单台数组，缺失回退初始
 const normalizeFacilities = (
   saved: any,
   initial: Record<FacilityType, AutomationFacility[]>
 ): Record<FacilityType, AutomationFacility[]> => {
   const out = {} as Record<FacilityType, AutomationFacility[]>;
-  (Object.keys(initial) as FacilityType[]).forEach(type => {
+  (Object.keys(FACILITIES_CONFIG) as FacilityType[]).forEach(type => {
     const savedVal = saved?.[type];
     const fallback = initial[type][0];
     if (Array.isArray(savedVal) && savedVal.length > 0) {

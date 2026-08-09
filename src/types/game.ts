@@ -1,3 +1,5 @@
+import type { FacilityType } from '../data/facilities';
+
 export interface PlayerStats {
   food: number;       // 现实饱食度
   maxFood: number;
@@ -209,8 +211,8 @@ export interface GameState {
   lastOfflineReport?: OfflineReport | null;
 }
 
-// 设施类型：冶炼炉 / 组装台（ticket 13 每种设施可扩建多台并行）
-export type FacilityType = 'smelter' | 'assembler';
+// === 产线设施（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级 ===
+// FacilityType 由 FACILITIES_CONFIG 配置表推导（data/facilities.ts），新增设备种类自动扩展
 
 // 基建升级施工中状态（时间戳驱动）：开始升级即扣材料并记录 startTime，
 // 完成判定 = now - startTime >= 目标等级耗时；在线由 tick 结算，离线由回归结算
@@ -225,7 +227,7 @@ export interface UpgradeInProgress {
 
 // 产线设施实例（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级
 export interface AutomationFacility {
-  id: FacilityType;               // 设施类型 id: 'smelter' | 'assembler'
+  id: FacilityType;
   name: string;
   level: number;                  // 设施等级：决定加工速度（每级 +10%）与队列容量（容量 = 等级）
   queue: string[];                // FIFO 配方队列：队首 = 正在生产，其余排队等待

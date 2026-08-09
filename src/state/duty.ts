@@ -1,6 +1,7 @@
 import type { HeroDutyMeta, DutyScope } from '../data/heroes';
 import { CROPS_CONFIG } from '../data/crops';
-import type { FacilityType } from '../types/game';
+import { FACILITIES_CONFIG } from '../data/facilities';
+import type { FacilityType } from '../data/facilities';
 
 // 统一解析后的加成值（已按岗位作用域聚合，同类型多条累加）
 export interface DutyResolvedBonus {
@@ -72,7 +73,7 @@ export const describeDutyBonuses = (dutyMeta: HeroDutyMeta | null | undefined): 
           scope = '全体';
           break;
         case 'facility':
-          scope = b.scope.facilityType === 'smelter' ? '熔炉' : '组装台';
+          scope = FACILITIES_CONFIG[b.scope.facilityType]?.shortName || FACILITIES_CONFIG[b.scope.facilityType]?.name || '产线设施';
           break;
         case 'greenhouse':
           scope = b.scope.cropIds && b.scope.cropIds.length > 0

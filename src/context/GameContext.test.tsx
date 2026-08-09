@@ -5,7 +5,7 @@ import { render } from '@testing-library/react';
 import { calculateOfflineProgress, calculateDetailedOfflineProgress } from '../state/offline';
 import { GameProvider, useGame } from './GameContext';
 import { CROPS_CONFIG } from '../data/crops';
-import { createInitialHero } from '../data/initialState';
+import { createInitialHero, INITIAL_STATE } from '../data/initialState';
 import type { GreenhouseSlot, GameState } from '../types/game';
 
 // 模拟作物配置表
@@ -173,7 +173,7 @@ describe('GameContext Integration', () => {
           batteryLevel: 1,
           generatorLevel: 2,
           recyclerLevel: 3,
-          facilities: { smelter: [], assembler: [] },
+          facilities: { ...structuredClone(INITIAL_STATE.shelter.facilities), smelter: [], assembler: [] },
           upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
@@ -224,6 +224,7 @@ describe('GameContext Integration', () => {
           recyclerLevel: 0,
           facilities: {
             // Lv3 → 队列容量 3，每项配方各产一批（ticket 13）
+            ...structuredClone(INITIAL_STATE.shelter.facilities),
             smelter: [
               {
                 id: 'smelter',
@@ -289,6 +290,7 @@ describe('GameContext Integration', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: {
+            ...structuredClone(INITIAL_STATE.shelter.facilities),
             smelter: [
               {
                 id: 'smelter',
@@ -361,7 +363,7 @@ describe('GameContext Integration', () => {
         batteryLevel: 1,
         generatorLevel: 0,
         recyclerLevel: 0,
-        facilities: { smelter: [], assembler: [] },
+        facilities: { ...structuredClone(INITIAL_STATE.shelter.facilities), smelter: [], assembler: [] },
         upgrades: {},
         assignedWatererId: overrides.assignedWatererId ?? null,
         assignedExplorerId: null,

@@ -1,7 +1,9 @@
-import type { AutomationFacility, FacilityType, GameState } from '../types/game';
+import type { AutomationFacility, GameState } from '../types/game';
 import { HEROES_CONFIG } from '../data/heroes';
 import { AUTO_RECIPES } from '../data/autoRecipes';
-import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../data/shelterUpgrades';
+import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
+import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../data/facilities';
+import type { UpgradeLevel } from '../types/config';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';
 import type { UpdateResult } from './types';
@@ -10,7 +12,15 @@ import { NO_OP } from './types';
 // === 产线配方队列（ticket 13）：纯函数状态机 ===
 
 // 基建升级项：单实例（battery/generator/recycler/greenhouse_dock）+ 产线设施（按台索引）
+// 设施部分由 FACILITIES_CONFIG 推导（新增设备种类自动扩展）；单实例部分为全局升级
 export type UpgradeStatType = 'battery' | 'generator' | 'recycler' | 'greenhouse_dock' | FacilityType;
+
+// 配置源分派：设施类型读 FACILITIES_CONFIG，全局类型读 SHELTER_UPGRADES
+const getUpgradeLevels = (statType: UpgradeStatType): UpgradeLevel[] =>
+  isFacilityType(statType) ? FACILITIES_CONFIG[statType].levels : (SHELTER_UPGRADES[statType]?.levels ?? []);
+
+const getUpgradeName = (statType: UpgradeStatType): string | undefined =>
+  isFacilityType(statType) ? FACILITIES_CONFIG[statType].name : SHELTER_UPGRADES[statType]?.name;
 
 // 队列容量 = 设施等级（Lv1 = 1 个配方位，Lv5 = 5 个）
 export const getQueueCapacity = (level: number): number => Math.max(1, Math.floor(level));
@@ -249,7 +259,7 @@ export const setFacilityActiveUpdate = (
 
 // 升级条目 key：单实例升级项 = id；产线设施 = `${type}_${unitIndex}`；扩建 = `expand_${type}`
 export const getShelterUpgradeKey = (statType: UpgradeStatType, unitIndex = 0): string =>
-  statType === 'smelter' || statType === 'assembler' ? `${statType}_${unitIndex}` : statType;
+  isFacilityType(statType) ? `${statType}_${unitIndex}` : statType;
 
 export const getFacilityExpansionKey = (type: FacilityType): string => `expand_${type}`;
 
@@ -261,33 +271,34 @@ export const getShelterUpgradeLevel = (state: GameState, statType: UpgradeStatTy
   if (statType === 'greenhouse_dock') {
     return Math.max(0, Math.floor((state.greenhouse.unlockedSlotsCount - 4) / GAME_CONSTANTS.GREENHOUSE_EXPANSION_INCREMENT));
   }
+  // 设施类型：读设备配置表（按台索引取等级）
   return state.shelter.facilities[statType]?.[unitIndex]?.level || 1;
 };
 
 // 升级中条目的目标耗时（秒）：升级 → 下一级 duration；扩建 → 对应台数 durations
+// 配置源分派：expand_ 前缀读设备配置表的 expansion；其余按 statType 分派设备/全局升级表
 export const getUpgradeDurationSeconds = (state: GameState, key: string): number | null => {
   if (key.startsWith('expand_')) {
-    const type = key.slice('expand_'.length) as FacilityType;
-    const cfg = FACILITY_EXPANSION[type];
+    const type = key.slice('expand_'.length);
+    if (!isFacilityType(type)) return null;
+    const cfg = FACILITIES_CONFIG[type].expansion;
     const units = state.shelter.facilities[type];
-    if (!cfg || !units) return null;
+    if (!units) return null;
     const duration = cfg.durations[units.length - 1];
     return duration === undefined ? null : duration;
   }
   const parsed = parseUnitUpgradeKey(key);
   if (!parsed) return null;
   const { statType, unitIndex } = parsed;
-  const upgrade = SHELTER_UPGRADES[statType];
-  if (!upgrade) return null;
-  const nextConfig = upgrade.levels.find(l => l.level === getShelterUpgradeLevel(state, statType, unitIndex) + 1);
+  const nextConfig = getUpgradeLevels(statType).find(l => l.level === getShelterUpgradeLevel(state, statType, unitIndex) + 1);
   return nextConfig ? nextConfig.duration : null;
 };
 
 // 解析 `${type}_${index}` 形式的产线设施升级 key；单实例升级项直接返回
 function parseUnitUpgradeKey(key: string): { statType: UpgradeStatType; unitIndex: number } | null {
-  const m = /^(smelter|assembler)_(\d+)$/.exec(key);
-  if (m) return { statType: m[1] as FacilityType, unitIndex: Number(m[2]) };
-  if (SHELTER_UPGRADES[key]) return { statType: key as UpgradeStatType, unitIndex: 0 };
+  const m = /^(.*)_(\d+)$/.exec(key);
+  if (m && isFacilityType(m[1])) return { statType: m[1], unitIndex: Number(m[2]) };
+  if (isFacilityType(key) || key in SHELTER_UPGRADES) return { statType: key as UpgradeStatType, unitIndex: 0 };
   return null;
 }
 
@@ -306,17 +317,19 @@ const removeUpgrade = (state: GameState, key: string): GameState => {
 };
 
 // 开始升级（即时扣材料，进入升级中；同一 key 升级中时拒绝重复开始）
+// 配置源分派：设施类型读设备配置表，全局类型读 SHELTER_UPGRADES
+// 返回 UpdateResult<boolean>：false = 拒绝（配置缺失/满级/施工中/材料不足）
 export const upgradeShelterStatUpdate = (
   state: GameState,
   statType: UpgradeStatType,
   unitIndex = 0,
   startTime = Date.now()
 ): UpdateResult<boolean> => {
-  const upgrade = SHELTER_UPGRADES[statType];
-  if (!upgrade) return NO_OP(state);
+  const levels = getUpgradeLevels(statType);
+  if (levels.length === 0) return NO_OP(state);
 
   const currentLevel = getShelterUpgradeLevel(state, statType, unitIndex);
-  const nextLevelConfig = upgrade.levels.find(l => l.level === currentLevel + 1);
+  const nextLevelConfig = levels.find(l => l.level === currentLevel + 1);
   if (!nextLevelConfig) return NO_OP(state); // 已满级
 
   const key = getShelterUpgradeKey(statType, unitIndex);
@@ -339,8 +352,9 @@ export const upgradeShelterStatUpdate = (
 };
 
 // 开始扩建（即时扣材料，进入施工中；同类型扩建中时拒绝重复开始）
+// 扩建配置内聚于设备配置表（FACILITIES_CONFIG[type].expansion）
 export const expandFacilityUpdate = (state: GameState, type: FacilityType, startTime = Date.now()): UpdateResult<boolean> => {
-  const cfg = FACILITY_EXPANSION[type];
+  const cfg = FACILITIES_CONFIG[type]?.expansion;
   const units = getUnits(state, type);
   if (!cfg || !units || units.length === 0) return NO_OP(state);
   const nextIndex = units.length;
@@ -364,14 +378,15 @@ export const expandFacilityUpdate = (state: GameState, type: FacilityType, start
 const applyPendingUpgrade = (state: GameState, key: string): { state: GameState; text: string } | null => {
   // 扩建：新增一台同类型设施（Lv1、空队列、默认启用）
   if (key.startsWith('expand_')) {
-    const type = key.slice('expand_'.length) as FacilityType;
-    const cfg = FACILITY_EXPANSION[type];
+    const type = key.slice('expand_'.length);
+    if (!isFacilityType(type)) return null;
+    const cfg = FACILITIES_CONFIG[type].expansion;
     const units = state.shelter.facilities[type];
     if (!cfg || !units || units.length === 0 || units.length >= cfg.maxUnits) return null;
     const template = units[0];
     const newUnit: AutomationFacility = {
       id: type,
-      name: template?.name || SHELTER_UPGRADES[type]?.name || '产线设施',
+      name: template?.name || FACILITIES_CONFIG[type].name || '产线设施',
       level: 1,
       queue: [],
       currentProgress: 0,
@@ -385,18 +400,18 @@ const applyPendingUpgrade = (state: GameState, key: string): { state: GameState;
         facilities: { ...state.shelter.facilities, [type]: [...units, newUnit] }
       }
     };
-    return { state: removeUpgrade(next, key), text: `${template?.name || SHELTER_UPGRADES[type]?.name || type} 扩建完成：新增 ${units.length + 1} 号设施` };
+    return { state: removeUpgrade(next, key), text: `${template?.name || FACILITIES_CONFIG[type].name || type} 扩建完成：新增 ${units.length + 1} 号设施` };
   }
 
   const parsed = parseUnitUpgradeKey(key);
   if (!parsed) return null;
   const { statType, unitIndex } = parsed;
-  const upgrade = SHELTER_UPGRADES[statType];
-  if (!upgrade) return null;
-  const nextConfig = upgrade.levels.find(l => l.level === getShelterUpgradeLevel(state, statType, unitIndex) + 1);
+  const levels = getUpgradeLevels(statType);
+  const nextConfig = levels.find(l => l.level === getShelterUpgradeLevel(state, statType, unitIndex) + 1);
   if (!nextConfig) return null;
 
   let currentShelter = { ...state.shelter, facilities: { ...state.shelter.facilities } };
+  let displayName = getUpgradeName(statType) || statType;
 
   if (statType === 'battery') {
     currentShelter.batteryLevel = nextConfig.level;
@@ -418,8 +433,9 @@ const applyPendingUpgrade = (state: GameState, key: string): { state: GameState;
       greenhouse: { ...state.greenhouse, unlockedSlotsCount: nextCount, slots: newSlots },
       shelter: currentShelter
     };
-    return { state: removeUpgrade(next, key), text: `${upgrade.name} 升级至 Lv.${nextConfig.level}（培养槽 ${nextCount} 槽）` };
+    return { state: removeUpgrade(next, key), text: `${displayName} 升级至 Lv.${nextConfig.level}（培养槽 ${nextCount} 槽）` };
   } else {
+    if (!isFacilityType(statType)) return null;
     const units = currentShelter.facilities[statType];
     if (!units?.[unitIndex]) return null;
     currentShelter.facilities = {
@@ -430,7 +446,7 @@ const applyPendingUpgrade = (state: GameState, key: string): { state: GameState;
 
   return {
     state: removeUpgrade({ ...state, shelter: currentShelter }, key),
-    text: `${upgrade.name} 升级至 Lv.${nextConfig.level}`
+    text: `${displayName} 升级至 Lv.${nextConfig.level}`
   };
 };
 
@@ -474,16 +490,17 @@ export const resolveShelterUpgrades = (
 const refundPendingUpgrade = (state: GameState, key: string): GameState => {
   const refund: Record<string, number> = {};
   if (key.startsWith('expand_')) {
-    const type = key.slice('expand_'.length) as FacilityType;
-    const cfg = FACILITY_EXPANSION[type];
-    const units = state.shelter.facilities[type];
-    const cost = cfg && units ? cfg.costs[units.length - 1] : null;
-    if (cost) Object.assign(refund, cost);
+    const type = key.slice('expand_'.length);
+    if (isFacilityType(type)) {
+      const cfg = FACILITIES_CONFIG[type].expansion;
+      const units = state.shelter.facilities[type];
+      const cost = cfg && units ? cfg.costs[units.length - 1] : null;
+      if (cost) Object.assign(refund, cost);
+    }
   } else {
     const parsed = parseUnitUpgradeKey(key);
     if (parsed) {
-      const upgrade = SHELTER_UPGRADES[parsed.statType];
-      const nextConfig = upgrade?.levels.find(l => l.level === getShelterUpgradeLevel(state, parsed.statType, parsed.unitIndex) + 1);
+      const nextConfig = getUpgradeLevels(parsed.statType).find(l => l.level === getShelterUpgradeLevel(state, parsed.statType, parsed.unitIndex) + 1);
       if (nextConfig) Object.assign(refund, nextConfig.cost);
     }
   }

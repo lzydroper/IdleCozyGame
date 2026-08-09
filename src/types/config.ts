@@ -1,7 +1,7 @@
 // 统一配方定义（ticket 01：手动/自动共享同一类型，字段统一 cost/reward；
 // name/description 已删除，显示文案从产出物完全推导，见 state/workshop.ts 辅助函数）
 import type { ItemCategory } from '../data/items';
-import type { FacilityType } from './game';
+import type { FacilityType } from '../data/facilities';
 import type { LucideIcon } from 'lucide-react';
 
 export interface CropConfig {

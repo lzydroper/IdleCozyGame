@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { GameState, EquipmentSlot, FacilityType, DutyAssignment } from '../types/game';
+import type { GameState, EquipmentSlot, DutyAssignment } from '../types/game';
+import type { FacilityType } from '../data/facilities';
 import { INITIAL_STATE } from '../data/initialState';
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
 import { ITEMS_CONFIG } from '../../data/items';
-import { SHELTER_UPGRADES, FACILITY_EXPANSION } from '../../data/shelterUpgrades';
+import { SHELTER_UPGRADES } from '../../data/shelterUpgrades';
+import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../../data/facilities';
+import type { UpgradeLevel } from '../../types/config';
 import { useToast } from '../ToastSystem';
 import GameIcon from '../GameIcon';
 import ShelterTabBar from './ShelterTabBar';
@@ -14,8 +16,8 @@ import {
   getFacilityExpansionKey,
   type UpgradeStatType
 } from '../../state/facility';
-import { SmelterCard, AssemblerCard } from './FacilityCard';
-import type { FacilityType, UpgradeInProgress } from '../../types/game';
+import { FacilitySection } from './FacilityCard';
+import type { UpgradeInProgress } from '../../types/game';
 import DreamLeakAlertPanel from './DreamLeakAlertPanel';
 import GreenhousePanel from './GreenhousePanel';
 import ExpeditionPanel from './ExpeditionPanel';
@@ -55,16 +57,22 @@ function InProgressBlock({ label, progress, remainingSeconds }: { label: string;
   );
 }
 
-// 升级完成提示（key → 名称；expand_ 前缀为扩建）
+// 升级完成提示（key → 名称；expand_ 前缀为扩建）；配置源分派：设备读 FACILITIES_CONFIG、全局读 SHELTER_UPGRADES
 const upgradeNameForKey = (key: string): string | null => {
   if (key.startsWith('expand_')) {
-    const type = key.slice('expand_'.length) as FacilityType;
-    return SHELTER_UPGRADES[type]?.name || null;
+    const type = key.slice('expand_'.length);
+    return isFacilityType(type) ? FACILITIES_CONFIG[type].name : null;
   }
-  const m = /^(smelter|assembler)_\d+$/.exec(key);
-  const id = m ? m[1] : key;
-  return SHELTER_UPGRADES[id]?.name || null;
+  const m = /^(.*)_(\d+)$/.exec(key);
+  const id = m && isFacilityType(m[1]) ? m[1] : key;
+  return isFacilityType(id) ? FACILITIES_CONFIG[id].name : (SHELTER_UPGRADES[id]?.name ?? null);
 };
+
+// 升级卡配置源：设施类型读设备配置表，全局类型读 SHELTER_UPGRADES（两表字段兼容 name/maxLevel/levels/effectLabel/id）
+const getUpgradeCardConfig = (
+  statType: UpgradeStatType
+): { id: string; name: string; maxLevel: number; effectLabel: string; levels: UpgradeLevel[] } | undefined =>
+  isFacilityType(statType) ? FACILITIES_CONFIG[statType] : SHELTER_UPGRADES[statType];
 
 // ─────────────────────────────────────────────
 // 升级卡：当前等级/效果/下一级消耗 + 升级耗时 + 升级中进度条（时间戳驱动）
@@ -72,10 +80,10 @@ const upgradeNameForKey = (key: string): string | null => {
 function UpgradeCard({ statType, unitIndex = 0 }: { statType: UpgradeStatType; unitIndex?: number }) {
   const { state, upgradeShelterStat, addLog } = useGame();
   const { showToast } = useToast();
-  const upgrade = SHELTER_UPGRADES[statType];
+  const upgrade = getUpgradeCardConfig(statType);
   if (!upgrade) return null;
 
-  const isFacility = statType === 'smelter' || statType === 'assembler';
+  const isFacility = isFacilityType(statType);
   const currentLevel = getShelterUpgradeLevel(state, statType, unitIndex);
   const isMax = currentLevel >= upgrade.maxLevel;
   const currentConfig = upgrade.levels.find(l => l.level === currentLevel);
@@ -167,7 +175,7 @@ function UpgradeCard({ statType, unitIndex = 0 }: { statType: UpgradeStatType; u
 function FacilityUpgradeSection({ type }: { type: FacilityType }) {
   const { state } = useGame();
   const units = state.shelter.facilities[type] || [];
-  const upgrade = SHELTER_UPGRADES[type];
+  const upgrade = FACILITIES_CONFIG[type];
   if (!upgrade) return null;
 
   return (
@@ -195,8 +203,8 @@ function ExpansionCard({ type }: { type: FacilityType }) {
   const { state, expandFacility, addLog } = useGame();
   const { showToast } = useToast();
   const units = state.shelter.facilities[type] || [];
-  const cfg = FACILITY_EXPANSION[type];
-  const upgrade = SHELTER_UPGRADES[type];
+  const cfg = FACILITIES_CONFIG[type]?.expansion;
+  const upgrade = FACILITIES_CONFIG[type];
   if (!cfg || !upgrade || units.length === 0) return null;
 
   const canExpand = units.length < cfg.maxUnits;
@@ -338,8 +346,9 @@ const ShelterTab: React.FC = () => {
         </div>
 
         <div className="space-y-5 pt-2">
-          <FacilityUpgradeSection type="smelter" />
-          <FacilityUpgradeSection type="assembler" />
+          {(Object.keys(FACILITIES_CONFIG) as FacilityType[]).map(type => (
+            <FacilityUpgradeSection key={type} type={type} />
+          ))}
         </div>
       </section>
       )}
@@ -358,8 +367,9 @@ const ShelterTab: React.FC = () => {
         </h2>
 
         <div className="space-y-4">
-          <SmelterCard />
-          <AssemblerCard />
+          {(Object.keys(FACILITIES_CONFIG) as FacilityType[]).map(type => (
+            <FacilitySection key={type} type={type} />
+          ))}
         </div>
       </section>
       )}

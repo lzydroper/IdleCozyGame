@@ -1,5 +1,5 @@
 import type { UpgradePath } from '../types/config';
-import { Battery, Zap, RefreshCw, Flame, Cpu, Sprout } from 'lucide-react';
+import { Battery, Zap, RefreshCw, Sprout } from 'lucide-react';
 
 export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
   battery: {
@@ -70,40 +70,6 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
       { level: 10, cost: { scrap_metal: 150 }, effectValue: 0.020, effectText: '1.20 废铁/分', duration: 172800 }
     ]
   },
-  smelter: {
-    id: 'smelter',
-    name: '魔导冶炼炉',
-    description: '自动熔炼金属（队列容量 = 等级）',
-    maxLevel: 5,
-    category: 'facility',
-    effectLabel: '效率',
-    icon: Flame,
-    // 长节奏耗时：30m → 24h
-    levels: [
-      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1', duration: 0 },
-      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2', duration: 1800 },
-      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%，队列 3', duration: 7200 },
-      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%，队列 4', duration: 28800 },
-      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%，队列 5', duration: 86400 }
-    ]
-  },
-  assembler: {
-    id: 'assembler',
-    name: '微型芯片组装台',
-    description: '自动组装物品（队列容量 = 等级）',
-    maxLevel: 5,
-    category: 'facility',
-    effectLabel: '效率',
-    icon: Cpu,
-    // 长节奏耗时：30m → 24h
-    levels: [
-      { level: 1, cost: {}, effectValue: 0.1, effectText: '效率 +10%，队列 1', duration: 0 },
-      { level: 2, cost: { scrap_metal: 20 }, effectValue: 0.2, effectText: '效率 +20%，队列 2', duration: 1800 },
-      { level: 3, cost: { scrap_metal: 40 }, effectValue: 0.3, effectText: '效率 +30%，队列 3', duration: 7200 },
-      { level: 4, cost: { scrap_metal: 60 }, effectValue: 0.4, effectText: '效率 +40%，队列 4', duration: 28800 },
-      { level: 5, cost: { scrap_metal: 80 }, effectValue: 0.5, effectText: '效率 +50%，队列 5', duration: 86400 }
-    ]
-  },
   greenhouse_dock: {
     id: 'greenhouse_dock',
     name: '温室智能扩展坞',
@@ -118,33 +84,6 @@ export const SHELTER_UPGRADES: Record<string, UpgradePath> = {
       { level: 0, cost: {}, effectValue: 4, effectText: '4 槽（初始）', duration: 0 },
       { level: 1, cost: { scrap_metal: 50, alloy_plate: 10, plasma_cell: 2, mana_dust: 5 }, effectValue: 6, effectText: '6 槽', duration: 7200 },
       { level: 2, cost: { scrap_metal: 100, alloy_plate: 20, plasma_cell: 4, mana_dust: 10 }, effectValue: 8, effectText: '8 槽（上限）', duration: 43200 }
-    ]
-  }
-};
-
-// 产线扩建（ticket 13）：同一类型设施可扩建多台并行运转；costs[i] = 扩建第 i+2 台的费用
-// durations[i] = 扩建第 i+2 台的施工耗时（秒），长节奏设定（第 2 台 1h / 第 3 台 6h）
-export const FACILITY_EXPANSION: Record<'smelter' | 'assembler', { maxUnits: number; costs: Record<string, number>[]; durations: number[] }> = {
-  smelter: {
-    maxUnits: 3,
-    costs: [
-      { scrap_metal: 40 },
-      { scrap_metal: 120 }
-    ],
-    durations: [
-      3600,
-      21600
-    ]
-  },
-  assembler: {
-    maxUnits: 3,
-    costs: [
-      { scrap_metal: 40 },
-      { scrap_metal: 120 }
-    ],
-    durations: [
-      3600,
-      21600
     ]
   }
 };

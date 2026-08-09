@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
+import { FACILITIES_CONFIG } from '../../data/facilities';
 import type { HeroState } from '../../types/game';
 import { UI_TOKENS } from '../../data/uiConstants';
 import { User, X } from 'lucide-react';
@@ -40,7 +41,7 @@ export const DutyAssignModal: React.FC<DutyAssignModalProps> = ({
     return meta.bonuses.map(b => {
       const scopeLabel =
         b.scope.kind === 'all' ? '全' :
-        b.scope.kind === 'facility' ? (b.scope.facilityType === 'smelter' ? '熔炉' : '组装') :
+        b.scope.kind === 'facility' ? (FACILITIES_CONFIG[b.scope.facilityType]?.shortName || FACILITIES_CONFIG[b.scope.facilityType]?.name || '设施') :
         b.scope.kind === 'greenhouse' ? '温室' : '远征';
       const types: string[] = [];
       if (b.speedMultiplier) types.push('速');

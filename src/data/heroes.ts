@@ -1,4 +1,5 @@
-import type { HeroClass, HeroFaction, FacilityType } from '../types/game';
+import type { HeroClass, HeroFaction } from '../types/game';
+import type { FacilityType } from './facilities';
 import type { LucideIcon } from 'lucide-react';
 import { FlaskConical, Footprints, Hammer, HandMetal, HeartPulse, Rocket, Shield, Wheat, Wrench } from 'lucide-react';
 import type { ItemSprite } from './items/types';
