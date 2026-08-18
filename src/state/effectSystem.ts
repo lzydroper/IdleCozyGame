@@ -54,6 +54,8 @@ export interface EffectResult {
   interrupted?: EffectInterruption;
   values: Record<string, number>;
   targetDied?: boolean;
+  /** statModify 落地后的 Modifier 句柄，供 Buff 到期移除。 */
+  modifierId?: string;
 }
 
 export const defaultChainKey = (effect: EffectInstance): string =>
@@ -275,8 +277,8 @@ const executeStatModify = (
   if (!ctx.turn.getUnit(effect.targetId)) {
     return { applied: false, interrupted: 'invalid', values: {} };
   }
-  ctx.addModifier(effect.targetId, params.modifier);
-  return { applied: true, values: { value: params.modifier.value } };
+  const modifierId = ctx.addModifier(effect.targetId, params.modifier);
+  return { applied: true, values: { value: params.modifier.value }, modifierId };
 };
 
 const executeStun = (

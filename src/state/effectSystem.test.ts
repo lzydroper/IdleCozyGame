@@ -189,7 +189,7 @@ describe('resolveEffect 主 seam', () => {
 });
 
 describe('statModify 效果', () => {
-  it('增加 Modifier，并应用 effect.value 修正', () => {
+  it('增加 Modifier，并应用 effect.value 加算修正', () => {
     const units = new Map<string, BattleUnitRuntime>([
       ['a', makeUnit('a', 100)],
       ['b', makeUnit('b', 100)]
@@ -201,6 +201,32 @@ describe('statModify 效果', () => {
     expect(result.applied).toBe(true);
     expect(result.values.value).toBe(15);
     expect(ctx.getModifiers('b', 'stat')).toContainEqual({ target: 'stat.attack', op: 'add', value: 15, source: undefined });
+  });
+
+  it('effect.value 乘算修正生效', () => {
+    const units = new Map<string, BattleUnitRuntime>([
+      ['a', makeUnit('a', 100)],
+      ['b', makeUnit('b', 100)]
+    ]);
+    const { ctx } = makeCtx(units);
+    ctx.addModifier('b', { target: 'effect.value', op: 'multiply', value: 0.5 });
+    const result = resolveEffect(ctx, effect('statModify', { modifier: { target: 'stat.attack', op: 'add', value: 10 } }));
+
+    expect(result.values.value).toBe(15);
+    expect(ctx.getModifiers('b', 'stat')).toContainEqual({ target: 'stat.attack', op: 'add', value: 15, source: undefined });
+  });
+
+  it('返回 Modifier 句柄，供 Buff 到期按句柄移除', () => {
+    const units = new Map<string, BattleUnitRuntime>([
+      ['a', makeUnit('a', 100)],
+      ['b', makeUnit('b', 100)]
+    ]);
+    const { ctx } = makeCtx(units);
+    const result = resolveEffect(ctx, effect('statModify', { modifier: { target: 'stat.attack', op: 'add', value: 10 } }));
+
+    expect(result.modifierId).toBeDefined();
+    expect(ctx.removeModifier('b', result.modifierId!)).toBe(true);
+    expect(ctx.getModifiers('b', 'stat')).toEqual([]);
   });
 });
 
@@ -254,6 +280,27 @@ describe('dispel / immunity / taunt 效果', () => {
     expect(ctx.getBuff('b', 'burn')).toBeUndefined();
   });
 
+  it('dispel / taunt 走二元抵抗：来源意志低于目标意志时被抵抗', () => {
+    const units = new Map<string, BattleUnitRuntime>([
+      ['a', makeUnit('a', 100)],
+      ['b', makeUnit('b', 100)]
+    ]);
+    const { ctx } = makeCtx(units);
+    ctx.applyBuff('b', { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 3 });
+    units.get('a')!.stats.willpower = 0;
+    units.get('b')!.stats.willpower = 5;
+
+    const dispelResisted = resolveEffect(ctx, effect('dispel', { buffKind: 'burn' }));
+    expect(dispelResisted.applied).toBe(false);
+    expect(dispelResisted.interrupted).toBe('resisted');
+    expect(ctx.getBuff('b', 'burn')).toBeDefined();
+
+    const tauntResisted = resolveEffect(ctx, effect('taunt', { value: 5 }));
+    expect(tauntResisted.applied).toBe(false);
+    expect(tauntResisted.interrupted).toBe('resisted');
+    expect(ctx.getFlag('b', 'taunt')).toBe(0);
+  });
+
   it('immunity / taunt 写 BattleFlag', () => {
     const units = new Map<string, BattleUnitRuntime>([
       ['a', makeUnit('a', 100)],
@@ -290,6 +337,28 @@ describe('summon 效果', () => {
     expect(units.has('s1')).toBe(true);
     expect(units.has('s1-1')).toBe(true);
     expect(events.some(e => e.key === 'summon' && e.unitId === 's1')).toBe(true);
+  });
+
+  it('effect.count 修正从来源读取，count=1 时修正后创建对应数量', () => {
+    const units = new Map<string, BattleUnitRuntime>([['a', makeUnit('a', 100)]]);
+    const { ctx } = makeCtx(units);
+    ctx.addModifier('a', { target: 'effect.count', op: 'add', value: 1 });
+    const snapshot = {
+      id: 's1',
+      name: '骷髅',
+      faction: 'hero' as const,
+      hp: 50,
+      maxHp: 50,
+      initiative: 120,
+      abilities: [],
+      stats: { attack: 5, defense: 0, maxHp: 50, maxMp: 0, critRate: 0, critDmg: 1.5 }
+    };
+    const result = resolveEffect(ctx, effect('summon', { count: 1, snapshot }, { targetId: 's1' }));
+
+    expect(result.applied).toBe(true);
+    expect(result.values.count).toBe(2);
+    expect(units.has('s1')).toBe(true);
+    expect(units.has('s1-1')).toBe(true);
   });
 });
 
