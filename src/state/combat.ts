@@ -20,6 +20,8 @@ import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 import { calculateInitiative, runTurnEngine } from './turnEngine';
 import type { BattleUnitAbility, BattleUnitRuntime, BattleUnitSnapshot, BattleUnitStats, TurnRuntime } from './turnEngine';
+import { createBattleContext, type BattleContext } from './battleContext';
+import { resolveEffect, type EffectInstance } from './effectSystem';
 
 // === 战斗核心（ticket 05）：三人轮询回合制自动战斗 ===
 
@@ -78,9 +80,71 @@ export const applyHeroExp = (hero: HeroState, config: HeroConfig, exp: number): 
   };
 };
 
-// 伤害公式：至少造成 1 点伤害
-const dealDamage = (attack: number, defense: number): number =>
-  Math.max(1, attack - defense);
+// 完整战斗面板：把三层算好的属性展平为 BattleUnitStats，供伤害效果直接读取。
+const combatantStats = (combatant: CombatantState): BattleUnitStats => {
+  if (!combatant.snapshot) {
+    const defense = combatant.defense;
+    return {
+      attack: combatant.attack,
+      defense,
+      maxHp: combatant.maxHp,
+      maxMp: 0,
+      critRate: 0,
+      critDmg: 1.5,
+      critResist: 0,
+      damageReduction: defense / (100 + defense),
+      durationReduction: 0,
+      effectReduction: 0,
+      cooldownReduction: 0,
+      strength: 0,
+      constitution: 0,
+      agility: 0,
+      intelligence: 0,
+      willpower: 0,
+      transcendence: 0,
+      arcaneBoost: 0,
+      arcaneResistance: 0,
+      mechanicalLoad: 0,
+      mechanicalEvolution: 0,
+      nightmareErosion: 0,
+      voidSpirit: 0,
+      spiritInspire: 0,
+      astralGuidance: 0,
+      soulsealDrive: 0
+    };
+  }
+
+  const stats = calculateEntityStats(combatant.snapshot, combatant.snapshot.permanentModifiers);
+  const sp = stats.specialAttributes;
+  return {
+    attack: combatant.attack,
+    defense: combatant.defense,
+    maxHp: combatant.maxHp,
+    maxMp: Math.round(stats.maxMp),
+    critRate: stats.critRate,
+    critDmg: stats.critDmg,
+    critResist: stats.critResist,
+    damageReduction: stats.damageReduction,
+    durationReduction: stats.durationReduction,
+    effectReduction: stats.effectReduction,
+    cooldownReduction: stats.cooldownReduction,
+    strength: stats.primaryAttributes.strength,
+    constitution: stats.primaryAttributes.constitution,
+    agility: stats.primaryAttributes.agility,
+    intelligence: stats.primaryAttributes.intelligence,
+    willpower: stats.primaryAttributes.willpower,
+    transcendence: stats.primaryAttributes.transcendence,
+    arcaneBoost: sp.arcaneBoost,
+    arcaneResistance: sp.arcaneResistance,
+    mechanicalLoad: sp.mechanicalLoad,
+    mechanicalEvolution: sp.mechanicalEvolution,
+    nightmareErosion: sp.nightmareErosion,
+    voidSpirit: sp.voidSpirit,
+    spiritInspire: sp.spiritInspire,
+    astralGuidance: sp.astralGuidance,
+    soulsealDrive: sp.soulsealDrive
+  };
+};
 
 // CombatantState → Turn 引擎单位快照：先机由上层计算（agility 公式 + clamp，上限 300）。
 const combatantToTurnUnit = (
@@ -88,14 +152,6 @@ const combatantToTurnUnit = (
   faction: 'hero' | 'enemy'
 ): BattleUnitSnapshot => {
   const agility = combatant.snapshot?.primaryAttributes.agility ?? 0;
-  const stats: BattleUnitStats = {
-    attack: combatant.attack,
-    defense: combatant.defense,
-    maxHp: combatant.maxHp,
-    maxMp: 0,
-    critRate: 0,
-    critDmg: 1.5
-  };
   const abilities: BattleUnitAbility[] = [];
   if (combatant.skill) {
     abilities.push({
@@ -115,7 +171,7 @@ const combatantToTurnUnit = (
     maxHp: combatant.maxHp,
     initiative: calculateInitiative(agility, 0),
     abilities,
-    stats
+    stats: combatantStats(combatant)
   };
 };
 
@@ -134,13 +190,33 @@ const isDefaultAbility = (ability: BattleUnitAbility): ability is DefaultAbility
  * 默认行动入口（Ability 层落地前的生产适配）：
  * 选能力/选目标/技能冷却属于 Ability 模块；此处复刻旧战斗行为——
  * 英雄集火首个存活敌人，敌人集火首个存活英雄；觉醒技能冷却归零时发动，否则普通攻击。
- * 伤害结算经 runtime.dealDamage/applyHeal 派发细粒度事件；攻击后事件在行动完成后派发。
+ * 伤害/治疗统一经 resolveEffect 落地；攻击后事件在行动完成后派发。
  */
-const createDefaultActionExecutor = (): ((unit: BattleUnitRuntime, runtime: TurnRuntime) => void) => {
+const createDefaultActionExecutor = (
+  getBattle: () => BattleContext
+): ((unit: BattleUnitRuntime, runtime: TurnRuntime) => void) => {
   const skillCooldown = new Map<string, number>(); // 英雄 id -> 剩余冷却（按自身行动轮）
+  let nextEffectId = 0;
 
-  return (unit, runtime) => {
-    const targets = runtime.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
+  const makeEffect = (
+    unit: BattleUnitRuntime,
+    kind: EffectInstance['kind'],
+    targetId: string,
+    params: EffectInstance['params'],
+    effectId: string
+  ): EffectInstance => ({
+    id: `action-${nextEffectId++}`,
+    effectId,
+    kind,
+    sourceId: unit.id,
+    targetId,
+    params,
+    origin: { kind: 'ability', id: effectId }
+  });
+
+  return (unit, _runtime) => {
+    const battle = getBattle();
+    const targets = battle.turn.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
     const target = targets[0];
     if (!target) return;
 
@@ -150,42 +226,46 @@ const createDefaultActionExecutor = (): ((unit: BattleUnitRuntime, runtime: Turn
     if (skill && cd === 0) {
       skillCooldown.set(unit.id, skill.cooldown);
       if (skill.type === 'strike') {
-        const damage = dealDamage(Math.round(unit.stats.attack * (skill.multiplier ?? 1)), target.stats.defense);
-        runtime.dealDamage(target.id, damage, unit.id, { kind: 'skill', skillName: skill.name });
-        runtime.dispatchEvent('attackAfter', {
+        const amount = Math.round(unit.stats.attack * (skill.multiplier ?? 1));
+        const effect = makeEffect(unit, 'damage', target.id, { amount }, 'skill_strike');
+        const result = resolveEffect(battle, effect);
+        battle.turn.dispatchEvent('attackAfter', {
           unitId: unit.id,
           sourceId: unit.id,
           targetId: target.id,
-          data: { kind: 'skill', skillName: skill.name, damage }
+          data: { kind: 'skill', skillName: skill.name, damage: result.values.damage ?? 0, amount }
         });
       } else if (skill.type === 'aoe') {
         // 对当前全部存活敌人造成伤害（旧行为：一次行动对每个存活敌人各结算一次）
-        const livingTargets = runtime.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
+        const livingTargets = battle.turn.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
         for (const enemy of livingTargets) {
-          const damage = dealDamage(Math.round(unit.stats.attack * (skill.multiplier ?? 1)), enemy.stats.defense);
-          runtime.dealDamage(enemy.id, damage, unit.id, { kind: 'skill', skillName: skill.name });
-          runtime.dispatchEvent('attackAfter', {
+          const amount = Math.round(unit.stats.attack * (skill.multiplier ?? 1));
+          const effect = makeEffect(unit, 'damage', enemy.id, { amount }, 'skill_aoe');
+          const result = resolveEffect(battle, effect);
+          battle.turn.dispatchEvent('attackAfter', {
             unitId: unit.id,
             sourceId: unit.id,
             targetId: enemy.id,
-            data: { kind: 'skill', skillName: skill.name, damage }
+            data: { kind: 'skill', skillName: skill.name, damage: result.values.damage ?? 0, amount }
           });
         }
       } else {
-        // heal：自身治疗，不超过生命上限（治疗事件经 applyHeal 派发）
+        // heal：自身治疗，不超过生命上限（治疗事件经 Effect 落地派发）
         const heal = Math.round(unit.maxHp * ((skill.healPercent ?? 0) / 100));
-        runtime.applyHeal(unit.id, heal, unit.id, { kind: 'heal', skillName: skill.name });
+        const effect = makeEffect(unit, 'heal', unit.id, { amount: heal }, 'skill_heal');
+        resolveEffect(battle, effect);
       }
     } else {
       // 冷却递减 + 普通攻击
       skillCooldown.set(unit.id, Math.max(0, cd - 1));
-      const damage = dealDamage(unit.stats.attack, target.stats.defense);
-      runtime.dealDamage(target.id, damage, unit.id, { kind: 'attack' });
-      runtime.dispatchEvent('attackAfter', {
+      const amount = unit.stats.attack;
+      const effect = makeEffect(unit, 'damage', target.id, { amount }, 'basic_attack');
+      const result = resolveEffect(battle, effect);
+      battle.turn.dispatchEvent('attackAfter', {
         unitId: unit.id,
         sourceId: unit.id,
         targetId: target.id,
-        data: { kind: 'attack', damage }
+        data: { kind: 'attack', damage: result.values.damage ?? 0, amount }
       });
     }
   };
@@ -208,10 +288,14 @@ export const simulateBattle = (
     ...heroes.map(combatant => combatantToTurnUnit(combatant, 'hero')),
     ...enemies.map(combatant => combatantToTurnUnit(combatant, 'enemy'))
   ];
+  let battle!: BattleContext;
   const result = runTurnEngine(units, {
     maxRounds,
     rng,
-    performAction: createDefaultActionExecutor()
+    setup(runtime) {
+      battle = createBattleContext(runtime);
+    },
+    performAction: createDefaultActionExecutor(() => battle)
   });
   return {
     outcome: result.outcome,

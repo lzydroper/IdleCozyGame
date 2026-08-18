@@ -80,8 +80,8 @@ _Avoid_: 以名称含「碎片」判定分类（梦境碎片是资源）
 与英雄阵营及特性绑定的高阶属性，包含：奥术增幅/抵抗、机械负荷/进化、梦魇侵蚀、虚无灵体（伤害豁免）、英灵鼓舞（友方增益）、星界引导（仪式频率）、魂印驱动（充能加速）。
 
 **修饰符 (Modifier)**:
-属性加成的统一表达单元 `{ stat, kind: 'flat' | 'percent', value }`——`stat` 为三层输入属性之一（元/基础/特殊），`kind: 'flat'` 直接加减数值（+5 攻击）、`kind: 'percent'` 按比例放大（+10% 攻击，多来源加算）。所有加成来源产出的统一形态，聚合后由 statSystem 统一计算：`final = (base + Σflat) × (1 + Σpercent)`，钳制在最终级。
-_Avoid_: 各加成来源定义各自独立的加成类型（旧 `CombatBonus` 已退役）。
+属性加成与效果数值修正的统一表达单元 `{ target, op: 'add' | 'multiply', value, source? }`——`target` 为 `stat.<StatKey>`（作用于属性面板）或 `effect.<参数名>`（作用于某一次效果参数）；`op: 'add'` 为加算 flat、`op: 'multiply'` 为乘算 percent（多来源加算）。所有加成来源产出的统一形态，聚合后统一计算：`final = (base + Σadd) × (1 + Σmultiply)`，钳制在最终级。旧 `StatModifier`（`{ stat, kind: 'flat' | 'percent', value }`）作为兼容形态继续由旧链路产出，经适配器转换为统一 `Modifier`。
+_Avoid_: 各加成来源定义各自独立的加成类型（旧 `CombatBonus` 已退役）；将属性加成与效果修正拆成两个近似类型。
 
 **加成来源 (Bonus Source)**:
 产生修饰符的系统——羁绊、装备（套装/神话/平值）、天赋、觉醒、Buff。各来源只负责产出修饰符；聚合与面板计算统一收敛到 statSystem。升级成长（`levelMilestones`）属于基础面板的组成部分，不是加成来源，不作为加成展示。

@@ -191,12 +191,12 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
     const healEvent = result.events.find(
-      e => e.key === 'healingTaken' && e.data.skillName === '净化之泉'
+      e => e.key === 'effectApplied' && e.data.kind === 'heal'
     );
     expect(healEvent).toBeDefined();
     // 治疗量 = maxHp 的 50% = round(203 × 0.5) = 102，上限内全额
-    expect(healEvent!.data.amount).toBe(Math.round(203 * 0.5));
-    expect(healEvent!.unitId).toBe('healer');
+    expect((healEvent!.data as { values: { heal: number } }).values.heal).toBe(Math.round(203 * 0.5));
+    expect(healEvent!.targetId).toBe('healer');
   });
 
   it('heal 治疗量受生命上限约束', () => {
@@ -205,10 +205,10 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
     const healEvent = result.events.find(
-      e => e.key === 'healingTaken' && e.data.kind === 'heal'
+      e => e.key === 'effectApplied' && e.data.kind === 'heal'
     );
     expect(healEvent).toBeDefined();
-    expect(healEvent!.data.amount).toBe(2); // 只补缺的 2 点
+    expect((healEvent!.data as { values: { heal: number } }).values.heal).toBe(2); // 只补缺的 2 点
   });
 
   it('未觉醒英雄战斗行为与之前一致（普通攻击，无技能）', () => {

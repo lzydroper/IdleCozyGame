@@ -126,7 +126,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const firstAttack = result.settlement?.battle.events.find(
       e => e.key === 'attackAfter' && e.sourceId === 'nova'
     );
-    expect(firstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 51 } });
+    expect(firstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', amount: 54 } });
 
     // 对照组：单诺娃无羁绊 → 49 - 3 = 46
     const solo = makeState({ ...owned(['nova'], ['nova']), stamina: 100 });
@@ -134,7 +134,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const soloFirstAttack = soloOutcome.settlement?.battle.events.find(
       e => e.key === 'attackAfter' && e.sourceId === 'nova'
     );
-    expect(soloFirstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 46 } });
+    expect(soloFirstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', amount: 49 } });
   });
 
   it('faction bond (奥术共鸣) maxHp bonus is effective in battle simulation', () => {
@@ -173,7 +173,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const firstAttack = result.settlement?.battle.events.find(
       e => e.key === 'attackAfter' && e.sourceId === 'nova'
     );
-    expect(firstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 49 } });
+    expect(firstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', amount: 54 } });
 
     // 对照组：单诺娃无羁绊 → 49 - 5 = 44
     const solo = makeState({ ...owned(['nova'], ['nova']), stamina: 100 });
@@ -181,6 +181,6 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const soloFirstAttack = soloOutcome.settlement?.battle.events.find(
       e => e.key === 'attackAfter' && e.sourceId === 'nova'
     );
-    expect(soloFirstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 44 } });
+    expect(soloFirstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', amount: 49 } });
   });
 });

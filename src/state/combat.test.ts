@@ -16,6 +16,7 @@ import {
   heroToCombatant,
   recomputeCombatant,
   combatantFromSnapshot,
+  simulateBattle,
   type CombatantState,
   type CombatantSnapshot
 } from './combat';
@@ -138,6 +139,15 @@ const sequenceRng = (values: number[]): (() => number) => {
   return () => values[Math.min(i++, values.length - 1)];
 };
 
+
+describe('simulateBattle 走 Effect 结算', () => {
+  it('事件流包含 effectApplied 伤害/治疗完成事件', () => {
+    const hero = heroToCombatant('nova', createInitialHero('nova'));
+    const enemy: CombatantState = { id: 'e', name: '敌', hp: 100, maxHp: 100, attack: 5, defense: 0 };
+    const battle = simulateBattle([hero], [enemy]);
+    expect(battle.events.some(e => e.key === 'effectApplied' && e.data.kind === 'damage')).toBe(true);
+  });
+});
 
 describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)', () => {
   it('scales maxHp / attack / defense with level by class growth', () => {

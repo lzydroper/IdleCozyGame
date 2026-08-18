@@ -108,3 +108,40 @@ registerBattleEventPresenter({
   key: 'summon',
   format: event => `【${nameOf(event, 'unit')}】被召唤入场`
 });
+
+registerBattleEventPresenter({
+  key: 'effectApplied',
+  format: event => {
+    const data = event.data as {
+      kind?: string;
+      values?: Record<string, number>;
+    };
+    const source = nameOf(event, 'source') || nameOf(event, 'unit');
+    const target = nameOf(event, 'target');
+    const values = data.values ?? {};
+    switch (data.kind) {
+      case 'damage':
+        return `【${source}】→【${target}】效果伤害 -${String(values.damage ?? 0)}`;
+      case 'heal':
+        return `【${target}】效果治疗 +${String(values.heal ?? 0)}`;
+      case 'statModify':
+        return `【${target}】属性修正 ${String(values.value ?? 0)}`;
+      case 'stun':
+        return `【${target}】眩晕`;
+      case 'dispel':
+        return `【${target}】驱散`;
+      case 'immunityElement':
+        return `【${target}】获得元素免疫`;
+      case 'immunityBuff':
+        return `【${target}】获得 Buff 免疫`;
+      case 'taunt':
+        return `【${target}】嘲讽优先级 ${String(values.value ?? 0)}`;
+      case 'summon':
+        return `【${source}】召唤 ${String(values.count ?? 0)} 个单位`;
+      case 'applyBuff':
+        return `【${target}】获得 Buff（层数 ${String(values.stacks ?? 0)}）`;
+      default:
+        return fallbackFormat(event);
+    }
+  }
+});

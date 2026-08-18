@@ -65,7 +65,7 @@ export const TURN_TIMING_KEYS = ['roundStart', 'turnStart', 'turnActive', 'turnE
 export type TurnTimingKey = (typeof TURN_TIMING_KEYS)[number];
 
 /** 标准细粒度战斗事件键（可扩展）。 */
-export const BATTLE_EVENT_KEYS = ['attackAfter', 'damageTaken', 'healingTaken', 'death', 'summon'] as const;
+export const BATTLE_EVENT_KEYS = ['attackAfter', 'damageTaken', 'healingTaken', 'death', 'summon', 'effectApplied'] as const;
 export type BattleEventKey = (typeof BATTLE_EVENT_KEYS)[number];
 
 export type TurnEventKey = TurnTimingKey | BattleEventKey | (string & {});
@@ -169,6 +169,8 @@ export interface TurnConfig {
   maxRounds?: number;
   /** RNG 函数参数注入：生产传 Math.random、测试传固定种子。 */
   rng?: () => number;
+  /** 初始化钩子：在 runtime 建好、队列排序后、第 1 轮开始前调用一次（maxRounds<=0 也调用）。仅用于 register/unregister 与组装战斗上下文，不派发事件、不改 hp/先机。 */
+  setup?: (runtime: TurnRuntime) => void;
   /** canAct 谓词（由 Buff 状态汇总；Turn 不硬编码眩晕等枚举）。默认恒 true。 */
   canAct?: (unit: BattleUnitRuntime, runtime: TurnRuntime) => boolean;
   /** 行动入口（Ability 层注入）：在「回合进行中」调用。默认空操作。 */
@@ -441,6 +443,8 @@ export const runTurnEngine = (
 
   queue.sort(compareQueueIds);
   sep = 0;
+
+  config.setup?.(runtime);
 
   while (round < maxRounds && !forcedEnd) {
     round++;

@@ -496,3 +496,43 @@ describe('05 — 事件触发与强制结束', () => {
     expect(queue[0].initiative).toBe(30);
   });
 });
+
+describe('setup 初始化钩子', () => {
+  it('在首轮前调用一次，并可用于注册主时机订阅', () => {
+    const calls: string[] = [];
+    let setupRuntime: TurnRuntime | null = null;
+    runTurnEngine(
+      [snap('a', 'hero', 100, 30), snap('e', 'enemy', 100, 10)],
+      {
+        maxRounds: 1,
+        setup(runtime) {
+          setupRuntime = runtime;
+          calls.push('setup');
+          runtime.register(
+            'turnStart',
+            ctx => {
+              if (ctx.unit?.id === 'a') calls.push('sub-a');
+            },
+            'a'
+          );
+        },
+        performAction: basicAttackAction(5)
+      }
+    );
+    expect(calls).toEqual(['setup', 'sub-a']);
+    expect(setupRuntime).not.toBeNull();
+    expect(typeof setupRuntime!.register).toBe('function');
+  });
+
+  it('maxRounds = 0 也调用 setup，且不进入任何轮次', () => {
+    let called = false;
+    const result = runTurnEngine(
+      [snap('a', 'hero', 100, 30), snap('e', 'enemy', 100, 10)],
+      { maxRounds: 0, setup: () => { called = true; }, performAction: () => {} }
+    );
+    expect(called).toBe(true);
+    expect(result.rounds).toBe(0);
+    expect(result.events).toHaveLength(0);
+    expect(result.outcome).toBe('draw');
+  });
+});
