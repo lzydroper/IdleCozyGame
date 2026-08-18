@@ -14,4 +14,4 @@
 
 英雄则是在此基础上额外拥有天赋(talent)、羁绊(bond)、装备(equipment)、成长(包括levelMilestones)、后勤(Duty)等
 
-敌人则是在此基础上可能派生出boss、nightmare等
+敌人则是在此基础上**不派生父子类**：boss、nightmare 均为敌人的特殊实例，通过配置标记区分（如 `kind: 'boss' | 'nightmare'`），一视同仁地参与战斗
