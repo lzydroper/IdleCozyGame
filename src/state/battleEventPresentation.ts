@@ -1,0 +1,110 @@
+/**
+ * 战斗事件展示注册表（combat-turn）：
+ * 事件流是数据源，展示文案由各事件键的 presenter 提供。
+ * - 标准键（五大主时机 + 五个细粒度事件）在此注册内置 presenter；
+ * - 后续 Ability/Effect 新增事件键时，用 registerBattleEventPresenter 注册自己的展示回调，
+ *   UI 消费端（CombatEventLog 等）只调用 formatBattleEvent，不需要再改 switch/label 表。
+ */
+import type { BattleEvent, TurnEventKey } from './turnEngine';
+
+export interface BattleEventPresenter {
+  key: TurnEventKey;
+  /** 把一条事件渲染成一行展示文本。 */
+  format: (event: BattleEvent) => string;
+}
+
+const presenters = new Map<TurnEventKey, BattleEventPresenter>();
+
+export const registerBattleEventPresenter = (presenter: BattleEventPresenter): void => {
+  presenters.set(presenter.key, presenter);
+};
+
+export const unregisterBattleEventPresenter = (key: TurnEventKey): void => {
+  presenters.delete(key);
+};
+
+export const getBattleEventPresenter = (key: TurnEventKey): BattleEventPresenter | undefined =>
+  presenters.get(key);
+
+const nameOf = (event: BattleEvent, field: 'unit' | 'source' | 'target'): string => {
+  if (field === 'unit') return event.unitName ?? event.unitId ?? '全局';
+  if (field === 'source') return event.sourceName ?? event.sourceId ?? '';
+  if (field === 'target') return event.targetName ?? event.targetId ?? '';
+  return '';
+};
+
+/** 未注册 presenter 的事件键的兜底渲染：输出结构化字段，保证新事件不白屏。 */
+const fallbackFormat = (event: BattleEvent): string => {
+  const parts = [
+    event.key,
+    event.unitId ? `unit=${nameOf(event, 'unit')}` : '',
+    event.sourceId ? `source=${nameOf(event, 'source')}` : '',
+    event.targetId ? `target=${nameOf(event, 'target')}` : ''
+  ].filter(Boolean);
+  const dataText = Object.keys(event.data).length > 0 ? JSON.stringify(event.data) : '';
+  return `${parts.join(' ')}${dataText ? ` ${dataText}` : ''}`;
+};
+
+export const formatBattleEvent = (event: BattleEvent): string => {
+  const presenter = presenters.get(event.key);
+  return presenter ? presenter.format(event) : fallbackFormat(event);
+};
+
+// === 内置 presenter：标准键（引擎契约的一部分） ===
+
+registerBattleEventPresenter({
+  key: 'roundStart',
+  format: event => `第 ${event.round} 轮开始`
+});
+
+registerBattleEventPresenter({
+  key: 'roundEnd',
+  format: event => `第 ${event.round} 轮结束`
+});
+
+registerBattleEventPresenter({
+  key: 'turnStart',
+  format: event => `【${nameOf(event, 'unit')}】回合开始`
+});
+
+registerBattleEventPresenter({
+  key: 'turnActive',
+  format: event => `【${nameOf(event, 'unit')}】行动中`
+});
+
+registerBattleEventPresenter({
+  key: 'turnEnd',
+  format: event => `【${nameOf(event, 'unit')}】回合结束`
+});
+
+registerBattleEventPresenter({
+  key: 'attackAfter',
+  format: event => {
+    const data = event.data;
+    if (data.kind === 'heal') {
+      return `【${nameOf(event, 'unit')}】治疗自身 +${String(data.heal ?? data.amount ?? 0)}`;
+    }
+    const skillName = data.skillName ? `发动【${String(data.skillName)}】` : '攻击';
+    return `【${nameOf(event, 'source')}】→【${nameOf(event, 'target')}】${skillName} -${String(data.damage ?? data.amount ?? 0)}`;
+  }
+});
+
+registerBattleEventPresenter({
+  key: 'damageTaken',
+  format: event => `【${nameOf(event, 'target')}】受到 ${String(event.data.amount ?? 0)} 点伤害`
+});
+
+registerBattleEventPresenter({
+  key: 'healingTaken',
+  format: event => `【${nameOf(event, 'target')}】恢复 ${String(event.data.amount ?? 0)} 点生命`
+});
+
+registerBattleEventPresenter({
+  key: 'death',
+  format: event => `【${nameOf(event, 'unit')}】阵亡`
+});
+
+registerBattleEventPresenter({
+  key: 'summon',
+  format: event => `【${nameOf(event, 'unit')}】被召唤入场`
+});

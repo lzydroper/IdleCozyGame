@@ -9,7 +9,6 @@ import { heroBaseAttributes } from '../data/heroGrowth';
 import {
   applyHeroExp,
   consumeExpTomesUpdate,
-  simulateBattle,
   startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
@@ -22,7 +21,6 @@ import {
 } from './combat';
 import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import type { ActiveBuff } from './buffSystem';
-import { STAR_MAX } from '../data/awakening';
 
 describe('recomputeCombatant (B 方案：可重算快照)', () => {
   it('无 buff 时重算 = 入场值（幂等）', () => {
@@ -140,10 +138,6 @@ const sequenceRng = (values: number[]): (() => number) => {
   return () => values[Math.min(i++, values.length - 1)];
 };
 
-// 构造一个纯战斗单位
-const unit = (id: string, hp: number, attack: number, defense: number, name = id): CombatantState => ({
-  id, name, hp, maxHp: hp, attack, defense
-});
 
 describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)', () => {
   it('scales maxHp / attack / defense with level by class growth', () => {
@@ -170,110 +164,6 @@ describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)',
     expect(leveled.exp).toBe(100); // 200 - 100
     expect(leveled.maxHp).toBe(heroBaseAttributes(HEROES_CONFIG.nova, 2).maxHp);
     expect(leveled.hp).toBe(hero.hp + (leveled.maxHp - hero.maxHp)); // 保留当前血量差值
-  });
-});
-
-describe('simulateBattle (轮询回合制)', () => {
-  it('heroes and enemies act in fixed round-robin order each round', () => {
-    // 敌人血量极高，保证打满一整个回合
-    const heroes = [unit('nova', 200, 5, 0, '诺娃'), unit('buster', 200, 5, 0, '巴斯特')];
-    const enemies = [unit('e1', 999, 1, 0, '敌人1')];
-    const { victory, partyWiped, actions, rounds } = simulateBattle(heroes, enemies);
-    expect(victory).toBe(false);
-    expect(partyWiped).toBe(false); // 回合上限双方存活 → 平局（不触发重伤）
-    // 每回合固定顺序：诺娃 → 巴斯特 → 敌人1
-    const firstRound = actions.slice(0, 3);
-    expect(firstRound[0]).toMatchObject({ round: 1, actorSide: 'hero', actorId: 'nova' });
-    expect(firstRound[1]).toMatchObject({ round: 1, actorSide: 'hero', actorId: 'buster' });
-    expect(firstRound[2]).toMatchObject({ round: 1, actorSide: 'enemy', actorId: 'e1' });
-    expect(rounds).toBe(COMBAT_CONFIG.maxBattleRounds);
-  });
-
-  it('victory when all enemies are defeated', () => {
-    const heroes = [unit('nova', 100, 35, 8, '诺娃')];
-    const enemies = [unit('hound', 45, 9, 3, '废土鬣狗')];
-    const { victory, rounds } = simulateBattle(heroes, enemies);
-    expect(victory).toBe(true);
-    expect(rounds).toBe(2);
-  });
-
-  it('defeat when all heroes are defeated', () => {
-    const heroes = [unit('nova', 10, 5, 0, '诺娃')];
-    const enemies = [unit('boss', 200, 30, 0, '强敌')];
-    const { victory, partyWiped } = simulateBattle(heroes, enemies);
-    expect(victory).toBe(false);
-    expect(partyWiped).toBe(true);
-  });
-
-  it('records an hpTrack snapshot per action for HP bar playback (ticket 21)', () => {
-    const heroes = [unit('nova', 100, 35, 8, '诺娃')];
-    const enemies = [unit('hound', 45, 9, 3, '废土鬣狗')];
-    const { actions, hpTrack, victory } = simulateBattle(heroes, enemies);
-
-    expect(hpTrack).toBeDefined();
-    // 初始满血快照 + 每动作一帧
-    expect(hpTrack!.length).toBe(actions.length + 1);
-    // 首帧：双方满血
-    expect(hpTrack![0]).toMatchObject([
-      { id: 'nova', side: 'hero', hp: 100, maxHp: 100 },
-      { id: 'hound', side: 'enemy', hp: 45, maxHp: 45 }
-    ]);
-    // 逐帧与动作一一对应：第 i+1 帧 = 第 i 帧应用 actions[i] 后的状态
-    for (let i = 0; i < actions.length; i++) {
-      const before = hpTrack![i];
-      const after = hpTrack![i + 1];
-      const action = actions[i];
-      // 攻击/技能：目标血量减少恰好 damage；其余参战者不变
-      const targetBefore = before.find(x => x.name === action.targetName)!;
-      const targetAfter = after.find(x => x.name === action.targetName)!;
-      if (action.kind === 'heal') {
-        expect(targetAfter.hp).toBe(targetBefore.hp + action.damage);
-      } else {
-        expect(targetAfter.hp).toBe(Math.max(0, targetBefore.hp - action.damage));
-      }
-      for (const entry of before) {
-        if (entry.name === action.targetName) continue;
-        const afterEntry = after.find(x => x.name === entry.name)!;
-        expect(afterEntry.hp).toBe(entry.hp);
-      }
-    }
-    // 末帧与胜负一致：胜利 → 敌人 hp 归零
-    expect(victory).toBe(true);
-    const last = hpTrack![hpTrack!.length - 1];
-    expect(last.find(x => x.side === 'enemy')!.hp).toBe(0);
-    expect(last.find(x => x.side === 'hero')!.hp).toBeGreaterThan(0);
-  });
-
-  it('hpTrack stays in sync for aoe multi-target and heal actions (ticket 21)', () => {
-    // aoe 技能：一次行动对全部存活敌人造成伤害
-    const nova = heroToCombatant('nova', { ...createInitialHero('nova'), star: STAR_MAX, awakened: true });
-    const enemies = [
-      { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
-      { id: 'e2', name: '靶子乙', hp: 500, maxHp: 500, attack: 1, defense: 0 }
-    ];
-    const aoeResult = simulateBattle([nova], enemies, 1);
-    expect(aoeResult.hpTrack!.length).toBe(aoeResult.actions.length + 1);
-    // 第一回合的两个 aoe 动作：每个目标各扣一次，且两次扣血互不影响其他目标
-    const round1 = aoeResult.actions.filter(a => a.round === 1 && a.kind === 'skill');
-    expect(round1).toHaveLength(2);
-    const frame1 = aoeResult.hpTrack![1].find(x => x.id === 'e1')!;
-    const frame2 = aoeResult.hpTrack![2].find(x => x.id === 'e1')!;
-    const frame2e2 = aoeResult.hpTrack![2].find(x => x.id === 'e2')!;
-    expect(frame1.hp).toBe(500 - round1[0].damage);
-    expect(frame2.hp).toBe(frame1.hp); // 第二次 aoe 打 e2，e1 不再变化
-    expect(frame2e2.hp).toBe(500 - round1[1].damage);
-
-    // heal 技能：自身治疗 → 血量反弹，帧差为正
-    const healer = heroToCombatant('healer', { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 });
-    const healEnemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
-    const healResult = simulateBattle([healer], healEnemies, 1);
-    const healAction = healResult.actions.find(a => a.kind === 'heal')!;
-    expect(healAction).toBeDefined();
-    const healIdx = healResult.actions.indexOf(healAction);
-    const heroBefore = healResult.hpTrack![healIdx].find(x => x.id === 'healer')!;
-    const heroAfter = healResult.hpTrack![healIdx + 1].find(x => x.id === 'healer')!;
-    expect(heroAfter.hp).toBe(heroBefore.hp + healAction.damage); // 治疗帧血量上升
-    expect(heroAfter.hp).toBeLessThanOrEqual(heroAfter.maxHp);
   });
 });
 

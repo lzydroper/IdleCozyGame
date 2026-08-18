@@ -144,7 +144,7 @@ describe('觉醒', () => {
   });
 });
 
-describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => {
+describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
   // 简单敌人：低防御便于验证伤害公式
   const dummyEnemies = () => [
     { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
@@ -158,12 +158,13 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
     expect(combatant.attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 8);
-    const skills = result.actions.filter(a => a.kind === 'skill');
+    const skills = result.events.filter(
+      e => e.key === 'attackAfter' && e.data.kind === 'skill' && e.data.skillName === '拆解重击'
+    );
     // 回合 1 发动；冷却 3 → 回合 5 再发动（自身行动轮）
-    expect(skills.map(a => a.round)).toEqual([1, 5]);
-    expect(skills[0].skillName).toBe('拆解重击');
+    expect(skills.map(e => e.round)).toEqual([1, 5]);
     // 伤害 = 攻击 ×2.2（防御 0）：round(58 × 2.2) = 128
-    expect(skills[0].damage).toBe(Math.round(58 * 2.2));
+    expect(skills[0].data.damage).toBe(Math.round(58 * 2.2));
   });
 
   it('aoe 技能：一次行动对全部存活敌人造成伤害', () => {
@@ -173,10 +174,12 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
     expect(combatant.attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
-    const round1Skills = result.actions.filter(a => a.round === 1 && a.kind === 'skill');
+    const round1Skills = result.events.filter(
+      e => e.round === 1 && e.key === 'attackAfter' && e.data.kind === 'skill'
+    );
     expect(round1Skills).toHaveLength(2); // 两个敌人都吃到
-    expect(round1Skills.every(a => a.skillName === '电涌过载')).toBe(true);
-    expect(round1Skills[0].damage).toBe(Math.round(58 * 0.8));
+    expect(round1Skills.every(e => e.data.skillName === '电涌过载')).toBe(true);
+    expect(round1Skills[0].data.damage).toBe(Math.round(58 * 0.8));
   });
 
   it('heal 技能：恢复自身生命且不超过上限', () => {
@@ -187,11 +190,13 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
     const heroes = [combatant];
     const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
-    const healAction = result.actions.find(a => a.kind === 'heal');
-    expect(healAction).toBeDefined();
+    const healEvent = result.events.find(
+      e => e.key === 'healingTaken' && e.data.skillName === '净化之泉'
+    );
+    expect(healEvent).toBeDefined();
     // 治疗量 = maxHp 的 50% = round(203 × 0.5) = 102，上限内全额
-    expect(healAction!.damage).toBe(Math.round(203 * 0.5));
-    expect(healAction!.targetName).toBe('艾拉');
+    expect(healEvent!.data.amount).toBe(Math.round(203 * 0.5));
+    expect(healEvent!.unitId).toBe('healer');
   });
 
   it('heal 治疗量受生命上限约束', () => {
@@ -199,16 +204,20 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
     const heroes = [heroToCombatant('catherine', catherine)];
     const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
     const result = simulateBattle(heroes, enemies, 2);
-    const healAction = result.actions.find(a => a.kind === 'heal');
-    expect(healAction!.damage).toBe(2); // 只补缺的 2 点
+    const healEvent = result.events.find(
+      e => e.key === 'healingTaken' && e.data.kind === 'heal'
+    );
+    expect(healEvent).toBeDefined();
+    expect(healEvent!.data.amount).toBe(2); // 只补缺的 2 点
   });
 
   it('未觉醒英雄战斗行为与之前一致（普通攻击，无技能）', () => {
     const nova: HeroState = createInitialHero('nova');
     const heroes = [heroToCombatant('nova', nova)];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
-    expect(result.actions.some(a => a.kind === 'skill')).toBe(false);
-    expect(result.actions.every(a => a.kind === 'attack')).toBe(true);
+    const attackEvents = result.events.filter(e => e.key === 'attackAfter');
+    expect(attackEvents.some(e => e.data.kind === 'skill')).toBe(false);
+    expect(attackEvents.every(e => e.data.kind === 'attack')).toBe(true);
   });
 
   it('升星/觉醒百分比加成计入战斗数值（与天赋叠加）', () => {

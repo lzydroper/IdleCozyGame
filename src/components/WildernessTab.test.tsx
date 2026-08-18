@@ -232,9 +232,6 @@ describe('WildernessTab Component', () => {
 
     fireEvent.click(screen.getByText(/开战（体力 -10）/));
 
-    const skipBtn1 = screen.queryByText('跳过');
-    if (skipBtn1) fireEvent.click(skipBtn1);
-
     // 胜利结算展示 + 体力扣减 + 结算写入存档
     expect(screen.getAllByText(/战斗胜利/).length).toBeGreaterThan(0);
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
@@ -298,11 +295,7 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/战斗遭遇 —— 废土掠食者群/)).toBeDefined();
     fireEvent.click(screen.getByText(/迎战！（体力/));
 
-    // 触发战斗动画播报 → 跳过（加快测试速度）
-    const skipBtn = screen.queryByText(/跳过/);
-    if (skipBtn) fireEvent.click(skipBtn);
-
-    // 播完停留：不自动跳转，显示胜利结算与「继续探索」按钮（ticket 21 用户反馈 4）
+    // 事件流结算展示：胜利结算 +「继续探索」按钮
     expect(screen.getByText(/战斗胜利！/)).toBeDefined();
     expect(screen.getByText('继续探索')).toBeDefined();
 
@@ -354,11 +347,7 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/战斗遭遇 —— 车间畸变体群/)).toBeDefined();
     fireEvent.click(screen.getByText(/迎战！（体力/));
 
-    // 触发战斗动画播报 → 跳过（加快测试速度）
-    const skipBtn = screen.queryByText(/跳过/);
-    if (skipBtn) fireEvent.click(skipBtn);
-
-    // 播完停留：显示失败结算与「返回荒野」按钮，不自动跳转（ticket 21 用户反馈 4）
+    // 事件流结算展示：失败结算 +「返回荒野」按钮
     expect(screen.getByText(/战斗失败！/)).toBeDefined();
     expect(screen.getByText('返回荒野')).toBeDefined();
 
@@ -443,7 +432,7 @@ describe('WildernessTab Component', () => {
     expect(savedState.stamina).toBe(100 - 12); // BOSS 战消耗体力
     // 区2 解锁：未解锁徽章从 2 减到 1，且出现"已通关"徽章
     expect(screen.getAllByText(/未解锁/).length).toBe(1);
-    expect(screen.getByText(/已通关/)).toBeDefined();
+    expect(screen.getAllByText(/^已通关$/).length).toBeGreaterThan(0);
   });
 
   it('arms idle from the combat panel in a cleared zone and stops it preserving stamina (挂机需已通关)', () => {
@@ -539,7 +528,7 @@ describe('WildernessTab Component', () => {
       combat: {
         zoneId: 'wasteland_entrance',
         lastSettlement: {
-          battle: { victory: false, partyWiped: false, rounds: 60, actions: [] },
+          battle: { outcome: 'draw', victory: false, partyWiped: false, rounds: 60, events: [] },
           drops: {},
           soulEchoes: 0,
           expPerHero: 0,
@@ -558,16 +547,14 @@ describe('WildernessTab Component', () => {
     );
 
     fireEvent.click(screen.getByText(/战斗挂机/));
-    const skipBtn2 = screen.queryByText('跳过');
-    if (skipBtn2) fireEvent.click(skipBtn2);
 
     expect(screen.getByText(/战斗平局/)).toBeDefined();
     expect(screen.queryByText(/战斗失败/)).toBeNull();
-    expect(screen.getByText(/鏖战至回合上限未分胜负/)).toBeDefined();
+    expect(screen.getByText(/达到轮次上限/)).toBeDefined();
   });
 
-  it('renders awakened skill actions in the battle log (strike shows target, heal shows +N)', () => {
-    // 水合一场含觉醒技能结算：strike 有目标名、heal 为自身治疗
+  it('renders battle events in the combat event log (skill/attack/heal)', () => {
+    // 水合一场含技能/攻击/治疗的战斗事件流
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
@@ -579,11 +566,14 @@ describe('WildernessTab Component', () => {
         zoneId: 'wasteland_entrance',
         lastSettlement: {
           battle: {
-            victory: true, partyWiped: false, rounds: 2,
-            actions: [
-              { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '废土鬣狗', damage: 28, kind: 'skill', skillName: '电涌过载' },
-              { round: 1, actorSide: 'enemy', actorId: 'e1', actorName: '废土鬣狗', targetName: '诺娃', damage: 6, kind: 'attack' },
-              { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '诺娃', damage: 76, kind: 'heal', skillName: '净化之泉' }
+            outcome: 'victory',
+            victory: true,
+            partyWiped: false,
+            rounds: 2,
+            events: [
+              { seq: 0, round: 1, key: 'attackAfter', unitId: 'nova', sourceId: 'nova', targetId: 'e1', data: { kind: 'skill', skillName: '电涌过载', damage: 28 } },
+              { seq: 1, round: 1, key: 'attackAfter', unitId: 'e1', sourceId: 'e1', targetId: 'nova', data: { kind: 'attack', damage: 6 } },
+              { seq: 2, round: 2, key: 'healingTaken', unitId: 'nova', sourceId: 'nova', targetId: 'nova', data: { kind: 'heal', skillName: '净化之泉', amount: 76 } }
             ]
           },
           drops: {},
@@ -604,17 +594,14 @@ describe('WildernessTab Component', () => {
     );
 
     fireEvent.click(screen.getByText(/战斗挂机/));
-    const skipBtn3 = screen.queryByText('跳过');
-    if (skipBtn3) fireEvent.click(skipBtn3);
 
-    // strike：发动【技能】→ 目标名（技能 span 内含目标）；heal：发动【技能】+治疗量（无目标箭头）
-    expect(screen.getByText(/发动【电涌过载】/).textContent).toContain('废土鬣狗');
-    expect(screen.getByText('-28')).toBeDefined(); // strike 伤害
-    expect(screen.getByText(/发动【净化之泉】/).textContent).not.toContain('→'); // heal 无目标箭头
-    expect(screen.getByText('+76')).toBeDefined(); // heal 治疗量
+    // 事件流日志：技能行含技能名与伤害；治疗行含恢复量
+    const skillLine = screen.getByText(/发动【电涌过载】/);
+    expect(skillLine.textContent).toContain('-28');
+    expect(screen.getByText(/恢复 76 点生命/)).toBeDefined();
   });
 
-  it('plays idle battle playback automatically when a battle settles online (挂机战斗自动播放回放动画)', () => {
+  it('settles idle battle online and shows the latest battle result (挂机战斗在线结算)', () => {
     vi.useFakeTimers();
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     // 强队保证必胜（诺娃 + 铁卫）
@@ -637,25 +624,18 @@ describe('WildernessTab Component', () => {
 
     fireEvent.click(screen.getByText(/战斗挂机/));
 
-    // 挂机在线结算一场（20 秒），回放动画自动开始播放（跳过按钮 = 播放态）
+    // 挂机在线结算一场（20 秒），最近战斗结果以事件流展示
     act(() => {
       vi.advanceTimersByTime(21000);
     });
-    expect(screen.getByText('跳过')).toBeDefined();
-
-    // 动画逐动作自动播放至完成 → 战斗胜利横幅（挂机战斗过程完整展示）
-    // 动画定时器是链式重注册的（每步 effect 清理+重注册），fake timers 下需分步推进
-    for (let i = 0; i < 20; i++) {
-      act(() => {
-        vi.advanceTimersByTime(800);
-      });
-    }
     expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.combat.lastSettlement.battle.outcome).toBe('victory');
 
     vi.useRealTimers();
   });
 
-  it('replays the animation for consecutive identical battles (unique key per battle)', () => {
+  it('shows the latest battle result for consecutive battles (连续战斗更新事件流)', () => {
     render(
       <GameProvider>
         <ToastProvider>
@@ -666,18 +646,16 @@ describe('WildernessTab Component', () => {
 
     fireEvent.click(screen.getByText(/战斗挂机/));
 
-    // 第一场：点击开战 → 动画播放中（跳过按钮可见）
+    // 第一场：点击开战 → 胜利结算展示
     fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
-    expect(screen.getByText('跳过')).toBeDefined();
-    fireEvent.click(screen.getByText('跳过'));
-    // 播完：结算卡片可见、无跳过按钮（进入完成态）
-    expect(screen.queryByText('跳过')).toBeNull();
     expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+    const afterFirst = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(afterFirst.stamina).toBe(90);
 
-    // 第二场（内容与第一场完全相同）：点击开战 → 重新播放动画
+    // 第二场（内容与第一场完全相同）：点击开战 → 最新一场仍为胜利
     fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
-    expect(screen.getByText('跳过')).toBeDefined();
-    fireEvent.click(screen.getByText('跳过'));
-    expect(screen.queryByText('跳过')).toBeNull();
+    expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+    const afterSecond = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(afterSecond.stamina).toBe(80);
   });
 });

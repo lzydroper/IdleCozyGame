@@ -1,4 +1,4 @@
-import type { GameState, HeroState, HeroEquipment, EquippedItem, LogEntry, BattleResult, BattleHpEntry, CombatSettlement, CombatIdleState } from '../types/game';
+import type { GameState, HeroState, HeroEquipment, EquippedItem, LogEntry, BattleResult, CombatSettlement, CombatIdleState } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
@@ -18,6 +18,8 @@ import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenSkill } from './awakening';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
+import { calculateInitiative, runTurnEngine } from './turnEngine';
+import type { BattleUnitAbility, BattleUnitRuntime, BattleUnitSnapshot, BattleUnitStats, TurnRuntime } from './turnEngine';
 
 // === 战斗核心（ticket 05）：三人轮询回合制自动战斗 ===
 
@@ -80,135 +82,143 @@ export const applyHeroExp = (hero: HeroState, config: HeroConfig, exp: number): 
 const dealDamage = (attack: number, defense: number): number =>
   Math.max(1, attack - defense);
 
+// CombatantState → Turn 引擎单位快照：先机由上层计算（agility 公式 + clamp，上限 300）。
+const combatantToTurnUnit = (
+  combatant: CombatantState,
+  faction: 'hero' | 'enemy'
+): BattleUnitSnapshot => {
+  const agility = combatant.snapshot?.primaryAttributes.agility ?? 0;
+  const stats: BattleUnitStats = {
+    attack: combatant.attack,
+    defense: combatant.defense,
+    maxHp: combatant.maxHp,
+    maxMp: 0,
+    critRate: 0,
+    critDmg: 1.5
+  };
+  const abilities: BattleUnitAbility[] = [];
+  if (combatant.skill) {
+    abilities.push({
+      id: 'awakened_skill',
+      name: combatant.skill.name,
+      type: combatant.skill.type,
+      multiplier: combatant.skill.multiplier,
+      healPercent: combatant.skill.healPercent,
+      cooldown: combatant.skill.cooldown
+    });
+  }
+  return {
+    id: combatant.id,
+    name: combatant.name,
+    faction,
+    hp: combatant.hp,
+    maxHp: combatant.maxHp,
+    initiative: calculateInitiative(agility, 0),
+    abilities,
+    stats
+  };
+};
+
+interface DefaultAbility extends BattleUnitAbility {
+  id: string;
+  type: 'strike' | 'aoe' | 'heal';
+  multiplier?: number;
+  healPercent?: number;
+  cooldown: number;
+}
+
+const isDefaultAbility = (ability: BattleUnitAbility): ability is DefaultAbility =>
+  ability.type === 'strike' || ability.type === 'aoe' || ability.type === 'heal';
+
 /**
- * 轮询回合制战斗模拟（纯函数，无副作用）：
- * 每回合按固定顺序行动 —— 先按上阵顺序依次轮到英雄，再按配置顺序轮到敌人；
- * 英雄集火第一个存活敌人，敌人集火第一个存活英雄。全部敌人阵亡 → 胜利；
- * 全部英雄阵亡或达到回合上限 → 战败。rng 不参与战斗（掉落结算在调用方）。
- * 觉醒英雄（ticket 12）携带专属技能：冷却归零时发动（strike 单体重击 / aoe 群体 / heal 自身治疗），
- * 否则普通攻击；技能按自身行动轮计冷却。
+ * 默认行动入口（Ability 层落地前的生产适配）：
+ * 选能力/选目标/技能冷却属于 Ability 模块；此处复刻旧战斗行为——
+ * 英雄集火首个存活敌人，敌人集火首个存活英雄；觉醒技能冷却归零时发动，否则普通攻击。
+ * 伤害结算经 runtime.dealDamage/applyHeal 派发细粒度事件；攻击后事件在行动完成后派发。
+ */
+const createDefaultActionExecutor = (): ((unit: BattleUnitRuntime, runtime: TurnRuntime) => void) => {
+  const skillCooldown = new Map<string, number>(); // 英雄 id -> 剩余冷却（按自身行动轮）
+
+  return (unit, runtime) => {
+    const targets = runtime.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
+    const target = targets[0];
+    if (!target) return;
+
+    const skill = unit.abilities.find(isDefaultAbility);
+    const cd = skillCooldown.get(unit.id) ?? 0;
+
+    if (skill && cd === 0) {
+      skillCooldown.set(unit.id, skill.cooldown);
+      if (skill.type === 'strike') {
+        const damage = dealDamage(Math.round(unit.stats.attack * (skill.multiplier ?? 1)), target.stats.defense);
+        runtime.dealDamage(target.id, damage, unit.id, { kind: 'skill', skillName: skill.name });
+        runtime.dispatchEvent('attackAfter', {
+          unitId: unit.id,
+          sourceId: unit.id,
+          targetId: target.id,
+          data: { kind: 'skill', skillName: skill.name, damage }
+        });
+      } else if (skill.type === 'aoe') {
+        // 对当前全部存活敌人造成伤害（旧行为：一次行动对每个存活敌人各结算一次）
+        const livingTargets = runtime.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
+        for (const enemy of livingTargets) {
+          const damage = dealDamage(Math.round(unit.stats.attack * (skill.multiplier ?? 1)), enemy.stats.defense);
+          runtime.dealDamage(enemy.id, damage, unit.id, { kind: 'skill', skillName: skill.name });
+          runtime.dispatchEvent('attackAfter', {
+            unitId: unit.id,
+            sourceId: unit.id,
+            targetId: enemy.id,
+            data: { kind: 'skill', skillName: skill.name, damage }
+          });
+        }
+      } else {
+        // heal：自身治疗，不超过生命上限（治疗事件经 applyHeal 派发）
+        const heal = Math.round(unit.maxHp * ((skill.healPercent ?? 0) / 100));
+        runtime.applyHeal(unit.id, heal, unit.id, { kind: 'heal', skillName: skill.name });
+      }
+    } else {
+      // 冷却递减 + 普通攻击
+      skillCooldown.set(unit.id, Math.max(0, cd - 1));
+      const damage = dealDamage(unit.stats.attack, target.stats.defense);
+      runtime.dealDamage(target.id, damage, unit.id, { kind: 'attack' });
+      runtime.dispatchEvent('attackAfter', {
+        unitId: unit.id,
+        sourceId: unit.id,
+        targetId: target.id,
+        data: { kind: 'attack', damage }
+      });
+    }
+  };
+};
+
+/**
+ * 先机回合制战斗模拟（纯函数，无副作用）：
+ * 委托 Turn 引擎驱动「轮次 → 回合 → 时机/事件」流程；默认行动入口复刻旧战斗行为
+ * （英雄集火首个存活敌人，敌人集火首个存活英雄；觉醒技能冷却归零时发动）。
+ * 结局：敌人全灭 → victory；英雄全灭 → defeat；轮次上限双方存活 → draw。
+ * rng 以函数参数注入（掉落结算在调用方，本函数当前默认能力不使用 rng）。
  */
 export const simulateBattle = (
   heroes: CombatantState[],
   enemies: CombatantState[],
-  maxRounds: number = COMBAT_CONFIG.maxBattleRounds
+  maxRounds: number = COMBAT_CONFIG.maxBattleRounds,
+  rng: () => number = Math.random
 ): BattleResult => {
-  const h = heroes.map(x => ({ ...x }));
-  const e = enemies.map(x => ({ ...x }));
-  const actions: BattleResult['actions'] = [];
-  const hpTrack: BattleHpEntry[][] = [];
-  const skillCooldown: Record<string, number> = {}; // 英雄 id -> 剩余冷却（按自身行动轮）
-  let round = 0;
-
-  // 记录当前全员 HP 快照（ticket 21 血条播放）
-  const snapshot = (): BattleHpEntry[] => [
-    ...h.map(x => ({
-      id: x.id, side: 'hero' as const, name: x.name,
-      hp: Math.max(0, x.hp), maxHp: x.maxHp
-    })),
-    ...e.map(x => ({
-      id: x.id, side: 'enemy' as const, name: x.name,
-      hp: Math.max(0, x.hp), maxHp: x.maxHp
-    }))
+  const units: BattleUnitSnapshot[] = [
+    ...heroes.map(combatant => combatantToTurnUnit(combatant, 'hero')),
+    ...enemies.map(combatant => combatantToTurnUnit(combatant, 'enemy'))
   ];
-  hpTrack.push(snapshot()); // 初始满血（战斗开始前）
-
-  while (round < maxRounds) {
-    round++;
-
-    // 英雄方行动
-    for (const hero of h) {
-      if (hero.hp <= 0) continue;
-      const target = e.find(en => en.hp > 0);
-      if (!target) break;
-
-      const cd = skillCooldown[hero.id] || 0;
-      const skill = hero.skill;
-
-      // 觉醒技能：冷却归零时发动
-      if (skill && cd === 0) {
-        skillCooldown[hero.id] = skill.cooldown;
-        if (skill.type === 'strike') {
-          const dmg = dealDamage(Math.round(hero.attack * skill.multiplier), target.defense);
-          target.hp -= dmg;
-          actions.push({
-            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name,
-            targetName: target.name, damage: dmg, kind: 'skill', skillName: skill.name
-          });
-          hpTrack.push(snapshot());
-        } else if (skill.type === 'aoe') {
-          // 对全部存活敌人造成伤害
-          for (const en of e) {
-            if (en.hp <= 0) continue;
-            const dmg = dealDamage(Math.round(hero.attack * skill.multiplier), en.defense);
-            en.hp -= dmg;
-            actions.push({
-              round, actorSide: 'hero', actorId: hero.id, actorName: hero.name,
-              targetName: en.name, damage: dmg, kind: 'skill', skillName: skill.name
-            });
-            hpTrack.push(snapshot());
-          }
-        } else if (skill.type === 'heal') {
-          // 自身治疗：不超过生命上限
-          const heal = Math.round(hero.maxHp * ((skill.healPercent || 0) / 100));
-          const actual = Math.min(hero.maxHp - hero.hp, heal);
-          hero.hp += actual;
-          actions.push({
-            round, actorSide: 'hero', actorId: hero.id, actorName: hero.name,
-            targetName: hero.name, damage: actual, kind: 'heal', skillName: skill.name
-          });
-          hpTrack.push(snapshot());
-        }
-      } else {
-        // 冷却递减 + 普通攻击
-        skillCooldown[hero.id] = Math.max(0, cd - 1);
-        const dmg = dealDamage(hero.attack, target.defense);
-        target.hp -= dmg;
-        actions.push({
-          round,
-          actorSide: 'hero',
-          actorId: hero.id,
-          actorName: hero.name,
-          targetName: target.name,
-          damage: dmg,
-          kind: 'attack'
-        });
-        hpTrack.push(snapshot());
-      }
-    }
-    // 全部敌人阵亡 → 本回合胜利
-    if (e.every(en => en.hp <= 0)) break;
-
-    // 敌人方行动
-    for (const enemy of e) {
-      if (enemy.hp <= 0) continue;
-      const target = h.find(he => he.hp > 0);
-      if (!target) break;
-      const dmg = dealDamage(enemy.attack, target.defense);
-      target.hp -= dmg;
-      actions.push({
-        round,
-        actorSide: 'enemy',
-        actorId: enemy.id,
-        actorName: enemy.name,
-        targetName: target.name,
-        damage: dmg,
-        kind: 'attack'
-      });
-      hpTrack.push(snapshot());
-    }
-
-    // 英雄全灭 → 战败
-    if (!h.some(he => he.hp > 0)) break;
-  }
-
-  // 三种结局：敌人全灭=胜利；英雄全灭=战败；回合上限双方存活=平局（无重伤）
+  const result = runTurnEngine(units, {
+    maxRounds,
+    rng,
+    performAction: createDefaultActionExecutor()
+  });
   return {
-    victory: e.every(en => en.hp <= 0),
-    partyWiped: !h.some(he => he.hp > 0),
-    rounds: round,
-    actions,
-    hpTrack
+    outcome: result.outcome,
+    victory: result.outcome === 'victory',
+    partyWiped: result.outcome === 'defeat',
+    rounds: result.rounds,
+    events: result.events
   };
 };
 

@@ -1,4 +1,5 @@
 import type { FacilityType } from '../data/facilities';
+import type { BattleEvent, BattleOutcome } from '../state/turnEngine';
 
 export interface PlayerStats {
   food: number;       // 现实饱食度
@@ -101,39 +102,16 @@ export interface HeroEquipment {
   trinket: EquippedItem | null;
 }
 
-// === 战斗核心（ticket 05）：三人轮询回合制 ===
+// === 战斗核心（combat-turn）：先机回合制 + 事件流 ===
 
-// 单次攻击动作（战斗日志的一行）
-export interface BattleAction {
-  round: number;
-  actorSide: 'hero' | 'enemy';
-  actorId: string;
-  actorName: string;
-  targetName: string;
-  damage: number;
-  kind?: 'attack' | 'skill' | 'heal'; // 行动类型（ticket 12 觉醒专属技能：heal 的 damage 为治疗量）
-  skillName?: string;                  // kind === 'skill' | 'heal' 时的技能名
-}
-
-// 一场战斗的模拟结果（纯战斗，不含经济结算）
+// 一场战斗的引擎输出（纯战斗，不含经济结算）：
+// 结局 + 事件流；事件流是战斗信息轮播数据源 + 测试断言 seam。
 export interface BattleResult {
-  victory: boolean;      // 敌人全灭 → 胜利
-  partyWiped: boolean;   // 英雄全灭 → 战败（重伤触发条件）
-  rounds: number;
-  actions: BattleAction[];
-  // 逐动作 HP 快照（ticket 21 血条播放）：hpTrack[0] = 初始满血状态，
-  // hpTrack[k] = 第 k 个动作执行后的全员 HP（长度 = actions.length + 1）。
-  // 可选：旧存档/测试 mock 无此字段时 UI 回退为纯日志播报。
-  hpTrack?: BattleHpEntry[][];
-}
-
-// 单个参战者的 HP 快照（ticket 21 血条展示用）
-export interface BattleHpEntry {
-  id: string;
-  side: 'hero' | 'enemy';
-  name: string;
-  hp: number;
-  maxHp: number;
+  outcome: BattleOutcome; // victory / defeat / draw（超限平局）
+  victory: boolean;       // outcome === 'victory'
+  partyWiped: boolean;    // outcome === 'defeat'（英雄全灭 → 重伤触发条件）
+  rounds: number;         // 实际进行的轮次数
+  events: BattleEvent[];  // 事件流（含主时机与细粒度事件，按 seq 单调递增）
 }
 
 // 战斗结算：掉落/经验/重伤入账

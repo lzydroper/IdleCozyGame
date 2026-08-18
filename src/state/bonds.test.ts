@@ -123,12 +123,18 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     });
     const { result } = startCombatUpdate(state, zone.id);
     // 机械搭档：诺娃攻击 54（含元属性），首击伤害 54 - 敌防 3 = 51
-    expect(result.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 51 });
+    const firstAttack = result.settlement?.battle.events.find(
+      e => e.key === 'attackAfter' && e.sourceId === 'nova'
+    );
+    expect(firstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 51 } });
 
     // 对照组：单诺娃无羁绊 → 49 - 3 = 46
     const solo = makeState({ ...owned(['nova'], ['nova']), stamina: 100 });
     const { result: soloOutcome } = startCombatUpdate(solo, zone.id);
-    expect(soloOutcome.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 46 });
+    const soloFirstAttack = soloOutcome.settlement?.battle.events.find(
+      e => e.key === 'attackAfter' && e.sourceId === 'nova'
+    );
+    expect(soloFirstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 46 } });
   });
 
   it('faction bond (奥术共鸣) maxHp bonus is effective in battle simulation', () => {
@@ -137,7 +143,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const healer = createInitialHero('healer');
     const enemy = { id: 'e', name: '强敌', hp: 9999, maxHp: 9999, attack: 20, defense: 0 };
     const lastEnemyHit = (r: BattleResult) =>
-      Math.max(...r.actions.filter(a => a.actorSide === 'enemy' && a.kind === 'attack').map(a => a.round));
+      Math.max(...r.events.filter(e => e.key === 'attackAfter' && e.sourceId === 'e').map(e => e.round));
     const without = simulateBattle([heroToCombatant('healer', healer)], [enemy]);
     const withBond = simulateBattle([heroToCombatant('healer', healer, [{ stat: 'maxHp', kind: 'percent', value: 0.10 }])], [enemy]);
     expect(without.partyWiped).toBe(true);
@@ -164,11 +170,17 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     });
     const { result } = startBossBattleUpdate(state, zone.id);
     // 机械搭档：诺娃 54 - BOSS 防 5 = 49
-    expect(result.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 49 });
+    const firstAttack = result.settlement?.battle.events.find(
+      e => e.key === 'attackAfter' && e.sourceId === 'nova'
+    );
+    expect(firstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 49 } });
 
     // 对照组：单诺娃无羁绊 → 49 - 5 = 44
     const solo = makeState({ ...owned(['nova'], ['nova']), stamina: 100 });
     const { result: soloOutcome } = startBossBattleUpdate(solo, zone.id);
-    expect(soloOutcome.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 44 });
+    const soloFirstAttack = soloOutcome.settlement?.battle.events.find(
+      e => e.key === 'attackAfter' && e.sourceId === 'nova'
+    );
+    expect(soloFirstAttack).toMatchObject({ sourceId: 'nova', data: { kind: 'attack', damage: 44 } });
   });
 });

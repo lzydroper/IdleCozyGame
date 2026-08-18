@@ -1,4 +1,4 @@
-import type { GameState, HeroEquipment, EquippedItem, AutomationFacility } from '../types/game';
+import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, CombatSettlement } from '../types/game';
 import type { FacilityType } from '../data/facilities';
 import { FACILITIES_CONFIG } from '../data/facilities';
 import { calculateDetailedOfflineProgress } from './offline';
@@ -27,6 +27,14 @@ const normalizeTalents = (heroId: string, talents: Record<string, number> | unde
     }
   });
   return out;
+};
+
+// combat-turn：旧回放形状（actions/hpTrack）已删除；旧存档 lastSettlement 无法被事件流 UI 消费，直接丢弃。
+const normalizeLastSettlement = (settlement: CombatSettlement | null | undefined): CombatSettlement | null => {
+  if (!settlement || typeof settlement !== 'object') return null;
+  const battle = (settlement as { battle?: { events?: unknown } }).battle;
+  if (!battle || typeof battle !== 'object' || !Array.isArray(battle.events)) return null;
+  return settlement;
 };
 
 const isUuid = (str: string) => {
@@ -365,6 +373,8 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     ...(parsed.combat || {}),
     // 区域链通关记录：旧存档缺失时回退空列表
     zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared,
+    // 旧回放（actions/hpTrack）已被事件流取代：无法消费的旧结算直接丢弃，防止战斗区黑屏
+    lastSettlement: normalizeLastSettlement(parsed.combat && parsed.combat.lastSettlement),
     // 离线挂机开关（ticket 08）：旧存档缺失时回退未挂机
     idle: {
       ...initialState.combat.idle,
