@@ -239,7 +239,7 @@ describe('applyBuff / stun 效果', () => {
     const { ctx } = makeCtx(units);
     ctx.addModifier('b', { target: 'effect.duration', op: 'add', value: 1 });
     const result = resolveEffect(ctx, effect('applyBuff', {
-      buffInstance: { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 5 }
+      buffInstance: { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 5, values: {} }
     }));
 
     expect(result.applied).toBe(true);
@@ -247,23 +247,35 @@ describe('applyBuff / stun 效果', () => {
     expect(ctx.getBuff('b', 'burn')?.duration).toBe(6);
   });
 
-  it('stun 落地为眩晕 Buff，来源意志低于目标意志时被抵抗', () => {
+  it('stun 不再走二元意志抵抗，按 durationReduction 时长减免', () => {
     const units = new Map<string, BattleUnitRuntime>([
       ['a', makeUnit('a', 100)],
       ['b', makeUnit('b', 100)]
     ]);
     const { ctx } = makeCtx(units);
+
+    // 来源意志低于目标也不再直接 resisted。
     units.get('a')!.stats.willpower = 0;
     units.get('b')!.stats.willpower = 5;
-    const resisted = resolveEffect(ctx, effect('stun', { duration: 2 }));
-    expect(resisted.applied).toBe(false);
-    expect(resisted.interrupted).toBe('resisted');
-    expect(ctx.getBuff('b', 'stun')).toBeUndefined();
-
-    units.get('a')!.stats.willpower = 5;
+    units.get('b')!.stats.durationReduction = 0;
     const hit = resolveEffect(ctx, effect('stun', { duration: 2 }));
     expect(hit.applied).toBe(true);
-    expect(ctx.getBuff('b', 'stun')).toBeDefined();
+    expect(ctx.getBuff('b', 'stun')?.duration).toBe(2);
+
+    // 50% 减免：ceil(2 * 0.5) = 1。
+    ctx.removeBuff('b', 'stun');
+    units.get('b')!.stats.durationReduction = 0.5;
+    const reduced = resolveEffect(ctx, effect('stun', { duration: 2 }));
+    expect(reduced.applied).toBe(true);
+    expect(ctx.getBuff('b', 'stun')?.duration).toBe(1);
+
+    // 100% 减免：归零不落地。
+    ctx.removeBuff('b', 'stun');
+    units.get('b')!.stats.durationReduction = 1;
+    const zeroed = resolveEffect(ctx, effect('stun', { duration: 1 }));
+    expect(zeroed.applied).toBe(false);
+    expect(zeroed.interrupted).toBe('negated');
+    expect(ctx.getBuff('b', 'stun')).toBeUndefined();
   });
 });
 
@@ -274,7 +286,7 @@ describe('dispel / immunity / taunt 效果', () => {
       ['b', makeUnit('b', 100)]
     ]);
     const { ctx } = makeCtx(units);
-    ctx.applyBuff('b', { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 3 });
+    ctx.applyBuff('b', { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 3, values: {} });
     const result = resolveEffect(ctx, effect('dispel', { buffKind: 'burn' }));
     expect(result.applied).toBe(true);
     expect(ctx.getBuff('b', 'burn')).toBeUndefined();
@@ -286,7 +298,7 @@ describe('dispel / immunity / taunt 效果', () => {
       ['b', makeUnit('b', 100)]
     ]);
     const { ctx } = makeCtx(units);
-    ctx.applyBuff('b', { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 3 });
+    ctx.applyBuff('b', { id: 'b1', buffId: 'burn', sourceId: 'a', targetId: 'b', stacks: 1, duration: 3, values: {} });
     units.get('a')!.stats.willpower = 0;
     units.get('b')!.stats.willpower = 5;
 
@@ -313,6 +325,19 @@ describe('dispel / immunity / taunt 效果', () => {
     expect(ctx.getFlag('b', 'immunityElement:arcane')).toBe(1);
     expect(ctx.getFlag('b', 'immunityBuff:weak')).toBe(1);
     expect(ctx.getFlag('b', 'taunt')).toBe(5);
+  });
+
+  it('stun 免疫在意志减免前拦截', () => {
+    const units = new Map<string, BattleUnitRuntime>([
+      ['a', makeUnit('a', 100)],
+      ['b', makeUnit('b', 100)]
+    ]);
+    const { ctx } = makeCtx(units);
+    ctx.setFlag('b', 'immunityBuff:stun', 1);
+    const result = resolveEffect(ctx, effect('stun', { duration: 2 }));
+    expect(result.applied).toBe(false);
+    expect(result.interrupted).toBe('negated');
+    expect(ctx.getBuff('b', 'stun')).toBeUndefined();
   });
 });
 

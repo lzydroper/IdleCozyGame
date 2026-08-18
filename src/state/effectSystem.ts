@@ -107,7 +107,7 @@ const EFFECT_AUDIT: Record<EffectKind, EffectAudit> = {
   damage: { affinity: 'neutral', resist: 'none' },
   heal: { affinity: 'beneficial', resist: 'none' },
   statModify: { affinity: 'neutral', resist: 'none' },
-  stun: { affinity: 'harmful', resist: 'will' },
+  stun: { affinity: 'harmful', resist: 'none' },
   dispel: { affinity: 'harmful', resist: 'will' },
   immunityElement: { affinity: 'beneficial', resist: 'none' },
   immunityBuff: { affinity: 'harmful', resist: 'will' },
@@ -192,7 +192,8 @@ const applyBefore = (ctx: BattleContext, effect: EffectInstance): BeforeResult =
     }
     case 'stun': {
       const p = effect.params as EffectParamsMap['stun'];
-      const duration = applyEffectModifiers(p.duration, mods, 'effect.duration') * (1 - durationReduction);
+      const modified = applyEffectModifiers(p.duration, mods, 'effect.duration');
+      const duration = Math.max(0, Math.ceil(modified * (1 - durationReduction)));
       return { allowed: true, params: { duration } };
     }
     case 'taunt': {
@@ -292,9 +293,16 @@ const executeStun = (
     sourceId: effect.sourceId,
     targetId: effect.targetId,
     stacks: 1,
-    duration: params.duration
+    duration: params.duration,
+    values: {}
   };
+  if (params.duration <= 0) {
+    return { applied: false, interrupted: 'negated', values: {} };
+  }
   const application = ctx.applyBuff(effect.targetId, buff);
+  if (!application.applied) {
+    return { applied: false, interrupted: 'negated', values: { stacks: application.stacks } };
+  }
   return { applied: true, values: { stacks: application.stacks } };
 };
 
@@ -358,6 +366,9 @@ const executeApplyBuff = (
   params: EffectParamsMap['applyBuff']
 ): EffectResult => {
   const application = ctx.applyBuff(effect.targetId, params.buffInstance);
+  if (!application.applied) {
+    return { applied: false, interrupted: 'negated', values: { stacks: application.stacks } };
+  }
   return { applied: true, values: { stacks: application.stacks } };
 };
 

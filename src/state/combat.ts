@@ -21,6 +21,8 @@ import { NO_OP } from './types';
 import { calculateInitiative, runTurnEngine } from './turnEngine';
 import type { BattleUnitAbility, BattleUnitRuntime, BattleUnitSnapshot, BattleUnitStats, TurnRuntime } from './turnEngine';
 import { createBattleContext, type BattleContext } from './battleContext';
+import { createBuffTriggerHooks } from './buffRuntime';
+import { BUFF_CONFIGS } from './buffTypes';
 import { resolveEffect, type EffectInstance } from './effectSystem';
 
 // === 战斗核心（ticket 05）：三人轮询回合制自动战斗 ===
@@ -278,6 +280,11 @@ const createDefaultActionExecutor = (
  * 结局：敌人全灭 → victory；英雄全灭 → defeat；轮次上限双方存活 → draw。
  * rng 以函数参数注入（掉落结算在调用方，本函数当前默认能力不使用 rng）。
  */
+export const canActWithBuffs = (battle: BattleContext, unitId: string): boolean => {
+  const stun = battle.getBuff(unitId, 'stun');
+  return !stun || (stun.duration ?? 0) <= 0;
+};
+
 export const simulateBattle = (
   heroes: CombatantState[],
   enemies: CombatantState[],
@@ -293,8 +300,9 @@ export const simulateBattle = (
     maxRounds,
     rng,
     setup(runtime) {
-      battle = createBattleContext(runtime);
+      battle = createBattleContext(runtime, {}, BUFF_CONFIGS, createBuffTriggerHooks(() => battle));
     },
+    canAct: (unit) => canActWithBuffs(battle, unit.id),
     performAction: createDefaultActionExecutor(() => battle)
   });
   return {

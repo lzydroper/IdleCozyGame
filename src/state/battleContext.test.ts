@@ -18,13 +18,15 @@ const fakeRuntime = (): TurnRuntime => ({
   getLivingUnits: () => []
 });
 
-const buff = (buffId: string, duration: number | null = 3): BuffInstance => ({
-  id: `${buffId}-1`,
+const buff = (buffId: string, duration: number | null = 3, overrides: Partial<BuffInstance> = {}): BuffInstance => ({
+  id: overrides.id ?? buffId + '-1',
   buffId,
   sourceId: 'src',
   targetId: 't',
   stacks: 1,
-  duration
+  duration,
+  values: {},
+  ...overrides
 });
 
 describe('BattleContext 骨架', () => {
@@ -43,19 +45,78 @@ describe('BattleContext 骨架', () => {
     expect(ctx.removeModifier('a', aId)).toBe(false);
   });
 
-  it('Buff 占位：同 buffId 不重复挂载，返回 refreshed', () => {
+  it('applyBuff 同 buffId 同 source 命中已有实例并刷新', () => {
     const ctx = createBattleContext(fakeRuntime());
     const first = ctx.applyBuff('a', buff('burn'));
+    expect(first.applied).toBe(true);
     expect(first.refreshed).toBe(false);
     expect(first.instance.buffId).toBe('burn');
 
     const second = ctx.applyBuff('a', buff('burn'));
+    expect(second.applied).toBe(true);
     expect(second.refreshed).toBe(true);
     expect(second.instance).toBe(first.instance);
     expect(ctx.listBuffs('a')).toHaveLength(1);
 
     expect(ctx.removeBuff('a', 'burn')).toBe(true);
     expect(ctx.getBuff('a', 'burn')).toBeUndefined();
+  });
+
+  it('Renew 取 max：重复获得不缩短剩余时长', () => {
+    const ctx = createBattleContext(fakeRuntime());
+    ctx.applyBuff('a', buff('burn', 5));
+    const second = ctx.applyBuff('a', buff('burn', 3));
+    expect(second.refreshed).toBe(true);
+    expect(second.instance.duration).toBe(5);
+  });
+
+  it('Stack 无上限：每次重复获得叠加配置增量', () => {
+    const ctx = createBattleContext(fakeRuntime());
+    ctx.applyBuff('a', buff('burn', 5));
+    const second = ctx.applyBuff('a', buff('burn', 5));
+    const third = ctx.applyBuff('a', buff('burn', 5));
+    expect(second.stacks).toBe(2);
+    expect(third.stacks).toBe(3);
+  });
+
+  it('Renew 与 Stack 独立判定，可同时生效', () => {
+    const ctx = createBattleContext(fakeRuntime());
+    ctx.applyBuff('a', buff('burn', 5));
+    const second = ctx.applyBuff('a', buff('burn', 6));
+    expect(second.instance.duration).toBe(6);
+    expect(second.stacks).toBe(2);
+  });
+
+  it('不同 source 同 buffId 在挂载层拒绝，实例不变', () => {
+    const ctx = createBattleContext(fakeRuntime());
+    const first = ctx.applyBuff('a', buff('burn', 5));
+    const rejected = ctx.applyBuff('a', buff('burn', 8, { id: 'burn-2', sourceId: 'other' }));
+    expect(rejected.applied).toBe(false);
+    expect(rejected.instance).toBe(first.instance);
+    expect(ctx.getBuff('a', 'burn')?.sourceId).toBe('src');
+    expect(ctx.getBuff('a', 'burn')?.stacks).toBe(1);
+    expect(ctx.getBuff('a', 'burn')?.duration).toBe(5);
+  });
+
+  it('未知 buffId 不落地', () => {
+    const ctx = createBattleContext(fakeRuntime());
+    const result = ctx.applyBuff('a', buff('unknown'));
+    expect(result.applied).toBe(false);
+    expect(ctx.listBuffs('a')).toHaveLength(0);
+  });
+
+  it('removeBuff 回收以实例 id 为 source 的 owned Modifier', () => {
+    const ctx = createBattleContext(fakeRuntime());
+    ctx.applyBuff('a', buff('warSpirit', null, { id: 'war-1' }));
+    ctx.addModifier('a', { target: 'stat.strength', op: 'add', value: 5, source: 'war-1' });
+    ctx.addModifier('a', { target: 'stat.attack', op: 'add', value: 3, source: 'other' });
+
+    expect(ctx.getModifiers('a')).toHaveLength(2);
+    ctx.removeBuff('a', 'warSpirit');
+
+    const mods = ctx.getModifiers('a');
+    expect(mods).toHaveLength(1);
+    expect(mods[0].source).toBe('other');
   });
 
   it('BattleFlag 读写，缺省为 0', () => {

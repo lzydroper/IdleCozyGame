@@ -1,32 +1,23 @@
 /**
  * BattleContext：TurnRuntime + 战斗态（统一 Modifier / Buff / 标记）的聚合。
  * Effect / Buff / Ability 只依赖 BattleContext，不直接散落访问状态。
- * Buff 完整语义（Renew/Stack/触发注册）由后续 Buff 模块实现；此处提供占位契约。
+ * Buff 配置策略来自 buffTypes 注册表；applyBuff 统一 source 锁定与 Renew/Stack。
  */
 
 import type { TurnRuntime } from './turnEngine';
 import type { Modifier, ModifierNamespace } from './modifier';
+import {
+  BUFF_CONFIGS,
+  type BuffApplication,
+  type BuffConfig,
+  type BuffInstance
+} from './buffTypes';
 
-export interface BuffInstance {
-  id: string;
-  buffId: string;
-  sourceId: string;
-  targetId: string;
-  stacks: number;
-  /** 剩余持续轮数；null = 永久（forever）。 */
-  duration: number | null;
-  [key: string]: unknown;
-}
+export type { BuffApplication, BuffConfig, BuffInstance };
 
 export interface AppliedModifier {
   id: string;
   modifier: Modifier;
-}
-
-export interface BuffApplication {
-  instance: BuffInstance;
-  refreshed: boolean;
-  stacks: number;
 }
 
 export type BattleFlag = string;
@@ -37,6 +28,7 @@ export interface BattleContext {
 
   addModifier(unitId: string, modifier: Modifier): string;
   removeModifier(unitId: string, modifierId: string): boolean;
+  removeModifiersBySource(unitId: string, source: string): number;
   getModifiers(unitId: string, ns?: ModifierNamespace): Modifier[];
 
   applyBuff(targetId: string, buff: BuffInstance): BuffApplication;
@@ -54,9 +46,16 @@ export interface BattleContextInitialState {
   flagsByUnit?: Record<string, Record<string, number>>;
 }
 
+export interface BuffTriggerHooks {
+  register(instance: BuffInstance): void;
+  unregister(instance: BuffInstance): void;
+}
+
 export const createBattleContext = (
   runtime: TurnRuntime,
-  initialState: BattleContextInitialState = {}
+  initialState: BattleContextInitialState = {},
+  buffConfigs: Record<string, BuffConfig> = BUFF_CONFIGS,
+  triggerHooks?: BuffTriggerHooks
 ): BattleContext => {
   const modifiersByUnit = new Map<string, AppliedModifier[]>();
   const buffsByUnit = new Map<string, BuffInstance[]>();
@@ -67,11 +66,24 @@ export const createBattleContext = (
     modifiersByUnit.set(unitId, mods.map(m => ({ ...m })));
   }
   for (const [unitId, buffs] of Object.entries(initialState.buffsByUnit ?? {})) {
-    buffsByUnit.set(unitId, buffs.map(b => ({ ...b })));
+    buffsByUnit.set(unitId, buffs.map(b => ({ ...b, values: { ...(b.values ?? {}) } })));
   }
   for (const [unitId, flags] of Object.entries(initialState.flagsByUnit ?? {})) {
     flagsByUnit.set(unitId, new Map(Object.entries(flags)));
   }
+
+  const removeModifiersBySourceForUnit = (unitId: string, source: string): number => {
+    const list = modifiersByUnit.get(unitId);
+    if (!list) return 0;
+    let removed = 0;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].modifier.source === source) {
+        list.splice(i, 1);
+        removed++;
+      }
+    }
+    return removed;
+  };
 
   return {
     turn: runtime,
@@ -93,6 +105,8 @@ export const createBattleContext = (
       return true;
     },
 
+    removeModifiersBySource: removeModifiersBySourceForUnit,
+
     getModifiers(unitId, ns) {
       const list = modifiersByUnit.get(unitId) ?? [];
       const mods = list.map(m => m.modifier);
@@ -100,14 +114,45 @@ export const createBattleContext = (
     },
 
     applyBuff(targetId, buff) {
+      const config = buffConfigs[buff.buffId];
+      if (!config) {
+        return { instance: { ...buff, targetId }, applied: false, refreshed: false, stacks: buff.stacks };
+      }
+
       const list = buffsByUnit.get(targetId) ?? buffsByUnit.set(targetId, []).get(targetId)!;
       const existing = list.find(b => b.buffId === buff.buffId);
+
       if (existing) {
-        return { instance: existing, refreshed: true, stacks: existing.stacks };
+        if (existing.sourceId !== buff.sourceId) {
+          return { instance: existing, applied: false, refreshed: false, stacks: existing.stacks };
+        }
+
+        let duration = existing.duration;
+        if (config.durationKind === 'temporary' && config.renew && buff.duration !== null) {
+          duration = Math.max(existing.duration ?? 0, buff.duration);
+        } else if (config.durationKind === 'forever') {
+          duration = null;
+        }
+
+        const stacks = config.stack
+          ? existing.stacks + config.stackIncrement
+          : existing.stacks;
+
+        existing.duration = duration;
+        existing.stacks = stacks;
+        existing.values = { ...buff.values };
+        return { instance: existing, applied: true, refreshed: true, stacks };
       }
-      const instance: BuffInstance = { ...buff, targetId };
+
+      const instance: BuffInstance = {
+        ...buff,
+        targetId,
+        duration: config.durationKind === 'forever' ? null : buff.duration,
+        values: { ...buff.values }
+      };
       list.push(instance);
-      return { instance, refreshed: false, stacks: instance.stacks };
+      triggerHooks?.register(instance);
+      return { instance, applied: true, refreshed: false, stacks: instance.stacks };
     },
 
     removeBuff(targetId, buffId) {
@@ -115,6 +160,9 @@ export const createBattleContext = (
       if (!list) return false;
       const idx = list.findIndex(b => b.buffId === buffId);
       if (idx < 0) return false;
+      const instance = list[idx];
+      triggerHooks?.unregister(instance);
+      removeModifiersBySourceForUnit(targetId, instance.id);
       list.splice(idx, 1);
       return true;
     },

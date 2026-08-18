@@ -17,11 +17,16 @@ import {
   recomputeCombatant,
   combatantFromSnapshot,
   simulateBattle,
+  canActWithBuffs,
   type CombatantState,
   type CombatantSnapshot
 } from './combat';
 import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
 import type { ActiveBuff } from './buffSystem';
+import { createBattleContext, type BattleContext } from './battleContext';
+import { BUFF_CONFIGS } from './buffTypes';
+import { createBuffTriggerHooks } from './buffRuntime';
+import { runTurnEngine, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime } from './turnEngine';
 
 describe('recomputeCombatant (B 方案：可重算快照)', () => {
   it('无 buff 时重算 = 入场值（幂等）', () => {
@@ -138,6 +143,62 @@ const sequenceRng = (values: number[]): (() => number) => {
   let i = 0;
   return () => values[Math.min(i++, values.length - 1)];
 };
+
+const fakeTurnRuntime = (): TurnRuntime => ({
+  round: 0,
+  rng: () => 0.5,
+  register: () => {},
+  unregister: () => {},
+  dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
+  dealDamage: () => 0,
+  applyHeal: () => 0,
+  updateInitiative: () => {},
+  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', faction: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
+  requestEnd: () => {},
+  getUnit: () => undefined,
+  getLivingUnits: () => []
+});
+
+describe('canActWithBuffs', () => {
+  it('眩晕 duration 大于 0 时不可行动，归零后恢复', () => {
+    const ctx = createBattleContext(fakeTurnRuntime());
+    expect(canActWithBuffs(ctx, 'b')).toBe(true);
+    ctx.applyBuff('b', { id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b', stacks: 1, duration: 1, values: {} });
+    expect(canActWithBuffs(ctx, 'b')).toBe(false);
+    ctx.getBuff('b', 'stun')!.duration = 0;
+    expect(canActWithBuffs(ctx, 'b')).toBe(true);
+  });
+
+  it('真实回合引擎：被眩晕单位跳过当前回合，归零后恢复行动', () => {
+    const hero: BattleUnitSnapshot = {
+      id: 'a', name: 'a', faction: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
+    };
+    const enemy: BattleUnitSnapshot = {
+      id: 'b', name: 'b', faction: 'enemy', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
+    };
+    const actions: string[] = [];
+    let ctx!: BattleContext;
+
+    runTurnEngine([hero, enemy], {
+      maxRounds: 2,
+      rng: () => 0.5,
+      setup(runtime) {
+        ctx = createBattleContext(runtime, {}, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+        ctx.applyBuff('b', {
+          id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b',
+          stacks: 1, duration: 2, values: {}
+        });
+      },
+      canAct: (unit) => canActWithBuffs(ctx, unit.id),
+      performAction: (unit) => { actions.push(unit.id); }
+    });
+
+    expect(actions).toEqual(['a', 'a', 'b']);
+    expect(ctx.getBuff('b', 'stun')).toBeUndefined();
+  });
+});
 
 
 describe('simulateBattle 走 Effect 结算', () => {
