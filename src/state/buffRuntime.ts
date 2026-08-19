@@ -34,6 +34,9 @@ const buildBuffEffects = (
   const config = getBuffConfig(instance.buffId);
   if (!config) return [];
 
+  // fireCount 是放大器注入的运行时放大系数：由 Ability/Effect 在派发时机事件时写入
+  // timingCtx.data.fireCount；Buff 运行时只负责把它读出来复制 N 份效果，缺省 1。
+  // 它对所有 Buff 生效（不特判灼烧），持续/层数结算与其无关。
   const rawFireCount = timingCtx.data.fireCount;
   const fireCount = typeof rawFireCount === 'number' && rawFireCount > 0
     ? Math.floor(rawFireCount)
