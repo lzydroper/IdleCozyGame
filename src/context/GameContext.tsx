@@ -53,19 +53,12 @@ import {
   type AwakenFailure
 } from '../state/awakening';
 import {
-  startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
   healWoundedHeroesUpdate,
   resolveEncounterBattleUpdate,
   fleeEncounterUpdate,
-  startBossBattleUpdate,
-  startIdleUpdate,
-  stopIdleUpdate,
-  type CombatOutcome,
-  type EncounterBattleOutcome,
-  type BossBattleOutcome,
-  type IdleStartOutcome
+  type EncounterBattleOutcome
 } from '../state/combat';
 import {
   defendDreamLeakUpdate,
@@ -119,16 +112,12 @@ interface GameContextType {
   starUpHero: (heroId: string) => StarUpFailure | true;
   awakenHero: (heroId: string) => AwakenFailure | true;
   levelUpWithTome: (heroId: string, count: number) => boolean;
-  startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
   healWoundedHeroes: (heroIds: string[]) => boolean;
   resolveEncounterBattle: (encounterId: string) => EncounterBattleOutcome;
   fleeEncounter: () => boolean;
-  startBossBattle: (zoneId: string) => BossBattleOutcome;
   defendDreamLeak: (method: DreamLeakDefenseMethod) => DreamLeakDefenseOutcome;
-  startIdle: (zoneId: string) => IdleStartOutcome;
-  stopIdle: () => boolean;
   startLevelCombat: (regionId: string, levelId: string) => LevelCombatOutcome;
   startLevelIdle: (regionId: string, levelId: string) => LevelIdleStartOutcome;
   stopLevelIdle: () => boolean;
@@ -663,15 +652,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  // === 战斗核心（ticket 05） ===
-  const startCombat = (zoneId: string): CombatOutcome => {
-    const r = startCombatUpdate(stateRef.current, zoneId);
-    if (r.state !== stateRef.current) {
-      setState(r.state);
-    }
-    return r.result;
-  };
-
+  // === 战斗核心（combat-level：区域/关卡由 startLevelCombat 驱动） ===
   const setParty = (heroIds: string[]): boolean => {
     const r = setPartyUpdate(stateRef.current, heroIds);
     if (r.state !== stateRef.current) {
@@ -712,34 +693,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  const startBossBattle = (zoneId: string): BossBattleOutcome => {
-    const r = startBossBattleUpdate(stateRef.current, zoneId);
-    if (r.state !== stateRef.current) {
-      setState(r.state);
-    }
-    return r.result;
-  };
-
   // === 梦魇泄露防御（ticket 14）：出战小队，炮塔可选辅助输出一轮 ===
   const defendDreamLeak = (method: DreamLeakDefenseMethod): DreamLeakDefenseOutcome => {
     const r = defendDreamLeakUpdate(stateRef.current, method);
-    if (r.state !== stateRef.current) {
-      setState(r.state);
-    }
-    return r.result;
-  };
-
-  // === 确认式离线挂机（ticket 08） ===
-  const startIdle = (zoneId: string): IdleStartOutcome => {
-    const r = startIdleUpdate(stateRef.current, zoneId);
-    if (r.state !== stateRef.current) {
-      setState(r.state);
-    }
-    return r.result;
-  };
-
-  const stopIdle = (): boolean => {
-    const r = stopIdleUpdate(stateRef.current);
     if (r.state !== stateRef.current) {
       setState(r.state);
     }
@@ -841,16 +797,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetTalents,
       starUpHero,
       awakenHero,
-      startCombat,
       setParty,
       healWoundedHero,
       healWoundedHeroes,
       resolveEncounterBattle,
       fleeEncounter,
-      startBossBattle,
       defendDreamLeak,
-      startIdle,
-      stopIdle,
       startLevelCombat,
       startLevelIdle,
       stopLevelIdle

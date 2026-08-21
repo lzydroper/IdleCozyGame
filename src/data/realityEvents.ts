@@ -1,4 +1,4 @@
-import type { CombatDropConfig } from './combatZones';
+import type { DropEntry } from './regions';
 
 export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly' | 'encounter';
 
@@ -20,7 +20,7 @@ export interface EventChoice {
 export interface EncounterBattleConfig {
   enemies: string[];                // 遭遇的敌人 id 组（查 ENEMY_CONFIGS）
   expReward: number;                 // 胜利后每位上阵英雄获得的经验
-  drops: CombatDropConfig[];         // 胜利后掉入探索临时背囊
+  drops: DropEntry[];               // 胜利后掉入探索临时背囊
 }
 
 export interface RealityEvent {
@@ -761,8 +761,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
       enemies: ['wasteland_hound', 'mutant_rat'],
       expReward: 15,
       drops: [
-        { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
-        { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 }
+        { kind: 'chance', itemId: 'scrap_metal', count: 2, chancePercent: 70 },
+        { kind: 'chance', itemId: 'glow_fiber', count: 2, chancePercent: 40 }
       ]
     }
   },
@@ -776,9 +776,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
       enemies: ['ruin_scavenger', 'mutant_rat_elite'],
       expReward: 25,
       drops: [
-        { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
-        { itemId: 'alloy_plate', chance: 0.35, minQty: 1, maxQty: 1 },
-        { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
+        { kind: 'chance', itemId: 'scrap_metal', count: 2, chancePercent: 70 },
+        { kind: 'chance', itemId: 'alloy_plate', count: 1, chancePercent: 35 },
+        { kind: 'chance', itemId: 'mana_dust', count: 2, chancePercent: 30 }
       ]
     }
   },
@@ -792,9 +792,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
       enemies: ['radiation_mutant', 'rogue_machine', 'aberrant_subject'],
       expReward: 40,
       drops: [
-        { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
-        { itemId: 'nanite_slurry', chance: 0.3, minQty: 1, maxQty: 1 },
-        { itemId: 'plasma_cell', chance: 0.25, minQty: 1, maxQty: 1 }
+        { kind: 'chance', itemId: 'alloy_plate', count: 2, chancePercent: 60 },
+        { kind: 'chance', itemId: 'nanite_slurry', count: 1, chancePercent: 30 },
+        { kind: 'chance', itemId: 'plasma_cell', count: 1, chancePercent: 25 }
       ]
     }
   }

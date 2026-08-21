@@ -11,12 +11,11 @@ import { rollDropEntries } from './levelCombat';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { COMBAT_CONFIG } from '../data/combatConfig';
-import { COMBAT_ZONES } from '../data/combatZones';
 import { getRegion, getLevel } from '../data/regionSelectors';
 import { settleLevelIdleUpdate } from './levelCombat';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
-import { recoverStamina, settleIdleUpdate } from './combat';
+import { recoverStamina } from './combat';
 import { addItemRewards } from './equipment';
 
 // 纯函数：计算离线或Tick生长时间扣减
@@ -76,7 +75,6 @@ export function calculateDetailedOfflineProgress(
   let currentCombat = state.combat;
   let finalStamina = nextStamina;
   let idleCombat: IdleCombatReport | null = null;
-  const idleZoneId = state.combat?.idle?.zoneId;
   const idleRegionId = state.combat?.idle?.regionId ?? null;
   const idleLevelId = state.combat?.idle?.levelId ?? null;
   if (idleRegionId && idleLevelId) {
@@ -130,55 +128,6 @@ export function calculateDetailedOfflineProgress(
     } else if (currentCombat.idle?.regionId === null) {
       // 防御性停止（区域/关卡未知、队伍为空/重伤）：无战斗结算，仅日志提示
       reportLogs.push('挂机因队伍状态异常自动停止（关卡未知/队伍为空/重伤），未产生战斗结算。');
-    }
-  } else if (idleZoneId) {
-    const { state: afterIdle, result } = settleIdleUpdate(
-      { ...state, stamina: nextStamina },
-      actualSeconds,
-      rng
-    );
-    finalStamina = afterIdle.stamina;
-    currentInventory = afterIdle.inventory;
-    currentEquipmentInventory = afterIdle.equipmentInventory;
-    currentHeroes = afterIdle.heroes;
-    currentCombat = afterIdle.combat;
-
-    if (result.battlesFought > 0 || result.autoStopped) {
-      const zoneName = COMBAT_ZONES[idleZoneId]?.name || idleZoneId;
-      idleCombat = {
-        zoneId: idleZoneId,
-        zoneName,
-        battlesFought: result.battlesFought,
-        victories: result.victories,
-        defeats: result.defeats,
-        draws: result.draws,
-        drops: { ...result.drops },
-        soulEchoesGained: result.soulEchoesGained,
-        expPerHero: result.expPerHero,
-        staminaConsumed: result.staminaConsumed,
-        autoStopped: result.autoStopped,
-        stopReason: result.stopReason
-      };
-      if (result.battlesFought > 0) {
-        const dropsText = Object.entries(result.drops)
-          .map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} ×${qty}`)
-          .join('、');
-        const stopText = result.autoStopped
-          ? (result.stopReason === 'defeat'
-            ? '，小队战败全员重伤，挂机已自动停止'
-            : '，体力耗尽，挂机已自动停止')
-          : '';
-        reportLogs.push(
-          `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories} / 平 ${result.draws} / 败 ${result.defeats}），` +
-          `获得 ${dropsText || '少量材料'}、灵魂残响 ×${result.soulEchoesGained}、经验 ×${result.expPerHero}/英雄${stopText}。`
-        );
-      } else {
-        reportLogs.push(
-          `挂机已自动停止：${result.stopReason === 'defeat' ? '小队战败全员重伤' : '体力耗尽'}，未进行战斗，剩余体力保留。`
-        );
-      }
-    } else if (currentCombat.idle?.zoneId === null) {
-      reportLogs.push('挂机因队伍状态异常自动停止（区域未知/队伍为空/重伤），未产生战斗结算。');
     }
   }
 

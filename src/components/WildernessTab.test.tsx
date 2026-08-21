@@ -333,9 +333,9 @@ describe('WildernessTab Component', () => {
     expect(savedState.exploration.realitySteps).toBe(2);
     expect(savedState.exploration.realityEncounterId).toBeNull();
     expect(savedState.exploration.inRealityExploration).toBe(true);
-    // 掉落入探索背囊（与已获战利品合并：scrap 2 + 1）
-    expect(savedState.exploration.realityBag.scrap_metal).toBe(3);
-    expect(savedState.exploration.realityBag.glow_fiber).toBe(1);
+    // 掉落入探索背囊（DropEntry：scrap 2 + 2，glow 2）
+    expect(savedState.exploration.realityBag.scrap_metal).toBe(4);
+    expect(savedState.exploration.realityBag.glow_fiber).toBe(2);
     // 经验入账；探索遭遇消耗独立体力（100 - 5）
     expect(savedState.heroes.nova.exp).toBe(15);
     expect(savedState.stamina).toBe(95);
@@ -559,7 +559,8 @@ describe('WildernessTab Component', () => {
       party: ['nova'],
       stamina: 100,
       combat: {
-        zoneId: 'wasteland_entrance',
+        regionId: 'wasteland_entrance',
+        levelId: 'wasteland_entrance_1',
         lastSettlement: {
           battle: { outcome: 'draw', victory: false, partyWiped: false, rounds: 60, events: [] },
           drops: {},
@@ -567,7 +568,7 @@ describe('WildernessTab Component', () => {
           expPerHero: 0,
           woundedHeroIds: []
         },
-        zonesCleared: []
+        clearedLevels: {}
       }
     }));
 
@@ -596,7 +597,8 @@ describe('WildernessTab Component', () => {
       party: ['nova'],
       stamina: 100,
       combat: {
-        zoneId: 'wasteland_entrance',
+        regionId: 'wasteland_entrance',
+        levelId: 'wasteland_entrance_1',
         lastSettlement: {
           battle: {
             outcome: 'victory',
@@ -614,7 +616,7 @@ describe('WildernessTab Component', () => {
           expPerHero: 20,
           woundedHeroIds: []
         },
-        zonesCleared: []
+        clearedLevels: {}
       }
     }));
 
@@ -641,9 +643,9 @@ describe('WildernessTab Component', () => {
     save.heroes = { nova: createInitialHero('nova'), soldier: createInitialHero('soldier') };
     save.party = ['nova', 'soldier'];
     save.stamina = COMBAT_CONFIG.maxStamina;
-    save.combat.zonesCleared = ['wasteland_entrance'];
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
     save.combat.lastSettlement = null;
-    save.combat.idle = { zoneId: 'wasteland_entrance', startTime: Date.now(), accumulatedSeconds: 0 };
+    save.combat.idle = { regionId: 'wasteland_entrance', levelId: 'wasteland_entrance_1', startTime: Date.now(), accumulatedSeconds: 0 };
     save.lastTick = Date.now(); // 无离线结算，从零开始在线推进
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 

@@ -2,14 +2,12 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG } from '../data/heroes';
-import { COMBAT_ZONES } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { applyTick } from './tick';
 import { heroBaseAttributes } from '../data/heroGrowth';
 import {
   applyHeroExp,
   consumeExpTomesUpdate,
-  startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
   healWoundedHeroesUpdate,
@@ -57,12 +55,6 @@ const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
   ...overrides
 });
-
-// 可编程 RNG：按序列依次返回
-const sequenceRng = (values: number[]): (() => number) => {
-  let i = 0;
-  return () => values[Math.min(i++, values.length - 1)];
-};
 
 const fakeTurnRuntime = (): TurnRuntime => ({
   round: 0,
@@ -155,96 +147,6 @@ describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)',
     expect(leveled.exp).toBe(100); // 200 - 100
     expect(leveled.maxHp).toBe(heroBaseAttributes(HEROES_CONFIG.nova, 2).maxHp);
     expect(leveled.hp).toBe(hero.hp + (leveled.maxHp - hero.maxHp)); // 保留当前血量差值
-  });
-});
-
-describe('startCombatUpdate (开战校验与结算)', () => {
-  it('rejects unknown zone without state change', () => {
-    const state = makeState();
-    const { state: next, result } = startCombatUpdate(state, 'unknown_zone');
-    expect(result.failure).toBe('unknown_zone');
-    expect(next).toBe(state);
-  });
-
-  it('rejects battle when stamina is insufficient', () => {
-    const state = makeState({ stamina: COMBAT_ZONES.wasteland_entrance.staminaCost - 1 });
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance');
-    expect(result.failure).toBe('no_stamina');
-    expect(next).toBe(state);
-  });
-
-  it('rejects battle when party is empty', () => {
-    const state = makeState({ party: [] });
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance');
-    expect(result.failure).toBe('no_party');
-    expect(next).toBe(state);
-  });
-
-  it('rejects battle when a party hero is wounded', () => {
-    const state = makeState({
-      heroes: { nova: { ...createInitialHero('nova'), wounded: true } }
-    });
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance');
-    expect(result.failure).toBe('wounded');
-    expect(next).toBe(state);
-  });
-
-  it('victory: grants drops, soul echoes, exp, consumes stamina and heals party to full', () => {
-    const state = makeState({
-      stamina: 50,
-      inventory: { scrap_metal: 0 },
-      party: ['nova', 'buster'],
-      heroes: {
-        nova: { ...createInitialHero('nova'), hp: 30 },
-        buster: { ...createInitialHero('buster'), hp: 40 }
-      }
-    });
-    // rng 序列：掉落判定命中 + 数量取 maxQty（每次调 2 次）+ 灵魂残响取 max
-    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.99]);
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance', rng);
-
-    expect(result.settlement).not.toBeNull();
-    expect(result.settlement!.battle.victory).toBe(true);
-    expect(result.failure).toBeUndefined();
-
-    const zone = COMBAT_ZONES.wasteland_entrance;
-    expect(next.stamina).toBe(50 - zone.staminaCost);
-    // 掉落入账
-    expect(next.inventory.scrap_metal).toBe(2);   // 命中 + maxQty
-    expect(next.inventory.glow_fiber).toBe(2);    // 命中 + maxQty
-    // 灵魂残响入账
-    expect(next.inventory.soul_echo).toBe(zone.soulEchoMax);
-    // 经验入账：两位上阵英雄都获得 expReward，战后再恢复满血
-    expect(next.heroes.nova.exp).toBe(zone.expReward);
-    expect(next.heroes.buster.exp).toBe(zone.expReward);
-    expect(next.heroes.nova.hp).toBe(next.heroes.nova.maxHp);
-    expect(next.heroes.buster.hp).toBe(next.heroes.buster.maxHp);
-    // 战斗状态记录
-    expect(next.combat.zoneId).toBe('wasteland_entrance');
-    expect(next.combat.lastSettlement?.drops.scrap_metal).toBe(2);
-    // 战斗日志入账
-    expect(next.logs[0].type).toBe('combat');
-  });
-
-  it('defeat: wounds the whole party, no drops or exp, stamina still consumed', () => {
-    const state = makeState({
-      stamina: 30,
-      inventory: { scrap_metal: 5, soul_echo: 5 },
-      party: ['nova'],
-      heroes: { nova: { ...createInitialHero('nova'), hp: 5 } }, // 残血进场（战斗 hp ≈ 7），三人敌人必败
-      combat: { ...INITIAL_STATE.combat, zonesCleared: ['wasteland_entrance', 'old_town_ruins'] }
-    });
-    // 让残血的诺娃打辐射车间（三人敌人）必然战败
-    const { state: next, result } = startCombatUpdate(state, 'radiated_workshop');
-
-    expect(result.settlement!.battle.victory).toBe(false);
-    expect(next.stamina).toBe(30 - COMBAT_ZONES.radiated_workshop.staminaCost);
-    expect(next.heroes.nova.wounded).toBe(true);
-    expect(next.heroes.nova.hp).toBe(0);
-    expect(next.inventory.scrap_metal).toBe(5); // 无掉落
-    expect(next.inventory.soul_echo).toBe(5);   // 无灵魂残响
-    expect(next.heroes.nova.exp).toBe(0);      // 无经验
-    expect(result.settlement!.woundedHeroIds).toEqual(['nova']);
   });
 });
 

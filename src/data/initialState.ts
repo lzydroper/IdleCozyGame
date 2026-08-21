@@ -90,14 +90,11 @@ export const INITIAL_STATE: GameState = {
   maxStamina: COMBAT_CONFIG.maxStamina,
   party: [STARTER_HERO_ID],
   combat: {
-    zoneId: null,
     regionId: null,
     levelId: null,
     lastSettlement: null,
-    zonesCleared: [],
     clearedLevels: {},
     idle: {
-      zoneId: null,
       regionId: null,
       levelId: null,
       startTime: null

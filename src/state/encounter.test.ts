@@ -39,8 +39,8 @@ describe('Encounter events data (战斗遭遇事件池)', () => {
         expect(en.baseAttributes.maxHp).toBeGreaterThan(0);
         expect(en.baseAttributes.attack).toBeGreaterThan(0);
       });
-      evt.battle!.drops.forEach(d => {
-        expect(ITEMS_CONFIG[d.itemId], evt.id).toBeDefined();
+      evt.battle!.drops.flatMap(d => d.kind === 'weighted' ? d.pool.map(p => p.itemId) : [d.itemId]).forEach(itemId => {
+        expect(ITEMS_CONFIG[itemId], evt.id).toBeDefined();
       });
     });
   });
@@ -116,8 +116,8 @@ describe('resolveEncounterBattleUpdate (探索战斗汇合)', () => {
         realityEncounterId: 'encounter_wasteland_pack'
       })
     });
-    // rng 序列：两件掉落都命中并取 maxQty
-    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99]);
+    // DropEntry：两件 chance 掉落都命中（rng < 0.4）
+    const rng = sequenceRng([0.1, 0.1]);
     const { state: next, result } = resolveEncounterBattleUpdate(state, 'encounter_wasteland_pack', rng);
 
     expect(result.settlement?.battle.victory).toBe(true);

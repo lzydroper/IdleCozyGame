@@ -11,7 +11,7 @@ import {
 import { ITEMS_CONFIG } from '../data/items';
 import { RECIPES_CONFIG } from '../data/recipes';
 import type { StatModifier } from './statSystem';
-import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
+import { getRegion, getLevel } from '../data/regionSelectors';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import {
   equipItemUpdate,
@@ -93,21 +93,24 @@ describe('装备配置完整性（ticket 10）', () => {
   });
 
   it('掉落表含系列套装装备：余烬/星核 BOSS 专属，强化魔晶全域掉落', () => {
-    const oldTownBoss = COMBAT_ZONES.old_town_ruins.boss;
-    const radiatedBoss = COMBAT_ZONES.radiated_workshop.boss;
-    // 余烬系列 + 图纸：旧城废墟 BOSS 掉落
-    ['ember_weapon', 'ember_armor', 'ember_trinket', 'blueprint_ember_armory'].forEach(itemId => {
-      expect(oldTownBoss.drops.some(d => d.itemId === itemId), itemId).toBe(true);
+    const oldTownBoss = getLevel('old_town_ruins', 'old_town_ruins_2')!;
+    const radiatedBoss = getLevel('radiated_workshop', 'radiated_workshop_2')!;
+    // 余烬系列：旧城废墟 BOSS 掉落；图纸为首通额外
+    ['ember_weapon', 'ember_armor', 'ember_trinket'].forEach(itemId => {
+      expect(oldTownBoss.drops.some(d => d.kind !== 'weighted' && d.itemId === itemId), itemId).toBe(true);
     });
+    expect(oldTownBoss.firstClearDrops?.some(d => d.kind !== 'weighted' && d.itemId === 'blueprint_ember_armory')).toBe(true);
     // 最强星核系列：仅辐射车间 BOSS 掉落
     ['starcore_weapon', 'starcore_armor', 'starcore_trinket'].forEach(itemId => {
-      expect(radiatedBoss.drops.some(d => d.itemId === itemId), itemId).toBe(true);
-      expect(oldTownBoss.drops.some(d => d.itemId === itemId), itemId).toBe(false);
+      expect(radiatedBoss.drops.some(d => d.kind !== 'weighted' && d.itemId === itemId), itemId).toBe(true);
+      expect(oldTownBoss.drops.some(d => d.kind !== 'weighted' && d.itemId === itemId), itemId).toBe(false);
     });
     // 强化魔晶：所有区域普通与 BOSS 掉落表都有
-    COMBAT_ZONE_LIST.forEach(zone => {
-      expect(zone.drops.some(d => d.itemId === 'enhance_stone'), `${zone.id} 掉落表`).toBe(true);
-      expect(zone.boss.drops.some(d => d.itemId === 'enhance_stone'), `${zone.id} BOSS 掉落表`).toBe(true);
+    ['wasteland_entrance', 'old_town_ruins', 'radiated_workshop'].forEach(regionId => {
+      const region = getRegion(regionId)!;
+      expect(region.levels.flatMap(l => l.drops).some(d => d.kind !== 'weighted' && d.itemId === 'enhance_stone'), regionId + ' 掉落表').toBe(true);
+      const bossLevel = region.levels[region.levels.length - 1];
+      expect(bossLevel.drops.some(d => d.kind !== 'weighted' && d.itemId === 'enhance_stone'), regionId + ' BOSS 掉落表').toBe(true);
     });
   });
 

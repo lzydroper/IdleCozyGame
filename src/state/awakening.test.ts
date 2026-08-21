@@ -5,7 +5,7 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { AWAKEN_CONFIG, STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR } from '../data/awakening';
 import { getAbilityConfig } from '../data/abilities';
 import { ITEMS_CONFIG } from '../data/items';
-import { COMBAT_ZONES } from '../data/combatZones';
+import { getLevel } from '../data/regionSelectors';
 import {
   starUpUpdate,
   awakenUpdate,
@@ -55,11 +55,11 @@ describe('升星/觉醒配置完整性（ticket 12）', () => {
 
   it('奥术星体有物品定义，且由辐射车间 BOSS 掉落（终局素材）', () => {
     expect(ITEMS_CONFIG.arcane_orb).toBeDefined();
-    const bossDrops = COMBAT_ZONES.radiated_workshop.boss.drops;
-    expect(bossDrops.some(d => d.itemId === 'arcane_orb')).toBe(true);
+    const bossDrops = getLevel('radiated_workshop', 'radiated_workshop_2')!.drops;
+    expect(bossDrops.some(d => d.kind !== 'weighted' && d.itemId === 'arcane_orb')).toBe(true);
     // 前两区 BOSS 不掉落（终局分层）
-    expect(COMBAT_ZONES.wasteland_entrance.boss.drops.some(d => d.itemId === 'arcane_orb')).toBe(false);
-    expect(COMBAT_ZONES.old_town_ruins.boss.drops.some(d => d.itemId === 'arcane_orb')).toBe(false);
+    expect(getLevel('wasteland_entrance', 'wasteland_entrance_2')!.drops.some(d => d.kind !== 'weighted' && d.itemId === 'arcane_orb')).toBe(false);
+    expect(getLevel('old_town_ruins', 'old_town_ruins_2')!.drops.some(d => d.kind !== 'weighted' && d.itemId === 'arcane_orb')).toBe(false);
   });
 });
 

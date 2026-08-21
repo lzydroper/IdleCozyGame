@@ -4,10 +4,10 @@
 
 **Blocked by:** 03, 04, 05, 06
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] 旧战斗区域配置、旧 zone 字段、旧 zone 结算/解锁/挂机路径全部删除，无死代码残留。
-- [ ] 旧远征配置表及其类型、引用全部删除。
-- [ ] 旧测试中依赖旧 zone/远征语义的用例删除或改写为新模型。
-- [ ] npm run build、npm run lint、npx vitest run 全部通过。
-- [ ] 区域/关卡配置保持纯数据 + satisfies + 仅类型导入，可被未来 JSON 直接承载。
+- [x] 旧战斗区域配置、旧 zone 字段、旧 zone 结算/解锁/挂机路径全部删除，无死代码残留。
+- [x] 旧远征配置表及其类型、引用全部删除。
+- [x] 旧测试中依赖旧 zone/远征语义的用例删除或改写为新模型。
+- [x] npm run build、npm run lint、npx vitest run 全部通过。
+- [x] 区域/关卡配置保持纯数据 + satisfies + 仅类型导入，可被未来 JSON 直接承载。

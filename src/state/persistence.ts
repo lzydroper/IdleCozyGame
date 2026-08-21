@@ -375,8 +375,6 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   combat: {
     ...initialState.combat,
     ...(parsed.combat || {}),
-    // 区域链通关记录：旧存档缺失时回退空列表
-    zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared,
     // combat-level：新字段补默认值，不迁移旧 zone 字段
     regionId: (parsed.combat && typeof parsed.combat.regionId === 'string') ? parsed.combat.regionId : null,
     levelId: (parsed.combat && typeof parsed.combat.levelId === 'string') ? parsed.combat.levelId : null,

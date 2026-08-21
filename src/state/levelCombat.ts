@@ -1,10 +1,12 @@
 import type { GameState, HeroState, CombatSettlement, CombatIdleState } from '../types/game';
-import type { DropEntry, LevelConfig } from '../data/regions';
+import type { LevelConfig } from '../data/regions';
 import { getMainlineRegions, getRegion, getLevel } from '../data/regionSelectors';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { HEROES_CONFIG } from '../data/heroes';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { heroToCombatant, simulateBattle, enemyConfigToEntity } from './combat';
+import { rollDropEntries } from './dropEngine';
+export { rollDropEntries };
 import { aggregateBonus } from './bonds';
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
@@ -48,7 +50,6 @@ const getParty = (state: GameState): string[] =>
 const levelIdleOrDefault = (state: GameState): CombatIdleState => {
   const idle = state.combat?.idle;
   return {
-    zoneId: idle?.zoneId ?? null,
     regionId: idle?.regionId ?? null,
     levelId: idle?.levelId ?? null,
     startTime: idle?.startTime ?? null,
@@ -94,36 +95,6 @@ const enemiesToEntities = (enemyIds: string[]) =>
     return enemyConfigToEntity(enemy);
   });
 
-/** 按 DropEntry 三形态掷骰，返回 itemId -> 数量。 */
-export const rollDropEntries = (
-  entries: DropEntry[],
-  rng: () => number = Math.random,
-  chanceBonus: number = 0
-): Record<string, number> => {
-  const out: Record<string, number> = {};
-  const add = (itemId: string, count: number) => {
-    out[itemId] = (out[itemId] || 0) + count;
-  };
-
-  for (const entry of entries) {
-    if (entry.kind === 'fixed') {
-      add(entry.itemId, entry.count);
-    } else if (entry.kind === 'chance') {
-      if (rng() * 100 < entry.chancePercent + chanceBonus * 100) add(entry.itemId, entry.count);
-    } else {
-      const totalWeight = entry.pool.reduce((sum, item) => sum + item.weight, 0);
-      let roll = rng() * totalWeight;
-      for (const item of entry.pool) {
-        if (roll < item.weight) {
-          add(item.itemId, item.count);
-          break;
-        }
-        roll -= item.weight;
-      }
-    }
-  }
-  return out;
-};
 
 interface LevelSettlement {
   nextStamina: number;
@@ -265,7 +236,7 @@ export const startLevelIdleUpdate = (
   levelId: string,
   now: number = Date.now()
 ): UpdateResult<LevelIdleStartOutcome> => {
-  if (state.combat?.idle?.regionId || state.combat?.idle?.zoneId) {
+  if (state.combat?.idle?.regionId || state.combat?.idle?.levelId) {
     return { state, result: { ok: false, failure: 'already_idling' } };
   }
   const region = getRegion(regionId);
@@ -285,7 +256,7 @@ export const startLevelIdleUpdate = (
       ...state,
       combat: {
         ...state.combat,
-        idle: { zoneId: regionId, regionId, levelId, startTime: now, accumulatedSeconds: 0 }
+        idle: { regionId, levelId, startTime: now, accumulatedSeconds: 0 }
       }
     },
     result: { ok: true }
@@ -299,7 +270,7 @@ export const stopLevelIdleUpdate = (state: GameState): UpdateResult<boolean> => 
       ...state,
       combat: {
         ...state.combat,
-        idle: { zoneId: null, regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+        idle: { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
       }
     },
     result: true
@@ -338,7 +309,7 @@ export const settleLevelIdleUpdate = (
         ...state,
         combat: {
           ...state.combat,
-          idle: { zoneId: null, regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+          idle: { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
         }
       },
       result: emptyLevelIdleOutcome()
@@ -363,7 +334,7 @@ export const settleLevelIdleUpdate = (
         ...state,
         combat: {
           ...state.combat,
-          idle: { zoneId: null, regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+          idle: { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
         }
       },
       result: { ...emptyLevelIdleOutcome(), autoStopped: true, stopReason: 'stamina' as const }
@@ -436,7 +407,7 @@ export const settleLevelIdleUpdate = (
         ...next.combat,
         lastSettlement: lastSettlement ?? next.combat.lastSettlement,
         idle: idleStopped
-          ? { zoneId: null, regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+          ? { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
           : { ...idle, accumulatedSeconds: leftoverSeconds }
       }
     },

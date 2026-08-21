@@ -584,7 +584,7 @@ const EncounterPanel: React.FC<{
           敌人：{battleConfig.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-          掉落：{battleConfig.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')}
+          掉落：{battleConfig.drops.flatMap(d => d.kind === 'weighted' ? d.pool.map(p => ITEMS_CONFIG[p.itemId]?.name || p.itemId) : [ITEMS_CONFIG[d.itemId]?.name || d.itemId]).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{battleConfig.expReward}/英雄</span>
       </div>
@@ -848,7 +848,7 @@ const CombatPanel: React.FC = () => {
                           敌人：{level.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
                         </span>
                         <span className="text-[8px] text-zinc-600 font-bold truncate">
-                          掉落：{level.drops.filter(d => d.kind !== 'weighted').map(d => ITEMS_CONFIG[d.itemId]?.name || d.itemId).join('、') || '—'}
+                          掉落：{level.drops.flatMap(d => d.kind === 'weighted' ? d.pool.map(p => ITEMS_CONFIG[p.itemId]?.name || p.itemId) : [ITEMS_CONFIG[d.itemId]?.name || d.itemId]).join('、') || '—'}
                           {level.firstClearDrops && ' · 首通额外'}
                         </span>
                       </div>
