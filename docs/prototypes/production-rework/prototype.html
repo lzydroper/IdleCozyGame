@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产线单任务生产 UI 原型（throwaway）</title>
+<link rel="stylesheet" href="prototype.css">
+<style>
+  .animate-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+  .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  input[type=range] { accent-color: #22d3ee; }
+</style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 min-h-screen p-4 max-w-md mx-auto pb-24">
+
+<!-- ============ throwaway 提示条 ============ -->
+<div class="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3 mb-4 text-xs">
+  <p class="text-amber-400 font-bold mb-1">产线任务 UI 原型（throwaway · wayfinder 03 票）</p>
+  <p class="text-zinc-400">决策问题：滑条选批次 + 任务卡 + 取消退款提示的交互形状。底部浮动条切换 3 个变体（或按 ← →）。</p>
+</div>
+
+<!-- ============ 变体 A：内联一体化（Single-card） ============ -->
+<div id="variant-A" class="variant space-y-4" style="display:block;">
+  <h2 class="text-sm font-bold text-cyan-400 border-b border-zinc-800/80 pb-2">产线 · 变体 A — 一张卡完成配置与状态</h2>
+
+  <!-- 待机态设备卡（内联展开配置） -->
+  <div class="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+    <div class="h-0.5 w-full bg-cyan-500/30"></div>
+    <div class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">🔥</div>
+          <div>
+            <div class="text-xs font-bold text-zinc-100">魔导冶炼炉 <span class="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">Lv.3</span></div>
+            <div class="text-[9px] text-zinc-500">效率 130% · 驻守：罗伊（熔炉 +45% 速度）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 配方选择 -->
+      <div class="space-y-1.5">
+        <div class="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">选择配方</div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 text-left">🧱 冶炼合金板<br><span class="text-[8px] font-normal text-zinc-500">30s/批</span></button>
+          <button class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-zinc-800/60 text-zinc-400 border border-zinc-700/50 text-left">🌻 钢纹花瓣熔炼<br><span class="text-[8px] font-normal text-zinc-500">45s/批</span></button>
+        </div>
+      </div>
+
+      <!-- 批次滑条（内联） -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">生产批次</span>
+          <span class="text-[10px] font-black text-cyan-400"><span data-var-a-count>12</span> / 40 批</span>
+        </div>
+        <input data-slider data-target="var-a-count" type="range" min="0" max="40" value="12" class="w-full" />
+        <div class="flex justify-between text-[10px] text-zinc-400 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
+          <span>消耗：<span class="text-amber-400">废旧金属 ×<span data-var-a-cost>24</span></span></span>
+          <span>预计产出：<span class="text-emerald-400">合金板 ×<span data-var-a-yield>12</span></span></span>
+        </div>
+      </div>
+
+      <button class="w-full py-2.5 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 font-extrabold text-xs rounded-xl transition-all active:scale-95">▶ 开始生产（立即扣除全部材料）</button>
+      <p class="text-[9px] text-zinc-600 text-center">中断退还：已产出保留 · 未开始 + 进行中批次全额退还</p>
+    </div>
+  </div>
+
+  <!-- 生产中态设备卡（同卡切换） -->
+  <div class="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+    <div class="h-0.5 w-full bg-cyan-500/30"></div>
+    <div class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">🔥</div>
+          <div>
+            <div class="text-xs font-bold text-zinc-100">魔导冶炼炉 <span class="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded">生产中</span></div>
+            <div class="text-[9px] text-zinc-500">🧱 冶炼合金板 · 每批 1 个</div>
+          </div>
+        </div>
+        <button class="px-2.5 py-1.5 rounded-lg text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20">取消任务</button>
+      </div>
+
+      <div class="space-y-1">
+        <div class="flex justify-between text-[10px]"><span class="text-zinc-400">当前批进度</span><span class="text-zinc-300 font-mono" data-var-a-progress>47%</span></div>
+        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full transition-all" data-var-a-bar style="width:47%"></div>
+        </div>
+        <div class="flex justify-between text-[9px] text-zinc-500">
+          <span>已产 <span class="text-zinc-200 font-bold">37</span> / 100 批</span>
+          <span>剩余约 1小时3分 · 当前批 16s</span>
+        </div>
+      </div>
+      <p class="text-[9px] text-zinc-600">驻守加成：熔炉生产速度 +45%（罗伊）· 原料减免 -0%</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 变体 B：弹窗配置 + 卡片状态（Modal-driven） ============ -->
+<div id="variant-B" class="variant space-y-4" style="display:none;">
+  <h2 class="text-sm font-bold text-cyan-400 border-b border-zinc-800/80 pb-2">产线 · 变体 B — 弹窗配置，卡片只管状态</h2>
+
+  <!-- 待机态设备卡（极简） -->
+  <div class="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+    <div class="h-0.5 w-full bg-cyan-500/30"></div>
+    <div class="p-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">🔥</div>
+        <div>
+          <div class="text-xs font-bold text-zinc-100">魔导冶炼炉 <span class="text-[9px] font-mono text-zinc-500 bg-white/5 px-1 py-0.5 rounded">Lv.3</span></div>
+          <div class="text-[9px] text-zinc-500">驻守：罗伊（熔炉 +45% 速度）</div>
+        </div>
+      </div>
+      <button class="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/25">＋ 生产</button>
+    </div>
+  </div>
+
+  <!-- 生产中态设备卡 -->
+  <div class="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+    <div class="h-0.5 w-full bg-cyan-500/30"></div>
+    <div class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">🔥</div>
+          <div>
+            <div class="text-xs font-bold text-zinc-100">魔导冶炼炉 <span class="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded">生产中</span></div>
+            <div class="text-[9px] text-zinc-500">🧱 冶炼合金板 · 已产 37 / 100 批</div>
+          </div>
+        </div>
+        <button class="px-2.5 py-1.5 rounded-lg text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">取消任务</button>
+      </div>
+      <div class="space-y-1">
+        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full transition-all" data-var-b-bar style="width:47%"></div>
+        </div>
+        <div class="flex justify-between text-[9px] text-zinc-500"><span>当前批剩余 16s</span><span>总剩余约 1小时3分</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：开始生产（参考 CraftBatchModal） -->
+  <div class="rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl">
+    <header class="flex items-center justify-between p-3.5 border-b border-zinc-800">
+      <h3 class="text-sm font-black text-zinc-100">开始生产 — 冶炼合金金属板</h3>
+      <button class="text-zinc-400 hover:text-zinc-200">✕</button>
+    </header>
+    <div class="p-3.5 space-y-3">
+      <div>
+        <h5 class="text-[9px] text-zinc-600 font-bold uppercase tracking-wider mb-1">所需消耗</h5>
+        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">⚙ 废旧金属 x24</span>
+      </div>
+      <div>
+        <h5 class="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mb-1">预计产出</h5>
+        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20">🛡 合金金属板 x12 <span class="text-[8px] text-zinc-500">（每批 1 个 · 含驻守加成）</span></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-xs text-zinc-400 font-bold">生产批次</span>
+        <span class="text-xs font-black text-cyan-400"><span data-var-b-count>12</span> / 40</span>
+      </div>
+      <input data-slider data-target="var-b-count" type="range" min="0" max="40" value="12" class="w-full" />
+      <button class="w-full py-2.5 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-extrabold text-xs rounded-xl">开始生产（扣全部材料）</button>
+    </div>
+  </div>
+
+  <!-- 弹窗：取消确认 + 退款预览（showConfirm 风格） -->
+  <div class="rounded-2xl border border-rose-500/30 bg-zinc-900 shadow-2xl p-4 space-y-3">
+    <h3 class="text-sm font-black text-rose-400">取消生产任务？</h3>
+    <p class="text-[11px] text-zinc-300 leading-relaxed">
+      已产出的 <b class="text-zinc-100">37 批</b> 将保留；未开始与进行中的批次将全额退还材料：
+    </p>
+    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-950/40 text-amber-400 border border-amber-500/30">⚙ 废旧金属 +126</span>
+    <div class="flex gap-2 pt-1">
+      <button class="flex-1 py-2 bg-zinc-900 border border-zinc-700 text-zinc-400 text-xs font-bold rounded-xl">再想想</button>
+      <button class="flex-1 py-2 bg-rose-600/20 border border-rose-500/40 text-rose-300 text-xs font-bold rounded-xl">确认取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 变体 C：任务总览列表（Control-center） ============ -->
+<div id="variant-C" class="variant space-y-4" style="display:none;">
+  <h2 class="text-sm font-bold text-cyan-400 border-b border-zinc-800/80 pb-2">产线 · 变体 C — 任务总览优先，多设备一览</h2>
+
+  <div class="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950">
+    <div class="px-3 py-2 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between">
+      <span class="text-[10px] font-bold text-zinc-300">🖥 生产任务总览（2 台运行中）</span>
+      <span class="text-[9px] text-zinc-500">冶炼炉 · 组装台</span>
+    </div>
+
+    <!-- 任务行 1 -->
+    <div class="p-3 border-b border-zinc-800/60 space-y-1.5">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-zinc-100">🔥 冶炼炉 #1 <span class="text-[9px] text-zinc-500">🧱 合金板</span></span>
+        <button class="px-2 py-1 rounded-md text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">取消</button>
+      </div>
+      <div class="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full" style="width:37%"></div>
+      </div>
+      <div class="flex justify-between text-[9px] text-zinc-500"><span>37 / 100 批</span><span>剩约 1小时3分</span></div>
+    </div>
+
+    <!-- 任务行 2 -->
+    <div class="p-3 border-b border-zinc-800/60 space-y-1.5">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-zinc-100">⚙ 组装台 #1 <span class="text-[9px] text-zinc-500">🥫 防化口粮</span></span>
+        <button class="px-2 py-1 rounded-md text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">取消</button>
+      </div>
+      <div class="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full" style="width:24%"></div>
+      </div>
+      <div class="flex justify-between text-[9px] text-zinc-500"><span>12 / 50 批</span><span>剩约 38分</span></div>
+    </div>
+
+    <!-- 待机行 + 内联新任务配置 -->
+    <div class="p-3 space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-zinc-100">🔥 冶炼炉 #2 <span class="text-[9px] text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded">待机</span></span>
+        <button class="px-2 py-1 rounded-md text-[9px] font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">＋ 新建任务</button>
+      </div>
+      <div class="bg-zinc-950/60 rounded-xl border border-zinc-800 p-2.5 space-y-1.5">
+        <div class="flex gap-1.5">
+          <button class="flex-1 px-1.5 py-1 rounded-md text-[9px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/40">冶炼合金板</button>
+          <button class="flex-1 px-1.5 py-1 rounded-md text-[9px] font-bold bg-zinc-800/60 text-zinc-400 border border-zinc-700/50">钢纹花瓣熔炼</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="range" min="0" max="40" value="15" class="flex-1" />
+          <span class="text-[10px] font-black text-cyan-400 whitespace-nowrap">15 / 40 批</span>
+        </div>
+        <button class="w-full py-1.5 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] rounded-lg">▶ 开始生产</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设备静态信息卡（信息与任务分离） -->
+  <div class="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 shadow-xl shadow-black/50">
+    <div class="h-0.5 w-full bg-cyan-500/30"></div>
+    <div class="p-4 space-y-2">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm">🔥</div>
+          <div>
+            <div class="text-xs font-bold text-zinc-100">魔导冶炼炉 <span class="text-[9px] font-mono text-cyan-400 bg-white/5 px-1 py-0.5 rounded">Lv.3</span></div>
+            <div class="text-[9px] text-zinc-500">效率 130% · 驻守：罗伊</div>
+          </div>
+        </div>
+      </div>
+      <p class="text-[9px] text-zinc-600">加成预览：熔炉生产速度 +45% · 原料减免 -0% · 每批产出 1 个</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 底部浮动切换条 ============ -->
+<div id="switcher" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-zinc-900 border border-zinc-700 rounded-full px-4 py-2 shadow-2xl">
+  <button id="prev-variant" class="text-cyan-400 font-black text-lg leading-none hover:text-cyan-300 px-1">←</button>
+  <span id="variant-label" class="text-[11px] font-bold text-zinc-200 whitespace-nowrap">A — 内联一体化</span>
+  <button id="next-variant" class="text-cyan-400 font-black text-lg leading-none hover:text-cyan-300 px-1">→</button>
+</div>
+
+<script src="prototype.js"></script>
+</body>
+</html>

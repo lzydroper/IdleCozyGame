@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './context/GameContext';
+import { addItemRewards, isWearableEquipment } from './state/equipment';
 import WildernessTab from './components/WildernessTab';
 import DreamscapeTab from './components/DreamscapeTab';
-import WorkshopTab from './components/WorkshopTab';
+import WorkshopTab from './components/workshop/WorkshopTab';
 import LogTab from './components/LogTab';
-import ShelterTab from './components/ShelterTab';
+import ShelterTab from './components/shelter/ShelterTab';
+import HeroTab from './components/HeroTab';
+import SummonTab from './components/SummonTab';
 import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import { useAuth } from './hooks/useAuth';
@@ -16,7 +19,6 @@ import {
   Moon,
   Hammer,
   BookOpen,
-  Heart,
   Battery,
   Flame,
   RefreshCw,
@@ -25,7 +27,15 @@ import {
   UserPlus,
   Trash2,
   Lock,
-  Cpu
+  Cpu,
+  Users,
+  Save,
+  Package,
+  Zap,
+  Dumbbell,
+  Swords,
+  ClipboardList,
+  Wrench
 } from 'lucide-react';
 import shelterBg from './assets/shelter_bg.jpg';
 
@@ -42,7 +52,9 @@ const App: React.FC = () => {
     createAccount,
     deleteAccount,
     fetchCloudCharacterSummaries,
-    downloadCloudCharacter
+    downloadCloudCharacter,
+    isSummonOpen,
+    closeSummonModal
   } = useGame();
 
   const { showToast, showConfirm } = useToast();
@@ -53,12 +65,12 @@ const App: React.FC = () => {
   const [deletingCharId, setDeletingCharId] = useState<string | null>(null);
   const [deleteCloudChecked, setDeleteCloudChecked] = useState(false);
   // 创角面板：云端角色摘要列表（需求 2）
-  const [cloudSummaries, setCloudSummaries] = useState<Array<{ id: string; username: string; days: number; hp: number }>>([]);
+  const [cloudSummaries, setCloudSummaries] = useState<Array<{ id: string; username: string; days: number }>>([]);
   const [isFetchingCloud, setIsFetchingCloud] = useState(false);
   // 记录已经展示过云端摘要的 userId，避免重复请求
   const [cloudSummaryFetchedForUser, setCloudSummaryFetchedForUser] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter'>('wilderness');
+  const [activeTab, setActiveTab] = useState<'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter' | 'heroes'>('wilderness');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [newUsername, setNewUsername] = useState('');
 
@@ -85,7 +97,7 @@ const App: React.FC = () => {
     const plantedSlots = state.greenhouse.slots.filter(s => s.cropId !== null);
     if (plantedSlots.length > 0 && plantedSlots.every(s => s.growthProgress >= 100)) {
       if (!hasRemindedCropsMature) {
-        showToast("🌿 温室的所有作物已完全成熟，可以安全撤退收获了！", "success");
+        showToast("温室的所有作物已完全成熟，可以安全撤退收获了！", "success");
         setHasRemindedCropsMature(true);
       }
     } else {
@@ -138,19 +150,27 @@ const App: React.FC = () => {
       onConfirm: () => {
         setState(prev => {
           const newInventory = { ...prev.inventory };
+          let newEquipmentInventory = { ...prev.equipmentInventory };
+          // 背囊合并（ADR-0014 修订）：可穿戴装备计数 → 实例化；其余保持原合并语义（含负 qty 防护）
           Object.entries(prev.exploration.realityBag).forEach(([item, qty]) => {
-            newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+            if (qty > 0 && isWearableEquipment(item)) {
+              newEquipmentInventory = addItemRewards(newInventory, newEquipmentInventory, { [item]: qty }).equipmentInventory;
+            } else {
+              newInventory[item] = Math.max(0, (newInventory[item] || 0) + qty);
+            }
           });
 
           return {
             ...prev,
             inventory: newInventory,
+            equipmentInventory: newEquipmentInventory,
             exploration: {
               ...prev.exploration,
               inRealityExploration: false,
               realitySteps: 0,
               realityBag: {},
-              realityEventId: null
+              realityEventId: null,
+              realityEncounterId: null
             }
           };
         });
@@ -163,13 +183,20 @@ const App: React.FC = () => {
   const handleWakeUp = () => {
     setState(prev => {
       const newInventory = { ...prev.inventory };
+      let newEquipmentInventory = { ...prev.equipmentInventory };
+      // 梦境背囊合并（ADR-0014 修订）：可穿戴装备计数 → 实例化
       Object.entries(prev.exploration.dreamBag).forEach(([item, qty]) => {
-        newInventory[item] = (newInventory[item] || 0) + qty;
+        if (qty > 0 && isWearableEquipment(item)) {
+          newEquipmentInventory = addItemRewards(newInventory, newEquipmentInventory, { [item]: qty }).equipmentInventory;
+        } else {
+          newInventory[item] = (newInventory[item] || 0) + qty;
+        }
       });
 
       return {
         ...prev,
         inventory: newInventory,
+        equipmentInventory: newEquipmentInventory,
         exploration: {
           ...prev.exploration,
           inDreamExploration: false,
@@ -190,17 +217,16 @@ const App: React.FC = () => {
         const parsed = JSON.parse(saved);
         return {
           username: parsed.username || '未命名生存者',
-          days: parsed.player?.days || 1,
-          hp: parsed.player?.hp || 100
+          days: parsed.player?.days || 1
         };
       } catch (e) {
-        return { username: '未命名生存者', days: 1, hp: 100 };
+        return { username: '未命名生存者', days: 1 };
       }
     }
-    return { username: '未命名生存者', days: 1, hp: 100 };
+    return { username: '未命名生存者', days: 1 };
   };
 
-  const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter') => {
+  const handleTabClick = (tab: 'greenhouse' | 'wilderness' | 'dreamscape' | 'workshop' | 'log' | 'shelter' | 'heroes') => {
     if (isExploring && activeTab !== tab) {
       showToast("正在废土地表或梦境探险中！请撤退或完成后再返回避难所。", "warning");
       return;
@@ -310,7 +336,6 @@ const App: React.FC = () => {
                       <span className="text-xs font-black">{char.username}</span>
                       <div className="flex items-center gap-2 text-[9px] text-zinc-400">
                         <span>存活 {char.days} 天</span>
-                        <span>HP {char.hp}</span>
                         <span className="text-purple-400 text-[8px]">[点击拉取]</span>
                       </div>
                     </button>
@@ -410,7 +435,6 @@ const App: React.FC = () => {
                   <span className="text-xs font-black">{preview.username}</span>
                   <div className="flex items-center gap-2 text-[9px] text-zinc-500">
                     <span>存活 {preview.days} 天</span>
-                    <span>HP {preview.hp}</span>
                   </div>
                 </div>
               );
@@ -507,7 +531,6 @@ const App: React.FC = () => {
                     user_id: user.id,
                     username: newCharName.trim(),
                     days: parsed.player?.days || 1,
-                    hp: parsed.player?.hp || 100,
                     data: parsed,
                     updated_at: new Date().toISOString()
                   });
@@ -636,7 +659,7 @@ const App: React.FC = () => {
             </div>
             {isExploring && (
               <div className="mb-3 px-3 py-1.5 bg-amber-950/20 border border-amber-500/20 text-[10px] text-amber-400 rounded-xl font-bold flex items-center gap-1 select-none animate-pulse">
-                ⚠️ 探险中无法切换或创建生存者
+                探险中无法切换或创建生存者
               </div>
             )}
 
@@ -698,7 +721,6 @@ const App: React.FC = () => {
                     <span className="text-xs font-bold">{preview.username} {isCurrent && '●'}</span>
                     <div className="flex items-center gap-2 text-[10px]">
                       <span className="text-zinc-500">存活 {preview.days} 天</span>
-                      <span className="text-zinc-500">HP {preview.hp}</span>
                       <button
                         disabled={isExploring}
                         onClick={(e) => !isExploring && handleDeleteAccount(id, e)}
@@ -719,22 +741,8 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* 基础属性进度条 */}
-        <div className="grid grid-cols-4 gap-3 bg-zinc-950/40 p-2.5 rounded-2xl border border-zinc-900">
-          {/* 生命值 */}
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-[10px] font-bold text-rose-500">
-              <span className="flex items-center gap-0.5"><Heart className="w-3 h-3" /> HP</span>
-              <span>{player.hp}/{player.maxHp}</span>
-            </div>
-            <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-900">
-              <div
-                className="bg-rose-500 h-full transition-all duration-300"
-                style={{ width: `${(player.hp / player.maxHp) * 100}%` }}
-              />
-            </div>
-          </div>
-
+        {/* 基础属性进度条（ticket 14：全局 HP 已废除，仅保留饱食/魔能/理智） */}
+        <div className="grid grid-cols-3 gap-3 bg-zinc-950/40 p-2.5 rounded-2xl border border-zinc-900">
           {/* 饱食度 */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-[10px] font-bold text-amber-500">
@@ -779,9 +787,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {state.activeAlert.type === 'dream_leak' && activeTab !== 'workshop' && (
+      {state.activeAlert.type === 'dream_leak' && activeTab !== 'shelter' && (
         <div
-          onClick={() => handleTabClick('workshop')}
+          onClick={() => handleTabClick('shelter')}
           className="mx-4 mt-3 p-3 bg-red-950/80 border border-red-500/30 rounded-2xl flex items-center justify-between text-xs text-red-300 font-bold cursor-pointer animate-pulse"
         >
           <span className="flex items-center gap-1.5">
@@ -811,14 +819,18 @@ const App: React.FC = () => {
         <div className={activeTab === 'shelter' ? 'block animate-tab-enter' : 'hidden'}>
           <ShelterTab />
         </div>
+        <div className={activeTab === 'heroes' ? 'block animate-tab-enter' : 'hidden'}>
+          <HeroTab />
+        </div>
       </main>
 
       {/* 底部导航栏 */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-5 py-2 z-40">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900/90 border-t border-zinc-800 backdrop-blur-md grid grid-cols-6 py-2 z-40">
         {[
           { tab: 'log', label: '日志', icon: BookOpen, color: 'text-emerald-500' },
           { tab: 'workshop', label: '工坊', icon: Hammer, color: 'text-amber-500' },
           { tab: 'wilderness', label: '探索', icon: Compass, color: 'text-cyan-400' },
+          { tab: 'heroes', label: '英雄', icon: Users, color: 'text-rose-400' },
           { tab: 'shelter', label: '后勤', icon: Cpu, color: 'text-cyan-300' },
           { tab: 'dreamscape', label: '梦境', icon: Moon, color: 'text-purple-400' }
         ].map(({ tab, label, icon: Icon, color }) => {
@@ -842,13 +854,14 @@ const App: React.FC = () => {
 
       {/* 离线结算弹窗 */}
       {state.lastOfflineReport && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-850 rounded-3xl p-5 max-w-sm w-full shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-850 rounded-3xl p-5 max-w-sm w-full shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto overscroll-contain">
             
             {/* 头部 */}
             <div className="text-center">
-              <span className="inline-block px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2">
-                💾 避难所离线运转报告
+              <span className="inline-flex px-3 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-400 font-black rounded-full text-[10px] tracking-wider mb-2 flex items-center gap-1">
+                <Save className="w-3 h-3" />
+                避难所离线运转报告
               </span>
               <h2 className="text-sm font-bold text-zinc-150">
                 欢迎归来，生存者！
@@ -866,19 +879,26 @@ const App: React.FC = () => {
 
             {/* 资源收益汇总 */}
             <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/60 space-y-2.5">
-              <h3 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1">
-                📦 累计收集与产出
+              <h3 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
+                <Package className="w-3 h-3" />
+                累计收集与产出
               </h3>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 {state.lastOfflineReport.recoveredEnergy > 0 && (
                   <div className="flex items-center gap-1.5 text-amber-500">
-                    <span className="text-xs">⚡</span>
+                    <Zap className="w-3 h-3 text-amber-400" />
                     <span>魔能: +{state.lastOfflineReport.recoveredEnergy}</span>
                   </div>
                 )}
-                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 ? (
+                {state.lastOfflineReport.recoveredStamina > 0 && (
+                  <div className="flex items-center gap-1.5 text-emerald-500">
+                    <Dumbbell className="w-3 h-3 text-emerald-400" />
+                    <span>体力: +{state.lastOfflineReport.recoveredStamina}</span>
+                  </div>
+                )}
+                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 && state.lastOfflineReport.recoveredStamina === 0 && !state.lastOfflineReport.idleCombat ? (
                   <div className="col-span-2 text-center text-zinc-600 py-2 text-[10px]">
-                    本次无资源挂机产出 (升级设施或指派幸存者以启动自动产出)
+                    本次无资源挂机产出 (升级设施或指派英雄以启动自动产出)
                   </div>
                 ) : (
                   Object.entries(state.lastOfflineReport.recoveredItems).map(([id, qty]) => {
@@ -894,11 +914,68 @@ const App: React.FC = () => {
               </div>
             </div>
 
+            {/* 基建升级完成（耗时施工：离线期间完成的升级） */}
+            {state.lastOfflineReport.completedUpgrades && state.lastOfflineReport.completedUpgrades.length > 0 && (
+              <div className="bg-zinc-950/60 p-3 rounded-2xl border border-cyan-500/20 space-y-2">
+                <h3 className="text-[10px] text-cyan-400 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
+                  <Wrench className="w-3 h-3" />
+                  基建升级完成
+                </h3>
+                <div className="space-y-1 text-[10px] text-cyan-300 font-mono">
+                  {state.lastOfflineReport.completedUpgrades.map((text, idx) => (
+                    <div key={idx} className="flex items-start gap-1">
+                      <span className="text-cyan-600">▪</span>
+                      <span>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 挂机战斗报告（ticket 08：确认式离线挂机结算掉落与经验） */}
+            {state.lastOfflineReport.idleCombat && (
+              <div className="bg-zinc-950/60 p-3 rounded-2xl border border-amber-500/20 space-y-2">
+                <h3 className="text-[10px] text-amber-400 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
+                  <Swords className="w-3 h-3" />
+                  挂机战斗报告 —— {state.lastOfflineReport.idleCombat.zoneName}
+                </h3>
+                <div className="text-[10px] text-zinc-300 font-mono flex flex-col gap-1">
+                  <span>
+                    战斗 {state.lastOfflineReport.idleCombat.battlesFought} 场：
+                    胜利 {state.lastOfflineReport.idleCombat.victories} · 平局 {state.lastOfflineReport.idleCombat.draws} · 战败 {state.lastOfflineReport.idleCombat.defeats}
+                  </span>
+                  {Object.keys(state.lastOfflineReport.idleCombat.drops).length > 0 && (
+                    <span className="flex flex-wrap gap-1">
+                      {Object.entries(state.lastOfflineReport.idleCombat.drops).map(([itemId, qty]) => (
+                        <span key={itemId} className="px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300 flex items-center gap-1">
+                          <GameIcon type="item" id={itemId} className="w-3 h-3" />
+                          {ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  <span>
+                    灵魂残响 ×{state.lastOfflineReport.idleCombat.soulEchoesGained} · 经验 ×{state.lastOfflineReport.idleCombat.expPerHero}/英雄 · 体力 -{state.lastOfflineReport.idleCombat.staminaConsumed}
+                  </span>
+                  {state.lastOfflineReport.idleCombat.autoStopped ? (
+                    <span className={state.lastOfflineReport.idleCombat.stopReason === 'defeat' ? 'text-red-400 font-bold' : 'text-amber-400 font-bold'}>
+                      {state.lastOfflineReport.idleCombat.stopReason === 'defeat'
+                        ? '小队战败全员重伤，挂机已自动停止，需纳米修复剂治愈。'
+                        : '体力耗尽，挂机已自动停止，恢复体力后可重新开启。'}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">挂机仍在进行中，下次离线将继续战斗。</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 结算日志明细 */}
             {state.lastOfflineReport.logs.length > 0 && (
               <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/60 flex flex-col space-y-1">
-                <h4 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 mb-1">
-                  📋 避难所自动运转明细
+                <h4 className="text-[10px] text-zinc-500 font-bold border-b border-zinc-900 pb-1 mb-1 flex items-center gap-1">
+                  <ClipboardList className="w-3 h-3" />
+                  避难所自动运转明细
                 </h4>
                 <div className="space-y-1 text-[9px] text-zinc-400 font-mono max-h-[120px] overflow-y-auto pr-1">
                   {state.lastOfflineReport.logs.map((log, idx) => (
@@ -925,11 +1002,11 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 4. ✅ 自定义删除生存者弹窗 */}
+      {/* 4. 自定义删除生存者弹窗 */}
       {deletingCharId && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-6 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl w-full max-w-xs shadow-2xl relative">
-            <h3 className="text-sm font-black text-rose-400 mb-2">⚠ 抹除生存者冷冻数据</h3>
+            <h3 className="text-sm font-black text-rose-400 mb-2">抹除生存者冷冻数据</h3>
             <p className="text-[10px] text-zinc-400 leading-relaxed mb-4">
               确定要擦除生存者 <strong className="text-zinc-200 font-bold">【{getSurvivorPreview(deletingCharId).username}】</strong> 的避难所数据吗？此操作无法撤消！
             </p>
@@ -973,6 +1050,12 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 独立全屏英雄招募 View (ticket 20) */}
+      <SummonTab
+        isOpen={isSummonOpen}
+        onClose={closeSummonModal}
+      />
     </div>
   );
 };

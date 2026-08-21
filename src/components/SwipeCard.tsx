@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Cog, TestTube, Crosshair, Tent, FlaskConical, CloudLightning } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Cog, TestTube, Crosshair, Tent, FlaskConical, CloudLightning, Waves, Wheat, Drumstick, Zap, Brain, AlertTriangle } from 'lucide-react';
+import GameIcon from './GameIcon';
 import type { EventChoice } from '../data/realityEvents';
 import type { PlayerStats } from '../types/game';
 import { ITEMS_CONFIG } from '../data/items';
@@ -170,7 +171,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         const isMet = currentQty >= reqQty;
         previews.push(
           <div key={`req-${item}`} className={`text-[10px] flex items-center gap-1.5 ${isMet ? 'text-zinc-400' : 'text-red-500 font-bold'} whitespace-nowrap`}>
-            <span>⚠️ 需 {itemName}</span>
+            <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-red-400" /> 需 {itemName}</span>
             <span>{currentQty}/{reqQty}</span>
           </div>
         );
@@ -182,12 +183,12 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
       Object.entries(choice.results.stats).forEach(([stat, val]) => {
         if (val === 0) return;
         let adjustedVal = val as number;
-        if (adjustedVal < 0 && (stat === 'hp' || stat === 'food')) {
+        if (adjustedVal < 0 && stat === 'food') {
           adjustedVal = Math.round(adjustedVal * (1 + statCostAdjustment));
         }
         
         if (stat === 'pollution') {
-          const statIcon = '🔮';
+          const statIcon = <Waves className="w-3 h-3" />;
           const statColor = adjustedVal < 0 ? 'text-emerald-400' : 'text-purple-400';
           const statLabel = '污染';
           const curPollution = dreamPollution ?? 0;
@@ -195,14 +196,14 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
           previews.push(
             <div key={`stat-${stat}`} className={`text-[10px] flex items-center justify-between w-full ${statColor} whitespace-nowrap`}>
               <span className="flex items-center gap-1">{statIcon} {statLabel}</span>
-              <span className="font-mono">{curPollution}➔{nextPollution} ({adjustedVal > 0 ? `+${adjustedVal}` : adjustedVal})</span>
+              <span className="font-mono">{curPollution}→{nextPollution} ({adjustedVal > 0 ? `+${adjustedVal}` : adjustedVal})</span>
             </div>
           );
           return;
         }
 
         if (stat === 'resonance') {
-          const statIcon = '🌾';
+          const statIcon = <Wheat className="w-3 h-3" />;
           const statColor = 'text-emerald-400';
           const statLabel = '共鸣';
           previews.push(
@@ -219,27 +220,22 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         if (currentValue === undefined) return;
         const nextValue = Math.max(0, Math.min(100, currentValue + adjustedVal));
         
-        let statIcon = '';
+        let statIcon: React.ReactNode = null;
         let statColor = '';
         let statLabel = '';
         switch (stat) {
-          case 'hp':
-            statIcon = '❤️';
-            statColor = adjustedVal < 0 ? 'text-red-400' : 'text-emerald-400';
-            statLabel = 'HP';
-            break;
           case 'food':
-            statIcon = '🍗';
+            statIcon = <Drumstick className="w-3 h-3" />;
             statColor = adjustedVal < 0 ? 'text-orange-400' : 'text-emerald-400';
             statLabel = '饱食';
             break;
           case 'energy':
-            statIcon = '⚡';
+            statIcon = <Zap className="w-3 h-3" />;
             statColor = adjustedVal < 0 ? 'text-cyan-400' : 'text-emerald-400';
             statLabel = '魔能';
             break;
           case 'sanity':
-            statIcon = '🧠';
+            statIcon = <Brain className="w-3 h-3" />;
             statColor = adjustedVal < 0 ? 'text-purple-400' : 'text-emerald-400';
             statLabel = '理智';
             break;
@@ -248,7 +244,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         previews.push(
           <div key={`stat-${stat}`} className={`text-[10px] flex items-center justify-between w-full ${statColor} whitespace-nowrap`}>
             <span className="flex items-center gap-1">{statIcon} {statLabel}</span>
-            <span className="font-mono">{currentValue}➔{nextValue} ({adjustedVal > 0 ? `+${adjustedVal}` : adjustedVal})</span>
+            <span className="font-mono">{currentValue}→{nextValue} ({adjustedVal > 0 ? `+${adjustedVal}` : adjustedVal})</span>
           </div>
         );
       });
@@ -268,7 +264,7 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         const isGain = adjustedQty > 0;
         previews.push(
           <div key={`item-${item}`} className={`text-[10px] flex items-center justify-between w-full ${isGain ? 'text-emerald-400 font-medium' : 'text-red-400'} whitespace-nowrap`}>
-            <span>📦 {itemName}</span>
+            <span className="flex items-center gap-1"><GameIcon type="item" id={item} className="w-3 h-3" />{itemName}</span>
             <span>{adjustedQty > 0 ? `+${adjustedQty}` : adjustedQty}</span>
           </div>
         );

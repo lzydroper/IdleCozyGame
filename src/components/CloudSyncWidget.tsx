@@ -112,7 +112,6 @@ const CloudSyncWidget: React.FC = () => {
         user_id: user.id,
         username: charName,
         days: parsedData.player?.days || 1,
-        hp: parsedData.player?.hp || 100,
         data: uploadData,
         updated_at: new Date().toISOString()
       });

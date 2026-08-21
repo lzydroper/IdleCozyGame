@@ -2,8 +2,10 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { calculateOfflineProgress, calculateDetailedOfflineProgress, GameProvider, useGame } from './GameContext';
+import { calculateOfflineProgress, calculateDetailedOfflineProgress } from '../state/offline';
+import { GameProvider, useGame } from './GameContext';
 import { CROPS_CONFIG } from '../data/crops';
+import { createInitialHero, INITIAL_STATE } from '../data/initialState';
 import type { GreenhouseSlot, GameState } from '../types/game';
 
 // 模拟作物配置表
@@ -13,38 +15,32 @@ const MOCK_CROPS_CONFIG: Record<string, { growthTime: number }> = {
 };
 
 describe('Game State Tick & Offline Calculation', () => {
-  it('should correctly advance plant growth based on elapsed seconds', () => {
+  it('未湿润作物离线停滞（不扣减生长时间）', () => {
     const initialSlots: GreenhouseSlot[] = [
       { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 100, isWatered: false }
     ];
-    
-    // 模拟过去 50 秒
+    // 浇水=维持生长（06）：未湿润作物停滞
     const updatedSlots = calculateOfflineProgress(initialSlots, 50, MOCK_CROPS_CONFIG);
-    
-    expect(updatedSlots[0].growthTimeLeft).toBe(50);
-    expect(updatedSlots[0].growthProgress).toBe(50);
+    expect(updatedSlots[0].growthTimeLeft).toBe(100);
+    expect(updatedSlots[0].growthProgress).toBe(0);
   });
 
-  it('should double growth speed if slot is watered', () => {
+  it('湿润作物离线按基础 1x 生长（不再 ×2）', () => {
     const initialSlots: GreenhouseSlot[] = [
       { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 100, isWatered: true }
     ];
-    
-    // 模拟过去 20 秒，浇水时 1 秒扣 2 秒
+    // 湿润 1x：20 秒扣 20
     const updatedSlots = calculateOfflineProgress(initialSlots, 20, MOCK_CROPS_CONFIG);
-    
-    expect(updatedSlots[0].growthTimeLeft).toBe(60);
-    expect(updatedSlots[0].growthProgress).toBe(40);
+    expect(updatedSlots[0].growthTimeLeft).toBe(80);
+    expect(updatedSlots[0].growthProgress).toBe(20);
   });
 
-  it('should cap growth progress at 100 and growthTimeLeft at 0', () => {
+  it('生长进度封顶 100 且生长时间不为负', () => {
     const initialSlots: GreenhouseSlot[] = [
-      { id: 1, cropId: 'glow_grass', growthProgress: 80, growthTimeLeft: 20, isWatered: false }
+      { id: 1, cropId: 'glow_grass', growthProgress: 80, growthTimeLeft: 20, isWatered: true }
     ];
-    
-    // 模拟过去 30 秒，超出生长所需剩余时间
+    // 湿润 30 秒超出剩余 20 秒
     const updatedSlots = calculateOfflineProgress(initialSlots, 30, MOCK_CROPS_CONFIG);
-    
     expect(updatedSlots[0].growthTimeLeft).toBe(0);
     expect(updatedSlots[0].growthProgress).toBe(100);
   });
@@ -68,25 +64,19 @@ const TestConsumer = ({
     addNova: () => {
       setState(prev => ({
         ...prev,
-        survivors: {
-          ...prev.survivors,
-          nova: {
-            id: 'nova',
-            name: '诺娃',
-            role: 'engineer',
-            bonus: 0.3,
-            isAssigned: false
-          }
+        heroes: {
+          ...prev.heroes,
+          nova: createInitialHero('nova')
         }
       }));
     },
     removeNova: () => {
       setState(prev => {
-        const nextSurvivors = { ...prev.survivors };
-        delete nextSurvivors.nova;
+        const nextHeroes = { ...prev.heroes };
+        delete nextHeroes.nova;
         return {
           ...prev,
-          survivors: nextSurvivors
+          heroes: nextHeroes
         };
       });
     }
@@ -95,8 +85,8 @@ const TestConsumer = ({
   return <div>Test</div>;
 };
 
-describe('GameContext Integration & Survivor Passive Bonuses', () => {
-  it('should toggle maxEnergy between 100 and 130 depending on nova companion presence', () => {
+describe('GameContext Integration', () => {
+  it('should keep maxEnergy at 100 regardless of nova presence (passive system retired)', () => {
     const actionRef = { current: null as any };
     let capturedState: any = null;
 
@@ -106,7 +96,16 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
       </GameProvider>
     );
 
-    // 初始没有 nova，应该为 100 且 hasNova 为 false
+    // ADR-0013：开局赠送诺娃，hasNova 派生状态初始为 true（英雄为唯一实体）
+    expect(capturedState.player.maxEnergy).toBe(100);
+    expect(capturedState.hasNova).toBe(true);
+
+    // 触发移除 nova
+    React.act(() => {
+      actionRef.current.removeNova();
+    });
+
+    // 被动系统退役后 maxEnergy 不再有 +30 加成，但 hasNova 派生状态仍生效
     expect(capturedState.player.maxEnergy).toBe(100);
     expect(capturedState.hasNova).toBe(false);
 
@@ -115,18 +114,9 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
       actionRef.current.addNova();
     });
 
-    // 应该更新为 130 且 hasNova 为 true
-    expect(capturedState.player.maxEnergy).toBe(130);
-    expect(capturedState.hasNova).toBe(true);
-
-    // 触发移除 nova
-    React.act(() => {
-      actionRef.current.removeNova();
-    });
-
-    // 应该恢复为 100 且 hasNova 为 false
+    // 应重新获得 nova
     expect(capturedState.player.maxEnergy).toBe(100);
-    expect(capturedState.hasNova).toBe(false);
+    expect(capturedState.hasNova).toBe(true);
   });
 
   it('should have new crops correctly configured in CROPS_CONFIG', () => {
@@ -155,18 +145,25 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
     it('should calculate correct offline gains for generator and recycler', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 10, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
         inventory: { scrap_metal: 5 },
-        greenhouse: { slots: [], unlockedSlotsCount: 0 },
-        survivors: {},
+        greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
+        heroes: {},
+        equipment: {},
+        equipmentInventory: {},
+        summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),
@@ -176,7 +173,8 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
           batteryLevel: 1,
           generatorLevel: 2,
           recyclerLevel: 3,
-          facilities: {},
+          facilities: { ...structuredClone(INITIAL_STATE.shelter.facilities), smelter: [], assembler: [] },
+          upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
@@ -192,22 +190,29 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
     });
   });
 
-  describe('calculateDetailedOfflineProgress - Factory Automation Pipelines', () => {
-    it('should process factory smelt_alloy recipe with enough raw materials', () => {
+  describe('calculateDetailedOfflineProgress - Factory Automation Pipelines (issue 06 单任务)', () => {
+    it('should complete all batches of a single task during offline and return to idle', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
-        inventory: { scrap_metal: 10 },
-        greenhouse: { slots: [], unlockedSlotsCount: 0 },
-        survivors: {},
+        inventory: { scrap_metal: 100 },
+        greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
+        heroes: {},
+        equipment: {},
+        equipmentInventory: {},
+        summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),
@@ -218,17 +223,22 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: {
-            smelter: {
-              id: 'smelter',
-              name: '魔导冶炼炉',
-              level: 1,
-              activeRecipeId: 'smelt_alloy',
-              currentProgress: 0,
-              timeLeft: 0,
-              assignedSurvivorId: null,
-              active: true
-            }
+            ...structuredClone(INITIAL_STATE.shelter.facilities),
+            smelter: [
+              {
+                id: 'smelter',
+                name: '魔导冶炼炉',
+                level: 3,
+                recipeId: 'smelt_alloy',
+                targetCount: 3,
+                completedCount: 0,
+                timeLeft: 25, // Lv3 单批 30/1.2 = 25s
+                currentProgress: 0
+              }
+            ],
+            assembler: []
           },
+          upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
@@ -237,30 +247,39 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
 
       const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
 
-      expect(updatedState.inventory.scrap_metal).toBe(2);
+      // 单任务 3 批 × 23s = 69s 全部完成，余 31s 空转
       expect(updatedState.inventory.alloy_plate).toBe(3);
       expect(report.recoveredItems.alloy_plate).toBe(3);
-      
-      const smelter = updatedState.shelter.facilities.smelter;
-      expect(smelter.timeLeft).toBe(20);
-      expect(smelter.currentProgress).toBe(33);
+
+      const smelter = updatedState.shelter.facilities.smelter[0];
+      expect(smelter.recipeId).toBeNull(); // 达目标回待机
+      expect(smelter.completedCount).toBe(0);
+      expect(smelter.timeLeft).toBe(0);
+      expect(smelter.currentProgress).toBe(0);
     });
 
-    it('should stop factory processing early when raw materials run out', () => {
+    it('should keep unfinished batch progress during offline (timeLeft 保留继续计时)', () => {
       const mockState: GameState = {
         player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
+          food: 100, maxFood: 100,
           energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
         },
-        inventory: { scrap_metal: 2 },
-        greenhouse: { slots: [], unlockedSlotsCount: 0 },
-        survivors: {},
+        inventory: { scrap_metal: 100, alloy_plate: 1 }, // 已完成 1 批的产出（离线只结算推进期间完成的批次）
+        greenhouse: { slots: [], unlockedSlotsCount: 0, autoFarm: { enabled: false, cropId: null } },
+        heroes: {},
+        equipment: {},
+        equipmentInventory: {},
+        summon: { pityCount: 0 },
+        stamina: 100,
+        maxStamina: 100,
+        party: [],
+        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+          realityEncounterId: null,
           inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
+          capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
         },
-        discoveredBlueprints: [],
         activeAlert: { type: null, hp: 0 },
         lastTick: Date.now(),
         dayStartTime: Date.now(),
@@ -271,79 +290,132 @@ describe('GameContext Integration & Survivor Passive Bonuses', () => {
           generatorLevel: 0,
           recyclerLevel: 0,
           facilities: {
-            smelter: {
-              id: 'smelter',
-              name: '魔导冶炼炉',
-              level: 1,
-              activeRecipeId: 'smelt_alloy',
-              currentProgress: 0,
-              timeLeft: 0,
-              assignedSurvivorId: null,
-              active: true
-            }
+            ...structuredClone(INITIAL_STATE.shelter.facilities),
+            smelter: [
+              {
+                id: 'smelter',
+                name: '魔导冶炼炉',
+                level: 3,
+                recipeId: 'smelt_alloy',
+                targetCount: 2,
+                completedCount: 1,
+                timeLeft: 18, // 第二批 25s 已推进 7s
+                currentProgress: 0
+              }
+            ],
+            assembler: []
           },
+          upgrades: {},
           assignedWatererId: null,
           assignedExplorerId: null,
           expedition: { locationId: null, startTime: null, lastScavengeTime: null }
         }
       };
 
-      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 100);
+      const { updatedState, report } = calculateDetailedOfflineProgress(mockState, 10);
 
-      expect(updatedState.inventory.scrap_metal).toBe(0);
-      expect(updatedState.inventory.alloy_plate).toBe(1);
-      expect(report.recoveredItems.alloy_plate).toBe(1);
+      // 第二批推进 10s：16 - 10 = 6s 未完成，进度保留
+      expect(updatedState.inventory.alloy_plate).toBe(1); // 已完成 1 批的产出（夹具带入）
+      expect(report.recoveredItems.alloy_plate).toBeUndefined(); // 本次离线无完成批次
 
-      const smelter = updatedState.shelter.facilities.smelter;
-      expect(smelter.timeLeft).toBe(0);
-      expect(smelter.currentProgress).toBe(0);
+      const smelter = updatedState.shelter.facilities.smelter[0];
+      expect(smelter.recipeId).toBe('smelt_alloy'); // 任务保留
+      expect(smelter.completedCount).toBe(1);
+      expect(smelter.timeLeft).toBe(8); // 第二批剩余（18 - 10）
+      expect(smelter.currentProgress).toBe(Math.round((17 / 25) * 100)); // 已推进 17s
     });
   });
 
   describe('calculateDetailedOfflineProgress - Greenhouse Watering and Crop Growth', () => {
-    it('should double growth speed and maintain watering status when a waterer is assigned', () => {
-      const mockState: GameState = {
-        player: {
-          hp: 100, maxHp: 100, food: 100, maxFood: 100,
-          energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
-        },
-        inventory: {},
+    // 06 浇水=维持生长：湿润作物 1x 生长，未湿润作物停滞
+    const makeGreenhouseState = (overrides: { assignedWatererId?: string | null; isWatered?: boolean } = {}): GameState => ({
+      player: {
+        food: 100, maxFood: 100,
+        energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1
+      },
+      inventory: {},
+      greenhouse: {
+        slots: [
+          { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: overrides.isWatered ?? false }
+        ],
+        unlockedSlotsCount: 4,
+        autoFarm: { enabled: false, cropId: null }
+      },
+      heroes: {},
+      equipment: {},
+      equipmentInventory: {},
+      summon: { pityCount: 0 },
+      stamina: 100,
+      maxStamina: 100,
+      party: [],
+      combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
+      exploration: {
+        inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
+        realityEncounterId: null,
+        inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
+        capsulesCharge: {}, rescueProgress: {}, dreamLockdownUntil: null
+      },
+      activeAlert: { type: null, hp: 0 },
+      lastTick: Date.now(),
+      dayStartTime: Date.now(),
+      logs: [],
+      shelter: {
+        maxOfflineDuration: 14400,
+        batteryLevel: 1,
+        generatorLevel: 0,
+        recyclerLevel: 0,
+        facilities: { ...structuredClone(INITIAL_STATE.shelter.facilities), smelter: [], assembler: [] },
+        upgrades: {},
+        assignedWatererId: overrides.assignedWatererId ?? null,
+        assignedExplorerId: null,
+        expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+      }
+    });
+
+    it('驻守时作物保持湿润并按基础 1x 生长（mei 无速度加成）', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({ assignedWatererId: 'mei' }), 10);
+      const slot = updatedState.greenhouse.slots[0];
+
+      expect(slot.growthTimeLeft).toBe(20); // 30 - 10（1x，不再 ×2）
+      expect(slot.growthProgress).toBe(33); // (30-20)/30*100
+      expect(slot.isWatered).toBe(true);    // 驻守自动浇水
+    });
+
+    it('无驻守且未湿润的作物离线停滞', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({}), 10);
+      const slot = updatedState.greenhouse.slots[0];
+
+      expect(slot.growthTimeLeft).toBe(30); // 停滞不扣减
+      expect(slot.growthProgress).toBe(0);
+      expect(slot.isWatered).toBe(false);
+    });
+
+    it('已湿润作物无驻守时离线按 1x 生长', () => {
+      const { updatedState } = calculateDetailedOfflineProgress(makeGreenhouseState({ isWatered: true }), 10);
+      const slot = updatedState.greenhouse.slots[0];
+
+      expect(slot.growthTimeLeft).toBe(20);
+      expect(slot.growthProgress).toBe(33);
+    });
+
+    it('离线挂机：选定种子播种空槽，种子耗光后 autoFarm.enabled=false（08）', () => {
+      const base = makeGreenhouseState({ assignedWatererId: 'nova', isWatered: true });
+      const state: GameState = {
+        ...base,
+        inventory: { seed_aether_berry: 1 },
         greenhouse: {
-          slots: [
-            { id: 1, cropId: 'glow_grass', growthProgress: 0, growthTimeLeft: 30, isWatered: false }
-          ],
-          unlockedSlotsCount: 4
-        },
-        survivors: {},
-        exploration: {
-          inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
-          inDreamExploration: false, dreamSteps: 0, dreamPollution: 0, dreamBag: {},
-          capsulesCharge: {}, survivorResonance: {}
-        },
-        discoveredBlueprints: [],
-        activeAlert: { type: null, hp: 0 },
-        lastTick: Date.now(),
-        dayStartTime: Date.now(),
-        logs: [],
-        shelter: {
-          maxOfflineDuration: 14400,
-          batteryLevel: 1,
-          generatorLevel: 0,
-          recyclerLevel: 0,
-          facilities: {},
-          assignedWatererId: 'survivor_waterer',
-          assignedExplorerId: null,
-          expedition: { locationId: null, startTime: null, lastScavengeTime: null }
+          ...base.greenhouse,
+          autoFarm: { enabled: true, cropId: 'aether_berry' }
         }
       };
-
-      const { updatedState } = calculateDetailedOfflineProgress(mockState, 10);
-      const slot = updatedState.greenhouse.slots[0];
-      
-      expect(slot.growthTimeLeft).toBe(10);
-      expect(slot.growthProgress).toBe(67);
-      expect(slot.isWatered).toBe(true);
+      const { updatedState } = calculateDetailedOfflineProgress(state, 60);
+      expect(updatedState.greenhouse.slots[0].cropId).toBe('aether_berry'); // 收割后空槽被种上选定作物
+      expect(updatedState.inventory.seed_aether_berry).toBe(0);
+      expect(updatedState.greenhouse.autoFarm.enabled).toBe(false); // 种子耗光停止
+      expect(updatedState.inventory.glow_fiber).toBeGreaterThan(0); // 收益入账
     });
   });
 });
+
+
 

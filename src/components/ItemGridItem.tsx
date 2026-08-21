@@ -5,15 +5,23 @@ interface ItemGridItemProps {
   id: string;
   qty: number;
   name: string;
-  description?: string;
+  onClick?: () => void;
   actionButton?: React.ReactNode;
+  /** 装备实例（ADR-0017）：不可堆叠，右上角显示强化/神话徽章替代数量 */
+  enhance?: number;
+  mythic?: boolean;
 }
 
-const ItemGridItem: React.FC<ItemGridItemProps> = ({ id, qty, name, description, actionButton }) => {
+// 物品格（ADR-0016）：移除悬浮提示（原生 title 与气泡），可点击时通过 onClick 打开详情弹窗
+const ItemGridItem: React.FC<ItemGridItemProps> = ({ id, qty, name, onClick, actionButton, enhance, mythic }) => {
+  const clickable = !!onClick;
+  const isEquipInstance = enhance !== undefined;
   return (
     <div
-      className={`flex flex-col items-center justify-between p-2 bg-zinc-950/80 border border-zinc-850 hover:border-zinc-750/80 rounded-2xl transition-all relative group select-none ${actionButton ? 'pb-2.5 pt-2' : 'aspect-square'}`}
-      title={description ? `${name}\n${description}` : name}
+      onClick={onClick}
+      className={`flex flex-col items-center justify-between p-2 bg-zinc-950/80 border border-zinc-850 hover:border-zinc-750/80 rounded-2xl transition-all relative group select-none ${
+        clickable ? 'cursor-pointer active:scale-95' : ''
+      } ${actionButton ? 'pb-2.5 pt-2' : 'aspect-square'}`}
     >
       {/* 物品大图标 */}
       <GameIcon type="item" id={id} className="w-14 h-14 mt-1" />
@@ -23,18 +31,29 @@ const ItemGridItem: React.FC<ItemGridItemProps> = ({ id, qty, name, description,
         {name}
       </span>
 
-      {/* 数量标志 - 绝对定位贴在右上角 */}
-      <span className="absolute top-1.5 right-2 text-[9px] font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-1.5 py-0.2 rounded-md shadow">
-        x{qty}
-      </span>
+      {/* 右上角徽章：装备实例显示强化/神话（不可堆叠，无数量）；计数物品显示 xN */}
+      {isEquipInstance ? (
+        (mythic || (enhance ?? 0) > 0) && (
+          <span
+            className={`absolute top-1.5 right-2 text-[9px] font-black bg-zinc-900/90 border px-1.5 py-0.2 rounded-md shadow ${
+              mythic ? 'text-purple-300 border-purple-500/40' : 'text-amber-300 border-amber-500/30'
+            }`}
+          >
+            {mythic ? '神话' : `+${enhance}`}
+          </span>
+        )
+      ) : (
+        <span className="absolute top-1.5 right-2 text-[9px] font-black text-emerald-400 bg-zinc-900/90 border border-zinc-850 px-1.5 py-0.2 rounded-md shadow">
+          x{qty}
+        </span>
+      )}
 
-      {/* 悬浮 Tooltip 气泡 */}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-zinc-900 border border-zinc-850 text-[9px] text-zinc-300 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl">
-        {name}
-      </div>
-
-      {/* 动作按钮插槽 */}
-      {actionButton && <div className="w-full mt-2.5 z-10">{actionButton}</div>}
+      {/* 动作按钮插槽（阻止冒泡：避免未来与 onClick 并存时点按钮误开弹窗） */}
+      {actionButton && (
+        <div className="w-full mt-2.5 z-10" onClick={(e) => e.stopPropagation()}>
+          {actionButton}
+        </div>
+      )}
     </div>
   );
 };

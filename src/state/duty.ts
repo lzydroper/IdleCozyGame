@@ -1,0 +1,101 @@
+import type { HeroDutyMeta, DutyScope } from '../data/heroes';
+import { CROPS_CONFIG } from '../data/crops';
+import { FACILITIES_CONFIG } from '../data/facilities';
+import type { FacilityType } from '../data/facilities';
+
+// 统一解析后的加成值（已按岗位作用域聚合，同类型多条累加）
+export interface DutyResolvedBonus {
+  speedMultiplier: number;
+  yieldMultiplier: number;
+  costReduction: number;
+  intervalReduction: number;
+  lootChanceBonus: number;
+}
+
+export const EMPTY_DUTY_BONUS: DutyResolvedBonus = {
+  speedMultiplier: 0,
+  yieldMultiplier: 0,
+  costReduction: 0,
+  intervalReduction: 0,
+  lootChanceBonus: 0
+};
+
+// 岗位上下文：解析时描述英雄当前驻守的岗位
+export type DutyContext =
+  | { role: 'facility'; facilityType: FacilityType }
+  | { role: 'greenhouse'; cropId?: string }
+  | { role: 'expedition' };
+
+const scopeMatches = (scope: DutyScope, ctx: DutyContext): boolean => {
+  switch (scope.kind) {
+    case 'all':
+      return true;
+    case 'facility':
+      return ctx.role === 'facility' && ctx.facilityType === scope.facilityType;
+    case 'greenhouse':
+      if (ctx.role !== 'greenhouse') return false;
+      // cropIds 未限定（或空）→ 对所有作物生效；限定 → 仅列表内作物生效（需作物上下文命中）
+      if (!scope.cropIds || scope.cropIds.length === 0) return true;
+      return ctx.cropId !== undefined && scope.cropIds.includes(ctx.cropId);
+    case 'expedition':
+      return ctx.role === 'expedition';
+    default:
+      return false;
+  }
+};
+
+// 解析英雄 dutyMeta 在当前岗位作用域下的加成（英雄后勤加成系统，作用域化）
+export const resolveDutyBonuses = (
+  dutyMeta: HeroDutyMeta | null | undefined,
+  ctx: DutyContext
+): DutyResolvedBonus => {
+  if (!dutyMeta || !dutyMeta.bonuses || dutyMeta.bonuses.length === 0) return { ...EMPTY_DUTY_BONUS };
+  const out: DutyResolvedBonus = { ...EMPTY_DUTY_BONUS };
+  for (const b of dutyMeta.bonuses) {
+    if (!scopeMatches(b.scope, ctx)) continue;
+    out.speedMultiplier += b.speedMultiplier ?? 0;
+    out.yieldMultiplier += b.yieldMultiplier ?? 0;
+    out.costReduction += b.costReduction ?? 0;
+    out.intervalReduction += b.intervalReduction ?? 0;
+    out.lootChanceBonus += b.lootChanceBonus ?? 0;
+  }
+  return out;
+};
+
+// UI：将作用域化 bonuses 格式化为人类可读描述（如「生产速度 +25%」「熔炉生产速度 +30%」「温室额外产出 +25%」）
+export const describeDutyBonuses = (dutyMeta: HeroDutyMeta | null | undefined): string => {
+  if (!dutyMeta || !dutyMeta.bonuses || dutyMeta.bonuses.length === 0) return '';
+  return dutyMeta.bonuses
+    .map(b => {
+      let scope = '';
+      switch (b.scope.kind) {
+        case 'all':
+          scope = '全体';
+          break;
+        case 'facility':
+          scope = FACILITIES_CONFIG[b.scope.facilityType]?.shortName || FACILITIES_CONFIG[b.scope.facilityType]?.name || '产线设施';
+          break;
+        case 'greenhouse':
+          scope = b.scope.cropIds && b.scope.cropIds.length > 0
+            ? `温室·${b.scope.cropIds.map(id => CROPS_CONFIG[id]?.name || id).join('、')}`
+            : '温室全体';
+          break;
+        case 'expedition':
+          scope = '远征';
+          break;
+        default:
+          scope = '远征';
+          break;
+      }
+
+      const parts: string[] = [];
+      if (b.speedMultiplier) parts.push(`${scope}生产速度 +${Math.round(b.speedMultiplier * 100)}%`);
+      if (b.yieldMultiplier) parts.push(`${scope}额外产出 +${Math.round(b.yieldMultiplier * 100)}%`);
+      if (b.costReduction) parts.push(`${scope}配方消耗 -${Math.round(b.costReduction * 100)}%`);
+      if (b.intervalReduction) parts.push(`${scope}拾荒间隔 -${Math.round(b.intervalReduction * 100)}%`);
+      if (b.lootChanceBonus) parts.push(`${scope}稀有掉落 +${Math.round(b.lootChanceBonus * 100)}%`);
+      return parts.join(' · ');
+    })
+    .filter(s => s.length > 0)
+    .join('；');
+};

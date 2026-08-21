@@ -1,0 +1,114 @@
+import type { GameState, HeroState } from '../types/game';
+import type { StatModifier } from './statSystem';
+import {
+  STAR_MAX,
+  starUpShardCost,
+  STAR_STATS_PER_STAR,
+  AWAKEN_COST,
+  AWAKEN_CONFIG,
+  type AwakenSkillConfig
+} from '../data/awakening';
+import type { UpdateResult } from './types';
+
+// === 升星与觉醒（ticket 12）：终局养成闭环 ===
+// 升星：消耗该英雄灵魂碎片（或通用共鸣碎片，先扣专属再扣通用），每星提供百分比属性加成；
+// 觉醒：满星英雄消耗奥术星体 —— 更名、强化被动、解锁专属战斗技能（combat.ts 应用）。
+
+export type StarUpFailure = 'unknown_hero' | 'max_star' | 'no_shards';
+
+// 升星：消耗碎片提升 1 星（星级上限 STAR_MAX）
+export const starUpUpdate = (state: GameState, heroId: string): UpdateResult<StarUpFailure | true> => {
+  const hero = state.heroes[heroId];
+  if (!hero) return { state, result: 'unknown_hero' as const };
+  if (hero.star >= STAR_MAX) return { state, result: 'max_star' as const };
+
+  const cost = starUpShardCost(hero.star);
+  const soul = state.inventory[`shard_${heroId}`] || 0;
+  const resonance = state.inventory.resonance_shard || 0;
+  if (soul + resonance < cost) return { state, result: 'no_shards' as const };
+
+  // 先扣专属灵魂碎片，不足部分用通用共鸣碎片补齐
+  const soulUsed = Math.min(soul, cost);
+  const resonanceUsed = cost - soulUsed;
+  const nextInventory = { ...state.inventory };
+  if (soulUsed > 0) {
+    const shardId = `shard_${heroId}`;
+    nextInventory[shardId] = soul - soulUsed;
+    if (nextInventory[shardId] <= 0) delete nextInventory[shardId];
+  }
+
+  const nextStar = hero.star + 1;
+  nextInventory.resonance_shard = resonance - resonanceUsed;
+
+  // 升至 5 星满星后，持有的溢出专属灵魂碎片 1:1 自动转为通用共鸣碎片
+  const shardId = `shard_${heroId}`;
+  if (nextStar >= STAR_MAX && nextInventory[shardId] && nextInventory[shardId] > 0) {
+    const overflow = nextInventory[shardId];
+    delete nextInventory[shardId];
+    nextInventory.resonance_shard = (nextInventory.resonance_shard || 0) + overflow;
+  }
+
+  return {
+    state: {
+      ...state,
+      inventory: nextInventory,
+      heroes: { ...state.heroes, [heroId]: { ...hero, star: nextStar } }
+    },
+    result: true
+  };
+};
+
+export type AwakenFailure = 'unknown_hero' | 'not_max_star' | 'already_awakened' | 'no_orb' | 'no_config';
+
+// 觉醒：满星英雄消耗奥术星体，进入觉醒状态（更名 / 强化被动 / 专属技能）
+export const awakenUpdate = (state: GameState, heroId: string): UpdateResult<AwakenFailure | true> => {
+  const hero = state.heroes[heroId];
+  if (!hero) return { state, result: 'unknown_hero' as const };
+  if (hero.star < STAR_MAX) return { state, result: 'not_max_star' as const };
+  if (hero.awakened) return { state, result: 'already_awakened' as const };
+  if (!AWAKEN_CONFIG[heroId]) return { state, result: 'no_config' as const }; // 无觉醒配置视为不可觉醒
+  const lacksOrb = Object.entries(AWAKEN_COST).some(([itemId, qty]) => (state.inventory[itemId] || 0) < qty);
+  if (lacksOrb) return { state, result: 'no_orb' as const };
+
+  const nextInventory = { ...state.inventory };
+  Object.entries(AWAKEN_COST).forEach(([itemId, qty]) => { nextInventory[itemId] = (nextInventory[itemId] || 0) - qty; });
+
+  return {
+    state: {
+      ...state,
+      inventory: nextInventory,
+      heroes: { ...state.heroes, [heroId]: { ...hero, awakened: true } }
+    },
+    result: true
+  };
+};
+
+// 星级属性加成：每颗星（1 星以上）× STAR_STATS_PER_STAR（修饰符）
+// 每条修饰符打 source 标注星级（detailed-stats-panel-rework 03）
+export const getStarBonus = (hero: HeroState): StatModifier[] => {
+  const stars = Math.max(0, hero.star - 1);
+  if (stars === 0) return [];
+  const source = `升星·${hero.star}星`;
+  return STAR_STATS_PER_STAR.map(m => ({ ...m, value: m.value * stars, source }));
+};
+
+// 觉醒强化被动（修饰符，仅觉醒后生效）
+// 每条修饰符打 source 标注“觉醒被动”（detailed-stats-panel-rework 03）
+export const getAwakenedPassive = (heroId: string, hero: HeroState): StatModifier[] =>
+  hero.awakened
+    ? (AWAKEN_CONFIG[heroId]?.passive || []).map(m => ({ ...m, source: '觉醒被动' }))
+    : [];
+
+// 觉醒专属战斗技能（仅觉醒后返回配置）
+export const getAwakenSkill = (heroId: string, hero: HeroState): AwakenSkillConfig | undefined =>
+  hero.awakened ? AWAKEN_CONFIG[heroId]?.skill : undefined;
+
+// 觉醒展示名（未觉醒回退原名）
+export const getAwakenedName = (heroId: string, hero: HeroState): string | null =>
+  hero.awakened ? (AWAKEN_CONFIG[heroId]?.awakenedName || null) : null;
+
+// 升星 + 觉醒被动的总加成（修饰符，战斗内生效）
+export const getAwakenBonus = (heroId: string, hero: HeroState): StatModifier[] => [
+  ...getStarBonus(hero),
+  ...getAwakenedPassive(heroId, hero)
+];

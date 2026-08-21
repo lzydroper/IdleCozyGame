@@ -1,8 +1,9 @@
-import type { GameState, PlayerStats } from '../types/game';
+import type { GameState, HeroState, PlayerStats, AutomationFacility } from '../types/game';
+import { HEROES_CONFIG, STARTER_HERO_ID } from './heroes';
+import { COMBAT_CONFIG } from './combatConfig';
+import { FACILITIES_CONFIG, type FacilityType } from './facilities';
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {
-  hp: 100,
-  maxHp: 100,
   food: 100,
   maxFood: 100,
   energy: 100,
@@ -12,6 +13,50 @@ export const INITIAL_PLAYER_STATS: PlayerStats = {
   days: 1
 };
 
+// 依据配置创建 1 级初始英雄状态
+export const createInitialHero = (configId: string): HeroState => {
+  const config = HEROES_CONFIG[configId];
+  if (!config) throw new Error(`Unknown hero config: ${configId}`);
+  return {
+    level: 1,
+    exp: 0,
+    hp: config.baseAttributes.maxHp,
+    maxHp: config.baseAttributes.maxHp,
+    star: 1,
+    wounded: false,
+    talentPoints: 0,   // 升级获得天赋点（ticket 11）
+    talents: {},
+    awakened: false,   // 满星后消耗奥术星体觉醒（ticket 12）
+    logisticsFacilityId: null
+  };
+};
+
+// 开局固定赠送的初始英雄（诺娃，第一位同伴）
+export const INITIAL_HEROES: Record<string, HeroState> = {
+  [STARTER_HERO_ID]: createInitialHero(STARTER_HERO_ID)
+};
+
+// 初始设施：按设备配置表驱动生成（每类设备初始 1 台 Lv1），新增设备种类自动纳入
+const createInitialFacilities = (): Record<FacilityType, AutomationFacility[]> => {
+  const out = {} as Record<FacilityType, AutomationFacility[]>;
+  (Object.keys(FACILITIES_CONFIG) as FacilityType[]).forEach(type => {
+    const cfg = FACILITIES_CONFIG[type];
+    out[type] = [
+      {
+        id: type,
+        name: cfg.name,
+        level: 1,
+        recipeId: null,
+        targetCount: 0,
+        completedCount: 0,
+        timeLeft: 0,
+        currentProgress: 0
+      }
+    ];
+  });
+  return out;
+};
+
 export const INITIAL_STATE: GameState = {
   player: INITIAL_PLAYER_STATS,
   inventory: {
@@ -19,7 +64,11 @@ export const INITIAL_STATE: GameState = {
     seed_aether_berry: 2,
     ration: 5,
     scrap_metal: 10,
-    dream_shard: 5
+    dream_shard: 5,
+    // 经济实体物品化（ADR-0014）：货币与碎片全部入背包；shard_<hero> 随英雄配置生成
+    soul_echo: 500,
+    resonance_shard: 0,
+    ...Object.fromEntries(Object.keys(HEROES_CONFIG).map(id => [`shard_${id}`, 0]))
   },
   greenhouse: {
     slots: [
@@ -28,15 +77,34 @@ export const INITIAL_STATE: GameState = {
       { id: 3, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false },
       { id: 4, cropId: null, growthProgress: 0, growthTimeLeft: 0, isWatered: false }
     ],
-    unlockedSlotsCount: 4
+    unlockedSlotsCount: 4,
+    autoFarm: { enabled: false, cropId: null }
   },
-  survivors: {},
+  heroes: INITIAL_HEROES,
+  equipment: {}, // 英雄装备栏：开局无装备（ticket 10）
+  equipmentInventory: {}, // 背包装备实例（ADR-0014 修订）：开局无持有
+  // 召唤经济（ADR-0014）：新手起始灵魂残响 500（= 5 抽），后续由战斗掉落/日常补充
+  summon: { pityCount: 0 },
+  // 战斗核心：开局满体力，初始小队 = 初始英雄诺娃
+  stamina: COMBAT_CONFIG.maxStamina,
+  maxStamina: COMBAT_CONFIG.maxStamina,
+  party: [STARTER_HERO_ID],
+  combat: {
+    zoneId: null,
+    lastSettlement: null,
+    zonesCleared: [],
+    idle: {
+      zoneId: null,
+      startTime: null
+    }
+  },
   exploration: {
     inRealityExploration: false,
     realitySteps: 0,
     realityLocationId: null,
     realityBag: {},
     realityEventId: null,
+    realityEncounterId: null,
     inDreamExploration: false,
     dreamSteps: 0,
     dreamPollution: 0,
@@ -46,19 +114,9 @@ export const INITIAL_STATE: GameState = {
       sanity_capsule: 3,
       warp_capsule: 0
     },
-    survivorResonance: {}
+    rescueProgress: {}, // 英雄救援进度（共鸣+坐标锁定，ADR-0013）
+    dreamLockdownUntil: null
   },
-  discoveredBlueprints: [
-    'filter_refill',
-    'ration_pack',
-    'sanity_capsule',
-    'hot_stew',
-    'nanite_injector',
-    'purifying_serum',
-    'energy_refill_advanced',
-    'shield_battery_recipe',
-    'greenhouse_expansion'
-  ],
   activeAlert: {
     type: null,
     hp: 0
@@ -73,26 +131,8 @@ export const INITIAL_STATE: GameState = {
     batteryLevel: 1,
     generatorLevel: 0,
     recyclerLevel: 0,
-    facilities: {
-      smelter: {
-        id: 'smelter',
-        name: '魔导冶炼炉',
-        level: 1,
-        activeRecipeId: null,
-        currentProgress: 0,
-        timeLeft: 0,
-        assignedSurvivorId: null
-      },
-      assembler: {
-        id: 'assembler',
-        name: '微型芯片组装台',
-        level: 1,
-        activeRecipeId: null,
-        currentProgress: 0,
-        timeLeft: 0,
-        assignedSurvivorId: null
-      }
-    },
+    upgrades: {}, // 基建升级施工中（时间戳驱动，长节奏设定）
+    facilities: createInitialFacilities(),
     assignedWatererId: null,
     assignedExplorerId: null,
     expedition: {

@@ -1,0 +1,359 @@
+import { describe, it, expect } from 'vitest';
+import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_ZONES } from '../data/combatZones';
+import { GAME_CONSTANTS } from '../data/gameConstants';
+import { applyTick } from './tick';
+import type { GameState, GreenhouseSlot } from '../types/game';
+
+// 13 号 R3 + 04 号 04b：applyTick 短路 —— 无活跃系统 + 体力满/未跨整点 + 未跨天时返回原引用，
+// 使 GameContext 每秒 tick 触发 React bailout，消除整树重渲染。体力每 3 秒恢复 1 点（staminaRegenSeconds），
+// 仅在跨整点（floor 进位）时才需要推进。
+describe('applyTick 短路（13 号 R3 + 04 号 04b）', () => {
+  it('无活跃系统 + 体力满 + 未跨天 → 返回原引用（不重渲染）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      dayStartTime: Date.now(),
+      lastTick: Date.now() - 1000
+    };
+    expect(applyTick(state, Date.now())).toBe(state);
+  });
+
+  it('体力未满但未跨整点 → 短路（返回原引用）；跨整点才恢复', () => {
+    // elapsed 1s → 50.33，floor 未进位 → 返回原引用（不重渲染）
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: 50,
+      lastTick: Date.now() - 1000
+    };
+    expect(applyTick(state, Date.now())).toBe(state);
+
+    // elapsed 3s → 50 + 1 = 51，floor 51 > 50 跨整点 → 恢复 1 点
+    const state2: GameState = {
+      ...INITIAL_STATE,
+      stamina: 50,
+      lastTick: Date.now() - 3000
+    };
+    const next = applyTick(state2, Date.now());
+    expect(next).not.toBe(state2);
+    expect(next.stamina).toBeGreaterThan(state2.stamina);
+    expect(Math.floor(next.stamina)).toBeGreaterThan(Math.floor(state2.stamina));
+  });
+
+  it('跨天 → 推进天数，不短路', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      dayStartTime: Date.now() - GAME_CONSTANTS.GAME_DAY_SECONDS * 1000
+    };
+    const next = applyTick(state, Date.now());
+    expect(next).not.toBe(state);
+    expect(next.player.days).toBeGreaterThan(state.player.days);
+  });
+
+  it('有活跃系统（温室作物）→ 正常推进，不短路', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'test_crop' } : s
+        )
+      },
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    expect(next).not.toBe(state);
+  });
+});
+
+// 06 浇水=维持生长：湿润作物按基础 1x 生长，未湿润作物停滞（不扣减）
+describe('applyTick 温室生长（06 浇水=维持生长）', () => {
+  const makeStateWithCrop = (slotOverrides: Partial<GreenhouseSlot>): GameState => ({
+    ...INITIAL_STATE,
+    stamina: COMBAT_CONFIG.maxStamina,
+    greenhouse: {
+      ...INITIAL_STATE.greenhouse,
+      slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+        i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, ...slotOverrides } : s
+      )
+    },
+    lastTick: Date.now() - 1000
+  });
+
+  it('未湿润作物停滞：growthTimeLeft 不扣减', () => {
+    const next = applyTick(makeStateWithCrop({ isWatered: false }), Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.growthTimeLeft).toBe(30);
+    expect(slot.growthProgress).toBe(0);
+  });
+
+  it('湿润作物按基础 1x 扣减生长时间', () => {
+    const next = applyTick(makeStateWithCrop({ isWatered: true }), Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.growthTimeLeft).toBe(29);
+    expect(slot.growthProgress).toBe(3); // (30-29)/30*100 ≈ 3.33 → round 3
+  });
+});
+
+// 07 驻守自动化：自动收割成熟槽并补种原作物、速度加成加速生长
+describe('applyTick 驻守自动化（07）', () => {
+  it('驻守自动收割成熟作物并补种原作物（扣种子、产出入账）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      inventory: { seed_glow_grass: 3 },
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 0, growthProgress: 100, isWatered: true } : s
+        )
+      },
+      shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'mei' }, // 无速度加成，专注收割补种
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.cropId).toBe('glow_grass'); // 补种原作物
+    expect(slot.growthProgress).toBe(0);
+    expect(next.inventory.seed_glow_grass).toBe(2); // 扣 1 种子
+    expect(next.inventory.glow_fiber).toBe(2);      // 收割产出
+    expect(next.inventory.mana_dust).toBe(1);
+  });
+
+  it('驻守速度加成：湿润作物 1 tick 扣 1.25 秒（nova +25%）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, isWatered: true } : s
+        )
+      },
+      shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'nova' },
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    const slot = next.greenhouse.slots[0];
+    expect(slot.growthTimeLeft).toBe(28.75); // 30 - 1.25
+  });
+
+  it('作物级速度：以太浆果 1 tick 扣 1.15 秒（mei 浆果专精），荧光草扣 1 秒（09）', () => {
+    const state: GameState = {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      greenhouse: {
+        ...INITIAL_STATE.greenhouse,
+        slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+          i === 0 ? { ...s, cropId: 'aether_berry', growthTimeLeft: 30, growthProgress: 0, isWatered: true } :
+          i === 1 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, isWatered: true } : s
+        )
+      },
+      shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'mei' },
+      lastTick: Date.now() - 1000
+    };
+    const next = applyTick(state, Date.now());
+    expect(next.greenhouse.slots[0].growthTimeLeft).toBeCloseTo(28.85, 5); // 30 - 1.15（浆果专精）
+    expect(next.greenhouse.slots[1].growthTimeLeft).toBeCloseTo(29, 5);    // 30 - 1（普通作物）
+  });
+});
+
+// 08 挂机：autoFarm 开启时按选定作物播种、种子耗光自动停止
+describe('applyTick 挂机（08）', () => {
+  const makeAutoFarmState = (autoFarm: { enabled: boolean; cropId: string | null }, inventory: Record<string, number>): GameState => ({
+    ...INITIAL_STATE,
+    stamina: COMBAT_CONFIG.maxStamina,
+    inventory,
+    greenhouse: {
+      ...INITIAL_STATE.greenhouse,
+      autoFarm,
+      slots: INITIAL_STATE.greenhouse.slots.map((s, i) =>
+        i === 0 ? { ...s, cropId: 'glow_grass', growthTimeLeft: 30, growthProgress: 0, isWatered: true } : s
+      )
+    },
+    shelter: { ...INITIAL_STATE.shelter, assignedWatererId: 'nova' },
+    lastTick: Date.now() - 1000
+  });
+
+  it('挂机开启：空槽播种选定作物（非原作物），种子耗光后自动停止', () => {
+    const state = makeAutoFarmState(
+      { enabled: true, cropId: 'aether_berry' },
+      { seed_glow_grass: 2, seed_aether_berry: 3 }
+    );
+    const next = applyTick(state, Date.now());
+    // 3 个空槽种上 aether_berry，扣 3 种子
+    expect(next.greenhouse.slots.filter(s => s.cropId === 'aether_berry').length).toBe(3);
+    expect(next.inventory.seed_aether_berry).toBe(0);
+    // 种子种到最后一颗后耗光 → 自动停止
+    expect(next.greenhouse.autoFarm.enabled).toBe(false);
+  });
+
+  it('挂机已选种但种子为 0 → 直接停止', () => {
+    const state = makeAutoFarmState(
+      { enabled: true, cropId: 'aether_berry' },
+      { seed_glow_grass: 2, seed_aether_berry: 0 }
+    );
+    const next = applyTick(state, Date.now());
+    expect(next.greenhouse.autoFarm.enabled).toBe(false);
+    expect(next.greenhouse.autoFarm.cropId).toBe('aether_berry'); // 保留选种
+  });
+});
+
+// 远征探索员加成（作用域化）：零 -20% 拾荒间隔（radar_station 300s → 240s）
+describe('applyTick 远征探索员加成（作用域化）', () => {
+  const makeExpeditionState = (explorerId: string | null, elapsedSec: number, now: number): GameState => {
+    return {
+      ...INITIAL_STATE,
+      stamina: COMBAT_CONFIG.maxStamina,
+      inventory: { ration: 5 },
+      shelter: {
+        ...INITIAL_STATE.shelter,
+        assignedExplorerId: explorerId,
+        expedition: {
+          locationId: 'radar_station',
+          startTime: now - elapsedSec * 1000,
+          lastScavengeTime: now - elapsedSec * 1000
+        }
+      },
+      lastTick: now - 1000
+    };
+  };
+
+  it('零（-20% 拾荒间隔）：240 秒触发拾荒，无加成时不触发', () => {
+    const now = Date.now();
+    // 无加成：240s < 300s → 不触发，lastScavengeTime 保持
+    const plain = applyTick(makeExpeditionState(null, 240, now), now);
+    expect(plain.shelter.expedition.lastScavengeTime).toBe(now - 240 * 1000);
+    // 零加成：300 × 0.8 = 240s → 触发一次拾荒，lastScavengeTime 推进一个间隔
+    const boosted = applyTick(makeExpeditionState('zero', 240, now), now);
+    expect(boosted.shelter.expedition.lastScavengeTime).toBe(now); // lastScavengeTime + 1×240s = now
+  });
+});
+
+// 挂机在线推进（修复 09：在线也持续自动战斗，不再只在离线重连时结算）
+describe('applyTick 挂机在线推进（修复 09）', () => {
+  const makeIdleState = (stamina = COMBAT_CONFIG.maxStamina): GameState => ({
+    ...INITIAL_STATE,
+    stamina,
+    party: ['nova', 'soldier'],
+    heroes: {
+      nova: createInitialHero('nova'),
+      soldier: createInitialHero('soldier')
+    },
+    combat: {
+      ...INITIAL_STATE.combat,
+      zonesCleared: ['wasteland_entrance'],
+      idle: { zoneId: 'wasteland_entrance', startTime: 1000, accumulatedSeconds: 0 }
+    },
+    lastTick: 1000
+  });
+
+  const tickSeconds = (initial: GameState, seconds: number): GameState => {
+    let state = initial;
+    const base = 1000;
+    for (let i = 1; i <= seconds; i++) {
+      state = applyTick(state, base + i * 1000);
+    }
+    return state;
+  };
+
+  it('在线 20 秒结算一场：写回放、扣体力、挂机保持', () => {
+    const state = tickSeconds(makeIdleState(), 20);
+    // 够一场 → 写最近一场回放（问题 2：挂机后回放区可查看）
+    expect(state.combat.lastSettlement).not.toBeNull();
+    expect(state.combat.lastSettlement?.battle.victory).toBe(true);
+    // 体力被消耗（20 秒回复 +6，扣 10 → 低于上限）
+    expect(state.stamina).toBeLessThan(COMBAT_CONFIG.maxStamina);
+    // 挂机保持开启（问题 1：在线持续推进）
+    expect(state.combat.idle.zoneId).toBe('wasteland_entrance');
+    // 秒数清零（一场 20 秒已结算）
+    expect(state.combat.idle.accumulatedSeconds).toBe(0);
+  });
+
+  it('在线不足一场的秒数继续累计（19 秒不结算）', () => {
+    const state = tickSeconds(makeIdleState(), 19);
+    expect(state.combat.lastSettlement).toBeNull();
+    expect(state.combat.idle.accumulatedSeconds).toBe(19);
+  });
+
+  it('在线结算一场后写入挂机战斗日志（修复：挂机日志不丢失）', () => {
+    const state = tickSeconds(makeIdleState(), 20);
+    // 挂机日志出现在最新日志中
+    expect(state.logs.some(l => l.text.includes('挂机战斗：在【') && l.text.includes('1 场'))).toBe(true);
+  });
+
+  it('体力不足一场时挂机保持等待，不自动停止（问题 4）', () => {
+    const state = tickSeconds(makeIdleState(COMBAT_ZONES.wasteland_entrance.staminaCost - 1), 60);
+    // 挂机未被自动停止（体力恢复期间持续等待/战斗）
+    expect(state.combat.idle.zoneId).toBe('wasteland_entrance');
+    // 体力随时间恢复（问题 4：挂机期间体力正常回复）
+    expect(state.stamina).toBeGreaterThan(COMBAT_ZONES.wasteland_entrance.staminaCost - 1);
+  });
+});
+
+// 07 产线单任务推进：在线按 elapsedSeconds 推进、任务即活跃系统、与基建升级施工共存
+describe('applyTick 产线单任务推进（issue 06/07）', () => {
+  // 构造：仅冶炼炉有进行中任务（其余系统全部空闲）；lastTick 默认 2s 前 → elapsed 2s
+  const makeFacilityTaskState = (overrides: {
+    targetCount?: number; completedCount?: number; timeLeft?: number; level?: number;
+    upgrades?: Record<string, { startTime: number }>; lastTickOffsetMs?: number;
+  } = {}): GameState => {
+    const state = structuredClone(INITIAL_STATE) as GameState;
+    state.stamina = COMBAT_CONFIG.maxStamina;
+    state.inventory = { ...state.inventory, scrap_metal: 100 };
+    state.shelter.facilities.smelter[0] = {
+      id: 'smelter',
+      name: '魔导冶炼炉',
+      level: overrides.level ?? 1,
+      recipeId: 'smelt_alloy',
+      targetCount: overrides.targetCount ?? 2,
+      completedCount: overrides.completedCount ?? 0,
+      timeLeft: overrides.timeLeft ?? 27,
+      currentProgress: 0
+    };
+    if (overrides.upgrades) state.shelter.upgrades = overrides.upgrades;
+    state.lastTick = Date.now() - (overrides.lastTickOffsetMs ?? 2000);
+    return state;
+  };
+
+  it('任务进行中即活跃系统：无其他活跃系统时不短路，按 elapsedSeconds 推进 timeLeft', () => {
+    const state = makeFacilityTaskState({ timeLeft: 27 }); // Lv1 smelt_alloy 每批 27s
+    const next = applyTick(state, Date.now()); // elapsed 2s
+
+    expect(next).not.toBe(state); // 不短路（任务=活跃系统，进度条每秒刷新）
+    const fac = next.shelter.facilities.smelter[0];
+    expect(fac.timeLeft).toBe(25); // 27 - 2
+    expect(fac.completedCount).toBe(0);
+    expect(next.inventory.alloy_plate).toBeUndefined(); // 未完成批不产出
+  });
+
+  it('在线达到目标批数自动回待机并产出入账、写完成日志', () => {
+    const state = makeFacilityTaskState({ targetCount: 1, timeLeft: 2 });
+    const next = applyTick(state, Date.now()); // elapsed 2s → 完成 1 批
+
+    const fac = next.shelter.facilities.smelter[0];
+    expect(fac.recipeId).toBeNull();
+    expect(fac.completedCount).toBe(0);
+    expect(fac.timeLeft).toBe(0);
+    expect(next.inventory.alloy_plate).toBe(1);
+    expect(next.logs.some(l => l.text.includes('魔导冶炼炉') && l.text.includes('完成了'))).toBe(true);
+  });
+
+  it('任务推进与基建升级施工共存：同一 tick 内任务推进 + 到点升级完成互不干扰', () => {
+    const state = makeFacilityTaskState({
+      timeLeft: 27,
+      // 冶炼炉 Lv1→2 施工（耗时 1800s）已到点
+      upgrades: { smelter_0: { startTime: Date.now() - 1800 * 1000 } }
+    });
+    const next = applyTick(state, Date.now());
+
+    const fac = next.shelter.facilities.smelter[0];
+    expect(fac.level).toBe(2); // 升级完成应用
+    expect(next.shelter.upgrades['smelter_0']).toBeUndefined(); // 施工条目移除
+    expect(fac.recipeId).toBe('smelt_alloy'); // 任务不受升级影响
+    expect(fac.timeLeft).toBe(25); // 任务照常按 elapsedSeconds 推进
+  });
+});

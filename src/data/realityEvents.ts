@@ -1,11 +1,12 @@
-export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly';
+import type { CombatEnemyConfig, CombatDropConfig } from './combatZones';
+
+export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly' | 'encounter';
 
 export interface EventChoice {
   text: string;
   requirements?: Record<string, number>;
   results: {
     stats?: {
-      hp?: number;
       food?: number;
       energy?: number;
       sanity?: number;
@@ -15,15 +16,23 @@ export interface EventChoice {
   };
 }
 
+// 战斗遭遇配置（ticket 06）：事件进入与自动战斗同一战斗场景
+export interface EncounterBattleConfig {
+  enemies: CombatEnemyConfig[];      // 遭遇的敌人组
+  expReward: number;                 // 胜利后每位上阵英雄获得的经验
+  drops: CombatDropConfig[];         // 胜利后掉入探索临时背囊
+}
+
 export interface RealityEvent {
   id: string;
   title: string;
   description: string;
   type: RealityEventType;
-  choices: {
+  choices?: {
     A: EventChoice;
     B: EventChoice;
   };
+  battle?: EncounterBattleConfig; // 战斗遭遇事件：触发后进入战斗场景而非选择卡
   weight?: number; // 出现权重，不填默认为 100
 }
 
@@ -89,9 +98,8 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 80,
     choices: {
       A: {
-        text: "强行蹚过沼泽 (生命-10)",
+        text: "强行蹚过沼泽",
         results: {
-          stats: { hp: -10 },
           items: { seed_plasma_pumpkin: 1, alloy_plate: 1 },
           logText: "你咬紧牙关从小腿深的腐蚀泥浆中穿过，防护服被酸液灼烧得咝咝作响。但在废墟里捞到了一个密封盒，里面有一颗种子和金属板。"
         }
@@ -113,9 +121,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 80,
     choices: {
       A: {
-        text: "暴力拆卸电池仓 (生命-6, 饱食-6)",
+        text: "暴力拆卸电池仓 (饱食-6)",
         results: {
-          stats: { hp: -6, food: -6 },
+          stats: { food: -6 },
           items: { plasma_cell: 1, scrap_metal: 2 },
           logText: "你用撬棍砸开电池仓。耀眼的电火花让你轻微电击，但也成功拿到了一个等离子电芯和两块废金属。"
         }
@@ -140,9 +148,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 60,
     choices: {
       A: {
-        text: "用魔能震荡击退 (生命-10, 魔能-8)",
+        text: "用魔能震荡击退 (魔能-8)",
         results: {
-          stats: { hp: -10, energy: -8 },
+          stats: { energy: -8 },
           items: { ration: 2 },
           logText: "你激发魔导枪发出一记震荡波。怪兽哀鸣着被击飞，垂死挣扎撕破了防化服。你割下了两份尚能食用的异兽肉。"
         }
@@ -167,9 +175,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 40,
     choices: {
       A: {
-        text: "浸泡温泉放松 (生命+15, 饱食+5)",
+        text: "浸泡温泉放松 (饱食+5)",
         results: {
-          stats: { hp: 15, food: 5 },
+          stats: { food: 5 },
           logText: "你在温暖舒适的泉水里泡了一会儿。连日来的疲惫一扫而空，甚至感觉身体力量有些微恢复。"
         }
       },
@@ -197,9 +205,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       },
       B: {
-        text: "在简易床上小憩 (生命+10, 理智+10)",
+        text: "在简易床上小憩 (理智+10)",
         results: {
-          stats: { hp: 10, sanity: 10 },
+          stats: { sanity: 10 },
           logText: "你躺在虽然落满灰尘但足够舒适的床垫上打了个盹。你的身体和精神都得到了极大的休息。"
         }
       }
@@ -300,10 +308,10 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       },
       B: {
-        text: "绕道而行 (饱食-10, 生命-3)",
+        text: "绕道而行 (饱食-10)",
         results: {
-          stats: { food: -10, hp: -3 },
-          logText: "你选择翻山绕过这片毒雾。寒冷的地表风沙让生命值受到些许损伤，并消耗了体力。"
+          stats: { food: -10 },
+          logText: "你选择翻山绕过这片毒雾。寒冷的地表风沙消耗了大量体力。"
         }
       }
     }
@@ -378,9 +386,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       },
       B: {
-        text: "用撬棍强行撬开 (饱食-6, 生命-3)",
+        text: "用撬棍强行撬开 (饱食-6)",
         results: {
-          stats: { food: -6, hp: -3 },
+          stats: { food: -6 },
           items: { ration: 1, alloy_plate: 1 },
           logText: "你靠着蛮力将箱盖撬开一道缝，手指被锋利的铁皮划伤。里面只有一包口粮和一块合金板还算完好。"
         }
@@ -422,9 +430,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 80,
     choices: {
       A: {
-        text: "用防护服隔离采集 (饱食-8, 生命-4)",
+        text: "用防护服隔离采集 (饱食-8)",
         results: {
-          stats: { food: -8, hp: -4 },
+          stats: { food: -8 },
           items: { aether_pulp: 2, void_essence: 1 },
           logText: "你拉紧兜帽和面罩，屏住呼吸冲入菌群深处。皮肤暴露处传来刺痛，但你在废料堆中成功采集到了两团以太果肉和一瓶虚空精华。"
         }
@@ -447,9 +455,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 80,
     choices: {
       A: {
-        text: "用长杆绑工具打捞 (饱食-8, 生命-5)",
+        text: "用长杆绑工具打捞 (饱食-8)",
         results: {
-          stats: { food: -8, hp: -5 },
+          stats: { food: -8 },
           items: { plasma_cell: 1, alloy_plate: 1 },
           logText: "你找了根长杆绑上钩爪，小心地探入废液中钩捞。飞溅的液滴烧穿了你的袖口，但你成功捞上来一个密封的合金容器，里面装着一枚等离子电芯。"
         }
@@ -472,9 +480,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 80,
     choices: {
       A: {
-        text: "挥刀斩出一条路 (生命-8, 饱食-4)",
+        text: "挥刀斩出一条路 (饱食-4)",
         results: {
-          stats: { hp: -8, food: -4 },
+          stats: { food: -4 },
           items: { aether_pulp: 2, frost_crystal: 1 },
           logText: "你挥舞砍刀硬生生劈开一条通道，荆棘倒刺划破了你的手臂。但箱子里的收获还算值得——以太果肉和一块冰晶结晶。"
         }
@@ -499,9 +507,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 60,
     choices: {
       A: {
-        text: "释放魔能冲击波驱散 (魔能-10, 生命-6)",
+        text: "释放魔能冲击波驱散 (魔能-10)",
         results: {
-          stats: { hp: -6, energy: -10 },
+          stats: { energy: -10 },
           items: { aether_pulp: 2, mana_dust: 1 },
           logText: "你大喝一声释放出环形的魔能冲击波，蝠群被震得七零八落在地上抽搐。你在蝙蝠巢穴下发现了它们囤积的以太果肉和魔能之尘。"
         }
@@ -524,9 +532,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 60,
     choices: {
       A: {
-        text: "先发制人反击 (生命-12, 魔能-8)",
+        text: "先发制人反击 (魔能-8)",
         results: {
-          stats: { hp: -12, energy: -8 },
+          stats: { energy: -8 },
           items: { scrap_metal: 3, ration: 1, mana_dust: 1, stimpack: 1 },
           logText: "你以迅雷之势轰出一记魔能震荡，三个劫匪被打了个措手不及。虽然你挂了彩，但他们的破烂物资和战利品中的一支废土肾上腺素现在都是你的了。"
         }
@@ -575,9 +583,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 40,
     choices: {
       A: {
-        text: "畅饮净化饮用水 (生命+10, 饱食+6)",
+        text: "畅饮净化饮用水 (饱食+6)",
         results: {
-          stats: { hp: 10, food: 6 },
+          stats: { food: 6 },
           logText: "你拧开水龙头，清澈的水流哗哗涌出。你痛饮了一顿，还把水壶灌满。干净的水在废土上是奢侈的享受，你的身体和精神都得到了滋养。"
         }
       },
@@ -598,9 +606,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 40,
     choices: {
       A: {
-        text: "就地采摘饱餐一顿 (饱食+12, 生命+5)",
+        text: "就地采摘饱餐一顿 (饱食+12)",
         results: {
-          stats: { food: 12, hp: 5 },
+          stats: { food: 12 },
           logText: "你摘下最饱满的果实大快朵颐，酸甜的汁水在口中爆开。废土上能吃到新鲜野果简直是天堂般的享受，你的体力迅速恢复。"
         }
       },
@@ -700,9 +708,9 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     weight: 80,
     choices: {
       A: {
-        text: "忍受干扰强行穿越 (生命-5, 魔能-10)",
+        text: "忍受干扰强行穿越 (魔能-10)",
         results: {
-          stats: { hp: -5, energy: -10 },
+          stats: { energy: -10 },
           items: { void_essence: 1, scrap_metal: 2 },
           logText: "你强忍着头晕恶心和肌肉刺痛穿过紊乱场，剧烈的魔能波动在你的防护服上凝结出了一些虚空精华。顺手吸了几块地上的废金属。"
         }
@@ -740,6 +748,65 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
         }
       }
     }
+  },
+
+  // --- 4. 战斗遭遇 (Encounter, ticket 06)：触发后进入与自动战斗同一战斗场景 ---
+  encounter_wasteland_pack: {
+    id: "encounter_wasteland_pack",
+    title: "废土掠食者群",
+    description: "前方的瓦砾堆中突然窜出几条瘦骨嶙峋的废土鬣狗，身后跟着密密麻麻的变异鼠群。它们围成半圆，低吼着朝你的小队步步逼近——上阵小队，迎战！",
+    type: "encounter",
+    weight: 70,
+    battle: {
+      enemies: [
+        { id: 'wasteland_hound', name: '废土鬣狗', baseAttributes: { maxHp: 45, attack: 9, defense: 3 } },
+        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 30, attack: 7, defense: 1 } }
+      ],
+      expReward: 15,
+      drops: [
+        { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
+        { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 }
+      ]
+    }
+  },
+  encounter_ruin_raiders: {
+    id: "encounter_ruin_raiders",
+    title: "废墟劫掠者伏击",
+    description: "两名手持铁管的废墟劫掠者带着一头驯养的变异巨鼠拦住了去路，为首者狞笑着敲打铁管：'把值钱的东西留下，否则别怪我们不客气！'",
+    type: "encounter",
+    weight: 55,
+    battle: {
+      enemies: [
+        { id: 'ruin_scavenger', name: '废墟拾荒者', baseAttributes: { maxHp: 80, attack: 16, defense: 4 } },
+        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
+      ],
+      expReward: 25,
+      drops: [
+        { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
+        { itemId: 'alloy_plate', chance: 0.35, minQty: 1, maxQty: 1 },
+        { itemId: 'mana_dust', chance: 0.3, minQty: 1, maxQty: 2 }
+      ]
+    }
+  },
+  encounter_workshop_horror: {
+    id: "encounter_workshop_horror",
+    title: "车间畸变体群",
+    description: "废弃车间深处，一个巨大的辐射变异体拖着一条失控的机器仆从与畸变实验体缓缓走出。它们的嘶吼声在厂房里回荡——这是探索中最危险的遭遇！",
+    type: "encounter",
+    weight: 40,
+    battle: {
+      enemies: [
+        { id: 'radiation_mutant', name: '辐射变异体', baseAttributes: { maxHp: 130, attack: 20, defense: 6 } },
+        { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } },
+        { id: 'aberrant_subject', name: '畸变实验体', baseAttributes: { maxHp: 70, attack: 18, defense: 5 } }
+      ],
+      expReward: 40,
+      drops: [
+        { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
+        { itemId: 'nanite_slurry', chance: 0.3, minQty: 1, maxQty: 1 },
+        { itemId: 'plasma_cell', chance: 0.25, minQty: 1, maxQty: 1 }
+      ]
+    }
   }
 };
 
@@ -749,5 +816,6 @@ export const CATEGORY_WEIGHTS: Record<string, number> = {
   combat: 60,
   welfare: 40,
   relic: 30,
-  anomaly: 20
+  anomaly: 20,
+  encounter: 40
 };

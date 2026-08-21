@@ -48,14 +48,16 @@
 ## AI tooling in repo
 
 - `.reasonix/` — 22 Reasonix agent skills (permissions in `reasonix.toml`: `run_skill`, `explore`)
-- `.superpowers/` — SDD task logs (excluded from git via `.gitignore`)
 - `.agents/` — excluded from git via `.gitignore`
 - `docs/project_architecture.md` — detailed architecture reference written for AI onboarding
 - `SRC_DIRS` for full-context packing: `src/`, `docs/`, `*.json`, `*.config.*`
 
-## Superpowers plugin
+## Agent skills
 
-- Installed via `opencode.json` — plugin line: `"superpowers@git+https://github.com/obra/superpowers.git"`
-- On Windows, if Bun fails to resolve the `git+https` spec, fallback: install manually via `npm install superpowers@git+https://github.com/obra/superpowers.git --prefix "$HOME\.config\opencode"` then change plugin to `"~/.config/opencode/node_modules/superpowers"`
-- Config changes require restarting opencode to take effect
-- To disable: remove the plugin line from `opencode.json` and restart
+### Issue tracker
+
+Issues and PRDs for this repo live as markdown files under `.scratch/<feature-slug>/` (local-markdown tracker). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

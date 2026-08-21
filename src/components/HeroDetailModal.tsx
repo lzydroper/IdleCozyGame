@@ -1,0 +1,648 @@
+import React, { useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useGame } from '../context/GameContext';
+import {
+  HEROES_CONFIG,
+  HERO_CLASS_LABELS,
+  HERO_FACTION_LABELS,
+  HERO_CLASS_COLORS
+} from '../data/heroes';
+import { STAR_MAX, starUpShardCost } from '../data/awakening';
+import { getAwakenedName, getAwakenBonus } from '../state/awakening';
+import { ITEMS_CONFIG } from '../data/items';
+import { EQUIPMENT_CONFIG } from '../data/equipment';
+import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
+import { applyHeroExp } from '../state/combat';
+import { getTalentBonus } from '../state/talents';
+import { describeDutyBonuses } from '../state/duty';
+import { aggregateBonus } from '../state/bonds';
+import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
+import { DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
+import { COMBAT_CONFIG } from '../data/combatConfig';
+import { calculateEntityStats, type CalculatedEntityStats, type StatModifier } from '../state/statSystem';
+import { useToast } from './ToastSystem';
+import DetailedStatsModal from './DetailedStatsModal';
+import HeroTalentModal from './HeroTalentModal';
+import EquipmentDetailModal from './EquipmentDetailModal';
+import EquipSelectorModal from './EquipSelectorModal';
+import HeroDossierModal from './HeroDossierModal';
+import ExpLevelUpModal from './ExpLevelUpModal';
+
+// 空装备默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，13 号 R2）
+const EMPTY_EQUIP = { weapon: null, armor: null, trinket: null } as const;
+import { UI_TOKENS } from '../data/uiConstants';
+import GameIcon from './GameIcon';
+import {
+  X,
+  Shield,
+  Sword,
+  Sparkles,
+  Heart,
+  Zap,
+  Award,
+  ChevronLeft,
+  ChevronRight,
+  Sliders,
+  Flame,
+  Wand2,
+  Star
+} from 'lucide-react';
+import type { EquipmentSlot } from '../types/game';
+
+export interface HeroDetailModalProps {
+  isOpen: boolean;
+  heroId: string | null;
+  onSelectHero?: (heroId: string) => void;
+  onClose: () => void;
+}
+
+export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
+  isOpen,
+  heroId,
+  onSelectHero,
+  onClose
+}) => {
+  const { state, setState, starUpHero, awakenHero, levelUpWithTome } = useGame();
+  const { showToast } = useToast();
+  const [showDetailedStats, setShowDetailedStats] = useState(false);
+  const [showTalentModal, setShowTalentModal] = useState(false);
+  // 04 号 04c：稳定回调引用，使 DetailedStatsModal 的 onClose props 稳定（React.memo 才生效）
+  const handleCloseDetailedStats = useCallback(() => setShowDetailedStats(false), []);
+
+  const [selectedEquipSlot, setSelectedEquipSlot] = useState<EquipmentSlot | null>(null);
+  const [showEquipDetailModal, setShowEquipDetailModal] = useState(false);
+  const [showEquipSelectorModal, setShowEquipSelectorModal] = useState(false);
+  const [showDossierModal, setShowDossierModal] = useState(false);
+  const [showExpLevelUpModal, setShowExpLevelUpModal] = useState(false);
+
+  // hooks 前置（13 号 R2：useMemo 必须无条件调用，修复 rules-of-hooks；EMPTY_EQUIP 常量稳定依赖）
+  const hero = state.heroes[heroId ?? ''];
+  const config = heroId ? HEROES_CONFIG[heroId] : undefined;
+  const heroEquip = (heroId && state.equipment?.[heroId]) || EMPTY_EQUIP;
+  const awakenedName = hero && config ? getAwakenedName(heroId || '', hero) || config.name : '';
+
+  // 核心基础面板属性计算 (Memoized)：与 combat.ts heroToCombatant 同口径--
+  // 装备/天赋/觉醒/羁绊/里程碑全部走 StatModifier 管道（detailed-stats-panel-rework 05）
+  const permanentModifiers = useMemo<StatModifier[]>(() => {
+    if (!config || !hero) return [];
+    const party = state.party || [];
+    return [
+      ...aggregateBonus(party),
+      ...getMilestoneModifiers(config, hero.level),
+      ...getHeroEquipmentBonus(heroEquip, config.faction),
+      ...getTalentBonus(heroId || '', hero),
+      ...getAwakenBonus(heroId || '', hero)
+    ];
+  }, [config, hero, heroId, heroEquip, state.party]);
+
+  const statsParams = useMemo(() => {
+    if (!config || !hero) return null;
+    const base = heroBaseAttributes(config, hero.level);
+    return {
+      baseAttributes: base,
+      primaryAttributes: { ...config.primaryAttributes },
+      specialAttributes: {
+        ...DEFAULT_SPECIAL_ATTRIBUTES,
+        ...config.specialAttributes
+      }
+    };
+  }, [config, hero]);
+
+  const calculatedStats = useMemo(() => {
+    if (!statsParams) return null;
+    return calculateEntityStats(statsParams, permanentModifiers);
+  }, [statsParams, permanentModifiers]);
+
+  // 不含外部 modifier 的基础值（供 DetailedStatsModal 展开时显示"基础值"）
+  const baseStats = useMemo(() => {
+    if (!statsParams) return null;
+    return calculateEntityStats(statsParams, []);
+  }, [statsParams]);
+
+  if (!isOpen || !heroId || !hero || !config) return null;
+  // early return 已保证 config/hero 非空，calculatedStats 必非空
+  const stats = calculatedStats as CalculatedEntityStats;
+
+  const heroIds = Object.keys(state.heroes);
+  const currentIndex = heroIds.indexOf(heroId);
+
+  const soulCount = state.inventory[`shard_${heroId}`] || 0;
+  const resonanceCount = state.inventory.resonance_shard || 0;
+  const shardCost = starUpShardCost(hero.star);
+  const totalAvailableShards = soulCount + resonanceCount;
+  const hasOrb = (state.inventory.arcane_orb || 0) >= 1;
+
+  // 左右切换英雄 (居中在 Header 内)
+  const handlePrevHero = () => {
+    if (heroIds.length <= 1) return;
+    const prevIdx = (currentIndex - 1 + heroIds.length) % heroIds.length;
+    if (onSelectHero) onSelectHero(heroIds[prevIdx]);
+  };
+
+  const handleNextHero = () => {
+    if (heroIds.length <= 1) return;
+    const nextIdx = (currentIndex + 1) % heroIds.length;
+    if (onSelectHero) onSelectHero(heroIds[nextIdx]);
+  };
+
+  // 1. 【一键装备 / 一键卸下】
+  const hasAnyEquip = Boolean(heroEquip.weapon || heroEquip.armor || heroEquip.trinket);
+
+  const handleToggleEquipAll = () => {
+    if (hasAnyEquip) {
+      const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
+      let removedCount = 0;
+      // 单个 setState 内链式卸下（避免多次 setState 批处理仅最后一次生效，ADR-0017 修订）
+      setState(prev => {
+        let next = prev;
+        slots.forEach(slot => {
+          if (next.equipment?.[heroId]?.[slot]) {
+            const r = unequipItemUpdate(next, heroId, slot);
+            if (r.state !== next) {
+              next = r.state;
+              removedCount++;
+            }
+          }
+        });
+        return next;
+      });
+      showToast(`已卸下【${config.name}】的 ${removedCount} 件装备！`, 'success');
+    } else {
+      let equippedCount = 0;
+      const slots: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
+      // ADR-0014 修订：从背包装备实例中取同槽位强化最高者自动穿戴；
+      // 单个 setState 内链式应用（避免多次 setState 批处理仅最后一次生效）
+      setState(prev => {
+        let next = prev;
+        slots.forEach(slot => {
+          if (!next.equipment?.[heroId]?.[slot]) {
+            const match = Object.entries(next.equipmentInventory || {})
+              .filter(([itemId, instances]) => instances.length > 0 && EQUIPMENT_CONFIG[itemId]?.slot === slot)
+              .flatMap(([itemId, instances]) => instances.map((instance, index) => ({ itemId, instance, index })))
+              .sort((a, b) => b.instance.enhance - a.instance.enhance)[0];
+            if (match) {
+              const r = equipItemUpdate(next, heroId, slot, match.itemId, match.index);
+              if (r.state !== next) {
+                next = r.state;
+                equippedCount++;
+              }
+            }
+          }
+        });
+        return next;
+      });
+      if (equippedCount > 0) {
+        showToast(`已为【${config.name}】自动穿戴装备！`, 'success');
+      } else {
+        showToast('背包中暂无可用装备可穿戴。', 'info');
+      }
+    }
+  };
+
+  // 2. 【升级】（15 号：消耗 1 本经验手册，不再无消耗直升）
+  const handleLevelUp = () => {
+    const ok = levelUpWithTome(heroId, 1);
+    if (!ok) {
+      showToast('需要【经验手册】才能升级 —— 战斗 / 探险掉落可获得。', 'warning');
+      return;
+    }
+    const expPerTome = ITEMS_CONFIG.exp_tome?.useEffect?.heroExp ?? 0;
+    const h = state.heroes[heroId];
+    const leveled = h ? applyHeroExp(h, config, expPerTome) : null;
+    showToast(`【${config.name}】消耗 1 本经验手册，升至 Lv.${leveled?.level ?? '?'}！`, 'success');
+  };
+
+  // 3. 【升星 / 觉醒】
+  const handleStarUp = () => {
+    const result = starUpHero(heroId);
+    if (result === true) {
+      showToast(`${config.name} 升星成功！当前星级：${hero.star + 1} 星`, 'success');
+    } else if (result === 'no_shards') {
+      showToast('升星失败：灵魂碎片或共鸣碎片不足！', 'error');
+    } else if (result === 'max_star') {
+      showToast('已达 5 星上限，请进行觉醒！', 'warning');
+    }
+  };
+
+  const handleAwaken = () => {
+    const result = awakenHero(heroId);
+    if (result === true) {
+      showToast(`觉醒成功！【${awakenedName}】解锁专属技能与觉醒被动！`, 'success');
+    } else if (result === 'no_orb') {
+      showToast('觉醒失败：需要 1 个【奥术星体】（辐射车间 BOSS 掉落）。', 'error');
+    } else if (result === 'not_max_star') {
+      showToast('觉醒需先升至 5 星满星。', 'warning');
+    }
+  };
+
+  const handleEquipSlotClick = (slot: EquipmentSlot) => {
+    setSelectedEquipSlot(slot);
+    if (heroEquip[slot]) {
+      setShowEquipDetailModal(true);
+    } else {
+      setShowEquipSelectorModal(true);
+    }
+  };
+
+  // 渲染单个装备槽位 (放大为 w-15 h-15 框，Icon 放大为 w-6 h-6)
+  const renderEquipSlot = (slot: EquipmentSlot, slotLabel: string, IconComponent: any) => {
+    const item = heroEquip[slot];
+    const itemConfig = item ? ITEMS_CONFIG[item.itemId] : null;
+
+    return (
+      <div
+        onClick={() => handleEquipSlotClick(slot)}
+        className="flex flex-col items-center gap-0.5 cursor-pointer group active:scale-95 transition-transform"
+        title={item ? `查看【${itemConfig?.name || slotLabel}】装备详情` : `选择【${slotLabel}】装备`}
+      >
+        <div
+          className={`w-15 h-15 aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden transition-[border-color,transform] ${
+            item
+              ? 'bg-zinc-950/90 border-amber-500/40 shadow-sm shadow-amber-950/30 group-hover:border-amber-400'
+              : 'bg-zinc-950/40 border-zinc-800 border-dashed group-hover:border-amber-500/60'
+          }`}
+        >
+          <IconComponent className={`w-7 h-7 ${item ? 'text-amber-400' : 'text-zinc-600 group-hover:text-amber-300'}`} />
+          {item && item.enhance > 0 && (
+            <span className="absolute top-0.5 right-0.5 text-[7.5px] font-black text-amber-300 bg-black/80 px-1 rounded border border-amber-500/30">
+              +{item.enhance}
+            </span>
+          )}
+        </div>
+        <span className="text-[8.5px] font-bold text-zinc-300 max-w-[58px] truncate text-center leading-tight group-hover:text-amber-200">
+          {itemConfig?.name || slotLabel}
+        </span>
+      </div>
+    );
+  };
+
+  // 渲染技能槽位占位 (放大为 w-15 h-15 框，Icon 放大为 w-6 h-6)
+  const renderSkillSlot = (skillIndex: number) => {
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <div
+          className="w-15 h-15 aspect-square rounded-xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center relative overflow-hidden"
+          title={`技能 ${skillIndex}`}
+        >
+          <Flame className="w-7 h-7 text-purple-400/70" />
+        </div>
+        <span className="text-[8.5px] font-bold text-zinc-400 max-w-[58px] truncate text-center leading-tight mt-0.5">
+          技能 {skillIndex}
+        </span>
+      </div>
+    );
+  };
+
+  const modalContent = (
+    <div
+      onClick={onClose}
+      className={UI_TOKENS.modalBackdrop}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={UI_TOKENS.modalContainerStandard}
+      >
+        {/* 顶部 Header: 标题与切换箭头居中 (< 英雄详情 >) */}
+        <header className="flex items-center justify-between pb-2 border-b border-zinc-800 shrink-0 relative">
+          <div className="flex-1 flex items-center justify-center gap-2">
+            {heroIds.length > 1 && (
+              <button
+                onClick={handlePrevHero}
+                className="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 cursor-pointer transition-colors"
+                title="上一个英雄"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
+            <Award className="w-4 h-4 text-amber-400" />
+            <h3 className="text-sm font-black text-zinc-100 truncate">
+              英雄详情
+            </h3>
+            {heroIds.length > 1 && (
+              <button
+                onClick={handleNextHero}
+                className="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 cursor-pointer transition-colors"
+                title="下一个英雄"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors cursor-pointer absolute right-0 top-0"
+          >
+            <X className="w-4.5 h-4.5" />
+          </button>
+        </header>
+
+        {/* 充实饱满的主体区域（紧凑堆叠：上半 + 下半紧贴，不留 justify-between 空隙） */}
+        <div className="flex-1 flex flex-col pt-1 pb-0.5 min-h-0">
+          {/* 上半部分三列布局 (装备框/技能框放大为 w-15 h-15，大头像放大为 w-22 h-22) */}
+          <div className="grid grid-cols-3 gap-2 items-stretch bg-zinc-950/60 p-2 rounded-xl border border-zinc-800/80 shrink-0 min-h-[275px]">
+            {/* 左侧列：三槽装备 + 底部【一键装备/一键卸下】 */}
+            <div className="flex flex-col items-center justify-between">
+              <div className="flex flex-col gap-0.5 items-center w-full">
+                {renderEquipSlot('weapon', '武器', Sword)}
+                {renderEquipSlot('armor', '防具', Shield)}
+                {renderEquipSlot('trinket', '饰品', Sparkles)}
+              </div>
+              <button
+                onClick={handleToggleEquipAll}
+                className="w-full py-1 rounded-lg text-[11px] font-black text-zinc-200 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 cursor-pointer active:scale-95 truncate mt-0.5"
+              >
+                {hasAnyEquip ? '一键卸下' : '一键装备'}
+              </button>
+            </div>
+
+            {/* 中间列：放大大头像 w-22 h-22、名称、标签、经验条、后勤/简述 + 底部【升级】 */}
+            <div className="flex flex-col items-center justify-between text-center gap-1 min-h-0">
+              <div className="flex flex-col items-center gap-0.5 w-full">
+                {/* 正方形大头像 (w-18 h-18) */}
+                <div className="w-20 h-20 aspect-square rounded-2xl bg-zinc-950 border-2 border-amber-500/40 flex items-center justify-center relative overflow-hidden shadow-lg shadow-amber-950/20">
+                  <GameIcon type="hero" id={config.id} className="w-full h-full" />
+                  {hero.awakened && (
+                    <div className="absolute top-0.5 left-0.5 bg-amber-500 text-zinc-950 text-[7px] font-black px-1 rounded shadow">
+                      觉醒
+                    </div>
+                  )}
+                </div>
+
+                {/* 名称与等级 */}
+                <span className="text-[11px] font-black text-zinc-100 truncate max-w-[96px] leading-tight">
+                  {awakenedName}
+                </span>
+                <span className="text-[9px] text-amber-400 font-bold leading-tight">
+                  Lv.{hero.level} {Array.from({ length: hero.star }, (_, i) => (
+              <Star key={i} className="w-3 h-3 inline-block fill-amber-400 text-amber-400" />
+            ))}
+                </span>
+
+                {/* 职阶/阵营 */}
+                <div className="flex items-center gap-1">
+                  <span className={`text-[10px] font-bold px-1 py-0.5 rounded border ${HERO_CLASS_COLORS[config.heroClass]}`}>
+                    {HERO_CLASS_LABELS[config.heroClass]}
+                  </span>
+                  <span className="text-[10px] font-bold px-1 py-0.5 rounded border border-purple-500/40 bg-purple-950/40 text-purple-300">
+                    {HERO_FACTION_LABELS[config.faction]}
+                  </span>
+                </div>
+              </div>
+
+              {/* 中间新增：经验进度条 & 后勤驻守/传记卡片 */}
+              <div className="w-full flex flex-col gap-1 px-0.5 my-auto">
+                {/* 经验数值（11 号：删除进度条直接显示数值，消除切换英雄时的宽度重算与视觉跳动） */}
+                <div className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 flex flex-col gap-0.5 text-left shadow-inner">
+                  <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400 px-0.5">
+                    <span className="text-amber-400/90 font-medium">经验值</span>
+                    <span className="text-amber-300 font-mono">
+                      {hero.exp} / {hero.level * COMBAT_CONFIG.expPerLevel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 后勤驻守特长 / 英雄背景 —— 点击打开英雄档案（10 号） */}
+                <div
+                  onClick={() => setShowDossierModal(true)}
+                  className="w-full bg-zinc-900/90 rounded-lg p-1 border border-zinc-800/80 text-left flex flex-col gap-0.5 shadow-sm cursor-pointer hover:border-amber-500/50 transition-colors group"
+                  title="查看英雄档案"
+                >
+                  {config.dutyMeta ? (
+                    <>
+                      <div className="text-[9px] font-black text-amber-400/90 flex items-center gap-1">
+                        <Award className="w-2.5 h-2.5 text-amber-400" />
+                        后勤驻守特长
+                        <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
+                      </div>
+                      <div className="text-[9px] font-semibold text-zinc-300 leading-tight line-clamp-2">
+                        {describeDutyBonuses(config.dutyMeta)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[7.5px] font-black text-zinc-400 flex items-center gap-1">
+                        <Award className="w-2.5 h-2.5 text-zinc-400" />
+                        英雄简述
+                        <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
+                      </div>
+                      <p className="text-[7.5px] text-zinc-400 leading-tight italic line-clamp-2">
+                        "{config.backstory}"
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* 中列底部按钮: 批量升级 + 升级（15 号：升级消耗经验手册） */}
+              <button
+                onClick={() => setShowExpLevelUpModal(true)}
+                className="w-full py-1 rounded-lg text-[11px] font-bold text-amber-300/80 bg-amber-950/30 hover:bg-amber-900/60 hover:border-amber-500/40 border border-amber-500/30 cursor-pointer active:scale-95 truncate mt-0.5"
+                title={`批量升级（持有经验手册 ×${state.inventory.exp_tome || 0}）`}
+              >
+                批量升级
+              </button>
+              <button
+                onClick={handleLevelUp}
+                className="w-full py-1 rounded-lg text-[11px] font-black text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 cursor-pointer active:scale-95 truncate mt-0.5"
+                title="消耗 1 本经验手册升级"
+              >
+                升级
+              </button>
+            </div>
+
+            {/* 右侧列：三项技能 + 底部【升星/觉醒】 */}
+            <div className="flex flex-col items-center justify-between">
+              <div className="flex flex-col gap-0.5 items-center w-full">
+                {renderSkillSlot(1)}
+                {renderSkillSlot(2)}
+                {renderSkillSlot(3)}
+              </div>
+
+              {/* 右列底部按钮: 升星 / 觉醒 */}
+              {hero.star < STAR_MAX ? (
+                <div className="flex flex-col w-full">
+                  <button
+                    onClick={handleStarUp}
+                    disabled={totalAvailableShards < shardCost}
+                    className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-0.5 ${
+                      totalAvailableShards >= shardCost
+                        ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-600'
+                    }`}
+                  >
+                    <Star className="w-4 h-4 inline-block mr-1 -mt-0.5" />升星({shardCost})
+                  </button>
+                  {/* 升星素材（ADR-0014 物品化）：专属与通用碎片均存于背包 */}
+                  <div className="w-full text-center text-[7.5px] text-zinc-500 leading-tight">
+                    专属碎片 {soulCount} · 共鸣碎片 {resonanceCount}
+                  </div>
+                </div>
+              ) : !hero.awakened ? (
+                <button
+                  onClick={handleAwaken}
+                  disabled={!hasOrb}
+                  className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-0.5 ${
+                    hasOrb
+                      ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 shadow-sm active:scale-95'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-600'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 inline-block mr-1 -mt-0.5" />觉醒
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="w-full py-1 rounded-lg text-[11px] font-black bg-zinc-950 border border-zinc-800 text-zinc-500 cursor-not-allowed truncate mt-0.5"
+                >
+                  已觉醒
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 下半部分左右布局 (定高 h-[125px] 紧凑面板) */}
+          <div className="grid grid-cols-3 gap-2 h-[92px] shrink-0">
+            {/* 左侧：天赋树入口 */}
+            <div
+              onClick={() => setShowTalentModal(true)}
+              className="bg-zinc-950/70 border border-zinc-800 hover:border-amber-500/50 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1.5 cursor-pointer group transition-[border-color,transform] h-full"
+            >
+              <div className="w-8.5 h-8.5 rounded-full bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                <Sliders className="w-4 h-4" />
+              </div>
+              <span className="text-[11px] font-black text-zinc-200 group-hover:text-amber-300 transition-colors text-center">
+                天赋树入口
+              </span>
+            </div>
+
+            {/* 右侧：基础属性显示 */}
+            <div className="col-span-2 bg-zinc-950/70 border border-zinc-800 rounded-xl p-2 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between text-[11px] font-black text-amber-300 border-b border-zinc-800/80 pb-1 px-1 shrink-0">
+                <span className="flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" /> 基础属性
+                </span>
+                <button
+                  onClick={() => setShowDetailedStats(true)}
+                  className="text-[10px] font-bold text-amber-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                >
+                  详细属性 ›
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 pt-1 flex-1 items-center min-h-0">
+                {/* 1. 生命 */}
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
+                    <Heart className="w-4.5 h-4.5 text-rose-400" /> 生命
+                  </span>
+                  <span className="font-black text-rose-300 text-[11px]">{stats.maxHp}</span>
+                </div>
+
+                {/* 2. 攻击 */}
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
+                    <Sword className="w-4.5 h-4.5 text-amber-400" /> 攻击
+                  </span>
+                  <span className="font-black text-amber-300 text-[11px]">{stats.attack}</span>
+                </div>
+
+                {/* 3. 防御 */}
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
+                    <Shield className="w-4.5 h-4.5 text-sky-400" /> 防御
+                  </span>
+                  <span className="font-black text-sky-300 text-[11px]">{stats.defense}</span>
+                </div>
+
+                {/* 4. 魔力 */}
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
+                    <Wand2 className="w-4.5 h-4.5 text-cyan-400" /> 魔力
+                  </span>
+                  <span className="font-black text-cyan-300 text-[11px]">{stats.maxMp}</span>
+                </div>
+
+                {/* 5. 暴击 */}
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
+                    <Sparkles className="w-4.5 h-4.5 text-purple-400" /> 暴击
+                  </span>
+                  <span className="font-black text-purple-300 text-[11px]">
+                    {(stats.critRate * 100).toFixed(0)}%
+                  </span>
+                </div>
+
+                {/* 6. 暴伤 */}
+                <div className="flex items-center justify-between px-2 rounded-lg bg-zinc-900/80 border border-zinc-800/70 leading-tight">
+                  <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
+                    <Flame className="w-4.5 h-4.5 text-amber-500" /> 暴伤
+                  </span>
+                  <span className="font-black text-amber-200 text-[11px]">
+                    {(stats.critDmg * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 详细属性弹窗 */}
+      <DetailedStatsModal
+        isOpen={showDetailedStats}
+        heroName={awakenedName}
+        stats={stats}
+        baseStats={baseStats as CalculatedEntityStats}
+        modifiers={permanentModifiers}
+        onClose={handleCloseDetailedStats}
+      />
+
+      {/* 天赋树弹窗 */}
+      {/* 天赋树弹窗（03 号：外提为独立组件） */}
+      <HeroTalentModal
+        isOpen={showTalentModal}
+        heroId={heroId}
+        heroName={config.name}
+        onClose={() => setShowTalentModal(false)}
+      />
+
+      {/* 装备详情弹窗 */}
+      {selectedEquipSlot && heroEquip[selectedEquipSlot] && showEquipDetailModal && (
+        <EquipmentDetailModal
+          isOpen={showEquipDetailModal}
+          heroId={heroId}
+          slot={selectedEquipSlot}
+          onClose={() => setShowEquipDetailModal(false)}
+        />
+      )}
+
+      {/* 未装备选择器弹窗 */}
+      {selectedEquipSlot && showEquipSelectorModal && (
+        <EquipSelectorModal
+          isOpen={showEquipSelectorModal}
+          heroId={heroId}
+          slot={selectedEquipSlot}
+          onClose={() => setShowEquipSelectorModal(false)}
+          onSelectSuccess={() => setShowEquipSelectorModal(false)}
+        />
+      )}
+
+      {/* 英雄档案弹窗（10 号）：后勤驻守特长卡片入口 */}
+      <HeroDossierModal isOpen={showDossierModal} heroId={heroId} onClose={() => setShowDossierModal(false)} />
+
+      {/* 批量升级弹窗（15 号）：消耗经验手册 */}
+      <ExpLevelUpModal
+        isOpen={showExpLevelUpModal}
+        heroId={heroId}
+        onClose={() => setShowExpLevelUpModal(false)}
+      />
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
+};
+
+// 04 号 04c：memo 包裹——props（isOpen/heroId/onSelectHero/onClose）稳定时跳过重渲染；
+// 注意组件内部 useGame() 订阅 context，其收益在 04b（每秒 tick 短路）后生效。
+const MemoizedHeroDetailModal = React.memo(HeroDetailModal);
+export default MemoizedHeroDetailModal;

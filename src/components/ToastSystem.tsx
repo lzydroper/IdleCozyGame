@@ -59,8 +59,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast, showConfirm }}>
       {children}
 
-      {/* Toasts Container */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-xs pointer-events-none">
+      {/* Toasts Container：z 层级高于所有弹窗（弹窗 z-[10000~10002]），保证任何弹窗内触发的提示可见 */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[11000] flex flex-col gap-2 w-full max-w-xs pointer-events-none">
         {toasts.map(toast => {
           let bgColor = 'bg-zinc-900 border-zinc-700 text-zinc-100';
           let Icon = Info;
@@ -92,9 +92,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         })}
       </div>
 
-      {/* Custom Confirm Modal */}
+      {/* Custom Confirm Modal：与 toast 同级，避免被弹窗遮挡 */}
       {confirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 z-[11000] flex items-end justify-center p-4">
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-3xl p-5 shadow-2xl animate-slide-up flex flex-col gap-4 text-center">
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider">{confirm.title}</h3>

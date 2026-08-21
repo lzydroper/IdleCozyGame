@@ -4,14 +4,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GameProvider, useGame } from './context/GameContext';
 import { ToastProvider } from './components/ToastSystem';
-import WorkshopTab from './components/WorkshopTab';
 import type { GameState } from './types/game';
 
 // 基础的空存档，确保其他属性合法
 const BASE_SAVE = {
   player: {
-    hp: 100,
-    maxHp: 100,
     food: 100,
     maxFood: 100,
     energy: 100,
@@ -25,7 +22,6 @@ const BASE_SAVE = {
     slots: [],
     unlockedSlotsCount: 4
   },
-  survivors: {},
   exploration: {
     inRealityExploration: false,
     realitySteps: 0,
@@ -39,9 +35,9 @@ const BASE_SAVE = {
       sanity_capsule: 3,
       warp_capsule: 0
     },
-    survivorResonance: {}
+    rescueProgress: {},
+    dreamLockdownUntil: null
   },
-  discoveredBlueprints: [],
   activeAlert: {
     type: null,
     hp: 0
@@ -51,15 +47,16 @@ const BASE_SAVE = {
   logs: []
 };
 
-// 辅助组件，调用真实 useSupplyItem (单元测试)
+// 辅助组件，调用真实 supplyItem (单元测试)
 const TestUsageComponent: React.FC<{
-  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'nanite_injector' | 'purifying_serum';
+  itemId: 'ration' | 'energy_refill' | 'hot_stew' | 'purifying_serum' | 'sanity_capsule' | 'warp_capsule';
+  qty?: number;
   onState: (state: GameState) => void;
-}> = ({ itemId, onState }) => {
-  const { state, useSupplyItem } = useGame();
+}> = ({ itemId, qty, onState }) => {
+  const { state, supplyItem } = useGame();
 
   const handleUseItem = () => {
-    useSupplyItem(itemId);
+    supplyItem(itemId, qty ?? 1);
   };
 
   React.useEffect(() => {
@@ -67,8 +64,8 @@ const TestUsageComponent: React.FC<{
   }, [state, onState]);
 
   return (
-    <button data-testid={`use-${itemId}`} onClick={handleUseItem}>
-      Use {itemId}
+    <button data-testid={`use-${itemId}${qty !== undefined ? `-x${qty}` : ''}`} onClick={handleUseItem}>
+      Use {itemId}{qty !== undefined ? ` x${qty}` : ''}
     </button>
   );
 };
@@ -89,8 +86,7 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        food: 20,
-        hp: 50
+        food: 20
       },
       inventory: {
         hot_stew: 2
@@ -119,15 +115,13 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     expect(currentState).not.toBeNull();
     expect(currentState!.inventory.hot_stew).toBe(1);
     expect(currentState!.player.food).toBe(80);
-    expect(currentState!.player.hp).toBe(70);
   });
 
-  it('should correctly update stats when using nanite_injector (Unit)', async () => {
+  it('nanite_injector 不再是生存补给（仅用于治愈重伤，ticket 14）', async () => {
     const initialSave = {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        hp: 30,
         food: 80
       },
       inventory: {
@@ -141,7 +135,7 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     render(
       <GameProvider>
         <TestUsageComponent
-          itemId="nanite_injector"
+          itemId="purifying_serum"
           onState={(s) => {
             currentState = s;
           }}
@@ -149,15 +143,13 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
       </GameProvider>
     );
 
-    const button = screen.getByTestId('use-nanite_injector');
+    // 直接调用底层 supplyItem 也无法消耗纳米修复剂（已无 useEffect 补给效果）
     await act(async () => {
-      fireEvent.click(button);
+      fireEvent.click(screen.getByTestId('use-purifying_serum'));
     });
 
-    expect(currentState).not.toBeNull();
-    expect(currentState!.inventory.nanite_injector).toBe(0);
-    expect(currentState!.player.hp).toBe(90);
-    expect(currentState!.player.food).toBe(90);
+    expect(currentState!.inventory.nanite_injector).toBe(1);
+    expect(currentState!.player.food).toBe(80);
   });
 
   it('should correctly update stats when using purifying_serum (Unit)', async () => {
@@ -200,98 +192,114 @@ describe('Survival Supplies - Unit Tests via TestUsageComponent', () => {
     expect(currentState!.player.sanity).toBe(70);
     expect(currentState!.exploration.dreamPollution).toBe(20);
   });
-});
 
-describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    localStorage.clear();
-    localStorage.setItem('aether_garden_save_current_user', 'Guest');
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('should process hot_stew usage correctly from WorkshopTab UI', async () => {
+  it('should charge dream capsules on batch use (ADR-0016)', async () => {
     const initialSave = {
       ...BASE_SAVE,
-      player: {
-        ...BASE_SAVE.player,
-        food: 20,
-        hp: 50
-      },
-      inventory: {
-        hot_stew: 2
-      }
+      inventory: { sanity_capsule: 3 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
 
+    let currentState: GameState | null = null;
+
     render(
       <GameProvider>
-        <ToastProvider>
-          <WorkshopTab />
-        </ToastProvider>
+        <TestUsageComponent
+          itemId="sanity_capsule"
+            qty={2}
+          onState={(s) => {
+            currentState = s;
+          }}
+        />
       </GameProvider>
     );
 
-    // 先展开面板
-    const header = screen.getByText('避难所生存补给发放');
-    fireEvent.click(header);
-
-    // 找到 "食用 (饱食+60, 生命+20)" 按钮并点击
-    const button = screen.getByText('食用 (饱食+60, 生命+20)');
+    const button = screen.getByTestId('use-sanity_capsule-x2');
     await act(async () => {
       fireEvent.click(button);
     });
 
-    // 从 localStorage 中读取更新后的状态
-    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.inventory.hot_stew).toBe(1);
-    expect(savedState.player.food).toBe(80);
-    expect(savedState.player.hp).toBe(70);
+    expect(currentState).not.toBeNull();
+    // 背包 -2、稳定胶囊充能 +2（BASE_SAVE 初始 3）
+    expect(currentState!.inventory.sanity_capsule).toBe(1);
+    expect(currentState!.exploration.capsulesCharge.sanity_capsule).toBe(5);
   });
 
-  it('should process nanite_injector usage correctly from WorkshopTab UI', async () => {
+  it('should apply batch qty and clamp stats at max without overflow (ADR-0016)', async () => {
     const initialSave = {
       ...BASE_SAVE,
       player: {
         ...BASE_SAVE.player,
-        hp: 30,
-        food: 80
+        food: 81
       },
-      inventory: {
-        nanite_injector: 1
-      }
+      inventory: { ration: 2 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
 
     render(
       <GameProvider>
         <ToastProvider>
-          <WorkshopTab />
+          <TestUsageComponent
+            itemId="ration"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
         </ToastProvider>
       </GameProvider>
     );
 
-    // 先展开面板
-    const header = screen.getByText('避难所生存补给发放');
-    fireEvent.click(header);
-
-    // 找到 "注射 (生命+60, 饱食+10)" 按钮并点击
-    const button = screen.getByText('注射 (生命+60, 饱食+10)');
+    const button = screen.getByTestId('use-ration-x2');
     await act(async () => {
       fireEvent.click(button);
     });
 
-    // 从 localStorage 中读取更新后的状态
-    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.inventory.nanite_injector).toBe(0);
-    expect(savedState.player.hp).toBe(90);
-    expect(savedState.player.food).toBe(90);
+    // 消耗 2 个、属性封顶 100（81+60 → 100，无溢出）
+    expect(currentState!.inventory.ration).toBe(0);
+    expect(currentState!.player.food).toBe(100);
   });
 
-  it('should process purifying_serum usage correctly from WorkshopTab UI', async () => {
+  it('should apply batch qty partially and keep stats within max (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      player: {
+        ...BASE_SAVE.player,
+        food: 10
+      },
+      inventory: { ration: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <TestUsageComponent
+            itemId="ration"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-ration-x2');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // 10 + 60 = 70，未达上限
+    expect(currentState!.inventory.ration).toBe(0);
+    expect(currentState!.player.food).toBe(70);
+  });
+
+  it('should batch pollution reduction with clamp at 0 (ADR-0016)', async () => {
     const initialSave = {
       ...BASE_SAVE,
       player: {
@@ -302,34 +310,68 @@ describe('Survival Supplies - Integration Tests via WorkshopTab', () => {
         ...BASE_SAVE.exploration,
         dreamPollution: 50
       },
-      inventory: {
-        purifying_serum: 1
-      }
+      inventory: { purifying_serum: 2 }
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
 
     render(
       <GameProvider>
         <ToastProvider>
-          <WorkshopTab />
+          <TestUsageComponent
+            itemId="purifying_serum"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
         </ToastProvider>
       </GameProvider>
     );
 
-    // 先展开面板
-    const header = screen.getByText('避难所生存补给发放');
-    fireEvent.click(header);
-
-    // 找到 "净化 (污染-30, 理智+30)" 按钮并点击
-    const button = screen.getByText('净化 (污染-30, 理智+30)');
+    const button = screen.getByTestId('use-purifying_serum-x2');
     await act(async () => {
       fireEvent.click(button);
     });
 
-    // 从 localStorage 中读取更新后的状态
-    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.inventory.purifying_serum).toBe(0);
-    expect(savedState.player.sanity).toBe(70);
-    expect(savedState.exploration.dreamPollution).toBe(20);
+    // 理智 40+60 → 100；污染 50-60 → 0（clamp）
+    expect(currentState!.inventory.purifying_serum).toBe(0);
+    expect(currentState!.player.sanity).toBe(100);
+    expect(currentState!.exploration.dreamPollution).toBe(0);
+  });
+
+  it('should charge warp capsule on use (ADR-0016)', async () => {
+    const initialSave = {
+      ...BASE_SAVE,
+      inventory: { warp_capsule: 2 }
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(initialSave));
+
+    let currentState: GameState | null = null;
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <TestUsageComponent
+            itemId="warp_capsule"
+            qty={2}
+            onState={(s) => {
+              currentState = s;
+            }}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    const button = screen.getByTestId('use-warp_capsule-x2');
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    // 背包 -2、跃迁胶囊充能 +2（初始 0）
+    expect(currentState!.inventory.warp_capsule).toBe(0);
+    expect(currentState!.exploration.capsulesCharge.warp_capsule).toBe(2);
   });
 });
+

@@ -1,6 +1,6 @@
+import type { FacilityType } from '../data/facilities';
+
 export interface PlayerStats {
-  hp: number;         // 现实生命值
-  maxHp: number;
   food: number;       // 现实饱食度
   maxFood: number;
   energy: number;     // 现实魔能 (用于过滤辐射/温室供能)
@@ -31,18 +31,134 @@ export interface GreenhouseSlot {
   cropId: string | null;    // 种植的作物，null表示空闲
   growthProgress: number;   // 0 - 100
   growthTimeLeft: number;   // 剩余秒数
-  isWatered: boolean;       // 浇水状态（生长速度翻倍）
+  isWatered: boolean;       // 湿润状态（维持生长：未浇水则作物不生长，浇水后 1x 生长）
 }
 
-export interface Survivor {
+// === 英雄（Hero）系统：Melvor 式改造新增 ===
+
+// 英雄职阶：守护者（坦克）/ 进攻者（输出）/ 协奏者（辅助）
+export type HeroClass = 'guardian' | 'attacker' | 'conductor';
+
+// 英雄阵营：奥术 / 机械 / 梦魇 / 英灵 / 星界 / 魂印
+export type HeroFaction = 'arcane' | 'mechanical' | 'nightmare' | 'spirit' | 'astral' | 'soulseal';
+
+// 英雄运行时状态（Record 的 key = 英雄配置 id，英雄为唯一实例）
+export interface HeroState {
+  level: number;
+  exp: number;
+  hp: number;
+  maxHp: number;
+  star: number;
+  wounded: boolean;         // 重伤标记：战斗失败（小队全灭）后禁止上阵
+  talentPoints: number;     // 未分配天赋点（升级获得，ticket 11）
+  talents: Record<string, number>; // 天赋树投入：节点 id -> 已投入点数（ticket 11）
+  awakened: boolean;        // 觉醒标记：满星后消耗奥术星体觉醒（ticket 12）
+  logisticsFacilityId: DutyAssignment | null; // 后勤指派（null = 未指派，非 null 时无法上阵战斗）
+}
+
+// === 后勤指派统一模型（ADR-0018：logisticsFacilityId 改为结构化对象） ===
+
+// 后勤职务类型：浇水操作员 / 远征探索员 / 设施驻守员
+export type DutyType = 'waterer' | 'explorer' | 'facility';
+
+// 后勤指派：统一表达浇水岗 / 探索岗 / 设施驻守三种语义
+// waterer: targetId = 'greenhouse'; explorer: targetId = locationId; facility: targetId = '${facilityType}_${unitIndex}'
+export interface DutyAssignment {
+  type: DutyType;
+  targetId: string;
+}
+
+// 召唤进度状态（100 抽保底计数）
+export interface SummonState {
+  pityCount: number;        // 连续未获得未拥有英雄的累计次数（100 抽硬保底 + 软保底共用）
+}
+
+// 救援进度（ADR-0013）：英雄免费获取途径——梦境共鸣 → 现实救援
+// locationId 存在 ⇔ 共鸣满 100% 且现实坐标已锁定，可发起救援
+// 救援成功后条目移除，英雄写入 GameState.heroes
+// (旧字段 survivorResonance 已废弃，alpha 不迁移存档)
+export interface RescueProgress {
+  resonance: number;   // 共鸣度 0-100
+  locationId?: string; // 已锁定的现实救援地点 ID
+}
+
+// === 装备系统（ticket 10）：3 槽装备 + 系列套装 + 强化 + 神话锻造 ===
+
+// 装备槽位：武器 / 防具 / 饰品
+export type EquipmentSlot = 'weapon' | 'armor' | 'trinket';
+
+// 已穿戴的装备实例：配置 id + 强化等级（0-30）+ 神话标记
+export interface EquippedItem {
+  itemId: string;   // EQUIPMENT_CONFIG 中的装备配置 id
+  enhance: number;  // 强化等级，上限 +30
+  mythic: boolean;  // 是否已锻造为神话装备（必为 +30）
+}
+
+// 英雄的三槽装备栏（null = 空槽）
+export interface HeroEquipment {
+  weapon: EquippedItem | null;
+  armor: EquippedItem | null;
+  trinket: EquippedItem | null;
+}
+
+// === 战斗核心（ticket 05）：三人轮询回合制 ===
+
+// 单次攻击动作（战斗日志的一行）
+export interface BattleAction {
+  round: number;
+  actorSide: 'hero' | 'enemy';
+  actorId: string;
+  actorName: string;
+  targetName: string;
+  damage: number;
+  kind?: 'attack' | 'skill' | 'heal'; // 行动类型（ticket 12 觉醒专属技能：heal 的 damage 为治疗量）
+  skillName?: string;                  // kind === 'skill' | 'heal' 时的技能名
+}
+
+// 一场战斗的模拟结果（纯战斗，不含经济结算）
+export interface BattleResult {
+  victory: boolean;      // 敌人全灭 → 胜利
+  partyWiped: boolean;   // 英雄全灭 → 战败（重伤触发条件）
+  rounds: number;
+  actions: BattleAction[];
+  // 逐动作 HP 快照（ticket 21 血条播放）：hpTrack[0] = 初始满血状态，
+  // hpTrack[k] = 第 k 个动作执行后的全员 HP（长度 = actions.length + 1）。
+  // 可选：旧存档/测试 mock 无此字段时 UI 回退为纯日志播报。
+  hpTrack?: BattleHpEntry[][];
+}
+
+// 单个参战者的 HP 快照（ticket 21 血条展示用）
+export interface BattleHpEntry {
   id: string;
+  side: 'hero' | 'enemy';
   name: string;
-  role: "farmer" | "engineer" | "scout" | "guard" | "chemist" | "scavenger";
-  bonus: number;            // 效率提升比例（例如 0.15 表示提升15%）
-  isAssigned: boolean;      // 是否已指派工作
-  assignedSlotId?: number;  // 指派的温室槽位或工坊槽位
-  realityLocationId?: string; // 该幸存者在现实中的救援地点 ID
-  assignedJobId?: string | null;
+  hp: number;
+  maxHp: number;
+}
+
+// 战斗结算：掉落/经验/重伤入账
+export interface CombatSettlement {
+  battle: BattleResult;
+  drops: Record<string, number>;   // 胜利掉落（材料），已入账
+  soulEchoes: number;              // 胜利灵魂残响掉落，已入账
+  expPerHero: number;              // 每位上阵英雄获得的经验（战败为 0）
+  woundedHeroIds: string[];        // 战败后进入重伤的英雄
+}
+
+// 确认式离线挂机（ticket 08）：玩家在某战斗区域主动开启后，离线期间战斗才推进；
+// 可随时停止；体力耗尽或小队战败自动停止
+export interface CombatIdleState {
+  zoneId: string | null;       // 正在挂机的区域（null = 未挂机）
+  startTime: number | null;    // 开始挂机时间戳（UI 展示用）
+  accumulatedSeconds?: number; // 已累计的战斗秒数（在线逐秒累计，够一场 battleDurationSeconds 结算一场；离线结算后未用满一战的秒数保留）
+}
+
+// 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）
+export interface CombatState {
+  zoneId: string | null;
+  lastSettlement: CombatSettlement | null;
+  zonesCleared: string[];  // 已通关区域（ticket 07 线性区域链：通关当前区解锁下一区）
+  idle: CombatIdleState;   // 确认式离线挂机开关（ticket 08）
 }
 
 export interface GameState {
@@ -51,8 +167,19 @@ export interface GameState {
   greenhouse: {
     slots: GreenhouseSlot[];
     unlockedSlotsCount: number;
+    autoFarm: {
+      enabled: boolean;    // 挂机开关（08）：需已驻守才可开启
+      cropId: string | null; // 挂机选定种子对应的作物（null = 未选种）
+    };
   };
-  survivors: Record<string, Survivor>;
+  heroes: Record<string, HeroState>;   // 英雄系统：config id -> 英雄状态（开局赠送诺娃）
+  equipment: Record<string, HeroEquipment>; // 英雄装备栏：hero id -> 三槽装备（ticket 10）
+  equipmentInventory: Record<string, EquippedItem[]>; // 背包装备实例（ADR-0014 修订）：装备id -> 持有实例（含强化/神话），卸下保留强化
+  summon: SummonState;                 // 召唤进度（软保底）
+  stamina: number;                     // 体力：自动战斗消耗的独立资源，随时间恢复
+  maxStamina: number;                  // 体力上限
+  party: string[];                     // 上阵队伍：最多 3 名英雄 id（无阵型，固定顺序）
+  combat: CombatState;                 // 战斗状态（最近战斗区域与结算）
   exploration: {
     // 现实探索
     inRealityExploration: boolean;
@@ -60,6 +187,7 @@ export interface GameState {
     realityLocationId: string | null;
     realityBag: Record<string, number>; // 探索中临时背包
     realityEventId?: string | null;     // 当前激活的现实事件ID
+    realityEncounterId: string | null;  // 待战斗的战斗遭遇事件ID（ticket 06 探索战斗汇合）
     // 梦境探索
     inDreamExploration: boolean;
     dreamSteps: number;
@@ -67,11 +195,10 @@ export interface GameState {
     dreamBag: Record<string, number>;  // 梦境中获得的碎片/线索
     dreamEventId?: string | null;      // 当前激活的梦境事件ID
     capsulesCharge: Record<string, number>; // 梦胶囊ID -> 剩余可用次数
-    survivorResonance: Record<string, number>; // 幸存者ID -> 共鸣度
+    rescueProgress: Record<string, RescueProgress>; // 英雄ID -> 救援进度（共鸣+坐标锁定，ADR-0013）
+    dreamLockdownUntil: number | null; // 梦境封锁截止时间戳（泄露防御失败触发，ticket 14）
   };
-  discoveredBlueprints: string[];
-  activeAlert: {
-    type: "dream_leak" | null;
+  activeAlert: {    type: "dream_leak" | null;
     hp: number;
   };
   lastTick: number;
@@ -84,24 +211,33 @@ export interface GameState {
   lastOfflineReport?: OfflineReport | null;
 }
 
-export interface AutoRecipe {
-  id: string;
-  name: string;
-  input: Record<string, number>;
-  output: Record<string, number>;
-  duration: number; // 单次生产耗时（秒）
-  facilityId: 'smelter' | 'assembler';
+// === 产线设施（ticket 13）：每条 FIFO 配方队列顺序执行；队列容量 = 设施等级 ===
+// FacilityType 由 FACILITIES_CONFIG 配置表推导（data/facilities.ts），新增设备种类自动扩展
+
+// 基建升级施工中状态（时间戳驱动）：开始升级即扣材料并记录 startTime，
+// 完成判定 = now - startTime >= 目标等级耗时；在线由 tick 结算，离线由回归结算
+export interface UpgradeInProgress {
+  startTime: number; // 开始升级的时间戳（ms）
 }
 
+// 升级条目 key 约定（存于 shelter.upgrades）：
+// - 单实例升级项（battery/generator/recycler/greenhouse_dock）：key = 升级项 id
+// - 产线设施升级：key = `${facilityType}_${unitIndex}`（如 'smelter_0'）
+// - 产线扩建：key = `expand_${facilityType}`（如 'expand_smelter'）
+
+// 产线设施实例（issue 06：单任务批量生产模型，源自 01 决议）
+// 每台设备同时只跑一个「配方 × 批次」任务；recipeId 为 null 时待机。
+// 队列模型（queue/active）已移除：开始任务即扣全部材料，取消退款 = 剩余批次 × 折扣单价。
 export interface AutomationFacility {
-  id: string;                     // 'smelter' | 'assembler'
+  id: FacilityType;
   name: string;
-  level: number;                  // 设施等级，升级可缩短加工时间
-  activeRecipeId: string | null;  // 当前启用的加工配方，null表示未启用
-  currentProgress: number;        // 单次加工进度 (0 - 100)
-  timeLeft: number;               // 当前单次加工剩余时间 (秒)
-  assignedSurvivorId: string | null; // 派驻的幸存者ID（提供效率加成）
-  active?: boolean;               // 控制启用状态，默认为 true
+  level: number;                  // 设施等级：决定加工速度（每级 +10%）
+  recipeId: string | null;        // 进行中配方 id（null = 待机）
+  targetCount: number;            // 目标批次数（开始任务时扣 targetCount × 每批折扣成本）
+  completedCount: number;         // 已完成批次数
+  timeLeft: number;               // 当前批剩余秒（推进真相）
+  currentProgress: number;        // 当前批进度 (0 - 100，由 timeLeft 推导)
+  costReduction?: number;         // 任务开始时刻的驻守原料减免快照（0-1；取消退款按此单价，扣/退同价）
 }
 
 export interface ShelterStats {
@@ -109,11 +245,12 @@ export interface ShelterStats {
   batteryLevel: number;           // 蓄电池等级
   generatorLevel: number;         // 发电机等级
   recyclerLevel: number;           // 回收站等级
-  facilities: Record<string, AutomationFacility>;
+  facilities: Record<FacilityType, AutomationFacility[]>; // 每种设施可扩建多台并行（ticket 13）
+  upgrades: Record<string, UpgradeInProgress>;            // 基建升级施工中列表（key 约定见 UpgradeInProgress）
   
   // 岗位分配
-  assignedWatererId: string | null;   // 指派自动浇水的幸存者ID
-  assignedExplorerId: string | null;  // 指派挂机探索的幸存者ID
+  assignedWatererId: string | null;   // 指派自动浇水的英雄ID
+  assignedExplorerId: string | null;  // 指派挂机探索的英雄ID
   
   // 挂机派遣状态
   expedition: {
@@ -128,6 +265,25 @@ export interface ShelterStats {
 export interface OfflineReport {
   elapsedSeconds: number;
   recoveredEnergy: number;
+  recoveredStamina: number;            // 离线期间恢复的体力
   recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
   logs: string[];
+  completedUpgrades?: string[];            // 离线期间完成的基建升级（如 "魔导发电机 升级至 Lv.3"）
+  idleCombat?: IdleCombatReport | null;    // 确认式离线挂机战斗结算（ticket 08）
+}
+
+// 离线挂机战斗结算报告（ticket 08）：重连弹窗展示掉落与经验
+export interface IdleCombatReport {
+  zoneId: string;
+  zoneName: string;
+  battlesFought: number;   // 本次离线实际战斗场数
+  victories: number;       // 胜利场数
+  defeats: number;         // 战败场数（战败即自动停止挂机）
+  draws: number;           // 平局场数
+  drops: Record<string, number>;     // 累计掉落（已入账）
+  soulEchoesGained: number;          // 累计灵魂残响
+  expPerHero: number;                // 每位上阵英雄累计获得经验
+  staminaConsumed: number;           // 挂机战斗消耗的体力
+  autoStopped: boolean;              // 是否自动停止（体力耗尽 / 战败）
+  stopReason?: 'stamina' | 'defeat';
 }
