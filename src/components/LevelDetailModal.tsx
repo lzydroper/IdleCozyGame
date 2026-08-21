@@ -144,16 +144,22 @@ export const LevelDetailModal: React.FC<LevelDetailModalProps> = ({
           </div>
 
           {/* 首通奖励 */}
-          {level.firstClearDrops && !isCleared && (
+          {level.firstClearDrops && (
             <div className="space-y-1.5">
-              <div className="text-[10px] text-amber-500 font-bold uppercase tracking-wider px-0.5">
-                首通额外奖励
+              <div className={`text-[10px] font-bold uppercase tracking-wider px-0.5 ${
+                isCleared ? 'text-zinc-500' : 'text-amber-500'
+              }`}>
+                {isCleared ? '首通额外奖励（已达成领取）' : '首通额外奖励'}
               </div>
               <div className="flex flex-wrap gap-1.5 text-xs">
                 {level.firstClearDrops.map((drop, idx) => (
                   <span
                     key={idx}
-                    className="px-2.5 py-1 rounded-xl border border-amber-500/50 bg-amber-950/50 text-amber-300 font-bold"
+                    className={`px-2.5 py-1 rounded-xl border font-bold ${
+                      isCleared
+                        ? 'border-zinc-800 bg-zinc-950 text-zinc-500 line-through opacity-70'
+                        : 'border-amber-500/50 bg-amber-950/50 text-amber-300'
+                    }`}
                   >
                     首通：{formatDropText(drop)}
                   </span>

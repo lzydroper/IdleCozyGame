@@ -2,6 +2,7 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 import { getRegion } from '../data/regionSelectors';
 import type { LevelConfig } from '../data/regions';
+import { ENEMY_CONFIGS } from '../data/enemies';
 import { isRegionUnlocked, isLevelUnlocked, getClearedLevels } from '../state/levelCombat';
 import { Crown } from 'lucide-react';
 
@@ -40,40 +41,32 @@ export const LevelBrowser: React.FC<LevelBrowserProps> = ({
         const code = String(index + 1).padStart(2, '0');
         const isCleared = clearedList.includes(level.id);
         const isUnlocked = isLevelUnlocked(state, region.id, level.id);
-        const isBossLevel = index === region.levels.length - 1;
+        const isBossLevel = level.enemies.some((id) => ENEMY_CONFIGS[id]?.role === 'boss');
 
         let statusText = '未解锁';
         let statusBadgeClass = 'text-zinc-500 bg-zinc-950 border-zinc-850';
         let cardBorderClass = 'border-zinc-850 opacity-60 bg-zinc-950/40';
 
-        if (!isRegionUnlockedForCombat) {
-          statusText = '未解锁';
-          statusBadgeClass = 'text-zinc-500 bg-zinc-950 border-zinc-850';
-          cardBorderClass = 'border-zinc-850 opacity-60 bg-zinc-950/40';
-        } else if (mode === 'idle') {
-          if (isCleared) {
-            statusText = '可挂机';
-            statusBadgeClass = 'text-amber-400 bg-amber-950/50 border-amber-500/30';
-            cardBorderClass = 'border-amber-500/30 hover:border-amber-500/60 bg-zinc-900/90';
+        if (isRegionUnlockedForCombat) {
+          if (mode === 'idle') {
+            if (isCleared) {
+              statusText = '可挂机';
+              statusBadgeClass = 'text-amber-400 bg-amber-950/50 border-amber-500/30';
+              cardBorderClass = 'border-amber-500/30 hover:border-amber-500/60 bg-zinc-900/90';
+            } else {
+              cardBorderClass = 'border-zinc-850 opacity-60 bg-zinc-950/30';
+            }
           } else {
-            statusText = '未解锁';
-            statusBadgeClass = 'text-zinc-500 bg-zinc-950 border-zinc-850';
-            cardBorderClass = 'border-zinc-850 opacity-60 bg-zinc-950/30';
-          }
-        } else {
-          // mode === 'active'
-          if (isCleared) {
-            statusText = '已通关';
-            statusBadgeClass = 'text-emerald-400 bg-emerald-950/50 border-emerald-500/30';
-            cardBorderClass = 'border-emerald-500/30 hover:border-emerald-500/60 bg-zinc-900/90';
-          } else if (isUnlocked) {
-            statusText = '可挑战';
-            statusBadgeClass = 'text-rose-300 bg-rose-950/50 border-rose-500/40';
-            cardBorderClass = 'border-rose-500/40 hover:border-rose-500/70 bg-zinc-900/90';
-          } else {
-            statusText = '未解锁';
-            statusBadgeClass = 'text-zinc-500 bg-zinc-950 border-zinc-850';
-            cardBorderClass = 'border-zinc-850 opacity-60 bg-zinc-950/40';
+            // mode === 'active'
+            if (isCleared) {
+              statusText = '已通关';
+              statusBadgeClass = 'text-emerald-400 bg-emerald-950/50 border-emerald-500/30';
+              cardBorderClass = 'border-emerald-500/30 hover:border-emerald-500/60 bg-zinc-900/90';
+            } else if (isUnlocked) {
+              statusText = '可挑战';
+              statusBadgeClass = 'text-rose-300 bg-rose-950/50 border-rose-500/40';
+              cardBorderClass = 'border-rose-500/40 hover:border-rose-500/70 bg-zinc-900/90';
+            }
           }
         }
 

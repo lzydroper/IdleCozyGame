@@ -923,11 +923,11 @@ const CombatPanel: React.FC<{
           key={'history-' + settlement.battle.rounds + '|' + settlement.battle.events.length + '|' + settlement.battle.outcome}
           settlement={settlement}
           zoneName={(() => {
-            const rid = state.combat?.regionId ?? null;
-            const lid = state.combat?.levelId ?? null;
-            const r = rid ? getRegion(rid) : undefined;
-            const l = rid && lid ? getLevel(rid, lid) : undefined;
-            return r ? (l ? r.name + ' · ' + l.name : r.name) : '战斗区域';
+            const currentRegionId = state.combat?.regionId ?? null;
+            const currentLevelId = state.combat?.levelId ?? null;
+            const currentRegion = currentRegionId ? getRegion(currentRegionId) : undefined;
+            const currentLevel = currentRegionId && currentLevelId ? getLevel(currentRegionId, currentLevelId) : undefined;
+            return currentRegion ? (currentLevel ? currentRegion.name + ' · ' + currentLevel.name : currentRegion.name) : '战斗区域';
           })()}
         />
       )}
