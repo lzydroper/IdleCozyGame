@@ -13,13 +13,13 @@ import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
-import { ALL_COMBAT_ZONES, COMBAT_ZONES } from '../data/combatZones';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { createInitialHero } from '../data/initialState';
-import { isZoneUnlocked } from '../state/combat';
+import { getMainlineRegions, getRegion, getLevel, getTestRegions } from '../data/regionSelectors';
+import { isRegionUnlocked, isLevelUnlocked, isRegionCleared, getClearedLevels } from '../state/levelCombat';
 import { getActiveBonds } from '../state/bonds';
 import { formatModifiers } from '../state/statSystem';
 import type { CombatSettlement } from '../types/game';
@@ -575,9 +575,9 @@ const EncounterPanel: React.FC<{
   );
 };
 
-// === 战斗挂机面板（ticket 05）：选区 → 三人小队轮询回合制自动战斗 ===
+// === 战斗挂机面板（combat-level ticket 03）：区域 → 关卡 ===
 const CombatPanel: React.FC = () => {
-  const { state, startCombat, startBossBattle, startIdle, stopIdle } = useGame();
+  const { state, startLevelCombat, startLevelIdle, stopLevelIdle } = useGame();
   const { showToast } = useToast();
 
   const stamina = Math.floor(state.stamina || 0);
@@ -586,63 +586,52 @@ const CombatPanel: React.FC = () => {
   const party = (state.party || []).filter(id => !!state.heroes[id]);
   const anyWounded = party.some(id => state.heroes[id].wounded);
   const settlement = state.combat?.lastSettlement || null;
-  const clearedZones = state.combat?.zonesCleared || [];
-  // 羁绊加成（ticket 09）：当前上阵队伍命中的羁绊
+  const clearedLevels = getClearedLevels(state);
   const activeBonds = getActiveBonds(state.party || []);
-  // 挂机（ticket 08 + 修复 09）：在线也持续自动战斗
   const idle = state.combat?.idle || null;
-  const idleZone = idle?.zoneId ? COMBAT_ZONES[idle.zoneId] : null;
+  const idleRegionId = idle?.regionId ?? null;
+  const idleLevelId = idle?.levelId ?? null;
+  const idleRegion = idleRegionId ? getRegion(idleRegionId) : undefined;
+  const idleLevel = idleRegionId && idleLevelId ? getLevel(idleRegionId, idleLevelId) : undefined;
+  const [expandedRegionId, setExpandedRegionId] = useState<string | null>(() => getMainlineRegions()[0]?.id ?? null);
 
-  const handleStart = (zoneId: string) => {
-    const outcome = startCombat(zoneId);
-    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
+  const regions = [...getMainlineRegions(), ...getTestRegions()];
+
+  const handleStart = (regionId: string, levelId: string) => {
+    const outcome = startLevelCombat(regionId, levelId);
+    if (outcome.failure === 'locked') showToast('关卡尚未解锁，先通关上一关卡或区域！', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
+    else if (outcome.failure === 'unknown_level') showToast('未知战斗关卡。', 'error');
     else if (outcome.settlement) {
-      if (outcome.settlement.battle.victory) showToast('战斗胜利！战利品与经验已入账。', 'success');
+      if (outcome.settlement.battle.victory) showToast('战斗胜利！战利品已入账。', 'success');
       else if (outcome.settlement.battle.partyWiped) showToast('战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
       else showToast('战斗平局，未分胜负。', 'info');
     }
   };
 
-  const handleStartIdle = (zoneId: string) => {
-    const outcome = startIdle(zoneId);
-    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
+  const handleStartIdle = (regionId: string, levelId: string) => {
+    const outcome = startLevelIdle(regionId, levelId);
+    if (outcome.failure === 'locked') showToast('关卡尚未通关，无法开启挂机。', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，无法开启挂机（需 ≥ 一场战斗的体力）。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.failure === 'already_idling') showToast('已在其他区域挂机中，请先停止当前挂机。', 'warning');
-    else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
-    else showToast('挂机已开启：将自动持续战斗，体力耗尽自动停止。', 'success');
+    else if (outcome.failure === 'already_idling') showToast('已在其他关卡挂机中，请先停止当前挂机。', 'warning');
+    else if (outcome.failure === 'unknown_level') showToast('未知战斗关卡。', 'error');
+    else if (outcome.ok) {
+      showToast('挂机已开启：将自动持续战斗，体力耗尽自动停止。', 'success');
+    }
   };
 
   const handleStopIdle = () => {
-    if (stopIdle()) showToast('⏹ 挂机已停止，剩余体力保留。', 'info');
-  };
-
-  const handleBoss = (zoneId: string) => {
-    const outcome = startBossBattle(zoneId);
-    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
-    else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
-    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
-    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.settlement) {
-      const wasCleared = clearedZones.includes(zoneId);
-      if (outcome.settlement.battle.victory) {
-        showToast(wasCleared ? 'BOSS 再战胜利！专属掉落已入账。' : '首通 BOSS！区域已通关，解锁下一区域。', 'success');
-      } else if (outcome.settlement.battle.partyWiped) {
-        showToast('BOSS 战失败，小队全员重伤，需纳米修复剂治愈！', 'error');
-      } else {
-        showToast('BOSS 战平局，未分胜负。', 'info');
-      }
+    if (stopLevelIdle()) {
+      showToast('⏹ 挂机已停止，剩余体力保留。', 'info');
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* 体力条 */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1">
@@ -652,24 +641,23 @@ const CombatPanel: React.FC = () => {
         </div>
         <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-900">
           <div
-            className={`h-full transition-all duration-300 ${staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500'}`}
-            style={{ width: `${staminaPct}%` }}
+            className={'h-full transition-all duration-300 ' + (staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500')}
+            style={{ width: staminaPct + '%' }}
           />
         </div>
         <span className="text-[8px] text-zinc-600 font-bold">每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点，战斗消耗后随时间自动回满。</span>
       </div>
 
-      {/* 挂机状态（ticket 08 + 修复 09）：开启后在线/离线均持续推进战斗 */}
-      {idleZone && (
+      {idleRegion && idleLevel && (
         <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
           <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
-            <Timer className="w-3.5 h-3.5 text-amber-300" /> 挂机中：<GameIcon type="zone" id={idleZone.id} className="w-3.5 h-3.5" />{idleZone.name}
+            <Timer className="w-3.5 h-3.5 text-amber-300" /> 挂机中：<GameIcon type="zone" id={idleRegion.id} className="w-3.5 h-3.5" />{idleRegion.name} · {idleLevel.name}
             {idle?.startTime && (
               <span className="text-[8px] font-bold text-amber-500/80">
                 自 {new Date(idle.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 起
               </span>
             )}
-            <span className="text-[8px] font-bold text-amber-500/80">在线自动持续战斗；体力不足时等待恢复，耗尽后自动停止。</span>
+            <span className="text-[8px] font-bold text-amber-500/80">在线自动持续战斗；体力耗尽后自动停止。</span>
           </span>
           <button
             onClick={handleStopIdle}
@@ -680,7 +668,6 @@ const CombatPanel: React.FC = () => {
         </div>
       )}
 
-      {/* 当前上阵小队 */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
         <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Swords className="w-3.5 h-3.5" /> 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
         {party.length === 0 ? (
@@ -692,11 +679,7 @@ const CombatPanel: React.FC = () => {
               const hero = state.heroes[id];
               if (!cfg || !hero) return null;
               return (
-                <span key={id} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-                  hero.wounded
-                    ? 'border-red-500/40 bg-red-950/40 text-red-400'
-                    : `border-zinc-700 bg-zinc-950/60 text-zinc-300`
-                }`}>
+                <span key={id} className={'text-[9px] font-bold px-1.5 py-0.5 rounded-md border ' + (hero.wounded ? 'border-red-500/40 bg-red-950/40 text-red-400' : 'border-zinc-700 bg-zinc-950/60 text-zinc-300')}>
                   <GameIcon type="hero" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
                   {hero.wounded && '（重伤）'}
                 </span>
@@ -709,7 +692,6 @@ const CombatPanel: React.FC = () => {
         )}
       </div>
 
-      {/* 羁绊加成（ticket 09）：队伍满足组合/阵营条件即触发，战斗中数值生效 */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
         <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Handshake className="w-3.5 h-3.5" /> 羁绊加成</span>
         {party.length === 0 ? (
@@ -731,125 +713,106 @@ const CombatPanel: React.FC = () => {
         )}
       </div>
 
-      {/* 最近一次战斗结算：事件流为数据源的战斗信息轮播（combat-turn） */}
       {settlement && (
         <CombatEventLog
-          key={`history-${settlement.battle.rounds}|${settlement.battle.events.length}|${settlement.battle.outcome}`}
+          key={'history-' + settlement.battle.rounds + '|' + settlement.battle.events.length + '|' + settlement.battle.outcome}
           settlement={settlement}
-          zoneName={COMBAT_ZONES[state.combat?.zoneId || '']?.name || '战斗区域'}
+          zoneName={(() => {
+            const rid = state.combat?.regionId ?? null;
+            const lid = state.combat?.levelId ?? null;
+            const r = rid ? getRegion(rid) : undefined;
+            const l = rid && lid ? getLevel(rid, lid) : undefined;
+            return r ? (l ? r.name + ' · ' + l.name : r.name) : '战斗区域';
+          })()}
         />
       )}
 
-      {/* 战斗区域列表 */}
-      <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（线性递进，通关当前区解锁下一区）:</h3>
+      <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域与关卡（通关末关解锁下一区域）:</h3>
       <div className="flex flex-col gap-3">
-        {ALL_COMBAT_ZONES.map(zone => {
-          const unlocked = isZoneUnlocked(state, zone.id);
-          const cleared = clearedZones.includes(zone.id);
-          const zoneIdx = ALL_COMBAT_ZONES.findIndex(z => z.id === zone.id);
-          const prevZone = zoneIdx > 0 ? ALL_COMBAT_ZONES[zoneIdx - 1] : null;
-          const insufficient = !unlocked || stamina < zone.staminaCost || party.length === 0 || anyWounded;
-          const bossReady = unlocked && party.length > 0 && !anyWounded && stamina >= zone.boss.staminaCost;
-          // 挂机（ticket 08 + 修复 09）：在线也持续自动战斗；仅已通关区域可挂机（线性递进刷材料）
-          const idleActiveHere = idle?.zoneId === zone.id;
-          const idlingElsewhere = !!idle?.zoneId && idle.zoneId !== zone.id;
-          const idleDisabled = !cleared || party.length === 0 || anyWounded || stamina < zone.staminaCost || idlingElsewhere;
+        {regions.map(region => {
+          const regionUnlocked = isRegionUnlocked(state, region.id);
+          const regionCleared = isRegionCleared(state, region.id);
           return (
             <div
-              key={zone.id}
-              className={`p-4 rounded-3xl border transition-all flex flex-col gap-2 ${
-                !unlocked
-                  ? 'bg-zinc-950/30 border-zinc-800/50 opacity-60'
-                  : insufficient || idleActiveHere
-                    ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
-                    : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
-              }`}
-              onClick={() => !insufficient && !idleActiveHere && handleStart(zone.id)}
+              key={region.id}
+              className={'p-4 rounded-3xl border transition-all flex flex-col gap-2 ' + (!regionUnlocked ? 'bg-zinc-950/30 border-zinc-800/50 opacity-60' : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30')}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div
+                className="flex items-start justify-between gap-2 cursor-pointer select-none"
+                onClick={() => setExpandedRegionId(expandedRegionId === region.id ? null : region.id)}
+              >
                 <div>
                   <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                    <GameIcon type="zone" id={zone.id} className="w-4 h-4" />{zone.name}
+                    <GameIcon type="zone" id={region.id} className="w-4 h-4" />{region.name}
                     <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-400">
-                      推荐 Lv.{zone.recommendedLevel}
+                      推荐 Lv.{region.recommendedLevel}
                     </span>
-                    {cleared && (
+                    {regionCleared && (
                       <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-400">
                         <Check className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />已通关
                       </span>
                     )}
-                    {!unlocked && (
+                    {!regionUnlocked && (
                       <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-500">
                         <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />未解锁
                       </span>
                     )}
                   </h4>
-                  <p className="text-[10px] text-zinc-500 mt-1 leading-normal">{zone.description}</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 leading-normal">{region.description}</p>
                 </div>
-                <div className="flex flex-col gap-1.5 shrink-0">
-                  <button
-                    disabled={insufficient || idleActiveHere}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                      insufficient || idleActiveHere
-                        ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer'
-                    }`}
-                  >
-                    {idleActiveHere ? '挂机中…' : `开战（体力 -${zone.staminaCost}）`}
-                  </button>
-                  <button
-                    disabled={!idleActiveHere && idleDisabled}
-                    onClick={(e) => { e.stopPropagation(); if (idleActiveHere) handleStopIdle(); else handleStartIdle(zone.id); }}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                      idleActiveHere
-                        ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98'
-                        : idleDisabled
-                          ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400/30 text-white cursor-pointer active:scale-98'
-                    }`}
-                  >
-                    {idleActiveHere ? '停止挂机' : '开始挂机'}
-                  </button>
-                </div>
-              </div>
-              {!unlocked && prevZone && (
-                <span className="text-[8px] text-zinc-600 font-bold"><Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />通关【{prevZone.name}】后解锁</span>
-              )}
-              <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
-                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  敌人：{zone.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
-                </span>
-                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.soulEchoMin}-{zone.soulEchoMax}
-                </span>
-                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{zone.expReward}/英雄</span>
               </div>
 
-              {/* 关底 BOSS（ticket 07：击败 = 通关本区，复用同一战斗场景） */}
-              <div className={`flex items-center justify-between gap-2 rounded-xl border p-2 ${
-                !unlocked ? 'border-zinc-800/60 bg-zinc-950/40' : 'border-purple-500/25 bg-purple-950/25'
-              }`}>
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-[9px] font-black text-purple-300 truncate">
-                    <Crown className="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-amber-300" />关底 BOSS：<GameIcon type="enemy" id={zone.boss.enemies[0]} className="w-3 h-3 inline-block" />{zone.boss.name}
-                  </span>
-                  <span className="text-[8px] text-zinc-500 font-bold truncate">
-                    专属掉落：{zone.boss.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.boss.soulEchoMin}-{zone.boss.soulEchoMax} · 经验 ×{zone.boss.expReward}
-                  </span>
-                </div>
-                <button
-                  // 挂机中禁用挑战 BOSS（避免手动/挂机结算竞争，且挂机时不应手动开战）
-                  disabled={!bossReady || idleActiveHere || idlingElsewhere}
-                  onClick={(e) => { e.stopPropagation(); handleBoss(zone.id); }}
-                  className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                    bossReady
-                      ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 border-purple-400/30 text-white cursor-pointer'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                  }`}
-                >
-                  <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />挑战 BOSS（体力 -{zone.boss.staminaCost}）
-                </button>
+              {expandedRegionId === region.id && (
+              <div className="flex flex-col gap-1.5">
+                {region.levels.map(level => {
+                  const unlocked = isLevelUnlocked(state, region.id, level.id);
+                  const cleared = (clearedLevels[region.id] ?? []).includes(level.id);
+                  const insufficient = !unlocked || stamina < level.staminaCost || party.length === 0 || anyWounded;
+                  const idleActiveHere = idleRegionId === region.id && idleLevelId === level.id;
+                  const idlingElsewhere = !!idleRegionId && !idleActiveHere;
+                  const idleDisabled = !cleared || party.length === 0 || anyWounded || stamina < level.staminaCost || idlingElsewhere;
+                  const isBossLevel = region.levels[region.levels.length - 1].id === level.id;
+                  return (
+                    <div
+                      key={level.id}
+                      className={'rounded-xl border p-2 flex items-center justify-between gap-2 ' + (!unlocked ? 'border-zinc-800/60 bg-zinc-950/40' : isBossLevel ? 'border-purple-500/25 bg-purple-950/25' : 'border-zinc-800/70 bg-zinc-950/50')}
+                    >
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-[9px] font-black text-zinc-200 truncate">
+                          {isBossLevel && <Crown className="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-amber-300" />}
+                          {level.name}
+                          {cleared && <Check className="w-3 h-3 inline-block ml-1 -mt-0.5 text-emerald-400" />}
+                          {!unlocked && <Lock className="w-3 h-3 inline-block ml-1 -mt-0.5 text-zinc-500" />}
+                        </span>
+                        <span className="text-[8px] text-zinc-500 font-bold truncate">
+                          敌人：{level.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
+                        </span>
+                        <span className="text-[8px] text-zinc-600 font-bold truncate">
+                          掉落：{level.drops.filter(d => d.kind !== 'weighted').map(d => ITEMS_CONFIG[d.itemId]?.name || d.itemId).join('、') || '—'}
+                          {level.firstClearDrops && ' · 首通额外'}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <button
+                          disabled={insufficient || idleActiveHere}
+                          onClick={() => handleStart(region.id, level.id)}
+                          className={'shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ' + (insufficient || idleActiveHere ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer')}
+                        >
+                          {idleActiveHere ? '挂机中…' : '开战（体力 -' + level.staminaCost + '）'}
+                        </button>
+                        <button
+                          disabled={!idleActiveHere && idleDisabled}
+                          onClick={() => (idleActiveHere ? handleStopIdle() : handleStartIdle(region.id, level.id))}
+                          className={'shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ' + (idleActiveHere ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98' : idleDisabled ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400/30 text-white cursor-pointer active:scale-98')}
+                        >
+                          {idleActiveHere ? '停止挂机' : '开始挂机'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              )}
             </div>
           );
         })}

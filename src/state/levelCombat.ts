@@ -80,7 +80,6 @@ export const isRegionUnlocked = (state: GameState, regionId: string): boolean =>
 export const isLevelUnlocked = (state: GameState, regionId: string, levelId: string): boolean => {
   const region = getRegion(regionId);
   if (!region) return false;
-  if (region.isTestZone) return true;
   const idx = region.levels.findIndex((level) => level.id === levelId);
   if (idx === -1) return false;
   if (idx === 0) return isRegionUnlocked(state, regionId);

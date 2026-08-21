@@ -20,6 +20,10 @@ export const getRegionLevels = (regionId: string): LevelConfig[] =>
 export const getLevel = (regionId: string, levelId: string): LevelConfig | undefined =>
   REGION_INDEX[regionId]?.levels.find((level) => level.id === levelId);
 
+/** 所有测试专用区域（isTestZone），不进主线。 */
+export const getTestRegions = (): RegionConfig[] =>
+  ALL_REGIONS.filter((region) => region.isTestZone);
+
 /** 由关卡 local id 反查所在区域（本内容表内 local id 亦全局唯一）。 */
 export const findRegionByLevelId = (levelId: string): RegionConfig | undefined =>
   ALL_REGIONS.find((region) =>

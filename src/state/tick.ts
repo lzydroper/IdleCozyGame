@@ -15,6 +15,8 @@ import { GAME_CONSTANTS } from '../data/gameConstants';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { COMBAT_ZONES } from '../data/combatZones';
 import { recoverStamina, settleIdleUpdate } from './combat';
+import { getRegion, getLevel } from '../data/regionSelectors';
+import { settleLevelIdleUpdate } from './levelCombat';
 
 interface TickLogEntry {
   text: string;
@@ -287,12 +289,35 @@ export const applyTick = (prev: GameState, now: number): GameState => {
 
   // 4.5. 挂机战斗在线推进（修复 09：在线也持续自动战斗，不再只在离线重连时结算）
   const idleZoneId = prev.combat?.idle?.zoneId;
+  const idleRegionId = prev.combat?.idle?.regionId ?? null;
+  const idleLevelId = prev.combat?.idle?.levelId ?? null;
   const logsBeforeIdle = logsToAdd.length; // newLogs 已在挂机段之前构造，挂机日志需单独补入
   let finalCombat = prev.combat;
   let finalStamina = nextStamina;
   let finalInventory = currentInventory;
   let finalHeroes = updatedHeroes;
-  if (idleZoneId) {
+  if (idleRegionId && idleLevelId) {
+    const { state: afterIdle, result } = settleLevelIdleUpdate(
+      { ...prev, stamina: finalStamina, inventory: finalInventory, heroes: finalHeroes, combat: prev.combat },
+      elapsedSeconds,
+      Math.random,
+      false // 在线：体力不足一场时保持挂机等待（体力恢复后继续），不自动停止
+    );
+    if (result.battlesFought > 0) {
+      finalStamina = afterIdle.stamina;
+      finalInventory = afterIdle.inventory;
+      finalHeroes = afterIdle.heroes;
+      const region = getRegion(idleRegionId);
+      const level = getLevel(idleRegionId, idleLevelId);
+      const zoneName = region && level ? `${region.name} · ${level.name}` : idleRegionId;
+      const stopText = result.autoStopped && result.stopReason === 'defeat'
+        ? '，小队战败全员重伤，挂机自动停止'
+        : '';
+      logsToAdd.push({ text: `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories}），掉落已入账${stopText}。`, type: 'logistics' as const });
+    }
+    // 无论是否结算，都要保留最新 combat（idle.accumulatedSeconds 逐秒累计）
+    finalCombat = afterIdle.combat;
+  } else if (idleZoneId) {
     const { state: afterIdle, result } = settleIdleUpdate(
       { ...prev, stamina: finalStamina, inventory: finalInventory, heroes: finalHeroes, combat: prev.combat },
       elapsedSeconds,

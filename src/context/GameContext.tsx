@@ -30,6 +30,7 @@ import {
 import { applyTick } from '../state/tick';
 import { summonUpdate, summonBatchUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
 import { consumeExpTomesUpdate } from '../state/combat';
+import { startLevelCombatUpdate, startLevelIdleUpdate, stopLevelIdleUpdate, type LevelCombatOutcome, type LevelIdleStartOutcome } from '../state/levelCombat';
 import {
   equipItemUpdate,
   unequipItemUpdate,
@@ -128,6 +129,9 @@ interface GameContextType {
   defendDreamLeak: (method: DreamLeakDefenseMethod) => DreamLeakDefenseOutcome;
   startIdle: (zoneId: string) => IdleStartOutcome;
   stopIdle: () => boolean;
+  startLevelCombat: (regionId: string, levelId: string) => LevelCombatOutcome;
+  startLevelIdle: (regionId: string, levelId: string) => LevelIdleStartOutcome;
+  stopLevelIdle: () => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -742,6 +746,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
+  const startLevelCombat = (regionId: string, levelId: string): LevelCombatOutcome => {
+    const r = startLevelCombatUpdate(stateRef.current, regionId, levelId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const startLevelIdle = (regionId: string, levelId: string): LevelIdleStartOutcome => {
+    const r = startLevelIdleUpdate(stateRef.current, regionId, levelId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const stopLevelIdle = (): boolean => {
+    const r = stopLevelIdleUpdate(stateRef.current);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
   const resetGame = () => {
     const now = Date.now();
     const freshState = createFreshState(INITIAL_STATE, now);
@@ -822,7 +850,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startBossBattle,
       defendDreamLeak,
       startIdle,
-      stopIdle
+      stopIdle,
+      startLevelCombat,
+      startLevelIdle,
+      stopLevelIdle
     }}>
 
       {children}
