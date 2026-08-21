@@ -937,7 +937,7 @@ const App: React.FC = () => {
               <div className="bg-zinc-950/60 p-3 rounded-2xl border border-amber-500/20 space-y-2">
                 <h3 className="text-[10px] text-amber-400 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
                   <Swords className="w-3 h-3" />
-                  挂机战斗报告 —— {state.lastOfflineReport.idleCombat.zoneName}
+                  挂机战斗报告 —— {state.lastOfflineReport.idleCombat.locationName}
                 </h3>
                 <div className="text-[10px] text-zinc-300 font-mono flex flex-col gap-1">
                   <span>

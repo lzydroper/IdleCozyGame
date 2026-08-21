@@ -3,6 +3,7 @@ import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
 import type { DropEntry } from '../data/regions';
 import { rollDropEntries } from './dropEngine';
+import { advanceRegionProgress } from './explorationProgress';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
@@ -358,6 +359,11 @@ export const resolveEncounterBattleUpdate = (
         realityBag: nextBag
       };
 
+  let finalExploration: GameState['exploration'] = nextExploration;
+  if (continuing && state.exploration.realityRegionId) {
+    finalExploration = advanceRegionProgress({ ...state, exploration: nextExploration }, state.exploration.realityRegionId).exploration;
+  }
+
   const eventTitle = REALITY_EVENTS[encounterId]?.title || '遭遇战';
   const logText = battle.victory
     ? `遭遇战胜利！小队击退【${eventTitle}】，获得 ${Object.entries(settled.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'} 与经验 ×${expPerHero}，继续探索。`
@@ -373,7 +379,7 @@ export const resolveEncounterBattleUpdate = (
       heroes: nextHeroes,
       inventory: nextInventory,
       equipmentInventory: nextEquipmentInventory,
-      exploration: nextExploration,
+      exploration: finalExploration,
       combat: { ...state.combat, regionId: null, levelId: null, clearedLevels: state.combat?.clearedLevels ?? {}, lastSettlement: settlement, idle: idleOrDefault(state) },
       logs: [logEntry, ...state.logs].slice(0, 100)
     },

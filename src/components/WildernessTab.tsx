@@ -108,6 +108,10 @@ const WildernessTab: React.FC = () => {
 
   const handleStartExploration = (locationId: string | null, isRescue = false) => {
     const region = !isRescue && locationId ? getRegion(locationId) : undefined;
+    if (!isRescue && region && region.explorationEvents.length === 0) {
+      showToast('该区域暂无探索事件，无法开始探索。', 'error');
+      return;
+    }
     const foodCost = isRescue
       ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST
       : (region?.initialCost?.food ?? GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST);
@@ -546,8 +550,11 @@ const EncounterPanel: React.FC<{
   encounterId: string;
   onFight: (settlement: CombatSettlement, eventTitle: string) => void;
 }> = ({ encounterId, onFight }) => {
-  const { state, resolveEncounterBattle, fleeEncounter } = useGame();
+  const { state, setState, resolveEncounterBattle, fleeEncounter } = useGame();
   const { showToast } = useToast();
+
+  const milestoneRegionId = state.exploration.realityRegionId ?? null;
+  const isMilestoneEncounter = !!milestoneRegionId && getPendingMilestone(state, milestoneRegionId) === encounterId;
 
   const event = REALITY_EVENTS[encounterId];
   if (!event?.battle) return null;
@@ -566,6 +573,10 @@ const EncounterPanel: React.FC<{
     if (outcome.failure === 'wounded') { showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error'); return; }
     // 战斗开始：将结算结果传给父组件，由父组件负责播放动画（避免 EncounterPanel 卸载时丢失状态）
     if (outcome.settlement) {
+      // 战斗型里程碑：胜利完成待办
+      if (outcome.settlement.battle.victory && isMilestoneEncounter && milestoneRegionId) {
+        setState(prev => completePendingMilestone(prev, milestoneRegionId));
+      }
       onFight(outcome.settlement, event.title);
     }
   };
@@ -624,12 +635,14 @@ const EncounterPanel: React.FC<{
         >
           <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />迎战！（体力 -{staminaCost}）
         </button>
-        <button
-          onClick={handleFlee}
-          className="px-3 py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 cursor-pointer active:scale-98"
-        >
-          <Flag className="w-3 h-3 inline-block mr-1 -mt-0.5" />撤离
-        </button>
+        {!isMilestoneEncounter && (
+          <button
+            onClick={handleFlee}
+            className="px-3 py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 cursor-pointer active:scale-98"
+          >
+            <Flag className="w-3 h-3 inline-block mr-1 -mt-0.5" />撤离
+          </button>
+        )}
       </div>
     </div>
   );

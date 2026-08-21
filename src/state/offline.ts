@@ -7,7 +7,7 @@ import { advanceGreenhouseAutomation, maybeStopAutoFarmOnSeedDepletion } from '.
 import type { ReplantStrategy } from './greenhouse';
 import { getRecipeName } from './workshop';
 import { findRegionExpedition } from '../data/regionSelectors';
-import { rollDropEntries } from './levelCombat';
+import { rollDropEntries } from './dropEngine';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { COMBAT_CONFIG } from '../data/combatConfig';
@@ -94,8 +94,8 @@ export function calculateDetailedOfflineProgress(
       const level = getLevel(idleRegionId, idleLevelId);
       const zoneName = region && level ? `${region.name} · ${level.name}` : idleRegionId;
       idleCombat = {
-        zoneId: idleRegionId,
-        zoneName,
+        regionId: idleRegionId,
+        locationName: zoneName,
         battlesFought: result.battlesFought,
         victories: result.victories,
         defeats: result.defeats,
@@ -184,7 +184,7 @@ export function calculateDetailedOfflineProgress(
   let nextLastScavengeTime = exp.lastScavengeTime;
   let autoRecallExplorerId: string | null = null;
   if (exp.locationId && state.shelter.assignedExplorerId) {
-    const loc = findRegionExpedition(exp.locationId)?.expedition;
+    const loc = findRegionExpedition(exp.locationId);
     if (loc) {
       // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
       const explorerBonuses = resolveDutyBonuses(

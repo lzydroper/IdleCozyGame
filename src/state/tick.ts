@@ -7,7 +7,7 @@ import type { ReplantStrategy } from './greenhouse';
 import { resolveDutyBonuses } from './duty';
 import { getRecipeName } from './workshop';
 import { findRegionExpedition } from '../data/regionSelectors';
-import { rollDropEntries } from './levelCombat';
+import { rollDropEntries } from './dropEngine';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
@@ -185,7 +185,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   let nextLastScavengeTime = exp.lastScavengeTime;
   let autoRecallExplorer = false;
   if (exp.locationId && prev.shelter.assignedExplorerId) {
-    const loc = findRegionExpedition(exp.locationId)?.expedition;
+    const loc = findRegionExpedition(exp.locationId);
     if (loc) {
       // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
       const explorerBonuses = resolveDutyBonuses(

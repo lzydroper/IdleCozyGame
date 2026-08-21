@@ -6,7 +6,6 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { heroToCombatant, simulateBattle, enemyConfigToEntity } from './combat';
 import { rollDropEntries } from './dropEngine';
-export { rollDropEntries };
 import { aggregateBonus } from './bonds';
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';

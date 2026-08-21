@@ -37,7 +37,7 @@ const ExpeditionPanel: React.FC = () => {
   const getHeroFactionLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_FACTION_LABELS[HEROES_CONFIG[heroId].faction] : '';
 
-  const getExpedition = (locationId: string) => findRegionExpedition(locationId)?.expedition;
+  const getExpedition = (locationId: string) => findRegionExpedition(locationId);
   const renderLootNames = (entries: DropEntry[]): string =>
     entries.map(d => d.kind === 'weighted'
       ? d.pool.map(p => ITEMS_CONFIG[p.itemId]?.name || p.itemId).join('/')

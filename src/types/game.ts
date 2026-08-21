@@ -259,8 +259,8 @@ export interface OfflineReport {
 
 // 离线挂机战斗结算报告（ticket 08）：重连弹窗展示掉落与经验
 export interface IdleCombatReport {
-  zoneId: string;
-  zoneName: string;
+  regionId: string;
+  locationName: string;
   battlesFought: number;   // 本次离线实际战斗场数
   victories: number;       // 胜利场数
   defeats: number;         // 战败场数（战败即自动停止挂机）

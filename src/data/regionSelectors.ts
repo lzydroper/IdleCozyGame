@@ -20,14 +20,18 @@ export const getRegionLevels = (regionId: string): LevelConfig[] =>
 export const getLevel = (regionId: string, levelId: string): LevelConfig | undefined =>
   REGION_INDEX[regionId]?.levels.find((level) => level.id === levelId);
 
-/** 按远征地点 id 查找所属区域与其 expedition 配置（迁移期仅 radar_station）。 */
-export const findRegionExpedition = (
-  expeditionId: string
-): { region: RegionConfig; expedition: ExpeditionConfig } | undefined => {
+/** 按远征地点 id 查找所属区域 id（迁移期仅 radar_station）。 */
+export const findRegionIdByExpedition = (expeditionId: string): string | undefined => {
   for (const region of ALL_REGIONS) {
-    if (region.expedition?.id === expeditionId) {
-      return { region, expedition: region.expedition };
-    }
+    if (region.expedition?.id === expeditionId) return region.id;
+  }
+  return undefined;
+};
+
+/** 按远征地点 id 查找 expedition 配置（迁移期仅 radar_station）。 */
+export const findRegionExpedition = (expeditionId: string): ExpeditionConfig | undefined => {
+  for (const region of ALL_REGIONS) {
+    if (region.expedition?.id === expeditionId) return region.expedition;
   }
   return undefined;
 };

@@ -3,8 +3,8 @@ import type { BattleResult, GameState } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
 import { STARTER_HERO_ID } from '../data/heroes';
 import { getLevel } from '../data/regionSelectors';
+import { rollDropEntries } from './dropEngine';
 import {
-  rollDropEntries,
   settleLevelBattle,
   startLevelCombatUpdate,
   isRegionUnlocked,
