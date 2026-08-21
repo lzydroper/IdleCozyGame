@@ -375,6 +375,7 @@ describe('WildernessTab Component', () => {
   });
 
   it('resolves a combat encounter defeat: exploration ends, loot merged into inventory, party wounded', () => {
+    localStorage.setItem('aether_garden_save_current_user', 'Guest');
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},

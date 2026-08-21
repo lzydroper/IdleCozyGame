@@ -377,8 +377,8 @@ export const BattleModal: React.FC<BattleModalProps> = ({
         <div>
           <div className="text-sm font-black text-zinc-100 truncate max-w-[180px]">
             {isEncounter
-              ? (encounterTitle || level.name || '遭遇战')
-              : `${region ? `${region.name} · ` : ''}${level.name}`}
+              ? (encounterTitle || level?.name || '遭遇战')
+              : `${region ? `${region.name} · ` : ''}${level?.name || '未知关卡'}`}
           </div>
           <div className="text-xs text-zinc-400 font-mono mt-0.5">
             轮次: <span className="text-amber-400 font-bold">第 {currentRound}/{maxRounds} 轮</span>

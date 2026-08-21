@@ -511,9 +511,6 @@ export const WildernessTab: React.FC = () => {
                   isEncounter: true,
                   encounterTitle: eventTitle
                 });
-                if (settlement.battle.victory) showToast('遭遇战胜利！战利品与经验已入账。', 'success');
-                else if (settlement.battle.partyWiped) showToast('遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
-                else showToast('遭遇战平局，未分胜负。', 'info');
               }}
             />
           )}
