@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addItemRewards, isWearableEquipment } from '../state/equipment';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { RESCUE_LOCATION_NAMES } from '../data/rescueLocations';
 import { DREAM_EVENTS } from '../data/dreamEvents';
 import type { DreamChoice } from '../data/dreamEvents';
 import { SURVIVORS_CONFIG } from '../data/survivors';
@@ -207,7 +207,7 @@ const DreamscapeTab: React.FC = () => {
       
       if (showHeroUnlockedAlert) {
         const { name, location } = showHeroUnlockedAlert;
-        const loc = EXPEDITION_LOCATIONS[location];
+        const loc = RESCUE_LOCATION_NAMES[location];
         const locationName = loc?.shortName || loc?.displayName || location;
         const msg = `脑波连结成功！已完美锁定英雄【${name}】的现实坐标：『${locationName}』，快返回现实探索营救！`;
         setLogMessages(prev => [...prev, msg]);

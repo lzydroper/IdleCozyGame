@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addItemRewards, isWearableEquipment } from '../state/equipment';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { RESCUE_LOCATION_NAMES } from '../data/rescueLocations';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import type { RealityEvent, EventChoice } from '../data/realityEvents';
 import { CATEGORY_WEIGHTS } from '../data/realityEvents';
@@ -406,7 +406,7 @@ const WildernessTab: React.FC = () => {
 
             {/* Rescue explorations */}
             {rescueTargets.map(target => {
-              const loc = EXPEDITION_LOCATIONS[target.locationId];
+              const loc = RESCUE_LOCATION_NAMES[target.locationId];
               const locationName = loc?.displayName || '未知废墟';
               const targetName = SURVIVORS_CONFIG.find(s => s.id === target.heroId)?.name || target.heroId;
 
