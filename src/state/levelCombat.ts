@@ -53,19 +53,32 @@ const isKnownHero = (state: GameState, heroId: string): boolean =>
 const getParty = (state: GameState): string[] =>
   (state.party || []).filter((id) => isKnownHero(state, id));
 
+export const EMPTY_IDLE_STATE: CombatIdleState = {
+  regionId: null,
+  levelId: null,
+  startTime: null,
+  accumulatedSeconds: 0,
+  totalBattles: 0,
+  totalVictories: 0,
+  totalDefeats: 0,
+  totalDraws: 0,
+  totalDrops: {},
+  totalSoulEchoes: 0
+};
+
 const levelIdleOrDefault = (state: GameState): CombatIdleState => {
   const idle = state.combat?.idle;
   return {
-    regionId: idle?.regionId ?? null,
-    levelId: idle?.levelId ?? null,
-    startTime: idle?.startTime ?? null,
-    accumulatedSeconds: idle?.accumulatedSeconds ?? 0,
-    totalBattles: idle?.totalBattles ?? 0,
-    totalVictories: idle?.totalVictories ?? 0,
-    totalDefeats: idle?.totalDefeats ?? 0,
-    totalDraws: idle?.totalDraws ?? 0,
-    totalDrops: idle?.totalDrops ?? {},
-    totalSoulEchoes: idle?.totalSoulEchoes ?? 0
+    regionId: idle?.regionId ?? EMPTY_IDLE_STATE.regionId,
+    levelId: idle?.levelId ?? EMPTY_IDLE_STATE.levelId,
+    startTime: idle?.startTime ?? EMPTY_IDLE_STATE.startTime,
+    accumulatedSeconds: idle?.accumulatedSeconds ?? EMPTY_IDLE_STATE.accumulatedSeconds,
+    totalBattles: idle?.totalBattles ?? EMPTY_IDLE_STATE.totalBattles,
+    totalVictories: idle?.totalVictories ?? EMPTY_IDLE_STATE.totalVictories,
+    totalDefeats: idle?.totalDefeats ?? EMPTY_IDLE_STATE.totalDefeats,
+    totalDraws: idle?.totalDraws ?? EMPTY_IDLE_STATE.totalDraws,
+    totalDrops: idle?.totalDrops ?? EMPTY_IDLE_STATE.totalDrops,
+    totalSoulEchoes: idle?.totalSoulEchoes ?? EMPTY_IDLE_STATE.totalSoulEchoes
   };
 };
 
@@ -453,18 +466,7 @@ export const stopLevelIdleUpdate = (
       ...state,
       combat: {
         ...state.combat,
-        idle: {
-          regionId: null,
-          levelId: null,
-          startTime: null,
-          accumulatedSeconds: 0,
-          totalBattles: 0,
-          totalVictories: 0,
-          totalDefeats: 0,
-          totalDraws: 0,
-          totalDrops: {},
-          totalSoulEchoes: 0
-        }
+        idle: EMPTY_IDLE_STATE
       }
     },
     result: { ok: true, summary }
@@ -601,18 +603,7 @@ export const settleLevelIdleUpdate = (
         ...next.combat,
         lastSettlement: lastSettlement ?? next.combat.lastSettlement,
         idle: idleStopped
-          ? {
-              regionId: null,
-              levelId: null,
-              startTime: null,
-              accumulatedSeconds: 0,
-              totalBattles: 0,
-              totalVictories: 0,
-              totalDefeats: 0,
-              totalDraws: 0,
-              totalDrops: {},
-              totalSoulEchoes: 0
-            }
+          ? EMPTY_IDLE_STATE
           : {
               ...idle,
               accumulatedSeconds: leftoverSeconds,

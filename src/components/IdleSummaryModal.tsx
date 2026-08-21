@@ -2,20 +2,13 @@ import React from 'react';
 import type { IdleSummaryData } from '../state/levelCombat';
 import { ITEMS_CONFIG } from '../data/items';
 import GameIcon from './GameIcon';
+import { formatDuration } from '../utils/time';
 
 export interface IdleSummaryModalProps {
   isOpen: boolean;
   summary: IdleSummaryData | null;
   onClose: () => void;
 }
-
-const formatDuration = (totalSeconds: number): string => {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  const padM = String(m).padStart(2, '0');
-  const padS = String(s).padStart(2, '0');
-  return `${padM}:${padS}`;
-};
 
 export const IdleSummaryModal: React.FC<IdleSummaryModalProps> = ({
   isOpen,

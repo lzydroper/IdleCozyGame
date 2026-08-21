@@ -10,6 +10,7 @@ describe('IdleCombatWidget Component', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
@@ -19,7 +20,6 @@ describe('IdleCombatWidget Component', () => {
   it('renders idle dashboard with region/level title, battle count, timer, and cumulative drops', () => {
     const now = 1700000000000;
     const startTime = now - 65000; // 01:05
-    vi.useFakeTimers();
     vi.setSystemTime(now);
 
     const testState = {
@@ -93,7 +93,6 @@ describe('IdleCombatWidget Component', () => {
   it('invokes stopLevelIdle and onStop callback with summary data when clicking stop button', () => {
     const now = 1700000000000;
     const startTime = now - 90000;
-    vi.useFakeTimers();
     vi.setSystemTime(now);
 
     const testState = {

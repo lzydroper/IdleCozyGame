@@ -4,20 +4,13 @@ import { getRegion, getLevel } from '../data/regionSelectors';
 import { ITEMS_CONFIG } from '../data/items';
 import type { IdleSummaryData } from '../state/levelCombat';
 import GameIcon from './GameIcon';
+import { formatDuration } from '../utils/time';
 
 export interface IdleCombatWidgetProps {
   regionId: string;
   levelId: string;
   onStop: (summary: IdleSummaryData | null) => void;
 }
-
-const formatDuration = (totalSeconds: number): string => {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  const padM = String(m).padStart(2, '0');
-  const padS = String(s).padStart(2, '0');
-  return `${padM}:${padS}`;
-};
 
 export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   regionId,
@@ -49,11 +42,11 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
     return () => clearInterval(timer);
   }, [idle?.startTime, startTime]);
 
-  // 获取与当前挂机相关的日志（按时间倒序或正序）
+  // 获取与当前挂机相关的战斗日志（按时间正序）
   const relevantLogs = (state.logs || [])
     .filter(
       (log) =>
-        (log.type === 'combat' || log.type === 'logistics') &&
+        log.type === 'combat' &&
         log.timestamp >= startTime - 1000
     )
     .slice(0, 30)
