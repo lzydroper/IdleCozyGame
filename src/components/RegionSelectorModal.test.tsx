@@ -48,7 +48,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
     expect(screen.queryByText('辐射车间')).toBeNull();
   });
 
-  it('opens RegionDetailModal when a region item is clicked and disables confirm when locked', () => {
+  it('opens RegionDetailModal and disables confirm when locked in exploration mode', () => {
     const onConfirmSelect = vi.fn();
     const onClose = vi.fn();
 
@@ -84,12 +84,50 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
     expect(confirmBtn.className).toContain('h-9.5');
     expect(cancelBtn.className).toContain('h-9.5');
 
-    // Confirm button is disabled for locked region
+    // Confirm button is disabled for locked region in exploration mode
     expect(confirmBtn.hasAttribute('disabled')).toBe(true);
 
     // Cancel button works
     fireEvent.click(cancelBtn);
     expect(screen.queryByTestId('region-detail-modal')).toBeNull();
+  });
+
+  it('opens RegionDetailModal and enables confirm for locked region in combat mode', () => {
+    const onConfirmSelect = vi.fn();
+    const onClose = vi.fn();
+
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as GameState;
+    save.exploration.regionProgress = { wasteland_entrance: 10 }; // 废土边缘已探索，旧城废墟为下一个待解锁区域
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <RegionSelectorModal
+            isOpen={true}
+            onClose={onClose}
+            mode="combat"
+            selectedRegionId="wasteland_entrance"
+            onConfirmSelect={onConfirmSelect}
+          />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Click on old_town_ruins (locked combat region)
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+
+    // RegionDetailModal should now be open
+    expect(screen.getByTestId('region-detail-modal')).toBeDefined();
+    expect(screen.getByTestId('lock-diagnostics-section')).toBeDefined();
+
+    const confirmBtn = screen.getByRole('button', { name: '确认' });
+    // In combat mode, confirm is enabled to allow browsing locked levels
+    expect(confirmBtn.hasAttribute('disabled')).toBe(false);
+
+    fireEvent.click(confirmBtn);
+    expect(onConfirmSelect).toHaveBeenCalledWith('old_town_ruins');
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('RegionDetailModal handles unlocked region confirmation properly', () => {
