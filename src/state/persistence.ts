@@ -373,12 +373,18 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     ...(parsed.combat || {}),
     // 区域链通关记录：旧存档缺失时回退空列表
     zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared,
+    // combat-level：新字段补默认值，不迁移旧 zone 字段
+    regionId: (parsed.combat && typeof parsed.combat.regionId === 'string') ? parsed.combat.regionId : null,
+    levelId: (parsed.combat && typeof parsed.combat.levelId === 'string') ? parsed.combat.levelId : null,
+    clearedLevels: (parsed.combat && parsed.combat.clearedLevels) || initialState.combat.clearedLevels,
     // 旧回放（actions/hpTrack）已被事件流取代：无法消费的旧结算直接丢弃，防止战斗区黑屏
     lastSettlement: normalizeLastSettlement(parsed.combat && parsed.combat.lastSettlement),
     // 离线挂机开关（ticket 08）：旧存档缺失时回退未挂机
     idle: {
       ...initialState.combat.idle,
-      ...((parsed.combat && parsed.combat.idle) || {})
+      ...((parsed.combat && parsed.combat.idle) || {}),
+      regionId: (parsed.combat?.idle && typeof parsed.combat.idle.regionId === 'string') ? parsed.combat.idle.regionId : null,
+      levelId: (parsed.combat?.idle && typeof parsed.combat.idle.levelId === 'string') ? parsed.combat.idle.levelId : null
     }
   }
   };

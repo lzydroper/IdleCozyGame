@@ -4,11 +4,11 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] 战斗状态可表达 clearedLevels（regionId → 已通关 local id 数组）、当前 regionId+levelId、挂机 regionId+levelId，且旧 zone 字段仍并存可用。
-- [ ] 新结算路径能按 regionId+levelId 启动普通战/关底战/挂机循环；关底就是区域末位关卡，其敌人含 role:'boss' 的特殊实例。
-- [ ] 掉落结算按三形态执行：经验手册数量 = max(1, round(expReward × 3 / 100))；灵魂残响为固定 soul_echo；firstClearDrops 仅首通发放；失败无掉落无经验，平局无奖励。
-- [ ] 通关记录正确写入 clearedLevels；区域通关 = 末位 local id 已在数组中。
-- [ ] 持久化加载时为新字段补默认值，不迁移旧 zone 字段；旧路径行为不变。
-- [ ] 新增状态与结算的单元测试绿；旧测试仍绿。
+- [x] 战斗状态可表达 clearedLevels（regionId → 已通关 local id 数组）、当前 regionId+levelId、挂机 regionId+levelId，且旧 zone 字段仍并存可用。
+- [x] 新结算路径能按 regionId+levelId 启动普通战/关底战/挂机循环；关底就是区域末位关卡，其敌人含 role:'boss' 的特殊实例。
+- [x] 掉落结算按三形态执行：经验手册数量 = max(1, round(expReward × 3 / 100))；灵魂残响为固定 soul_echo；firstClearDrops 仅首通发放；失败无掉落无经验，平局无奖励。
+- [x] 通关记录正确写入 clearedLevels；区域通关 = 末位 local id 已在数组中。
+- [x] 持久化加载时为新字段补默认值，不迁移旧 zone 字段；旧路径行为不变。
+- [x] 新增状态与结算的单元测试绿；旧测试仍绿。

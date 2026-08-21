@@ -91,10 +91,15 @@ export const INITIAL_STATE: GameState = {
   party: [STARTER_HERO_ID],
   combat: {
     zoneId: null,
+    regionId: null,
+    levelId: null,
     lastSettlement: null,
     zonesCleared: [],
+    clearedLevels: {},
     idle: {
       zoneId: null,
+      regionId: null,
+      levelId: null,
       startTime: null
     }
   },

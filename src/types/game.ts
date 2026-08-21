@@ -125,17 +125,24 @@ export interface CombatSettlement {
 
 // 确认式离线挂机（ticket 08）：玩家在某战斗区域主动开启后，离线期间战斗才推进；
 // 可随时停止；体力耗尽或小队战败自动停止
+// combat-level：旧 zoneId 保留兼容，新增 regionId+levelId（levelId 为区域内 local id）
 export interface CombatIdleState {
-  zoneId: string | null;       // 正在挂机的区域（null = 未挂机）
+  zoneId: string | null;       // 旧字段：正在挂机的区域（null = 未挂机）
+  regionId?: string | null;    // 新字段：正在挂机的区域
+  levelId?: string | null;     // 新字段：正在挂机的关卡（区域内 local id）
   startTime: number | null;    // 开始挂机时间戳（UI 展示用）
   accumulatedSeconds?: number; // 已累计的战斗秒数（在线逐秒累计，够一场 battleDurationSeconds 结算一场；离线结算后未用满一战的秒数保留）
 }
 
 // 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）
+// combat-level：旧 zoneId/zonesCleared 保留兼容，新增 regionId/levelId/clearedLevels
 export interface CombatState {
   zoneId: string | null;
+  regionId?: string | null;          // 新字段：当前/最近战斗区域
+  levelId?: string | null;           // 新字段：当前/最近关卡（区域内 local id）
   lastSettlement: CombatSettlement | null;
-  zonesCleared: string[];  // 已通关区域（ticket 07 线性区域链：通关当前区解锁下一区）
+  zonesCleared: string[];            // 旧字段：已通关区域（ticket 07 线性区域链）
+  clearedLevels?: Record<string, string[]>; // 新字段：regionId -> 已通关 local id 数组
   idle: CombatIdleState;   // 确认式离线挂机开关（ticket 08）
 }
 
