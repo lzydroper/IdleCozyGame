@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>战斗 UI 体系重构高保真交互原型</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* 战斗专属动效 */
+  .damage-float {
+    animation: damageFloat 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  @keyframes damageFloat {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    40% { opacity: 1; transform: translateY(-18px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-32px) scale(0.85); }
+  }
+  .hit-shake {
+    animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1.5px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+    40%, 60% { transform: translate3d(3px, 0, 0); }
+  }
+  .log-scroll::-webkit-scrollbar { width: 4px; }
+  .log-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+</style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 min-h-screen p-4 max-w-md mx-auto relative pb-20 select-none">
+
+<!-- ============ 顶部原型说明条 ============ -->
+<div class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-3 mb-3 text-xs shadow-lg">
+  <div class="flex items-center justify-between mb-1">
+    <span class="text-indigo-300 font-black">
+      战斗 UI 重构交互原型 (combat-ui)
+    </span>
+    <span class="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono">Prototype v10</span>
+  </div>
+  <p class="text-zinc-400 text-[10px] leading-relaxed">
+    已更新：① 标签统一为后缀模式（如 `魔导构造体 [召唤物]`、`剧毒蜂后 [首领]`），去除杂兵标签 ② 顶部战斗信息栏加卡片容器包裹 ③ 战况播报区移除多余标题栏，更加纯净。
+  </p>
+</div>
+
+<!-- ============ 主页面容器：探索 Tab ============ -->
+<div id="mainApp" class="space-y-3">
+  <!-- 顶部主状态栏（体力） -->
+  <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3.5 flex items-center justify-between shadow">
+    <div>
+      <div class="text-[11px] text-zinc-400 font-bold">战斗体力</div>
+      <div class="text-sm font-black text-emerald-400 font-mono"><span id="staminaVal">85</span> / 100</div>
+    </div>
+    <div class="w-40 bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-800">
+      <div id="staminaBar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 85%;"></div>
+    </div>
+  </div>
+
+  <!-- 探索二级子 Tab 切换栏 -->
+  <div class="flex bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+    <button id="subtab-wilderness-btn" onclick="switchSubTab('wilderness')" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 text-zinc-400 hover:text-zinc-200 cursor-pointer">
+      荒野
+    </button>
+    <button id="subtab-combat-btn" onclick="switchSubTab('combat')" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 bg-gradient-to-r from-rose-600 to-red-600 text-white shadow cursor-pointer">
+      战斗
+    </button>
+  </div>
+
+  <!-- 子 Tab 1：荒野探索 -->
+  <div id="subtab-wilderness" class="space-y-3" style="display: none;">
+    <!-- 区域选择条 -->
+    <div onclick="openRegionSelector('exploration')" class="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-500/50 transition-all">
+      <div class="text-left">
+        <div class="text-[10px] text-zinc-500 font-bold">当前探索区域</div>
+        <div class="text-sm font-black text-zinc-100 flex items-center gap-1.5" id="wildernessRegionName">
+          废土边缘
+        </div>
+        <div class="text-[10px] text-zinc-500 mt-0.5" id="wildernessRegionSubtitle">探索度 65%</div>
+      </div>
+      <span class="text-xs text-amber-400 font-bold">更换 ❯</span>
+    </div>
+
+    <!-- 进入探索操作按钮 -->
+    <button onclick="simulateWildernessEncounter()" class="w-full h-11 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-black rounded-2xl shadow cursor-pointer flex items-center justify-center transition-all active:scale-98">
+      进入荒野探索（模拟遭遇战触发）
+    </button>
+  </div>
+
+  <!-- 子 Tab 2：战斗 -->
+  <div id="subtab-combat" class="space-y-3">
+    <!-- 区域选择条（挂机中自动隐藏） -->
+    <div id="regionSelectCard" onclick="openRegionSelector('combat')" class="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-500/50 transition-all">
+      <div class="text-left">
+        <div class="text-[10px] text-zinc-500 font-bold">当前战斗区域</div>
+        <div class="text-sm font-black text-zinc-100 flex items-center gap-1.5" id="currentRegionDisplay">
+          废土边缘
+        </div>
+      </div>
+      <span class="text-xs text-amber-400 font-bold">更换 ❯</span>
+    </div>
+
+    <!-- 模式切换开关：挑战 vs 挂机（仅在未挂机时可见） -->
+    <div id="combatModeToggle" class="flex gap-2 text-xs font-bold">
+      <button id="mode-active-btn" onclick="setCombatMode('active')" class="flex-1 h-8.5 bg-rose-600/30 border border-rose-500/50 text-rose-300 rounded-xl flex items-center justify-center cursor-pointer">
+        挑战
+      </button>
+      <button id="mode-idle-btn" onclick="setCombatMode('idle')" class="flex-1 h-8.5 bg-zinc-900 border border-zinc-800 text-zinc-500 rounded-xl flex items-center justify-center hover:text-zinc-300 cursor-pointer">
+        挂机
+      </button>
+    </div>
+
+    <!-- 视图 A：关卡小方块网格视图（挑战与挂机均展示全部关卡） -->
+    <div id="levelListView" class="space-y-2">
+      <div class="text-[11px] font-bold text-zinc-400 px-1 flex justify-between items-center" id="levelListHeader">
+        <span>关卡列表（点击关卡查看详情）</span>
+        <span id="regionLockedNotice" class="text-red-400 font-normal text-[10px]" style="display:none;">区域待解锁 · 关卡封锁中</span>
+      </div>
+      <!-- 物品方块网格 -->
+      <div id="levelsContainer" class="grid grid-cols-3 gap-2.5">
+        <!-- 动态生成小方块 -->
+      </div>
+    </div>
+
+    <!-- 视图 B：挂机中监控看板视图（state.combat.idle !== null 时显示） -->
+    <div id="idleDashboardView" class="space-y-3" style="display: none;">
+      <div class="bg-zinc-900/90 border border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-xl shadow-amber-950/20">
+        <div class="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
+          <div>
+            <div class="text-xs font-black text-amber-300" id="idleLocationTitle">挂机中：废土边缘 · 01 荒野哨所</div>
+            <div class="text-[10px] text-zinc-500 mt-0.5">已挂机 <span id="idleTimer" class="font-mono text-zinc-300">00:45</span> · 完成战斗 <span id="idleBattleCount" class="font-mono text-emerald-400">3</span> 场</div>
+          </div>
+          <button onclick="stopIdleCombat()" class="h-8 px-3.5 bg-red-950/50 border border-red-500/50 hover:bg-red-900/50 text-red-300 text-xs font-black rounded-xl cursor-pointer active:scale-95 transition-all flex items-center justify-center">
+            停止挂机
+          </button>
+        </div>
+
+        <!-- 3 行高度可滚动的完整事件流窗口 -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between items-center text-[10px] text-zinc-400 font-bold">
+            <span>实时战斗事件流（可向上滑动查阅）</span>
+            <span class="text-amber-500/80 font-mono text-[9px]">在线推进中</span>
+          </div>
+          <div id="idleLogContainer" class="h-24 bg-zinc-950/90 border border-zinc-800/80 rounded-xl p-2.5 text-xs space-y-1.5 overflow-y-auto log-scroll">
+            <!-- 动态滚动事件 -->
+          </div>
+        </div>
+
+        <!-- 累计战利品网格 -->
+        <div class="space-y-1">
+          <div class="text-[10px] text-zinc-500 font-bold">本次挂机累计收益</div>
+          <div id="idleDropsGrid" class="flex flex-wrap gap-1.5 text-xs">
+            <span class="px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-300 font-bold">
+              废铁 ×6
+            </span>
+            <span class="px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-300 font-bold">
+              变异兽肉 ×3
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹窗 1：通用区域列表选择器 (RegionSelectorModal) ============ -->
+<div id="regionSelectorModal" class="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4" style="display: none;">
+  <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl animate-fade-in">
+    <div class="flex justify-between items-center border-b border-zinc-800 pb-2.5">
+      <span class="text-xs font-black text-zinc-100">选择区域</span>
+      <button onclick="closeRegionSelector()" class="text-zinc-500 hover:text-zinc-300 text-sm font-bold">✕</button>
+    </div>
+    <div id="regionListContainer" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+      <!-- 仅展示已解锁区域 + 最近一个待解锁区域 -->
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹窗 2：区域详情与未解锁原因弹窗 (RegionDetailModal) ============ -->
+<div id="regionDetailModal" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4" style="display: none;">
+  <div class="bg-zinc-900 border border-zinc-700/80 rounded-3xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl">
+    <div class="flex justify-between items-start border-b border-zinc-800 pb-2">
+      <div>
+        <div class="text-sm font-black text-zinc-100" id="detailRegionTitle">废土边缘</div>
+        <div class="text-[10px] text-zinc-500 font-mono" id="detailRegionOrder">主线区域 01</div>
+      </div>
+      <button onclick="closeRegionDetail()" class="text-zinc-500 hover:text-zinc-300 text-sm font-bold">✕</button>
+    </div>
+    
+    <p class="text-xs text-zinc-400 leading-relaxed bg-zinc-950/60 p-3 rounded-xl border border-zinc-900" id="detailRegionDesc">
+      避难所大门外的第一片废土，游荡着饥饿的变异鬣狗与鼠群。
+    </p>
+
+    <!-- 锁住原因动态诊断区（未解锁时显示） -->
+    <div id="lockDiagnosticsSection" class="space-y-1.5" style="display: none;">
+      <div class="text-[10px] font-bold text-red-400 uppercase tracking-wider">区域解锁条件诊断</div>
+      <div id="lockReasonsList" class="space-y-1.5 bg-red-950/30 border border-red-900/40 p-2.5 rounded-xl text-xs">
+        <!-- 动态生成条件列表 -->
+      </div>
+    </div>
+
+    <!-- 严格统一为【确认】与【取消】 -->
+    <div class="flex gap-2 pt-1">
+      <button id="confirmSelectRegionBtn" onclick="confirmSelectRegion()" class="flex-1 h-9.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl shadow cursor-pointer flex items-center justify-center">
+        确认
+      </button>
+      <button onclick="closeRegionDetail()" class="w-20 h-9.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center">
+        取消
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹窗 3：关卡详情弹窗 (LevelDetailModal) ============ -->
+<div id="levelDetailModal" class="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4" style="display: none;">
+  <div class="bg-zinc-900 border border-zinc-700/80 rounded-3xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl">
+    <div class="flex justify-between items-start border-b border-zinc-800 pb-2">
+      <div>
+        <div class="text-sm font-black text-zinc-100" id="detailLevelTitle">01 荒野哨所</div>
+        <div class="text-xs text-rose-400 font-bold" id="detailLevelCost">消耗体力: 10 点</div>
+      </div>
+      <button onclick="closeLevelDetail()" class="text-zinc-500 hover:text-zinc-300 text-sm font-bold">✕</button>
+    </div>
+
+    <!-- 挂机不可用提示区 -->
+    <div id="detailLevelLockAlert" class="p-2.5 bg-red-950/40 border border-red-900/50 rounded-xl text-xs text-red-300 space-y-1" style="display:none;">
+      <!-- 动态提示文案 -->
+    </div>
+
+    <!-- 敌方阵容 -->
+    <div class="space-y-1">
+      <div class="text-[10px] text-zinc-500 font-bold">敌方阵容</div>
+      <div id="detailEnemiesList" class="flex flex-wrap gap-1.5 text-xs">
+        <!-- 动态敌人卡片 -->
+      </div>
+    </div>
+
+    <!-- 战利品与掉落 -->
+    <div class="space-y-1">
+      <div class="text-[10px] text-zinc-500 font-bold">可能掉落</div>
+      <div id="detailDropsList" class="flex flex-wrap gap-1.5 text-xs">
+        <!-- 动态掉落池 -->
+      </div>
+    </div>
+
+    <!-- 严格统一为【确认】与【取消】 -->
+    <div class="flex gap-2 pt-1.5">
+      <button id="confirmLevelActionBtn" onclick="executeLevelAction()" class="flex-1 h-9.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-black rounded-xl shadow cursor-pointer flex items-center justify-center">
+        确认
+      </button>
+      <button onclick="closeLevelDetail()" class="w-20 h-9.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center">
+        取消
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹窗 4：独立全屏战斗场景页面 (Dedicated BattleView) ============ -->
+<div id="dedicatedBattleModal" class="fixed inset-0 z-50 bg-zinc-950 flex flex-col max-w-md mx-auto h-full p-3.5 select-none overflow-hidden" style="display: none;">
+  <!-- 战场顶部状态与控制栏 (包在统一卡片容器中) -->
+  <div class="shrink-0 bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-2.5 mb-2 shadow-lg flex items-center justify-between">
+    <div>
+      <div class="text-sm font-black text-zinc-100" id="battleSceneTitle">
+        废土边缘 · 01 荒野哨所
+      </div>
+      <div class="text-xs text-zinc-400 font-mono mt-0.5">
+        轮次: <span id="battleRoundText" class="text-amber-400 font-bold">第 1/30 轮</span>
+      </div>
+    </div>
+
+    <!-- 顶部控制按钮 -->
+    <div class="flex items-center gap-1.5">
+      <button id="speedToggleBtn" onclick="toggleBattleSpeed()" class="h-8 px-3 bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-mono font-bold rounded-xl cursor-pointer flex items-center justify-center">
+        1x
+      </button>
+      <button onclick="skipBattle()" class="h-8 px-3 bg-amber-950/60 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl hover:bg-amber-900/60 cursor-pointer flex items-center justify-center">
+        跳过
+      </button>
+      <button id="battleExitBtn" onclick="promptForfeitBattle()" class="h-8 px-3 bg-red-950/60 border border-red-500/40 text-red-400 text-xs font-bold rounded-xl hover:bg-red-900/60 cursor-pointer flex items-center justify-center">
+        退出
+      </button>
+    </div>
+  </div>
+
+  <!-- 战场中部：纯竖向 6 槽位战术板 (左右各 6 竖槽，固定高度 310px，零高度跳变) -->
+  <div class="shrink-0 h-[310px] bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-2.5 mb-2 relative shadow-xl overflow-hidden">
+    <!-- 飘字层容器 (局限在对战区域) -->
+    <div id="floatingDamageLayer" class="absolute inset-0 pointer-events-none z-50"></div>
+
+    <div class="grid grid-cols-2 gap-2.5 h-full">
+      <!-- 英雄方 (竖向 6 个全宽固定卡槽) -->
+      <div id="battleHeroesList" class="grid grid-rows-6 gap-1.5 h-full">
+        <!-- 6 个固定卡槽 -->
+      </div>
+
+      <!-- 敌方 (竖向 6 个全宽固定卡槽) -->
+      <div id="battleEnemiesList" class="grid grid-rows-6 gap-1.5 h-full">
+        <!-- 6 个固定卡槽 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 战场下部：战况事件流播报区 (纯净自适应滚动，无多余标题) -->
+  <div class="flex-1 min-h-0 bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3 flex flex-col shadow-xl">
+    <div id="battleEventLog" class="flex-1 min-h-0 overflow-y-auto log-scroll space-y-2 pr-1 text-xs leading-relaxed text-zinc-300">
+      <!-- 动态事件播放 -->
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹窗 5：战斗结算卡片 (BattleSettlementModal) ============ -->
+<div id="battleSettlementModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style="display: none;">
+  <div class="bg-zinc-900 border border-zinc-700/80 rounded-3xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl text-center">
+    <div id="settlementHeader">
+      <div class="text-base font-black text-emerald-400" id="settlementTitle">战斗胜利</div>
+      <div class="text-xs text-zinc-400 mt-1" id="settlementSubtext">小队成功消灭了所有废土敌人</div>
+    </div>
+
+    <!-- 战利品清单 -->
+    <div id="settlementDropsSection" class="space-y-1.5 bg-zinc-950/80 p-3.5 rounded-2xl border border-zinc-800 text-left">
+      <div class="text-[10px] text-zinc-500 font-bold">获得战利品</div>
+      <div id="settlementDropsList" class="flex flex-wrap gap-1.5 text-xs">
+        <!-- 战利品项 -->
+      </div>
+    </div>
+
+    <button onclick="closeBattleSettlement()" class="w-full h-9.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black rounded-xl shadow cursor-pointer flex items-center justify-center">
+      确认
+    </button>
+  </div>
+</div>
+
+<!-- ============ 弹窗 6：挂机停止汇总结算卡片 ============ -->
+<div id="idleSummaryModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style="display: none;">
+  <div class="bg-zinc-900 border border-amber-500/50 rounded-3xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl text-center">
+    <div>
+      <div class="text-base font-black text-amber-300">挂机已停止</div>
+      <div class="text-xs text-zinc-400 mt-1" id="idleSummaryStats">总挂机 01:30 · 共完成 6 场战斗</div>
+    </div>
+
+    <div class="space-y-1.5 bg-zinc-950/80 p-3.5 rounded-2xl border border-zinc-800 text-left">
+      <div class="text-[10px] text-zinc-500 font-bold">累计获得全部物资</div>
+      <div id="idleSummaryDrops" class="flex flex-wrap gap-1.5 text-xs">
+        <!-- 累计战利品 -->
+      </div>
+    </div>
+
+    <button onclick="closeIdleSummary()" class="w-full h-9.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-xs font-black rounded-xl shadow cursor-pointer flex items-center justify-center">
+      确认
+    </button>
+  </div>
+</div>
+
+<script src="prototype.js"></script>
+</body>
+</html>
