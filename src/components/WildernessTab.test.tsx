@@ -342,16 +342,21 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    // 遭遇场景（与自动战斗同一战斗场景）
+    // 遭遇场景：点击迎战进入全屏专属战斗模态 BattleModal
     expect(screen.getByText(/战斗遭遇 —— 废土掠食者群/)).toBeDefined();
     fireEvent.click(screen.getByText(/迎战！（体力/));
 
-    // 事件流结算展示：胜利结算 +「继续探索」按钮
-    expect(screen.getByText(/战斗胜利！/)).toBeDefined();
-    expect(screen.getByText('继续探索')).toBeDefined();
+    // 专属战斗场景唤起：退出按钮严格隐藏
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+    expect(screen.queryByTestId('exit-battle-btn')).toBeNull();
 
-    // 用户主动点击后才离开遭遇战，继续探索
-    fireEvent.click(screen.getByText('继续探索'));
+    // 跳过直达结算
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    expect(screen.getByTestId('battle-settlement-modal')).toBeDefined();
+    expect(screen.getByText('战斗胜利')).toBeDefined();
+
+    // 确认结算：关闭模态，无缝继续推进探索流程
+    fireEvent.click(screen.getByTestId('battle-settlement-confirm-btn'));
     expect(screen.getByText(/废弃的魔导卡车/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.realitySteps).toBe(2);
@@ -398,12 +403,17 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/战斗遭遇 —— 车间畸变体群/)).toBeDefined();
     fireEvent.click(screen.getByText(/迎战！（体力/));
 
-    // 事件流结算展示：失败结算 +「返回荒野」按钮
-    expect(screen.getByText(/战斗失败！/)).toBeDefined();
-    expect(screen.getByText('返回荒野')).toBeDefined();
+    // 遭遇战模态唤起：退出按钮严格隐藏
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+    expect(screen.queryByTestId('exit-battle-btn')).toBeNull();
 
-    // 用户主动点击后才离开遭遇战，回到荒野入口
-    fireEvent.click(screen.getByText('返回荒野'));
+    // 跳过直达结算：战败结算
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    expect(screen.getByTestId('battle-settlement-modal')).toBeDefined();
+    expect(screen.getByText('战斗失败')).toBeDefined();
+
+    // 确认结算：离开模态，探索终止回到荒野入口
+    fireEvent.click(screen.getByTestId('battle-settlement-confirm-btn'));
     expect(screen.getByText(/踏入废土荒野/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.inRealityExploration).toBe(false);

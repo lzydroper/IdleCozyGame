@@ -215,4 +215,37 @@ describe('BattleModal Component', () => {
     expect(screen.getByTestId('battle-settlement-modal')).toBeDefined();
     expect(screen.getByText('战斗失败')).toBeDefined();
   });
+
+  it('hides exit button and displays encounter title when isEncounter is true', () => {
+    const state = makeTestState();
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(state));
+
+    const settlement = makeMockSettlement(true);
+    const encounterLevel = {
+      id: 'encounter_wasteland_pack',
+      name: '遭遇战 · 废土鬣狗群',
+      staminaCost: 10,
+      enemies: ['wasteland_hound', 'mutant_rat'],
+      drops: []
+    };
+
+    renderWithProviders(
+      <BattleModal
+        isOpen={true}
+        settlement={settlement}
+        level={encounterLevel}
+        isEncounter={true}
+        encounterTitle="遭遇战 · 废土鬣狗群"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+    expect(screen.getByText(/遭遇战 · 废土鬣狗群/)).toBeDefined();
+    // Exit button strictly hidden
+    expect(screen.queryByTestId('exit-battle-btn')).toBeNull();
+    // Speed and skip still available
+    expect(screen.getByTestId('speed-toggle-btn')).toBeDefined();
+    expect(screen.getByTestId('skip-battle-btn')).toBeDefined();
+  });
 });

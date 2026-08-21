@@ -12,10 +12,12 @@ import { COMBAT_CONFIG } from '../data/combatConfig';
 
 export interface BattleModalProps {
   isOpen: boolean;
-  regionId: string | null;
-  levelId: string | null;
+  regionId?: string | null;
+  levelId?: string | null;
   level: LevelConfig | null;
   settlement: CombatSettlement | null;
+  isEncounter?: boolean;
+  encounterTitle?: string;
   onClose: () => void;
   onForfeit?: () => void;
 }
@@ -45,6 +47,8 @@ export const BattleModal: React.FC<BattleModalProps> = ({
   regionId,
   level,
   settlement,
+  isEncounter = false,
+  encounterTitle,
   onClose,
   onForfeit
 }) => {
@@ -372,7 +376,9 @@ export const BattleModal: React.FC<BattleModalProps> = ({
       <header className="shrink-0 bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-2.5 mb-2 shadow-lg flex items-center justify-between">
         <div>
           <div className="text-sm font-black text-zinc-100 truncate max-w-[180px]">
-            {region ? `${region.name} · ` : ''}{level.name}
+            {isEncounter
+              ? (encounterTitle || level.name || '遭遇战')
+              : `${region ? `${region.name} · ` : ''}${level.name}`}
           </div>
           <div className="text-xs text-zinc-400 font-mono mt-0.5">
             轮次: <span className="text-amber-400 font-bold">第 {currentRound}/{maxRounds} 轮</span>
@@ -398,13 +404,15 @@ export const BattleModal: React.FC<BattleModalProps> = ({
           >
             跳过
           </button>
-          <button
-            data-testid="exit-battle-btn"
-            onClick={() => setShowForfeitConfirm(true)}
-            className="h-8 px-3 bg-red-950/60 border border-red-500/40 text-red-400 text-xs font-bold rounded-xl hover:bg-red-900/60 cursor-pointer flex items-center justify-center active:scale-95 transition-all"
-          >
-            退出
-          </button>
+          {!isEncounter && (
+            <button
+              data-testid="exit-battle-btn"
+              onClick={() => setShowForfeitConfirm(true)}
+              className="h-8 px-3 bg-red-950/60 border border-red-500/40 text-red-400 text-xs font-bold rounded-xl hover:bg-red-900/60 cursor-pointer flex items-center justify-center active:scale-95 transition-all"
+            >
+              退出
+            </button>
+          )}
         </div>
       </header>
 
@@ -630,9 +638,13 @@ export const BattleModal: React.FC<BattleModalProps> = ({
               </div>
               <div className="text-xs text-zinc-400 mt-1">
                 {isVictory
-                  ? '成功消灭所有废土敌人，战利品已入账。'
+                  ? isEncounter
+                    ? '遭遇战胜利！战利品已存入探索临时背囊。'
+                    : '成功消灭所有废土敌人，战利品已入账。'
                   : isDefeat
-                    ? '小队全员重伤倒下，需使用纳米修复剂治愈。'
+                    ? isEncounter
+                      ? '小队全员重伤倒下，探索被迫终止。'
+                      : '小队全员重伤倒下，需使用纳米修复剂治愈。'
                     : '双方鏖战至轮次上限，未分胜负。'}
               </div>
             </div>

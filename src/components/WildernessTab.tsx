@@ -23,20 +23,19 @@ import { isRegionUnlocked } from '../state/levelCombat';
 import { advanceRegionProgress, completePendingMilestone, getPendingMilestone, canTriggerPendingMilestone, getRegionProgressPercent } from '../state/explorationProgress';
 import type { GameState, CombatSettlement } from '../types/game';
 import type { LevelConfig } from '../data/regions';
-import CombatEventLog from './CombatEventLog';
 import RegionSelectorModal from './RegionSelectorModal';
 import LevelBrowser from './LevelBrowser';
 import LevelDetailModal from './LevelDetailModal';
-import BattleModal from './BattleModal';
+import { BattleModal } from './BattleModal';
 
-const WildernessTab: React.FC = () => {
+export const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
   const { showToast } = useToast();
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
   const [selectedExplorationRegionId, setSelectedExplorationRegionId] = useState<string>(
-    () => getMainlineRegions()[0]?.id || 'wasteland_entrance'
+    () => state.exploration.realityRegionId || getMainlineRegions()[0]?.id || 'wasteland_entrance'
   );
   const [selectedCombatRegionId, setSelectedCombatRegionId] = useState<string>(
     () => getMainlineRegions()[0]?.id || 'wasteland_entrance'
@@ -44,14 +43,19 @@ const WildernessTab: React.FC = () => {
   const [isRegionSelectorOpen, setIsRegionSelectorOpen] = useState<boolean>(false);
   const [regionSelectorMode, setRegionSelectorMode] = useState<'exploration' | 'combat'>('exploration');
 
+  const [activeBattle, setActiveBattle] = useState<{
+    regionId: string | null;
+    levelId: string | null;
+    level: LevelConfig | null;
+    settlement: CombatSettlement;
+    isEncounter?: boolean;
+    encounterTitle?: string;
+  } | null>(null);
+
   const openRegionSelector = (targetMode: 'exploration' | 'combat') => {
     setRegionSelectorMode(targetMode);
     setIsRegionSelectorOpen(true);
   };
-
-  // 遭遇战结算：state 中 realityEncounterId 清空后仍需继续播放动画
-  const [encounterSettlement, setEncounterSettlement] = useState<CombatSettlement | null>(null);
-  const [encounterEventTitle, setEncounterEventTitle] = useState<string>('遭遇战');
 
   const exploration = state.exploration;
   const player = state.player;
@@ -346,20 +350,8 @@ const WildernessTab: React.FC = () => {
 
   return (
     <div className="w-full pb-20">
-      {/* 遭遇战结算（探索状态清空后仍展示；事件流为战斗信息数据源） */}
-      {encounterSettlement && (
-        <div className="space-y-2">
-          <CombatEventLog settlement={encounterSettlement} zoneName={encounterEventTitle} />
-          <button
-            onClick={() => setEncounterSettlement(null)}
-            className="w-full py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-300 hover:text-zinc-100 cursor-pointer active:scale-98"
-          >
-            {encounterSettlement.battle.victory ? '继续探索' : '返回荒野'}
-          </button>
-        </div>
-      )}
-      {/* 荒野 / 战斗 子 Tab 切换（探索中锁定，遭遇战播放期间也锁定） */}
-      {!encounterSettlement && !exploration.inRealityExploration && (
+      {/* 荒野 / 战斗 子 Tab 切换（探索中锁定） */}
+      {!exploration.inRealityExploration && (
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setMode('explore')}
@@ -383,11 +375,12 @@ const WildernessTab: React.FC = () => {
           </button>
         </div>
       )}
-      {!encounterSettlement && (!exploration.inRealityExploration ? (
+      {!exploration.inRealityExploration ? (
         mode === 'combat' ? (
           <CombatPanel
             selectedRegionId={selectedCombatRegionId}
             onOpenRegionSelector={() => openRegionSelector('combat')}
+            onStartBattle={(battle) => setActiveBattle(battle)}
           />
         ) : (
         <div className="space-y-4">
@@ -509,11 +502,17 @@ const WildernessTab: React.FC = () => {
           {exploration.realityEncounterId && (
             <EncounterPanel
               encounterId={exploration.realityEncounterId}
-              onFight={(s, title) => {
-                setEncounterEventTitle(title);
-                setEncounterSettlement(s);
-                if (s.battle.victory) showToast('遭遇战胜利！战利品与经验已入账。', 'success');
-                else if (s.battle.partyWiped) showToast('遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
+              onFight={(settlement, eventTitle, encounterLevel) => {
+                setActiveBattle({
+                  regionId: state.exploration.realityRegionId ?? null,
+                  levelId: null,
+                  level: encounterLevel,
+                  settlement,
+                  isEncounter: true,
+                  encounterTitle: eventTitle
+                });
+                if (settlement.battle.victory) showToast('遭遇战胜利！战利品与经验已入账。', 'success');
+                else if (settlement.battle.partyWiped) showToast('遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
                 else showToast('遭遇战平局，未分胜负。', 'info');
               }}
             />
@@ -590,7 +589,7 @@ const WildernessTab: React.FC = () => {
             </div>
           </div>
         </div>
-      ))}
+      )}
 
       {/* 通用区域选择器弹窗 */}
       <RegionSelectorModal
@@ -606,6 +605,18 @@ const WildernessTab: React.FC = () => {
           }
         }}
       />
+
+      {/* 独立全屏战斗场景模态（支持常规关卡挑战与荒野遭遇战） */}
+      <BattleModal
+        isOpen={!!activeBattle}
+        regionId={activeBattle?.regionId ?? null}
+        levelId={activeBattle?.levelId ?? null}
+        level={activeBattle?.level ?? null}
+        settlement={activeBattle?.settlement ?? null}
+        isEncounter={activeBattle?.isEncounter ?? false}
+        encounterTitle={activeBattle?.encounterTitle}
+        onClose={() => setActiveBattle(null)}
+      />
     </div>
   );
 };
@@ -613,7 +624,7 @@ const WildernessTab: React.FC = () => {
 // === 战斗遭遇场景（ticket 06）：探索中遭遇战斗事件，进入与自动战斗同一战斗场景 ===
 const EncounterPanel: React.FC<{
   encounterId: string;
-  onFight: (settlement: CombatSettlement, eventTitle: string) => void;
+  onFight: (settlement: CombatSettlement, eventTitle: string, encounterLevel: LevelConfig) => void;
 }> = ({ encounterId, onFight }) => {
   const { state, setState, resolveEncounterBattle, fleeEncounter } = useGame();
   const { showToast } = useToast();
@@ -636,13 +647,20 @@ const EncounterPanel: React.FC<{
     if (outcome.failure === 'no_stamina') { showToast(`体力不足（需要 ${staminaCost}），等待恢复或撤离。`, 'error'); return; }
     if (outcome.failure === 'no_party') { showToast('小队为空，请先在英雄页编队上阵！', 'warning'); return; }
     if (outcome.failure === 'wounded') { showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error'); return; }
-    // 战斗开始：将结算结果传给父组件，由父组件负责播放动画（避免 EncounterPanel 卸载时丢失状态）
+    // 战斗开始：将结算结果与关卡模型传给父组件，由全屏 BattleModal 负责展示
     if (outcome.settlement) {
       // 战斗型里程碑：胜利完成待办
       if (outcome.settlement.battle.victory && isMilestoneEncounter && milestoneRegionId) {
         setState(prev => completePendingMilestone(prev, milestoneRegionId));
       }
-      onFight(outcome.settlement, event.title);
+      const encounterLevel: LevelConfig = {
+        id: encounterId,
+        name: event.title,
+        staminaCost,
+        enemies: battleConfig.enemies,
+        drops: []
+      };
+      onFight(outcome.settlement, event.title, encounterLevel);
     }
   };
 
@@ -717,18 +735,13 @@ const EncounterPanel: React.FC<{
 const CombatPanel: React.FC<{
   selectedRegionId: string;
   onOpenRegionSelector: () => void;
-}> = ({ selectedRegionId, onOpenRegionSelector }) => {
+  onStartBattle: (battle: { regionId: string; levelId: string; level: LevelConfig; settlement: CombatSettlement }) => void;
+}> = ({ selectedRegionId, onOpenRegionSelector, onStartBattle }) => {
   const { state, startLevelCombat, startLevelIdle, stopLevelIdle } = useGame();
   const { showToast } = useToast();
 
   const [combatMode, setCombatMode] = useState<'active' | 'idle'>('active');
   const [selectedLevel, setSelectedLevel] = useState<LevelConfig | null>(null);
-  const [activeBattle, setActiveBattle] = useState<{
-    regionId: string;
-    levelId: string;
-    level: LevelConfig;
-    settlement: CombatSettlement;
-  } | null>(null);
 
   const stamina = Math.floor(state.stamina || 0);
   const maxStamina = state.maxStamina || COMBAT_CONFIG.maxStamina;
@@ -752,7 +765,7 @@ const CombatPanel: React.FC<{
     else if (outcome.settlement) {
       const lvl = getLevel(regionId, levelId);
       if (lvl) {
-        setActiveBattle({
+        onStartBattle({
           regionId,
           levelId,
           level: lvl,
@@ -905,16 +918,6 @@ const CombatPanel: React.FC<{
             handleStartIdle(regionId, levelId);
           }
         }}
-      />
-
-      {/* 独立全屏战斗场景模态 */}
-      <BattleModal
-        isOpen={!!activeBattle}
-        regionId={activeBattle?.regionId ?? null}
-        levelId={activeBattle?.levelId ?? null}
-        level={activeBattle?.level ?? null}
-        settlement={activeBattle?.settlement ?? null}
-        onClose={() => setActiveBattle(null)}
       />
     </div>
   );
