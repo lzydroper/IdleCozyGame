@@ -426,7 +426,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                         <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
                       </div>
                       <p className="text-[7.5px] text-zinc-400 leading-tight italic line-clamp-2">
-                        "{config.backstory}"
+                        "{config.description}"
                       </p>
                     </>
                   )}

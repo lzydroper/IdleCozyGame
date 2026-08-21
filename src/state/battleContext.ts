@@ -4,7 +4,8 @@
  * Buff 配置策略来自 buffTypes 注册表；applyBuff 统一 source 锁定与 Renew/Stack。
  */
 
-import type { TurnRuntime, BattleUnitStats } from './turnEngine';
+import type { TurnRuntime } from './turnEngine';
+import type { BattleUnitStats } from './battleTypes';
 import { toStatModifier, type Modifier, type ModifierNamespace } from './modifier';
 import { calculateEntityStats, type StatModifier } from './statSystem';
 import {

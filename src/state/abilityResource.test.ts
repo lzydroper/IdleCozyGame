@@ -20,7 +20,7 @@ const fakeRuntime = (unit: BattleUnitRuntime): TurnRuntime => ({
 const unit = (id: string, currentMp: number, maxMp: number): BattleUnitRuntime => ({
   id,
   name: id,
-  faction: 'hero',
+  side: 'hero',
   hp: 10,
   maxHp: 10,
   initiative: 0,
@@ -57,7 +57,7 @@ describe('资源消耗 seam', () => {
     const snapshot: BattleUnitSnapshot = {
       id: 'a',
       name: 'a',
-      faction: 'hero',
+      side: 'hero',
       hp: 10,
       maxHp: 10,
       initiative: 0,

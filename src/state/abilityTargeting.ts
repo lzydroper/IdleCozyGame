@@ -48,9 +48,9 @@ export const selectTargets = (
     return unit.hp > 0 ? [unit] : [];
   }
 
-  const opponentFaction = unit.faction === 'hero' ? 'enemy' : 'hero';
-  const enemies = () => ctx.getLivingUnits(opponentFaction);
-  const allies = () => ctx.getLivingUnits(unit.faction);
+  const opponentSide = unit.side === 'hero' ? 'enemy' : 'hero';
+  const enemies = () => ctx.getLivingUnits(opponentSide);
+  const allies = () => ctx.getLivingUnits(unit.side);
 
   if (targeting === 'enemy:all') {
     return enemies();

@@ -72,11 +72,15 @@
 
 ### 10. Turn 通过 `BattleUnitStatParams` 与 statSystem 类型耦合
 
+> ✅ 已由 combat-entity 完成。
+
 - **现状**：`turnEngine.ts` import 了 `BaseAttributes / PrimaryAttributes / SpecialAttributes / StatModifier` 来定义 `BattleUnitStatParams`；`battleContext.resolveStats` 又做一次面板展平。
 - **妥协点**：Turn 的「纯流程引擎、不碰属性计算」边界被类型依赖打破（与 `After/Ability.md` 第 14 条同源）。
 - **待完善**：把 `BattleUnitStats` / `BattleUnitStatParams` 抽到共享战斗类型模块，Turn 只保留 `import type`。
 
 ### 11. `TurnConfig.setup` 是后补的初始化 seam
+
+> ⚠️ 已由 combat-entity 抽出 `createBattle`，但 setup 仍通过 `TurnConfig.setup` 传入，尚未前移到装配层或写入契约（见 `After/Entity.md` #12）。
 
 - **现状**：`TurnConfig.setup(runtime)` 用于 Ability/Buff 在首轮前完成装配；它不在 combat-turn spec 的原始接口清单里。注释约定「不派发事件、不改 hp/先机」，但没有运行时校验。
 - **妥协点**：装配逻辑需要一个入口，但塞在引擎配置里让 Turn 的输入面变宽。
@@ -84,11 +88,15 @@
 
 ### 12. 生产装配集中在 `combat.ts`，缺少 Battle 工厂
 
+> ✅ 已由 combat-entity 完成。
+
 - **现状**：`simulateBattle` 负责 `combatantToTurnUnit`、`collectPassiveBuffConfigs`、`createBattleContext`、`applyPassiveAbilities`、`abilityRuntime.setup`、`canActWithBuffs` 全套编排；四个战斗入口都通过它间接使用 Turn。
 - **妥协点**：Turn 引擎本身干净，但调用方装配逻辑重；想复用同一装配（例如回放、离线、测试）只能 import 带经济结算壳的 `simulateBattle`。
 - **待完善**：抽 `createBattle(units, config)` 返回 `{ run, context }`；`simulateBattle` 变成「装配 + 跑 + 映射 `BattleResult`」的薄封装。
 
 ### 13. 两套战斗单位形状并存
+
+> ✅ 已由 combat-entity 完成。
 
 - **现状**：`CombatantState`（旧：attack/defense/hp/maxHp + snapshot + abilities）与 `BattleUnitSnapshot`（Turn 输入）并存，`combatantToTurnUnit` 做转换；旧 `recomputeCombatant` / `ActiveBuff` 体系仍在使用 `CombatantState`。
 - **妥协点**：实体模块落地后应当只有「实体 → BattleUnitSnapshot」一条路；目前双轨改一处容易漏另一处。

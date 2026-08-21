@@ -6,7 +6,8 @@ import { BONDS } from '../data/bonds';
 import { formatModifiers } from './statSystem';
 import type { HeroFaction } from '../types/game';
 import { getActiveBonds, aggregateBonus } from './bonds';
-import { heroToCombatant, simulateBattle, startBossBattleUpdate, startCombatUpdate } from './combat';
+import { heroToCombatant, enemyConfigToEntity, simulateBattle, startBossBattleUpdate, startCombatUpdate } from './combat';
+import { entityStats } from './battleEntity';
 import { COMBAT_ZONES } from '../data/combatZones';
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
@@ -18,6 +19,16 @@ const owned = (ids: string[], party: string[]): Partial<GameState> => ({
   heroes: Object.fromEntries(ids.map(id => [id, createInitialHero(id)])),
   party
 });
+
+const makeEnemy = (id: string, name: string, hp: number, attack: number) =>
+  enemyConfigToEntity({
+    id,
+    name,
+    kind: 'enemy',
+    role: 'normal',
+    faction: 'nightmare',
+    baseAttributes: { attack, defense: 0, maxHp: hp }
+  });
 
 describe('Bond data (羁绊表数据驱动配置)', () => {
   it('has at least 2 example bonds, each with id/name/description and a numeric bonus', () => {
@@ -105,14 +116,14 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
       { stat: 'defense', kind: 'percent', value: 0.10 },
       { stat: 'maxHp', kind: 'percent', value: 0.10 }
     ]);
-    expect(boosted.attack).toBe(Math.round((HEROES_CONFIG.nova.baseAttributes.attack + HEROES_CONFIG.nova.primaryAttributes.strength * 2) * 1.1)); // 54（含元属性折算）
-    expect(boosted.defense).toBe(12); // round((8 + 体质 3) × 1.1)
-    expect(boosted.maxHp).toBe(143); // round((100 + 体质 3×10) × 1.1)
+    expect(entityStats(boosted).attack).toBe(Math.round((HEROES_CONFIG.nova.baseAttributes.attack + HEROES_CONFIG.nova.primaryAttributes.strength * 2) * 1.1)); // 54（含元属性折算）
+    expect(entityStats(boosted).defense).toBe(12); // round((8 + 体质 3) × 1.1)
+    expect(entityStats(boosted).maxHp).toBe(143); // round((100 + 体质 3×10) × 1.1)
     expect(boosted.hp).toBe(143); // 当前血量同比例缩放
     // 无加成时保持元属性折算后的值（回归）
     const plain = heroToCombatant('nova', nova);
-    expect(plain.attack).toBe(49); // 35 + 力量 7×2
-    expect(plain.maxHp).toBe(130); // 100 + 体质 3×10
+    expect(entityStats(plain).attack).toBe(49); // 35 + 力量 7×2
+    expect(entityStats(plain).maxHp).toBe(130); // 100 + 体质 3×10
   });
 
   it('startCombatUpdate: hero-combo bond boosts damage in the actual battle', () => {
@@ -141,7 +152,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     // 敌方每回合造成 5 点伤害（攻击 20 - 艾拉防御 15，含体质折算）：
     // 155hp 无加成 → 第 31 回合阵亡；+10% 生命（171hp）→ 第 35 回合阵亡（撑得更久）
     const healer = createInitialHero('healer');
-    const enemy = { id: 'e', name: '强敌', hp: 9999, maxHp: 9999, attack: 20, defense: 0 };
+    const enemy = makeEnemy('e', '强敌', 9999, 20);
     const lastEnemyHit = (r: BattleResult) =>
       Math.max(...r.events.filter(e => e.key === 'attackAfter' && e.sourceId === 'e').map(e => e.round));
     const without = simulateBattle([heroToCombatant('healer', healer)], [enemy]);
@@ -158,7 +169,7 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const bonus = aggregateBonus(party);
     expect(bonus).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10, source: '奥术共鸣' }]);
     const combatant = heroToCombatant('mei', createInitialHero('mei'), bonus);
-    expect(combatant.maxHp).toBe(176); // (120 + 体质 4×10) × 1.1
+    expect(entityStats(combatant).maxHp).toBe(176); // (120 + 体质 4×10) × 1.1
     expect(combatant.hp).toBe(176);
   });
 

@@ -12,14 +12,14 @@ import {
 
 const snap = (
   id: string,
-  faction: 'hero' | 'enemy',
+  side: 'hero' | 'enemy',
   hp: number,
   initiative: number,
   overrides: Partial<BattleUnitSnapshot> = {}
 ): BattleUnitSnapshot => ({
   id,
   name: id,
-  faction,
+  side,
   hp,
   maxHp: hp,
   initiative,
@@ -31,7 +31,7 @@ const snap = (
 /** 纯普通攻击：对首个存活敌对单位造成固定伤害，并派发攻击后事件。 */
 const basicAttackAction = (damage: number) =>
   (unit: BattleUnitRuntime, runtime: TurnRuntime): void => {
-    const targets = runtime.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
+    const targets = runtime.getLivingUnits(unit.side === 'hero' ? 'enemy' : 'hero');
     const target = targets[0];
     if (!target) return;
     runtime.dealDamage(target.id, damage, unit.id, { kind: 'attack' });

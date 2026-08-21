@@ -22,7 +22,7 @@ describe('HeroDossierModal (英雄档案，10 号)', () => {
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
   });
 
-  it('renders dossier with class/faction lore, backstory and duty meta', () => {
+  it('renders dossier with class/faction lore, description and duty meta', () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(INITIAL_STATE));
 
     renderWithProviders(<HeroDossierModal isOpen={true} heroId="nova" onClose={() => {}} />);

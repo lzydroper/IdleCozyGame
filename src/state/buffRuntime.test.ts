@@ -6,13 +6,13 @@ import { canTriggerBuff, createBuffTriggerHooks, settleBuffTrigger } from './buf
 
 const makeUnit = (
   id: string,
-  faction: 'hero' | 'enemy',
+  side: 'hero' | 'enemy',
   hp = 1000,
   attack = 10
 ): BattleUnitSnapshot => ({
   id,
   name: id,
-  faction,
+  side,
   hp,
   maxHp: hp,
   initiative: 100,
@@ -72,11 +72,11 @@ describe('Buff 触发运行时', () => {
 
   it('fireCount 放大效果但不额外扣 duration', () => {
     const unitA: BattleUnitRuntime = {
-      id: 'a', name: 'a', faction: 'hero', hp: 1000, maxHp: 1000, initiative: 100,
+      id: 'a', name: 'a', side: 'hero', hp: 1000, maxHp: 1000, initiative: 100,
       abilities: [], stats: { attack: 10, defense: 0, maxHp: 1000, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }, entryOrder: 0
     };
     const unitB: BattleUnitRuntime = {
-      id: 'b', name: 'b', faction: 'enemy', hp: 1000, maxHp: 1000, initiative: 100,
+      id: 'b', name: 'b', side: 'enemy', hp: 1000, maxHp: 1000, initiative: 100,
       abilities: [], stats: { attack: 10, defense: 0, maxHp: 1000, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }, entryOrder: 1
     };
     const units = new Map<string, BattleUnitRuntime>([['a', unitA], ['b', unitB]]);
@@ -166,7 +166,7 @@ describe('Buff 触发运行时', () => {
     const units = [makeUnit('a', 'hero', 1000, 10), makeUnit('b', 'enemy', 1000, 10)];
     const attackAction = (unit: BattleUnitRuntime, runtime: TurnRuntime): void => {
       const target = runtime
-        .getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero')[0];
+        .getLivingUnits(unit.side === 'hero' ? 'enemy' : 'hero')[0];
       if (!target) return;
       runtime.dealDamage(target.id, 1, unit.id, { kind: 'attack' });
       runtime.dispatchEvent('attackAfter', {

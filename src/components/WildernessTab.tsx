@@ -14,6 +14,7 @@ import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { ALL_COMBAT_ZONES, COMBAT_ZONES } from '../data/combatZones';
+import { ENEMY_CONFIGS } from '../data/enemies';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SURVIVORS_CONFIG } from '../data/survivors';
@@ -520,7 +521,7 @@ const EncounterPanel: React.FC<{
       <p className="text-[9px] text-zinc-400 leading-relaxed">{event.description}</p>
       <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-          敌人：{battleConfig.enemies.map(e => e.name).join('、')}
+          敌人：{battleConfig.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
           掉落：{battleConfig.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')}
@@ -816,7 +817,7 @@ const CombatPanel: React.FC = () => {
               )}
               <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  敌人：{zone.enemies.map(e => e.name).join('、')}
+                  敌人：{zone.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
                 </span>
                 <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
                   掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.soulEchoMin}-{zone.soulEchoMax}
@@ -830,7 +831,7 @@ const CombatPanel: React.FC = () => {
               }`}>
                 <div className="flex flex-col gap-0.5 min-w-0">
                   <span className="text-[9px] font-black text-purple-300 truncate">
-                    <Crown className="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-amber-300" />关底 BOSS：<GameIcon type="enemy" id={zone.boss.enemies[0].id} className="w-3 h-3 inline-block" />{zone.boss.name}
+                    <Crown className="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-amber-300" />关底 BOSS：<GameIcon type="enemy" id={zone.boss.enemies[0]} className="w-3 h-3 inline-block" />{zone.boss.name}
                   </span>
                   <span className="text-[8px] text-zinc-500 font-bold truncate">
                     专属掉落：{zone.boss.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.boss.soulEchoMin}-{zone.boss.soulEchoMax} · 经验 ×{zone.boss.expReward}

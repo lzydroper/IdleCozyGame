@@ -15,7 +15,7 @@ const makeUnit = (
 ): BattleUnitRuntime => ({
   id,
   name: id,
-  faction: 'hero',
+  side: 'hero',
   hp,
   maxHp: hp,
   initiative: 100,
@@ -96,7 +96,7 @@ const makeRuntime = (units: Map<string, BattleUnitRuntime>): { runtime: TurnRunt
       const unit: BattleUnitRuntime = {
         id: snapshot.id,
         name: snapshot.name,
-        faction: snapshot.faction,
+        side: snapshot.side,
         hp: Math.max(0, snapshot.hp),
         maxHp: snapshot.maxHp,
         initiative: snapshot.initiative,
@@ -345,17 +345,8 @@ describe('summon 效果', () => {
   it('按 count 创建多个单位，targetId 记首个/主单位', () => {
     const units = new Map<string, BattleUnitRuntime>([['a', makeUnit('a', 100)]]);
     const { ctx, events } = makeCtx(units);
-    const snapshot = {
-      id: 's1',
-      name: '骷髅',
-      faction: 'hero' as const,
-      hp: 50,
-      maxHp: 50,
-      initiative: 120,
-      abilities: [],
-      stats: { attack: 5, defense: 0, maxHp: 50, maxMp: 0, critRate: 0, critDmg: 1.5 }
-    };
-    const result = resolveEffect(ctx, effect('summon', { count: 2, snapshot }, { targetId: 's1' }));
+    const configRef = { kind: 'enemy' as const, id: 'test_dummy' };
+    const result = resolveEffect(ctx, effect('summon', { count: 2, configRef }, { targetId: 's1' }));
 
     expect(result.applied).toBe(true);
     expect(result.values.count).toBe(2);
@@ -368,17 +359,8 @@ describe('summon 效果', () => {
     const units = new Map<string, BattleUnitRuntime>([['a', makeUnit('a', 100)]]);
     const { ctx } = makeCtx(units);
     ctx.addModifier('a', { target: 'effect.count', op: 'add', value: 1 });
-    const snapshot = {
-      id: 's1',
-      name: '骷髅',
-      faction: 'hero' as const,
-      hp: 50,
-      maxHp: 50,
-      initiative: 120,
-      abilities: [],
-      stats: { attack: 5, defense: 0, maxHp: 50, maxMp: 0, critRate: 0, critDmg: 1.5 }
-    };
-    const result = resolveEffect(ctx, effect('summon', { count: 1, snapshot }, { targetId: 's1' }));
+    const configRef = { kind: 'enemy' as const, id: 'test_dummy' };
+    const result = resolveEffect(ctx, effect('summon', { count: 1, configRef }, { targetId: 's1' }));
 
     expect(result.applied).toBe(true);
     expect(result.values.count).toBe(2);

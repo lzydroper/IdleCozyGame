@@ -6,6 +6,8 @@
 
 ## 1. 类型层仍是「半强类型」
 
+> ✅ 已由 combat-entity 完成。
+
 - **现状**：`turnEngine.BattleUnitAbility` 仍是 `{ id; name?; [key: string]: unknown }`，`ResolvedAbility` 放入 `abilities` 时通过 `as unknown as BattleUnitAbility` 强转（`src/state/combat.ts`、`src/state/abilityRuntime.ts`、`src/state/abilityPassive.ts`）。
 - **待完善**：把 `BattleUnitAbility` 收敛为 `ResolvedAbility`（或等价的强类型），移除 unsafe cast，让配置层/运行时层字段错误在编译期暴露。
 
@@ -46,6 +48,8 @@
 
 ## 9. 觉醒技能已切到 abilityId，但装配仍是 id 数组
 
+> ✅ 已由 combat-entity 完成。
+
 - **现状**：`AwakenConfig.abilityId`、`collectHeroAbilities` 返回 `string[]`；`CombatantState.abilities` 也是 `string[]`。英雄/敌人装配最终仍在 `combatantToTurnUnit` 里查注册表。
 - **待完善**：让 `collectHeroAbilities` 直接返回 `ResolvedAbility[]`，把查表/解析收敛到装配层，`Turn` 只拿解析后实例。
 
@@ -61,6 +65,8 @@
 
 ## 12. statParams 克隆逻辑重复
 
+> ⚠️ 已由 combat-entity 移出 `combat.ts`，但 `toTurnUnit` 与 `turnEngine.cloneSnapshotUnit` 仍未抽成共享 helper（见 `After/Entity.md` #10）。
+
 - **现状**：`turnEngine.cloneSnapshotUnit` 与 `combat.combatantToTurnUnit` 都手写 `statParams` 深拷贝。
 - **待完善**：抽 `cloneStatParams` / `toBattleUnitStatParams`。
 
@@ -70,6 +76,8 @@
 - **待完善**：把 `fireCount` 作为 `EffectTemplate` 的一等字段在编译/事件两层一致传播。
 
 ## 14. BattleUnitStatParams 放在 turnEngine
+
+> ✅ 已由 combat-entity 完成。
 
 - **现状**：`turnEngine.ts` 为了 `BattleUnitStatParams` 引了 `statSystem` 类型，引擎与属性系统耦合。
 - **待完善**：把战斗统计相关类型抽到共享模块，让 Turn 保持纯流程引擎边界。

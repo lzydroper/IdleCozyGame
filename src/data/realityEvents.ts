@@ -1,4 +1,4 @@
-import type { CombatEnemyConfig, CombatDropConfig } from './combatZones';
+import type { CombatDropConfig } from './combatZones';
 
 export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly' | 'encounter';
 
@@ -18,7 +18,7 @@ export interface EventChoice {
 
 // 战斗遭遇配置（ticket 06）：事件进入与自动战斗同一战斗场景
 export interface EncounterBattleConfig {
-  enemies: CombatEnemyConfig[];      // 遭遇的敌人组
+  enemies: string[];                // 遭遇的敌人 id 组（查 ENEMY_CONFIGS）
   expReward: number;                 // 胜利后每位上阵英雄获得的经验
   drops: CombatDropConfig[];         // 胜利后掉入探索临时背囊
 }
@@ -758,10 +758,7 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     type: "encounter",
     weight: 70,
     battle: {
-      enemies: [
-        { id: 'wasteland_hound', name: '废土鬣狗', baseAttributes: { maxHp: 45, attack: 9, defense: 3 } },
-        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 30, attack: 7, defense: 1 } }
-      ],
+      enemies: ['wasteland_hound', 'mutant_rat'],
       expReward: 15,
       drops: [
         { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 2 },
@@ -776,10 +773,7 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     type: "encounter",
     weight: 55,
     battle: {
-      enemies: [
-        { id: 'ruin_scavenger', name: '废墟拾荒者', baseAttributes: { maxHp: 80, attack: 16, defense: 4 } },
-        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
-      ],
+      enemies: ['ruin_scavenger', 'mutant_rat_elite'],
       expReward: 25,
       drops: [
         { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
@@ -795,11 +789,7 @@ export const REALITY_EVENTS: Record<string, RealityEvent> = {
     type: "encounter",
     weight: 40,
     battle: {
-      enemies: [
-        { id: 'radiation_mutant', name: '辐射变异体', baseAttributes: { maxHp: 130, attack: 20, defense: 6 } },
-        { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } },
-        { id: 'aberrant_subject', name: '畸变实验体', baseAttributes: { maxHp: 70, attack: 18, defense: 5 } }
-      ],
+      enemies: ['radiation_mutant', 'rogue_machine', 'aberrant_subject'],
       expReward: 40,
       drops: [
         { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },

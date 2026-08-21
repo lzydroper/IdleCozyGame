@@ -1,20 +1,5 @@
 // 战斗区域配置（ticket 05）：线性递进的自动战斗场所；区域链与 BOSS 见 ticket 07
-// 敌人也是战斗实体（stat-bonus-unification 统一实体）：与英雄同走 statSystem 三层配置，
-// baseAttributes 复用 BaseStatsSeed（攻击/防御/生命必填，maxMp/critRate/critDmg 缺省 = DEFAULT_BASE_ATTRIBUTES），
-// 元属性/特殊属性缺省全 0，modifiers 为配置级修饰符（如 BOSS 光环）
-import type { PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
-import type { StatModifier } from '../state/statSystem';
-import type { BaseStatsSeed } from './statConfig';
-
-export interface CombatEnemyConfig {
-  id: string;
-  name: string;
-  baseAttributes: BaseStatsSeed;
-  primaryAttributes?: Partial<PrimaryAttributes>;
-  specialAttributes?: Partial<SpecialAttributes>;
-  modifiers?: StatModifier[];
-  abilities?: string[];   // 可选能力 id（与英雄共用同一 Ability 模型；缺省 = 普通攻击）
-}
+// 敌人配置已统一到 src/data/enemies.ts（combat-entity ticket 01）；本文件只引用敌人 id。
 
 export interface CombatDropConfig {
   itemId: string;
@@ -26,7 +11,7 @@ export interface CombatDropConfig {
 // 关底 BOSS 配置（ticket 07）：每区一个，击败后通关区域、解锁下一区；复用同一战斗场景
 export interface CombatZoneBossConfig {
   name: string;
-  enemies: CombatEnemyConfig[];   // BOSS 战敌人组（含护卫）
+  enemies: string[];   // BOSS 战敌人 id 组（含护卫，查 ENEMY_CONFIGS）
   staminaCost: number;            // BOSS 战体力消耗
   expReward: number;              // BOSS 战胜利每位英雄经验
   drops: CombatDropConfig[];      // BOSS 专属掉落（含最强系列装备占位，ticket 10 落地）
@@ -41,7 +26,7 @@ export interface CombatZoneConfig {
   recommendedLevel: number;   // 推荐队伍平均等级（同时决定线性链顺序）
   staminaCost: number;        // 每场战斗消耗的体力
   expReward: number;          // 胜利后每位上阵英雄获得的经验
-  enemies: CombatEnemyConfig[];   // 一场战斗遭遇的全部敌人
+  enemies: string[];   // 一场战斗遭遇的全部敌人 id
   drops: CombatDropConfig[];      // 胜利掉落表（材料）
   soulEchoMin: number;            // 胜利灵魂残响掉落范围
   soulEchoMax: number;
@@ -61,9 +46,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     staminaCost: 0,
     expReward: 50,
     isTestZone: true,
-    enemies: [
-      { id: 'test_dummy', name: '测试靶机', baseAttributes: { maxHp: 10, attack: 1, defense: 0 } }
-    ],
+    enemies: ['test_dummy'],
     drops: [
       { itemId: 'wasteland_weapon', chance: 1.0, minQty: 1, maxQty: 1 },
       { itemId: 'wasteland_armor', chance: 1.0, minQty: 1, maxQty: 1 },
@@ -79,9 +62,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     boss: {
       name: '测试领主',
 
-      enemies: [
-        { id: 'test_boss', name: '测试领主', baseAttributes: { maxHp: 20, attack: 2, defense: 0 } }
-      ],
+      enemies: ['test_boss'],
       staminaCost: 10,
       expReward: 100,
       drops: [
@@ -106,10 +87,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     recommendedLevel: 1,
     staminaCost: 10,
     expReward: 20,
-    enemies: [
-      { id: 'wasteland_hound', name: '废土鬣狗', baseAttributes: { maxHp: 45, attack: 9, defense: 3 } },
-      { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 30, attack: 7, defense: 1 } }
-    ],
+    enemies: ['wasteland_hound', 'mutant_rat'],
     drops: [
       { itemId: 'scrap_metal', chance: 0.6, minQty: 1, maxQty: 2 },
       { itemId: 'glow_fiber', chance: 0.4, minQty: 1, maxQty: 2 },
@@ -121,9 +99,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     boss: {
       name: '废土鬣狗王',
 
-      enemies: [
-        { id: 'wasteland_hound_king', name: '废土鬣狗王', baseAttributes: { maxHp: 90, attack: 13, defense: 5 } }
-      ],
+      enemies: ['wasteland_hound_king'],
       staminaCost: 12,
       expReward: 30,
       drops: [
@@ -145,10 +121,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     recommendedLevel: 3,
     staminaCost: 15,
     expReward: 35,
-    enemies: [
-      { id: 'ruin_scavenger', name: '废墟拾荒者', baseAttributes: { maxHp: 80, attack: 16, defense: 4 } },
-      { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
-    ],
+    enemies: ['ruin_scavenger', 'mutant_rat_elite'],
     drops: [
       { itemId: 'scrap_metal', chance: 0.7, minQty: 1, maxQty: 3 },
       { itemId: 'alloy_plate', chance: 0.3, minQty: 1, maxQty: 1 },
@@ -161,10 +134,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     boss: {
       name: '废墟霸主',
 
-      enemies: [
-        { id: 'ruin_overlord', name: '废墟霸主', baseAttributes: { maxHp: 150, attack: 20, defense: 8 } },
-        { id: 'mutant_rat', name: '变异鼠群', baseAttributes: { maxHp: 35, attack: 8, defense: 1 } }
-      ],
+      enemies: ['ruin_overlord', 'mutant_rat_elite'],
       staminaCost: 18,
       expReward: 50,
       drops: [
@@ -188,11 +158,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     recommendedLevel: 6,
     staminaCost: 20,
     expReward: 60,
-    enemies: [
-      { id: 'radiation_mutant', name: '辐射变异体', baseAttributes: { maxHp: 130, attack: 20, defense: 6 } },
-      { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } },
-      { id: 'aberrant_subject', name: '畸变实验体', baseAttributes: { maxHp: 70, attack: 18, defense: 5 } }
-    ],
+    enemies: ['radiation_mutant', 'rogue_machine', 'aberrant_subject'],
     drops: [
       { itemId: 'alloy_plate', chance: 0.6, minQty: 1, maxQty: 2 },
       { itemId: 'rusted_spring', chance: 0.4, minQty: 1, maxQty: 2 },
@@ -206,10 +172,7 @@ export const COMBAT_ZONES: CombatZonesMap = {
     boss: {
       name: '车间之主·畸变聚合体',
 
-      enemies: [
-        { id: 'workshop_abomination', name: '车间之主·畸变聚合体', baseAttributes: { maxHp: 260, attack: 26, defense: 10 } },
-        { id: 'rogue_machine', name: '失控机器仆从', baseAttributes: { maxHp: 90, attack: 15, defense: 8 } }
-      ],
+      enemies: ['workshop_abomination', 'rogue_machine'],
       staminaCost: 25,
       expReward: 80,
       drops: [

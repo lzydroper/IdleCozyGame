@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { REALITY_EVENTS } from '../data/realityEvents';
+import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { resolveEncounterBattleUpdate, fleeEncounterUpdate } from './combat';
@@ -32,7 +33,9 @@ describe('Encounter events data (战斗遭遇事件池)', () => {
       expect(evt.battle, evt.id).toBeDefined();
       expect(evt.battle!.enemies.length, evt.id).toBeGreaterThan(0);
       expect(evt.battle!.expReward, evt.id).toBeGreaterThan(0);
-      evt.battle!.enemies.forEach(en => {
+      evt.battle!.enemies.forEach(enId => {
+        const en = ENEMY_CONFIGS[enId];
+        expect(en, evt.id).toBeDefined();
         expect(en.baseAttributes.maxHp).toBeGreaterThan(0);
         expect(en.baseAttributes.attack).toBeGreaterThan(0);
       });

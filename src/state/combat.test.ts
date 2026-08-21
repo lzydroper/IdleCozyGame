@@ -14,122 +14,42 @@ import {
   healWoundedHeroUpdate,
   healWoundedHeroesUpdate,
   heroToCombatant,
-  recomputeCombatant,
-  combatantFromSnapshot,
+  enemyConfigToEntity,
   simulateBattle,
-  canActWithBuffs,
-  type CombatantState,
-  type CombatantSnapshot
+  createBattle,
+  canActWithBuffs
 } from './combat';
-import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
-import type { ActiveBuff } from './buffSystem';
+import { ENEMY_CONFIGS } from '../data/enemies';
 import { createBattleContext, type BattleContext } from './battleContext';
 import { BUFF_CONFIGS } from './buffTypes';
 import { createBuffTriggerHooks } from './buffRuntime';
 import { runTurnEngine, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime } from './turnEngine';
 
-describe('recomputeCombatant (B 方案：可重算快照)', () => {
-  it('无 buff 时重算 = 入场值（幂等）', () => {
-    const c = heroToCombatant('nova', createInitialHero('nova'));
-    const r = recomputeCombatant(c, []);
-    expect(r.attack).toBe(c.attack);
-    expect(r.defense).toBe(c.defense);
-    expect(r.maxHp).toBe(c.maxHp);
-    expect(r.hp).toBe(c.hp);
+describe('BattleEntity 装配（统一实体）', () => {
+  it('heroToCombatant 产出 BattleEntity，英雄专属字段已结算进配方', () => {
+    const e = heroToCombatant('nova', createInitialHero('nova'));
+    expect(e.kind).toBe('hero');
+    expect(e.side).toBe('hero');
+    expect(e.abilities.length).toBeGreaterThan(0);
+    expect(e.recipe.baseAttributes.maxHp).toBeGreaterThan(0);
   });
 
-  it('buff 变化 → 面板重算（percent 加算 + 元属性折算 + hp 比例缩放）', () => {
-    const c = heroToCombatant('nova', createInitialHero('nova'));
-    const buffs: ActiveBuff[] = [
-      {
-        id: 'b1',
-        name: '狂暴',
-        type: 'buff',
-        duration: 3,
-        maxDuration: 3,
-        statModifiers: [
-          { stat: 'attack', kind: 'percent', value: 0.20 },
-          { stat: 'maxHp', kind: 'percent', value: 0.10 },
-          { stat: 'strength', kind: 'flat', value: 5 }
-        ]
-      }
-    ];
-    const r = recomputeCombatant(c, buffs);
-    // 力量 7 + 5 = 12 → 攻击 35 + 24 = 59；×1.2 = 70.8 → 71
-    expect(r.attack).toBe(71);
-    // maxHp = 130 × 1.1 = 143
-    expect(r.maxHp).toBe(143);
-    // 满血比例不变
-    expect(r.hp).toBe(143);
+  it('enemyConfigToEntity 与英雄同走实体工厂，role/faction/普通攻击兜底正确', () => {
+    const e = enemyConfigToEntity(ENEMY_CONFIGS.wasteland_hound);
+    expect(e.kind).toBe('enemy');
+    expect(e.role).toBe('normal');
+    expect(e.side).toBe('enemy');
+    expect(e.faction).toBe('nightmare');
+    expect(e.abilities.length).toBeGreaterThan(0);
   });
 
-  it('debuff 经意志减免后生效（力量越强减免越多）', () => {
-    const c = heroToCombatant('nova', createInitialHero('nova')); // nova 意志 1 → effectReduction 0.5%
-    const debuffs: ActiveBuff[] = [
-      {
-        id: 'd1',
-        name: '虚弱',
-        type: 'debuff',
-        duration: 3,
-        maxDuration: 3,
-        statModifiers: [{ stat: 'attack', kind: 'flat', value: -40 }]
-      }
-    ];
-    const r = recomputeCombatant(c, debuffs);
-    // 减免 40 × (1 - 0.005) = 39.8 → attack = (49 - 39.8) = 9.2 → round 9
-    expect(r.attack).toBe(9);
-  });
-
-  it('无快照的单位（敌人/手动构造）原样返回', () => {
-    const enemy: CombatantState = { id: 'e', name: '敌', hp: 50, maxHp: 50, attack: 5, defense: 2 };
-    expect(recomputeCombatant(enemy, [])).toBe(enemy);
-  });
-});
-
-describe('统一实体：敌人与英雄同走 statSystem 配方（stat-bonus-unification）', () => {
-  it('敌人式配方（元属性全 0）→ 面板 = 配置值，快照可重算且幂等', () => {
-    const snapshot: CombatantSnapshot = {
-      baseAttributes: { attack: 20, defense: 8, maxHp: 150, maxMp: 0, critRate: 0, critDmg: 1.5 },
-      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
-      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
-      permanentModifiers: []
-    };
-    const e = combatantFromSnapshot('mutant', '畸变体', snapshot);
-    expect(e.attack).toBe(20);
-    expect(e.defense).toBe(8);
-    expect(e.maxHp).toBe(150);
-    expect(e.hp).toBe(150); // 满血进场
-    expect(e.snapshot).toBeDefined(); // 敌人也带快照（统一实体）
-    // 无 buff 重算 = 入场值（幂等）
-    const r = recomputeCombatant(e, []);
-    expect(r.attack).toBe(e.attack);
-    expect(r.defense).toBe(e.defense);
-    expect(r.maxHp).toBe(e.maxHp);
-    expect(r.hp).toBe(e.hp);
-  });
-
-  it('敌人配置扩展属性走同一管道：元属性折算/修饰符/debuff 全部生效', () => {
-    const snapshot: CombatantSnapshot = {
-      baseAttributes: { attack: 20, defense: 8, maxHp: 150, maxMp: 0, critRate: 0, critDmg: 1.5 },
-      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, strength: 5 }, // 力量 5 → 攻击 +10
-      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
-      permanentModifiers: [{ stat: 'maxHp', kind: 'percent', value: 0.2 }]
-    };
-    const e = combatantFromSnapshot('mutant', '畸变体', snapshot);
-    expect(e.attack).toBe(30); // 20 + 5×2（元属性折算对敌人同样生效）
-    expect(e.maxHp).toBe(180); // 150 × 1.2
-    // 敌人也会被 debuff：意志 0 → 无减免，-10 全额生效
-    const debuffed = recomputeCombatant(e, [
-      {
-        id: 'd1',
-        name: '虚弱',
-        type: 'debuff',
-        duration: 2,
-        maxDuration: 2,
-        statModifiers: [{ stat: 'attack', kind: 'flat', value: -10 }]
-      }
-    ]);
-    expect(debuffed.attack).toBe(20);
+  it('createBattle 装配工厂可直接 run 并暴露战斗上下文', () => {
+    const hero = heroToCombatant('nova', createInitialHero('nova'));
+    const enemy = enemyConfigToEntity(ENEMY_CONFIGS.test_dummy);
+    const battle = createBattle([hero, enemy]);
+    const result = battle.run();
+    expect(result.victory).toBe(true);
+    expect(battle.context).toBeDefined();
   });
 });
 
@@ -153,7 +73,7 @@ const fakeTurnRuntime = (): TurnRuntime => ({
   dealDamage: () => 0,
   applyHeal: () => 0,
   updateInitiative: () => {},
-  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', faction: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
+  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', side: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
   requestEnd: () => {},
   getUnit: () => undefined,
   getLivingUnits: () => []
@@ -171,11 +91,11 @@ describe('canActWithBuffs', () => {
 
   it('真实回合引擎：被眩晕单位跳过当前回合，归零后恢复行动', () => {
     const hero: BattleUnitSnapshot = {
-      id: 'a', name: 'a', faction: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      id: 'a', name: 'a', side: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
       stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
     };
     const enemy: BattleUnitSnapshot = {
-      id: 'b', name: 'b', faction: 'enemy', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      id: 'b', name: 'b', side: 'enemy', hp: 100, maxHp: 100, initiative: 100, abilities: [],
       stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
     };
     const actions: string[] = [];
@@ -204,7 +124,7 @@ describe('canActWithBuffs', () => {
 describe('simulateBattle 走 Effect 结算', () => {
   it('事件流包含 effectApplied 伤害/治疗完成事件', () => {
     const hero = heroToCombatant('nova', createInitialHero('nova'));
-    const enemy: CombatantState = { id: 'e', name: '敌', hp: 100, maxHp: 100, attack: 5, defense: 0 };
+    const enemy = enemyConfigToEntity(ENEMY_CONFIGS.test_dummy);
     const battle = simulateBattle([hero], [enemy]);
     expect(battle.events.some(e => e.key === 'effectApplied' && e.data.kind === 'damage')).toBe(true);
   });

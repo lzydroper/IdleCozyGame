@@ -4,10 +4,12 @@
  * 本文件是主 seam；executor 按 EffectKind 分派。
  */
 
-import type { BattleUnitSnapshot, BattleUnitStats } from './turnEngine';
+import type { BattleUnitStats } from './battleTypes';
 import type { BattleContext, BuffInstance } from './battleContext';
 import { applyEffectModifiers, type Modifier } from './modifier';
 import { COMBAT_DAMAGE_CONFIG } from '../data/statConfig';
+import { toTurnUnit } from './battleEntity';
+import { createEntityFromConfig, type EntityConfigRef } from './entityFactory';
 
 export type DamageElement = 'physical' | 'arcane' | 'mechanical' | 'nightmare' | 'spirit' | 'astral' | 'soulseal';
 
@@ -32,7 +34,7 @@ export interface EffectParamsMap {
   immunityElement: { element: DamageElement };
   immunityBuff: { buffKind: string };
   taunt: { value: number };
-  summon: { count: number; snapshot: BattleUnitSnapshot };
+  summon: { count: number; configRef: EntityConfigRef };
   applyBuff: { buffInstance: BuffInstance };
 }
 
@@ -205,7 +207,7 @@ const applyBefore = (ctx: BattleContext, effect: EffectInstance): BeforeResult =
       const p = effect.params as EffectParamsMap['summon'];
       const countMods = ctx.getModifiers(effect.sourceId, 'effect');
       const count = Math.max(1, Math.round(applyEffectModifiers(p.count, countMods, 'effect.count')));
-      return { allowed: true, params: { count, snapshot: p.snapshot } };
+      return { allowed: true, params: { count, configRef: p.configRef } };
     }
     case 'applyBuff': {
       const p = effect.params as EffectParamsMap['applyBuff'];
@@ -348,14 +350,14 @@ const executeSummon = (
   effect: EffectInstance,
   params: EffectParamsMap['summon']
 ): EffectResult => {
-  const { count, snapshot } = params;
+  const { count, configRef } = params;
+  const source = ctx.turn.getUnit(effect.sourceId);
+  const side = source?.side ?? 'enemy';
   for (let i = 0; i < count; i++) {
     const id = i === 0 ? effect.targetId : `${effect.targetId}-${i}`;
-    ctx.turn.summonUnit({
-      ...snapshot,
-      id,
-      name: i === 0 ? snapshot.name : `${snapshot.name}${i + 1}`
-    });
+    const entity = createEntityFromConfig(configRef, { side, id });
+    const named = i === 0 ? entity : { ...entity, name: `${entity.name}${i + 1}` };
+    ctx.turn.summonUnit(toTurnUnit(named));
   }
   return { applied: true, values: { count } };
 };

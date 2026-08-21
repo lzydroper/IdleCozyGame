@@ -15,7 +15,8 @@ import {
   getAwakenedName,
   getAwakenBonus
 } from './awakening';
-import { simulateBattle, heroToCombatant } from './combat';
+import { simulateBattle, heroToCombatant, enemyConfigToEntity } from './combat';
+import { entityStats } from './battleEntity';
 import { mergeSavedState } from './persistence';
 
 const makeState = (overrides: Partial<GameState> = {}): GameState => {
@@ -26,6 +27,16 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => {
 
 const novaAt = (star: number, awakened = false): GameState =>
   makeState({ heroes: { nova: { ...createInitialHero('nova'), star, awakened } } });
+
+const dummyEntity = (id: string, name: string, hp = 500, attack = 1) =>
+  enemyConfigToEntity({
+    id,
+    name,
+    kind: 'enemy',
+    role: 'normal',
+    faction: 'nightmare',
+    baseAttributes: { attack, defense: 0, maxHp: hp }
+  });
 
 describe('升星/觉醒配置完整性（ticket 12）', () => {
   it('每位英雄都有觉醒配置：更名、强化被动、专属技能', () => {
@@ -147,15 +158,15 @@ describe('觉醒', () => {
 describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
   // 简单敌人：低防御便于验证伤害公式
   const dummyEnemies = () => [
-    { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
-    { id: 'e2', name: '靶子乙', hp: 500, maxHp: 500, attack: 1, defense: 0 }
+    dummyEntity('e1', '靶子甲'),
+    dummyEntity('e2', '靶子乙')
   ];
 
   it('strike 技能：单体重击 + 冷却节奏（用后 3 回合普通攻击再发动）', () => {
     const buster: HeroState = { ...createInitialHero('buster'), star: STAR_MAX, awakened: true }; // 拆解重击 ×2.2
     const combatant = heroToCombatant('buster', buster);
     // 攻击 = round((32 + 力量 8×2) × (1 + 星级 8% + 觉醒被动 12%)) = round(57.6) = 58
-    expect(combatant.attack).toBe(58);
+    expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 8);
     const skills = result.events.filter(
@@ -171,7 +182,7 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     const nova: HeroState = { ...createInitialHero('nova'), star: STAR_MAX, awakened: true }; // 电涌过载 ×0.8
     const combatant = heroToCombatant('nova', nova);
     // 攻击 = round(49 × (1 + 星级 8% + 觉醒被动 10%)) = round(57.82) = 58
-    expect(combatant.attack).toBe(58);
+    expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
     const round1Skills = result.events.filter(
@@ -186,9 +197,9 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     const healer: HeroState = { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 }; // 净化之泉 50%
     const combatant = heroToCombatant('healer', healer);
     // maxHp = round((115 + 体质 4×10) × (1 + 星级 16% + 觉醒被动 15%)) = round(203.05) = 203
-    expect(combatant.maxHp).toBe(203);
+    expect(entityStats(combatant).maxHp).toBe(203);
     const heroes = [combatant];
-    const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const enemies = [dummyEntity('e1', '靶子')];
     const result = simulateBattle(heroes, enemies, 2);
     const healEvent = result.events.find(
       e => e.key === 'effectApplied' && e.data.kind === 'heal'
@@ -202,7 +213,7 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
   it('heal 治疗量受生命上限约束', () => {
     const catherine: HeroState = { ...createInitialHero('catherine'), star: STAR_MAX, awakened: true, hp: 149 }; // 战斗 maxHp 265，缺 2
     const heroes = [heroToCombatant('catherine', catherine)];
-    const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const enemies = [dummyEntity('e1', '靶子')];
     const result = simulateBattle(heroes, enemies, 2);
     const healEvent = result.events.find(
       e => e.key === 'effectApplied' && e.data.kind === 'heal'
@@ -225,8 +236,8 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     const c = heroToCombatant('nova', hero);
     // 攻击 = round(49 × (1 + (4 + 10 + 6)/100)) = round(58.8) = 59
     //   star 3: attack +2%×2=4%；觉醒被动 +10%；天赋锋芒 ×2 = +6%
-    expect(c.attack).toBe(59);
-    expect(c.abilities).toContain('awaken_nova');
+    expect(entityStats(c).attack).toBe(59);
+    expect(c.abilities.some(a => a.abilityId === 'awaken_nova')).toBe(true);
   });
 });
 

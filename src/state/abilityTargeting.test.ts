@@ -4,14 +4,14 @@ import type { BattleUnitRuntime } from './turnEngine';
 
 const unit = (
   id: string,
-  faction: 'hero' | 'enemy',
+  side: 'hero' | 'enemy',
   hp: number,
   maxHp = hp,
   entryOrder = Number(id.replace(/\D/g, ''))
 ): BattleUnitRuntime => ({
   id,
   name: id,
-  faction,
+  side,
   hp,
   maxHp,
   initiative: 0,
@@ -24,9 +24,9 @@ const makeCtx = (
   units: BattleUnitRuntime[],
   flags: Record<string, Record<string, number>> = {}
 ): AbilityTargetContext => ({
-  getLivingUnits: (faction) =>
+  getLivingUnits: (side) =>
     units
-      .filter((u) => u.hp > 0 && (faction === undefined || u.faction === faction))
+      .filter((u) => u.hp > 0 && (side === undefined || u.side === side))
       .sort((a, b) => a.entryOrder - b.entryOrder),
   getFlag: (id, flag) => flags[id]?.[flag] ?? 0
 });

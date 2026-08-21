@@ -3,7 +3,9 @@
  * 纯函数：公式求值 + 效果模板展开为 EffectInstance[]；多目标拆单目标；applyBuff 构造实例。
  */
 
-import type { BattleUnitRuntime, BattleUnitStats, BattleUnitSnapshot } from './turnEngine';
+import type { BattleUnitRuntime } from './turnEngine';
+import type { BattleUnitStats } from './battleTypes';
+import type { EntityConfigRef } from './entityFactory';
 import type { FormulaTemplate, ResolvedAbility } from './abilityTypes';
 import type { EffectInstance, EffectKind, DamageElement } from './effectSystem';
 import type { Modifier } from './modifier';
@@ -97,7 +99,7 @@ const effectParamsForKind = (
     case 'summon':
       return {
         count: asNumber(params.count, stats),
-        snapshot: evaluateValue(params.snapshot, stats) as BattleUnitSnapshot
+        configRef: params.configRef as EntityConfigRef
       };
     case 'applyBuff':
       return { buffInstance: buildBuffInstance(params, source, target, stats, makeId) };

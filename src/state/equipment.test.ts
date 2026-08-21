@@ -27,6 +27,7 @@ import {
 } from './equipment';
 import { craftItemUpdate } from './workshop';
 import { heroToCombatant } from './combat';
+import { entityStats } from './battleEntity';
 import { mergeSavedState } from './persistence';
 
 // 基础测试状态：开局状态 + 诺娃
@@ -342,9 +343,9 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
 
   it('无装备时战斗属性与之前一致（回归；元属性折算后）', () => {
     const c = heroToCombatant('nova', novaLv1());
-    expect(c.attack).toBe(49); // 35 + 力量 7×2
-    expect(c.defense).toBe(11); // 8 + 体质 3
-    expect(c.maxHp).toBe(130); // 100 + 体质 3×10
+    expect(entityStats(c).attack).toBe(49); // 35 + 力量 7×2
+    expect(entityStats(c).defense).toBe(11); // 8 + 体质 3
+    expect(entityStats(c).maxHp).toBe(130); // 100 + 体质 3×10
     expect(c.hp).toBe(130);
   });
 
@@ -356,8 +357,8 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     };
     const hero = { ...novaLv1(), hp: 80 }; // 已损 20%
     const c = heroToCombatant('nova', hero, [], gear);
-    expect(c.attack).toBe(49 + 16); // 65
-    expect(c.maxHp).toBe(130 + 30); // 160
+    expect(entityStats(c).attack).toBe(49 + 16); // 65
+    expect(entityStats(c).maxHp).toBe(130 + 30); // 160
     expect(c.hp).toBe(128); // 80% × 160
   });
 
@@ -371,7 +372,7 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     const c = heroToCombatant('nova', novaLv1(), bond, gear);
     // nova 机械阵营穿戴废土利刃（机械阵营）-> +30% 基础加成
     // 装备 flat = (10 + 10) × 1.3 = 26；攻击 = round((49 + 26) × 1.15) = round(86.25) = 86
-    expect(c.attack).toBe(86);
+    expect(entityStats(c).attack).toBe(86);
   });
 
   it('满强化 + 神话全套：属性显著放大', () => {
@@ -382,9 +383,9 @@ describe('装备属性在战斗中生效（ticket 10 → 05 集成）', () => {
     };
     const c = heroToCombatant('nova', novaLv1(), [], gear);
     // 星核满编 90：特效攻击 +10%、防御 +12%、生命 +18%；神话词条（每系列一次）攻击+5% 防御+5%
-    expect(c.maxHp).toBe(Math.round((130 + 45 * 3 * 1.5) * 1.18)); // 392
-    expect(c.attack).toBe(Math.round((49 + (22 + 2 * 30) * 1.5) * 1.15)); // 198
-    expect(c.defense).toBe(Math.round((11 + (15 + 1 * 30) * 1.5) * 1.17)); // 92
+    expect(entityStats(c).maxHp).toBe(Math.round((130 + 45 * 3 * 1.5) * 1.18)); // 392
+    expect(entityStats(c).attack).toBe(Math.round((49 + (22 + 2 * 30) * 1.5) * 1.15)); // 198
+    expect(entityStats(c).defense).toBe(Math.round((11 + (15 + 1 * 30) * 1.5) * 1.17)); // 92
   });
 });
 

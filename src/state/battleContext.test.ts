@@ -12,7 +12,7 @@ const fakeRuntime = (): TurnRuntime => ({
   dealDamage: () => 0,
   applyHeal: () => 0,
   updateInitiative: () => {},
-  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', faction: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
+  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', side: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
   requestEnd: () => {},
   getUnit: () => undefined,
   getLivingUnits: () => []

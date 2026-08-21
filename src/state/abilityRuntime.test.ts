@@ -1,21 +1,47 @@
 import { describe, it, expect } from 'vitest';
-import { simulateBattle, type CombatantState } from './combat';
+import { simulateBattle } from './combat';
+import { buildEntity, type BattleEntity } from './battleEntity';
+import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
+import { getAbilityConfig } from '../data/abilities';
+import { resolveAbilityConfig } from './abilityTypes';
+
+const makeEntity = (
+  id: string,
+  name: string,
+  side: 'hero' | 'enemy',
+  maxHp: number,
+  attack: number,
+  abilityIds: string[] = []
+): BattleEntity => {
+  const recipe = {
+    baseAttributes: { attack, defense: 0, maxHp, maxMp: 0, critRate: 0, critDmg: 1.5 },
+    primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
+    specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
+    permanentModifiers: []
+  };
+  const abilities = [resolveAbilityConfig(getAbilityConfig('basic_attack')!)];
+  for (const abilityId of abilityIds) {
+    const config = getAbilityConfig(abilityId);
+    if (config) abilities.push(resolveAbilityConfig(config));
+  }
+  return buildEntity({
+    id,
+    name,
+    kind: side === 'hero' ? 'hero' : 'enemy',
+    side,
+    faction: side === 'hero' ? 'mechanical' : 'nightmare',
+    recipe,
+    abilities
+  });
+};
 
 describe('Ability 执行器与主动技能', () => {
   it('觉醒 AOE 技能经新 Ability 层首轮击杀多个敌人', () => {
-    const hero: CombatantState = {
-      id: 'nova',
-      name: '诺娃',
-      hp: 1000,
-      maxHp: 1000,
-      attack: 100,
-      defense: 0,
-      abilities: ['awaken_nova']
-    };
-    const enemies: CombatantState[] = [
-      { id: 'e1', name: '敌1', hp: 80, maxHp: 80, attack: 0, defense: 0 },
-      { id: 'e2', name: '敌2', hp: 80, maxHp: 80, attack: 0, defense: 0 },
-      { id: 'e3', name: '敌3', hp: 80, maxHp: 80, attack: 0, defense: 0 }
+    const hero = makeEntity('nova', '诺娃', 'hero', 1000, 100, ['awaken_nova']);
+    const enemies = [
+      makeEntity('e1', '敌1', 'enemy', 80, 0),
+      makeEntity('e2', '敌2', 'enemy', 80, 0),
+      makeEntity('e3', '敌3', 'enemy', 80, 0)
     ];
 
     const battle = simulateBattle([hero], enemies);
@@ -24,23 +50,8 @@ describe('Ability 执行器与主动技能', () => {
   });
 
   it('冷却按已过自身回合递减：高伤技能不能连续施放', () => {
-    const hero: CombatantState = {
-      id: 'buster',
-      name: '巴斯特',
-      hp: 100000,
-      maxHp: 100000,
-      attack: 500,
-      defense: 0,
-      abilities: ['awaken_buster']
-    };
-    const enemy: CombatantState = {
-      id: 'e1',
-      name: '敌1',
-      hp: 5000,
-      maxHp: 5000,
-      attack: 0,
-      defense: 0
-    };
+    const hero = makeEntity('buster', '巴斯特', 'hero', 100000, 500, ['awaken_buster']);
+    const enemy = makeEntity('e1', '敌1', 'enemy', 5000, 0);
 
     const battle = simulateBattle([hero], [enemy]);
     expect(battle.victory).toBe(true);
@@ -49,16 +60,8 @@ describe('Ability 执行器与主动技能', () => {
   });
 
   it('每次能力激活写入 abilityUsed 事件，攻击型保留 attackAfter', () => {
-    const hero: CombatantState = {
-      id: 'nova',
-      name: '诺娃',
-      hp: 1000,
-      maxHp: 1000,
-      attack: 100,
-      defense: 0,
-      abilities: ['awaken_nova']
-    };
-    const enemy: CombatantState = { id: 'e1', name: '敌1', hp: 80, maxHp: 80, attack: 0, defense: 0 };
+    const hero = makeEntity('nova', '诺娃', 'hero', 1000, 100, ['awaken_nova']);
+    const enemy = makeEntity('e1', '敌1', 'enemy', 80, 0);
     const battle = simulateBattle([hero], [enemy]);
 
     const used = battle.events.find((e) => e.key === 'abilityUsed');

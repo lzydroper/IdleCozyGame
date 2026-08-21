@@ -20,7 +20,7 @@ const fakeRuntime = (unit: BattleUnitRuntime): TurnRuntime => ({
 const makeUnit = (): BattleUnitRuntime => ({
   id: 'a',
   name: 'a',
-  faction: 'hero',
+  side: 'hero',
   hp: 100,
   maxHp: 100,
   initiative: 0,

@@ -8,49 +8,24 @@
  * - 不硬编码眩晕等控制枚举、不硬编码伤害公式与目标选择（属于 Ability/Effect 模块）。
  */
 
-import type { BaseAttributes, PrimaryAttributes, SpecialAttributes, StatModifier } from './statSystem';
+import type { BattleUnitStats, BattleUnitStatParams } from './battleTypes';
+import type { ResolvedAbility } from './abilityTypes';
 
 // === 基础类型 ===
 
-export type UnitFaction = 'hero' | 'enemy';
+export type UnitSide = 'hero' | 'enemy';
 
 export type BattleOutcome = 'victory' | 'defeat' | 'draw';
-
-/** 完整面板（三层算好后的属性，供 Ability 取数）。特殊属性经 index signature 透传。 */
-export interface BattleUnitStats {
-  attack: number;
-  defense: number;
-  maxHp: number;
-  maxMp: number;
-  critRate: number;
-  critDmg: number;
-  [key: string]: number;
-}
-
-/** Ability 引用（Ability 模块落地前为轻量引用，字段可扩展）。 */
-export interface BattleUnitAbility {
-  id: string;
-  name?: string;
-  [key: string]: unknown;
-}
-
-/** 战斗内重算面板所需的原始配方：入场三层输入 + 常驻修饰符。 */
-export interface BattleUnitStatParams {
-  baseAttributes: BaseAttributes;
-  primaryAttributes?: Partial<PrimaryAttributes>;
-  specialAttributes?: Partial<SpecialAttributes>;
-  permanentModifiers: StatModifier[];
-}
 
 /** 战斗单位快照：Turn 的输入。先机在战前算好传入。 */
 export interface BattleUnitSnapshot {
   id: string;
   name: string;
-  faction: UnitFaction;
+  side: UnitSide;
   hp: number;
   maxHp: number;
   initiative: number;
-  abilities: BattleUnitAbility[];
+  abilities: ResolvedAbility[];
   stats: BattleUnitStats;
   /** 入场时当前魔力；缺省由 stats.maxMp 初始化。 */
   currentMp?: number;
@@ -62,11 +37,11 @@ export interface BattleUnitSnapshot {
 export interface BattleUnitRuntime {
   id: string;
   name: string;
-  faction: UnitFaction;
+  side: UnitSide;
   hp: number;
   maxHp: number;
   initiative: number;
-  abilities: BattleUnitAbility[];
+  abilities: ResolvedAbility[];
   stats: BattleUnitStats;
   /** 当前魔力（战斗内可变）。 */
   currentMp?: number;
@@ -177,7 +152,7 @@ export interface TurnRuntime {
   requestEnd(outcome: BattleOutcome): void;
   getUnit(id: string): BattleUnitRuntime | undefined;
   /** 存活单位（按入场序），可选按阵营过滤。 */
-  getLivingUnits(faction?: UnitFaction): BattleUnitRuntime[];
+  getLivingUnits(side?: UnitSide): BattleUnitRuntime[];
 }
 
 // === 引擎配置与结果 ===
@@ -216,7 +191,7 @@ interface SubscriptionRecord {
 const cloneSnapshotUnit = (unit: BattleUnitSnapshot, entryOrder: number): BattleUnitRuntime => ({
   id: unit.id,
   name: unit.name,
-  faction: unit.faction,
+  side: unit.side,
   hp: Math.max(0, unit.hp),
   maxHp: unit.maxHp,
   initiative: unit.initiative,
@@ -317,9 +292,9 @@ export const runTurnEngine = (
 
   const getUnit = (id: string): BattleUnitRuntime | undefined => unitMap.get(id);
 
-  const getLivingUnits = (faction?: UnitFaction): BattleUnitRuntime[] =>
+  const getLivingUnits = (side?: UnitSide): BattleUnitRuntime[] =>
     Array.from(unitMap.values())
-      .filter(unit => unit.hp > 0 && (faction === undefined || unit.faction === faction))
+      .filter(unit => unit.hp > 0 && (side === undefined || unit.side === side))
       .sort((a, b) => a.entryOrder - b.entryOrder);
 
   const register = (key: TurnEventKey, subscriber: TurnSubscriber, unitId: string | null = null): void => {
@@ -462,8 +437,8 @@ export const runTurnEngine = (
   const checkTermination = (): BattleOutcome | null => {
     if (forcedEnd) return forcedEnd;
     const allUnits = Array.from(unitMap.values());
-    const heroesAlive = allUnits.some(unit => unit.faction === 'hero' && unit.hp > 0);
-    const enemiesAlive = allUnits.some(unit => unit.faction === 'enemy' && unit.hp > 0);
+    const heroesAlive = allUnits.some(unit => unit.side === 'hero' && unit.hp > 0);
+    const enemiesAlive = allUnits.some(unit => unit.side === 'enemy' && unit.hp > 0);
     if (!heroesAlive) return 'defeat';
     if (!enemiesAlive) return 'victory';
     return null;

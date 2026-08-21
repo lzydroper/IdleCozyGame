@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateFormula, compileAbilityEffects } from './abilityCompiler';
 import { resolveAbilityConfig, type EffectTemplate, type FormulaTemplate } from './abilityTypes';
-import type { BattleUnitRuntime, BattleUnitStats } from './turnEngine';
+import type { BattleUnitRuntime } from './turnEngine';
+import type { BattleUnitStats } from './battleTypes';
 
 const stats: BattleUnitStats = {
   attack: 100,
@@ -12,10 +13,10 @@ const stats: BattleUnitStats = {
   critDmg: 1.5
 };
 
-const unit = (id: string, faction: 'hero' | 'enemy' = 'enemy'): BattleUnitRuntime => ({
+const unit = (id: string, side: 'hero' | 'enemy' = 'enemy'): BattleUnitRuntime => ({
   id,
   name: id,
-  faction,
+  side,
   hp: 100,
   maxHp: 100,
   initiative: 0,

@@ -88,7 +88,7 @@ const HeroDossierModal: React.FC<HeroDossierModalProps> = ({ isOpen, heroId, onC
           <h4 className={`${UI_TOKENS.textLabel} font-black text-amber-300 flex items-center gap-1`}>
             <Wrench className="w-3.5 h-3.5 text-amber-400" /> 背景故事
           </h4>
-          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{config.backstory}</p>
+          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{config.description}</p>
         </section>
 
         {/* 职阶设定 */}

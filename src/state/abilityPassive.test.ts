@@ -13,7 +13,7 @@ import type { BuffInstance } from './battleContext';
 const makeUnit = (id: string, abilities: ResolvedAbility[] = []): BattleUnitRuntime => ({
   id,
   name: id,
-  faction: 'hero',
+  side: 'hero',
   hp: 100,
   maxHp: 100,
   initiative: 0,
@@ -34,7 +34,7 @@ const fakeRuntime = (units: BattleUnitRuntime[]): TurnRuntime => ({
   summonUnit: () => units[0],
   requestEnd: () => {},
   getUnit: (id) => units.find((u) => u.id === id),
-  getLivingUnits: (faction) => units.filter((u) => u.hp > 0 && (faction === undefined || u.faction === faction))
+  getLivingUnits: (side) => units.filter((u) => u.hp > 0 && (side === undefined || u.side === side))
 });
 
 const passiveAbility = (): ResolvedAbility =>

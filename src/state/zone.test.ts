@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { COMBAT_ZONE_LIST } from '../data/combatZones';
+import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
 import { mergeSavedState } from './persistence';
 import { isZoneUnlocked, startCombatUpdate, startBossBattleUpdate } from './combat';
@@ -33,6 +34,7 @@ describe('Zone chain data (线性区域链)', () => {
     COMBAT_ZONE_LIST.forEach(zone => {
       expect(zone.boss, zone.id).toBeDefined();
       expect(zone.boss.enemies.length, zone.id).toBeGreaterThan(0);
+      zone.boss.enemies.forEach(enId => expect(ENEMY_CONFIGS[enId], `${zone.id} boss enemy ${enId}`).toBeDefined());
       expect(zone.boss.staminaCost, zone.id).toBeGreaterThan(0);
       expect(zone.boss.expReward, zone.id).toBeGreaterThan(0);
       zone.boss.drops.forEach(d => {
