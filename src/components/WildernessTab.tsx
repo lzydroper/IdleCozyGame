@@ -29,6 +29,7 @@ import CombatEventLog from './CombatEventLog';
 import RegionSelectorModal from './RegionSelectorModal';
 import LevelBrowser from './LevelBrowser';
 import LevelDetailModal from './LevelDetailModal';
+import BattleModal from './BattleModal';
 
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -724,6 +725,12 @@ const CombatPanel: React.FC<{
 
   const [combatMode, setCombatMode] = useState<'active' | 'idle'>('active');
   const [selectedLevel, setSelectedLevel] = useState<LevelConfig | null>(null);
+  const [activeBattle, setActiveBattle] = useState<{
+    regionId: string;
+    levelId: string;
+    level: LevelConfig;
+    settlement: CombatSettlement;
+  } | null>(null);
 
   const stamina = Math.floor(state.stamina || 0);
   const maxStamina = state.maxStamina || COMBAT_CONFIG.maxStamina;
@@ -749,9 +756,15 @@ const CombatPanel: React.FC<{
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
     else if (outcome.failure === 'unknown_level') showToast('未知战斗关卡。', 'error');
     else if (outcome.settlement) {
-      if (outcome.settlement.battle.victory) showToast('战斗胜利！战利品已入账。', 'success');
-      else if (outcome.settlement.battle.partyWiped) showToast('战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
-      else showToast('战斗平局，未分胜负。', 'info');
+      const lvl = getLevel(regionId, levelId);
+      if (lvl) {
+        setActiveBattle({
+          regionId,
+          levelId,
+          level: lvl,
+          settlement: outcome.settlement
+        });
+      }
     }
   };
 
@@ -968,6 +981,16 @@ const CombatPanel: React.FC<{
             handleStartIdle(regionId, levelId);
           }
         }}
+      />
+
+      {/* 独立全屏战斗场景模态 */}
+      <BattleModal
+        isOpen={!!activeBattle}
+        regionId={activeBattle?.regionId ?? null}
+        levelId={activeBattle?.levelId ?? null}
+        level={activeBattle?.level ?? null}
+        settlement={activeBattle?.settlement ?? null}
+        onClose={() => setActiveBattle(null)}
       />
     </div>
   );
