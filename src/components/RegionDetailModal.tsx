@@ -26,7 +26,7 @@ export const RegionDetailModal: React.FC<RegionDetailModalProps> = ({
   const region = getRegion(regionId);
   if (!region) return null;
 
-  const isUnlocked = isRegionUnlocked(state, regionId);
+  const isUnlocked = isRegionUnlocked(state, regionId, mode);
   const diagnostics = getRegionUnlockDiagnostics(state, regionId, mode);
 
   return (
@@ -87,23 +87,24 @@ export const RegionDetailModal: React.FC<RegionDetailModalProps> = ({
           </div>
         )}
 
-        {/* 严格统一为【确认】与【取消】，按钮高度 h-9.5，双按钮对称平分 flex-1 */}
+        {/* 严格统一为【确认】（左）与【取消】（右），按钮高度 h-9.5，双按钮对称平分 flex-1 */}
         <div className="flex gap-2 pt-1">
+          <button
+            onClick={() => onConfirm(regionId)}
+            disabled={!isUnlocked}
+            className={`flex-1 h-9.5 text-xs font-black rounded-xl shadow flex items-center justify-center transition-all ${
+              isUnlocked
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white cursor-pointer active:scale-98'
+                : 'bg-zinc-800 border border-zinc-700/60 text-zinc-500 cursor-not-allowed opacity-50'
+            }`}
+          >
+            确认
+          </button>
           <button
             onClick={onClose}
             className="flex-1 h-9.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center active:scale-98 transition-all"
           >
             取消
-          </button>
-          <button
-            onClick={() => onConfirm(regionId)}
-            className={`flex-1 h-9.5 text-xs font-black rounded-xl shadow cursor-pointer flex items-center justify-center active:scale-98 transition-all ${
-              isUnlocked
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white'
-                : 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300'
-            }`}
-          >
-            确认
           </button>
         </div>
       </div>

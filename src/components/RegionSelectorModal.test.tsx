@@ -27,7 +27,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
           <RegionSelectorModal
             isOpen={true}
             onClose={onClose}
-            mode="combat"
+            mode="exploration"
             selectedRegionId="wasteland_entrance"
             onConfirmSelect={onConfirmSelect}
           />
@@ -48,7 +48,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
     expect(screen.queryByText('辐射车间')).toBeNull();
   });
 
-  it('opens RegionDetailModal when a region item is clicked', () => {
+  it('opens RegionDetailModal when a region item is clicked and disables confirm when locked', () => {
     const onConfirmSelect = vi.fn();
     const onClose = vi.fn();
 
@@ -58,7 +58,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
           <RegionSelectorModal
             isOpen={true}
             onClose={onClose}
-            mode="combat"
+            mode="exploration"
             selectedRegionId="wasteland_entrance"
             onConfirmSelect={onConfirmSelect}
           />
@@ -66,17 +66,17 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
       </GameProvider>
     );
 
-    // Click on old_town_ruins (locked region)
+    // Click on old_town_ruins (locked region in exploration)
     fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
 
     // RegionDetailModal should now be open
     expect(screen.getByTestId('region-detail-modal')).toBeDefined();
     expect(screen.getByTestId('lock-diagnostics-section')).toBeDefined();
     expect(screen.getByText(/区域解锁条件诊断/)).toBeDefined();
-    expect(screen.getByText(/前置区域【废土边缘】全部关卡通关/)).toBeDefined();
-    expect(screen.getByText('未通关')).toBeDefined();
+    expect(screen.getByText(/前置区域【废土边缘】探索度需达 100%/)).toBeDefined();
+    expect(screen.getByText('当前 0%')).toBeDefined();
 
-    // Buttons strictly standardized: 确认 and 取消
+    // Buttons strictly standardized: 确认 (left) and 取消 (right)
     const confirmBtn = screen.getByRole('button', { name: '确认' });
     const cancelBtn = screen.getByRole('button', { name: '取消' });
     expect(confirmBtn).toBeDefined();
@@ -84,10 +84,12 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
     expect(confirmBtn.className).toContain('h-9.5');
     expect(cancelBtn.className).toContain('h-9.5');
 
-    // Confirm button is enabled even for locked region
-    fireEvent.click(confirmBtn);
-    expect(onConfirmSelect).toHaveBeenCalledWith('old_town_ruins');
-    expect(onClose).toHaveBeenCalled();
+    // Confirm button is disabled for locked region
+    expect(confirmBtn.hasAttribute('disabled')).toBe(true);
+
+    // Cancel button works
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByTestId('region-detail-modal')).toBeNull();
   });
 
   it('RegionDetailModal handles unlocked region confirmation properly', () => {
@@ -115,6 +117,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
     const confirmBtn = screen.getByRole('button', { name: '确认' });
     expect(confirmBtn.className).toContain('bg-gradient-to-r');
     expect(confirmBtn.className).toContain('h-9.5');
+    expect(confirmBtn.hasAttribute('disabled')).toBe(false);
 
     fireEvent.click(confirmBtn);
     expect(onConfirm).toHaveBeenCalledWith('wasteland_entrance');
@@ -130,7 +133,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
           <RegionDetailModal
             isOpen={true}
             regionId="old_town_ruins"
-            mode="combat"
+            mode="exploration"
             onClose={onClose}
             onConfirm={onConfirm}
           />
@@ -144,10 +147,10 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('reveals deeper regions when previous regions are cleared', () => {
+  it('reveals deeper regions when previous regions exploration reaches 100%', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as GameState;
-    save.combat.clearedLevels = {
-      wasteland_entrance: ['wasteland_entrance_1', 'wasteland_entrance_2']
+    save.exploration.regionProgress = {
+      wasteland_entrance: 10
     };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
@@ -157,7 +160,7 @@ describe('RegionSelectorModal and RegionDetailModal Components', () => {
           <RegionSelectorModal
             isOpen={true}
             onClose={vi.fn()}
-            mode="combat"
+            mode="exploration"
             selectedRegionId="old_town_ruins"
             onConfirmSelect={vi.fn()}
           />

@@ -98,13 +98,15 @@ describe('settleLevelBattle', () => {
 describe('level unlock predicates', () => {
   it('unlocks the first level of the first region and the test region', () => {
     const state = freshState();
-    expect(isRegionUnlocked(state, 'wasteland_entrance')).toBe(true);
+    state.exploration.regionProgress = { wasteland_entrance: 10 };
+    expect(isRegionUnlocked(state, 'wasteland_entrance', 'combat')).toBe(true);
     expect(isLevelUnlocked(state, 'wasteland_entrance', 'wasteland_entrance_1')).toBe(true);
     expect(isLevelUnlocked(state, 'equipment_test_zone', 'equipment_test_zone_1')).toBe(true);
   });
 
   it('unlocks the next level only after clearing the previous one', () => {
     const state = freshState();
+    state.exploration.regionProgress = { wasteland_entrance: 10 };
     expect(isLevelUnlocked(state, 'wasteland_entrance', 'wasteland_entrance_2')).toBe(false);
 
     const cleared: GameState = {
@@ -121,6 +123,7 @@ describe('level unlock predicates', () => {
 describe('startLevelCombatUpdate', () => {
   it('rejects locked levels without consuming stamina', () => {
     const state = freshState();
+    state.exploration.regionProgress = { wasteland_entrance: 10 };
     const result = startLevelCombatUpdate(state, 'wasteland_entrance', 'wasteland_entrance_2', () => 0);
     expect(result.result.failure).toBe('locked');
     expect(result.state.stamina).toBe(state.stamina);
@@ -128,6 +131,7 @@ describe('startLevelCombatUpdate', () => {
 
   it('rejects unknown levels', () => {
     const state = freshState();
+    state.exploration.regionProgress = { wasteland_entrance: 10 };
     const result = startLevelCombatUpdate(state, 'wasteland_entrance', 'missing', () => 0);
     expect(result.result.failure).toBe('unknown_level');
   });
@@ -135,6 +139,7 @@ describe('startLevelCombatUpdate', () => {
   it('records cleared levels after a deterministic victory with a rigged rng', () => {
     // Use the test dummy level and always-high rng to avoid depending on turn order.
     const state = freshState();
+    state.exploration.regionProgress = { wasteland_entrance: 10 };
     state.party = [STARTER_HERO_ID];
     const result = startLevelCombatUpdate(state, 'wasteland_entrance', 'wasteland_entrance_1', () => 0.999);
     expect(result.result.settlement?.battle.outcome).toBe('victory');
@@ -143,26 +148,59 @@ describe('startLevelCombatUpdate', () => {
 });
 
 describe('getRegionUnlockDiagnostics and getVisibleRegionsForSelector', () => {
-  it('returns empty diagnostics for first mainline region or test zone', () => {
+  it('handles exploration mode: first mainline region unlocked, next requires 100% exploration of previous', () => {
     const state = freshState();
-    expect(isRegionUnlocked(state, 'wasteland_entrance')).toBe(true);
-    expect(getRegionUnlockDiagnostics(state, 'wasteland_entrance')).toEqual([]);
-    expect(getRegionUnlockDiagnostics(state, 'equipment_test_zone')).toEqual([]);
-  });
+    expect(isRegionUnlocked(state, 'wasteland_entrance', 'exploration')).toBe(true);
+    expect(getRegionUnlockDiagnostics(state, 'wasteland_entrance', 'exploration')).toEqual([]);
+    expect(getRegionUnlockDiagnostics(state, 'equipment_test_zone', 'exploration')).toEqual([]);
 
-  it('diagnoses lock condition when previous mainline region is not cleared', () => {
-    const state = freshState();
-    const diags = getRegionUnlockDiagnostics(state, 'old_town_ruins');
+    // old_town_ruins requires wasteland_entrance exploration 100%
+    const diags = getRegionUnlockDiagnostics(state, 'old_town_ruins', 'exploration');
     expect(diags).toHaveLength(1);
     expect(diags[0].passed).toBe(false);
-    expect(diags[0].text).toContain('废土边缘');
-    expect(diags[0].current).toBe('未通关');
+    expect(diags[0].text).toContain('前置区域【废土边缘】探索度需达 100%');
+    expect(diags[0].current).toBe('当前 0%');
+
+    // When wasteland_entrance reaches 100% exploration (10 steps)
+    const exploredState: GameState = {
+      ...state,
+      exploration: {
+        ...state.exploration,
+        regionProgress: { wasteland_entrance: 10 }
+      }
+    };
+    expect(isRegionUnlocked(exploredState, 'old_town_ruins', 'exploration')).toBe(true);
+  });
+
+  it('handles combat mode: requires region exploration progress to reach 100%', () => {
+    const state = freshState();
+    // In fresh state, exploration is 0%, combat for wasteland_entrance is locked until 100% explored
+    expect(isRegionUnlocked(state, 'wasteland_entrance', 'combat')).toBe(false);
+    const diags = getRegionUnlockDiagnostics(state, 'wasteland_entrance', 'combat');
+    expect(diags).toHaveLength(1);
+    expect(diags[0].passed).toBe(false);
+    expect(diags[0].text).toContain('区域【废土边缘】探索度需达 100%');
+    expect(diags[0].current).toBe('当前 0%');
+
+    // Test zone is always unlocked
+    expect(isRegionUnlocked(state, 'equipment_test_zone', 'combat')).toBe(true);
+    expect(getRegionUnlockDiagnostics(state, 'equipment_test_zone', 'combat')).toEqual([]);
+
+    // When wasteland_entrance reaches 100% exploration (10 steps)
+    const exploredState: GameState = {
+      ...state,
+      exploration: {
+        ...state.exploration,
+        regionProgress: { wasteland_entrance: 10 }
+      }
+    };
+    expect(isRegionUnlocked(exploredState, 'wasteland_entrance', 'combat')).toBe(true);
   });
 
   it('filters visible regions to all unlocked plus only the first locked region', () => {
     const state = freshState();
-    // Default state: wasteland_entrance is unlocked, old_town_ruins is locked (1st locked), radiated_workshop is deeper locked
-    const visible = getVisibleRegionsForSelector(state);
+    // In exploration mode: wasteland_entrance is unlocked, old_town_ruins is 1st locked, radiated_workshop is deeper locked
+    const visible = getVisibleRegionsForSelector(state, 'exploration');
     const visibleIds = visible.map(r => r.id);
     expect(visibleIds).toContain('wasteland_entrance');
     expect(visibleIds).toContain('old_town_ruins');
@@ -170,18 +208,16 @@ describe('getRegionUnlockDiagnostics and getVisibleRegionsForSelector', () => {
     expect(visibleIds).toContain('equipment_test_zone'); // test zone is unlocked
   });
 
-  it('shows next locked region when previous region is cleared', () => {
+  it('shows next locked region when previous region exploration reaches 100%', () => {
     const state = freshState();
-    const clearedState: GameState = {
+    const exploredState: GameState = {
       ...state,
-      combat: {
-        ...state.combat,
-        clearedLevels: {
-          wasteland_entrance: ['wasteland_entrance_1', 'wasteland_entrance_2']
-        }
+      exploration: {
+        ...state.exploration,
+        regionProgress: { wasteland_entrance: 10 }
       }
     };
-    const visible = getVisibleRegionsForSelector(clearedState);
+    const visible = getVisibleRegionsForSelector(exploredState, 'exploration');
     const visibleIds = visible.map(r => r.id);
     expect(visibleIds).toContain('wasteland_entrance');
     expect(visibleIds).toContain('old_town_ruins');

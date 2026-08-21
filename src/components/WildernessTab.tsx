@@ -401,7 +401,7 @@ const WildernessTab: React.FC = () => {
           {/* 荒野当前区域选择卡片（全卡片可点击） */}
           {(() => {
             const selectedRegion = getRegion(selectedExplorationRegionId) || getMainlineRegions()[0];
-            const isUnlocked = isRegionUnlocked(state, selectedRegion.id);
+            const isUnlocked = isRegionUnlocked(state, selectedRegion.id, 'exploration');
             const progressPct = getRegionProgressPercent(state, selectedRegion.id);
 
             return (
@@ -814,7 +814,7 @@ const CombatPanel: React.FC<{
       {/* 当前战斗区域卡片（全卡片可点击） */}
       {(() => {
         const selectedRegion = getRegion(selectedRegionId) || getMainlineRegions()[0];
-        const regionUnlocked = isRegionUnlocked(state, selectedRegion.id);
+        const regionUnlocked = isRegionUnlocked(state, selectedRegion.id, 'combat');
 
         return (
           <div
@@ -906,7 +906,7 @@ const CombatPanel: React.FC<{
       <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域与关卡（通关末关解锁下一区域）:</h3>
       <div className="flex flex-col gap-3">
         {regions.map(region => {
-          const regionUnlocked = isRegionUnlocked(state, region.id);
+          const regionUnlocked = isRegionUnlocked(state, region.id, 'combat');
           const regionCleared = isRegionCleared(state, region.id);
           return (
             <div

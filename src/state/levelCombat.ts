@@ -77,7 +77,7 @@ export const isRegionCleared = (state: GameState, regionId: string): boolean => 
 export const getRegionUnlockDiagnostics = (
   state: GameState,
   regionId: string,
-  _mode?: 'exploration' | 'combat' | 'expedition'
+  mode: 'exploration' | 'combat' | 'expedition' = 'combat'
 ): UnlockDiagnosticItem[] => {
   const region = getRegion(regionId);
   if (!region || region.isTestZone) return [];
@@ -89,7 +89,7 @@ export const getRegionUnlockDiagnostics = (
         const currentPct = getRegionProgressPercent(state, req.regionId);
         const passed = currentPct >= req.percent;
         return {
-          text: `前置区域【${target?.name || req.regionId}】探索度需达 ${req.percent}%`,
+          text: `区域【${target?.name || req.regionId}】探索度需达 ${req.percent}%`,
           current: `当前 ${currentPct}%`,
           passed
         };
@@ -118,39 +118,69 @@ export const getRegionUnlockDiagnostics = (
     });
   }
 
+  // 战斗与远征模式：要求该区域探索度达到 100%
+  if (mode === 'combat' || mode === 'expedition') {
+    const currentPct = getRegionProgressPercent(state, regionId);
+    const passed = currentPct >= 100;
+    return [
+      {
+        text: `区域【${region.name}】探索度需达 100%`,
+        current: `当前 ${currentPct}%`,
+        passed
+      }
+    ];
+  }
+
+  // 荒野探索模式：线性推进，首区默认解锁，后续区域需要前置区域探索度达到 100%
   const mainline = getMainlineRegions();
   const idx = mainline.findIndex((r) => r.id === regionId);
   if (idx <= 0) return [];
 
   const prevRegion = mainline[idx - 1];
-  const cleared = isRegionCleared(state, prevRegion.id);
+  const prevPct = getRegionProgressPercent(state, prevRegion.id);
+  const passed = prevPct >= 100;
   return [
     {
-      text: `前置区域【${prevRegion.name}】全部关卡通关`,
-      current: cleared ? '已通关' : '未通关',
-      passed: cleared
+      text: `前置区域【${prevRegion.name}】探索度需达 100%`,
+      current: `当前 ${prevPct}%`,
+      passed
     }
   ];
 };
 
-export const isRegionUnlocked = (state: GameState, regionId: string): boolean => {
+export const isRegionUnlocked = (
+  state: GameState,
+  regionId: string,
+  mode: 'exploration' | 'combat' | 'expedition' = 'combat'
+): boolean => {
   const region = getRegion(regionId);
   if (!region) return false;
   if (region.isTestZone) return true;
+
+  if (mode === 'combat' || mode === 'expedition') {
+    if (region.unlock && region.unlock.length > 0) {
+      const diags = getRegionUnlockDiagnostics(state, regionId, mode);
+      return diags.every((d) => d.passed);
+    }
+    return getRegionProgressPercent(state, regionId) >= 100;
+  }
+
+  // mode === 'exploration'
   if (region.unlock && region.unlock.length > 0) {
-    const diags = getRegionUnlockDiagnostics(state, regionId);
+    const diags = getRegionUnlockDiagnostics(state, regionId, mode);
     return diags.every((d) => d.passed);
   }
   const mainline = getMainlineRegions();
   const idx = mainline.findIndex((r) => r.id === regionId);
   if (idx === -1) return false;
   if (idx === 0) return true;
-  return isRegionCleared(state, mainline[idx - 1].id);
+  const prevRegion = mainline[idx - 1];
+  return getRegionProgressPercent(state, prevRegion.id) >= 100;
 };
 
 export const getVisibleRegionsForSelector = (
   state: GameState,
-  _mode?: 'exploration' | 'combat' | 'expedition'
+  mode: 'exploration' | 'combat' | 'expedition' = 'combat'
 ): RegionConfig[] => {
   const mainline = getMainlineRegions();
   const testRegions = getTestRegions();
@@ -158,7 +188,7 @@ export const getVisibleRegionsForSelector = (
   let foundFirstLocked = false;
 
   for (const region of mainline) {
-    const unlocked = isRegionUnlocked(state, region.id);
+    const unlocked = isRegionUnlocked(state, region.id, mode);
     if (unlocked) {
       visible.push(region);
     } else if (!foundFirstLocked) {
@@ -168,7 +198,7 @@ export const getVisibleRegionsForSelector = (
   }
 
   for (const testRegion of testRegions) {
-    if (isRegionUnlocked(state, testRegion.id)) {
+    if (isRegionUnlocked(state, testRegion.id, mode)) {
       visible.push(testRegion);
     }
   }
@@ -181,7 +211,7 @@ export const isLevelUnlocked = (state: GameState, regionId: string, levelId: str
   if (!region) return false;
   const idx = region.levels.findIndex((level) => level.id === levelId);
   if (idx === -1) return false;
-  if (idx === 0) return isRegionUnlocked(state, regionId);
+  if (idx === 0) return isRegionUnlocked(state, regionId, 'combat');
   const prevId = region.levels[idx - 1].id;
   return (getClearedLevels(state)[regionId] ?? []).includes(prevId);
 };

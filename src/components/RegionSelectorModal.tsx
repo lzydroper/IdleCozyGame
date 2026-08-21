@@ -45,7 +45,7 @@ export const RegionSelectorModal: React.FC<RegionSelectorModalProps> = ({
 
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {visibleRegions.map((region) => {
-              const isUnlocked = isRegionUnlocked(state, region.id);
+              const isUnlocked = isRegionUnlocked(state, region.id, mode);
               const isSelected = region.id === selectedRegionId;
 
               return (

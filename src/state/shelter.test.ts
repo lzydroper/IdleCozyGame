@@ -14,6 +14,7 @@ const makeTestState = (): GameState => {
   };
   state.inventory.ration = 10; // 确保口粮充足
   state.party = []; // 测试默认无上阵（初始 party=['nova'] 会与后勤互斥校验冲突）
+  state.exploration.regionProgress = { wasteland_entrance: 10 }; // 废土边缘探索度 100% 解锁雷达站远征
   return state;
 };
 
