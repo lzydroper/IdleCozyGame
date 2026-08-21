@@ -4,11 +4,11 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] Region/Level/DropEntry/ExpeditionConfig/Milestone 类型落地；Region.levels 为有序数组，末位为区域关底；Level.id 区域内唯一且稳定。
-- [ ] 新注册表包含 3 个主线区域（wasteland_entrance / old_town_ruins / radiated_workshop）与 1 个测试区域（isTestZone），每区 2 关；敌池、关卡敌人、事件池与掉落表符合决策集和内容映射草稿。
-- [ ] 主线顺序由 Region.order 升序确定，测试区域排除；recommendedLevel 仅作展示字段。
-- [ ] 提供纯查询函数：按区域取有序关卡、按 regionId+localId 取关卡、由关卡反查区域；重复 local id 或未知引用可被测试发现。
-- [ ] 探索配置提供全局 minRunSteps=7，供后续探索进度读取。
-- [ ] 新数据与查询函数的单元测试绿；旧代码、旧测试保持绿。
+- [x] Region/Level/DropEntry/ExpeditionConfig/Milestone 类型落地；Region.levels 为有序数组，末位为区域关底；Level.id 区域内唯一且稳定。
+- [x] 新注册表包含 3 个主线区域（wasteland_entrance / old_town_ruins / radiated_workshop）与 1 个测试区域（isTestZone），每区 2 关；敌池、关卡敌人、事件池与掉落表符合决策集和内容映射草稿。
+- [x] 主线顺序由 Region.order 升序确定，测试区域排除；recommendedLevel 仅作展示字段。
+- [x] 提供纯查询函数：按区域取有序关卡、按 regionId+localId 取关卡、由关卡反查区域；重复 local id 或未知引用可被测试发现。
+- [x] 探索配置提供全局 minRunSteps=7，供后续探索进度读取。
+- [x] 新数据与查询函数的单元测试绿；旧代码、旧测试保持绿。
