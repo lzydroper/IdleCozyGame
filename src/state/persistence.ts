@@ -316,6 +316,10 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   exploration: {
     ...initialState.exploration,
     ...(parsed.exploration || {}),
+    // combat-level 04/05：区域探索字段补默认值
+    realityRegionId: parsed.exploration && typeof parsed.exploration.realityRegionId === 'string' ? parsed.exploration.realityRegionId : null,
+    regionProgress: (parsed.exploration && parsed.exploration.regionProgress) || initialState.exploration.regionProgress,
+    pendingMilestones: (parsed.exploration && parsed.exploration.pendingMilestones) || initialState.exploration.pendingMilestones,
     // 梦境封锁（ticket 14）：旧存档缺失时回退未封锁
     dreamLockdownUntil:
       parsed.exploration && typeof parsed.exploration.dreamLockdownUntil === 'number'

@@ -87,7 +87,7 @@ export const REGION_CONFIGS = {
       'encounter_wasteland_pack'
     ],
     explorationStepsToClear: 10,
-    explorationMilestones: [],
+    explorationMilestones: [{ atPercent: 20, eventId: 'encounter_wasteland_pack' }],
     initialCost: { food: 10, energy: 10 },
     levels: [
       {

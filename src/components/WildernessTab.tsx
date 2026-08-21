@@ -20,9 +20,10 @@ import { SURVIVORS_CONFIG } from '../data/survivors';
 import { createInitialHero } from '../data/initialState';
 import { getMainlineRegions, getRegion, getLevel, getTestRegions } from '../data/regionSelectors';
 import { isRegionUnlocked, isLevelUnlocked, isRegionCleared, getClearedLevels } from '../state/levelCombat';
+import { advanceRegionProgress, completePendingMilestone, getPendingMilestone, canTriggerPendingMilestone, getRegionProgressPercent } from '../state/explorationProgress';
 import { getActiveBonds } from '../state/bonds';
 import { formatModifiers } from '../state/statSystem';
-import type { CombatSettlement } from '../types/game';
+import type { GameState, CombatSettlement } from '../types/game';
 import CombatEventLog from './CombatEventLog';
 
 const WildernessTab: React.FC = () => {
@@ -31,7 +32,6 @@ const WildernessTab: React.FC = () => {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
-  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   // 遭遇战结算：state 中 realityEncounterId 清空后仍需继续播放动画
   const [encounterSettlement, setEncounterSettlement] = useState<CombatSettlement | null>(null);
   const [encounterEventTitle, setEncounterEventTitle] = useState<string>('遭遇战');
@@ -57,7 +57,7 @@ const WildernessTab: React.FC = () => {
       if (!selectedEvent) return;
     } else {
       // 正常抽随机事件：只在当前区域事件池内抽取
-      const region = selectedRegionId ? getRegion(selectedRegionId) : undefined;
+      const region = exploration.realityRegionId ? getRegion(exploration.realityRegionId) : undefined;
       const poolIds = region?.explorationEvents ?? Object.keys(REALITY_EVENTS);
       const events = poolIds
         .map(id => REALITY_EVENTS[id])
@@ -120,8 +120,6 @@ const WildernessTab: React.FC = () => {
       return;
     }
 
-    setSelectedRegionId(isRescue ? null : locationId);
-
     setState(prev => ({
       ...prev,
       player: {
@@ -134,6 +132,7 @@ const WildernessTab: React.FC = () => {
         inRealityExploration: true,
         realitySteps: 0,
         realityLocationId: isRescue ? locationId : null,
+        realityRegionId: isRescue ? null : locationId,
         realityBag: {},
         realityEventId: null,
         realityEncounterId: null
@@ -150,7 +149,7 @@ const WildernessTab: React.FC = () => {
     if (exploration.inRealityExploration && !exploration.realityEventId && !exploration.realityEncounterId) {
       drawEvent();
     }
-  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId, selectedRegionId]);
+  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId, exploration.realityRegionId]);
 
   const handleMakeChoice = (choice: EventChoice) => {
     // 检查前提条件
@@ -267,17 +266,43 @@ const WildernessTab: React.FC = () => {
       }
 
       // 未完成救援：探索继续（无 HP 死亡惩罚，临时背囊永不清空）
+      const regionId = prev.exploration.realityRegionId;
+      let nextExploration: GameState['exploration'] = {
+        ...prev.exploration,
+        realitySteps: prev.exploration.realitySteps + 1,
+        realityBag: newRealityBag,
+        inRealityExploration: true,
+        realityEventId: null,
+        realityEncounterId: null
+      };
+
+      if (regionId) {
+        // 选择型里程碑：本次事件即里程碑事件时，任意选择即完成待办
+        if (getPendingMilestone(prev, regionId) === prev.exploration.realityEventId) {
+          nextExploration = completePendingMilestone({ ...prev, exploration: nextExploration }, regionId).exploration;
+        }
+        // 推进区域进度（存在待办时自动暂停）
+        const advanced = advanceRegionProgress({ ...prev, exploration: nextExploration }, regionId);
+        nextExploration = advanced.exploration;
+        // 满足触发条件时，把里程碑事件设为下一张卡（encounter 走战斗）
+        const pending = getPendingMilestone(advanced, regionId);
+        if (pending && canTriggerPendingMilestone(advanced, regionId)) {
+          const milestoneEvent = REALITY_EVENTS[pending];
+          if (milestoneEvent) {
+            nextExploration = {
+              ...nextExploration,
+              realityEventId: milestoneEvent.battle ? null : milestoneEvent.id,
+              realityEncounterId: milestoneEvent.battle ? milestoneEvent.id : null
+            };
+          }
+        }
+      }
+
       return {
         ...prev,
         player: newPlayer,
         inventory: newInventory,
-        exploration: {
-          ...prev.exploration,
-          realitySteps: prev.exploration.realitySteps + 1,
-          realityBag: newRealityBag,
-          inRealityExploration: true,
-          realityEventId: null
-        }
+        exploration: nextExploration
       };
     });
 
@@ -409,6 +434,23 @@ const WildernessTab: React.FC = () => {
       ) : (
         /* In exploration display */
         <div className="space-y-2.5 pt-0.5">
+          {/* 区域探索进度（combat-level 05） */}
+          {exploration.realityRegionId && (() => {
+            const region = getRegion(exploration.realityRegionId!);
+            const pct = getRegionProgressPercent(state, exploration.realityRegionId!);
+            const pending = getPendingMilestone(state, exploration.realityRegionId!);
+            return (
+              <div className="rounded-2xl border border-cyan-500/20 bg-zinc-900/40 p-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-cyan-300">探索进度：{region?.name ?? '未知区域'} {pct}%</span>
+                  {pending && <span className="text-[9px] font-bold text-amber-400">里程碑待办</span>}
+                </div>
+                <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-900">
+                  <div className="h-full bg-cyan-500 transition-all duration-300" style={{ width: pct + '%' }} />
+                </div>
+              </div>
+            );
+          })()}
           {/* 战斗遭遇面板 */}
           {exploration.realityEncounterId && (
             <EncounterPanel

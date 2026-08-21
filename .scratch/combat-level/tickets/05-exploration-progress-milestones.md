@@ -4,10 +4,10 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] regionProgress 按完成事件累计；百分比 = min(100, steps / explorationStepsToClear × 100)。
-- [ ] 里程碑按 atPercent 升序一次性触发；触发条件同时满足累计阈值与本次探索步数 ≥ minRunSteps。
-- [ ] 存在待办里程碑时，该区域进度不再累加；完成后恢复累计。
-- [ ] 战斗型里程碑不可撤离：胜利清除待办，失败终止探索并保留待办；选择型里程碑任意选择即清除待办。
-- [ ] 界面展示区域探索进度与待办里程碑状态；相关测试通过。
+- [x] regionProgress 按完成事件累计；百分比 = min(100, steps / explorationStepsToClear × 100)。
+- [x] 里程碑按 atPercent 升序一次性触发；触发条件同时满足累计阈值与本次探索步数 ≥ minRunSteps。
+- [x] 存在待办里程碑时，该区域进度不再累加；完成后恢复累计。
+- [x] 战斗型里程碑不可撤离：胜利清除待办，失败终止探索并保留待办；选择型里程碑任意选择即清除待办。
+- [x] 界面展示区域探索进度与待办里程碑状态；相关测试通过。

@@ -170,6 +170,9 @@ export interface GameState {
     inRealityExploration: boolean;
     realitySteps: number;
     realityLocationId: string | null;
+    realityRegionId?: string | null;    // 当前普通探索所在区域（救援为 null，combat-level 05）
+    regionProgress?: Record<string, number>; // regionId -> 累计完成步数（combat-level 05）
+    pendingMilestones?: Record<string, string>; // regionId -> 待办 milestone eventId（combat-level 05）
     realityBag: Record<string, number>; // 探索中临时背包
     realityEventId?: string | null;     // 当前激活的现实事件ID
     realityEncounterId: string | null;  // 待战斗的战斗遭遇事件ID（ticket 06 探索战斗汇合）
