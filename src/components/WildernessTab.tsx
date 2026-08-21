@@ -31,6 +31,7 @@ const WildernessTab: React.FC = () => {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   // 遭遇战结算：state 中 realityEncounterId 清空后仍需继续播放动画
   const [encounterSettlement, setEncounterSettlement] = useState<CombatSettlement | null>(null);
   const [encounterEventTitle, setEncounterEventTitle] = useState<string>('遭遇战');
@@ -55,15 +56,18 @@ const WildernessTab: React.FC = () => {
       selectedEvent = RESCUE_EVENTS[rescueEventId];
       if (!selectedEvent) return;
     } else {
-      // 正常抽随机事件
-      const keys = Object.keys(REALITY_EVENTS);
-      const events = keys.map(key => REALITY_EVENTS[key]);
-      
+      // 正常抽随机事件：只在当前区域事件池内抽取
+      const region = selectedRegionId ? getRegion(selectedRegionId) : undefined;
+      const poolIds = region?.explorationEvents ?? Object.keys(REALITY_EVENTS);
+      const events = poolIds
+        .map(id => REALITY_EVENTS[id])
+        .filter((event): event is RealityEvent => Boolean(event));
+      if (events.length === 0) return;
+
       // 1. 根据分类大权重筛选事件类型
-      
       const availableCategories = Array.from(new Set(events.map(e => e.type)));
       const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
-      
+
       let randomCatNum = Math.random() * totalCatWeight;
       let selectedCat = availableCategories[0];
       for (const cat of availableCategories) {
@@ -74,11 +78,11 @@ const WildernessTab: React.FC = () => {
         }
         randomCatNum -= catWeight;
       }
-      
+
       // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
       const catEvents = events.filter(e => e.type === selectedCat);
       const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
-      
+
       let randomEvtNum = Math.random() * totalEventWeight;
       selectedEvent = catEvents[0];
       for (const evt of catEvents) {
@@ -102,15 +106,21 @@ const WildernessTab: React.FC = () => {
     }));
   };
 
-  const handleStartExploration = (locationId: string | null) => {
-    const isRescue = locationId !== null;
-    const foodCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST : GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST;
-    const energyCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST : GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST;
+  const handleStartExploration = (locationId: string | null, isRescue = false) => {
+    const region = !isRescue && locationId ? getRegion(locationId) : undefined;
+    const foodCost = isRescue
+      ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST
+      : (region?.initialCost?.food ?? GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST);
+    const energyCost = isRescue
+      ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST
+      : (region?.initialCost?.energy ?? GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST);
 
     if (player.food < foodCost || player.energy < energyCost) {
       showToast(`生存指标过低（饱食度需 >= ${foodCost}，魔能需 >= ${energyCost}），请先补充！`, "error");
       return;
     }
+
+    setSelectedRegionId(isRescue ? null : locationId);
 
     setState(prev => ({
       ...prev,
@@ -123,7 +133,7 @@ const WildernessTab: React.FC = () => {
         ...prev.exploration,
         inRealityExploration: true,
         realitySteps: 0,
-        realityLocationId: locationId,
+        realityLocationId: isRescue ? locationId : null,
         realityBag: {},
         realityEventId: null,
         realityEncounterId: null
@@ -140,7 +150,7 @@ const WildernessTab: React.FC = () => {
     if (exploration.inRealityExploration && !exploration.realityEventId && !exploration.realityEncounterId) {
       drawEvent();
     }
-  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId]);
+  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId, selectedRegionId]);
 
   const handleMakeChoice = (choice: EventChoice) => {
     // 检查前提条件
@@ -345,21 +355,29 @@ const WildernessTab: React.FC = () => {
           
           {/* Destination options */}
           <div className="flex flex-col gap-3">
-            {/* Standard exploration */}
-            <div
-              onClick={() => handleStartExploration(null)}
-              className="p-4 rounded-3xl bg-zinc-950/70 border border-cyan-500/20 hover:border-cyan-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group"
-            >
-              <div>
-                <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                  常规探索 (开始探索)
-                </h4>
-                <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
-                  搜寻基础种子、废金属，消耗小 (饱食 -10, 魔能 -10)
-                </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-cyan-400 transition-colors" />
-            </div>
+            {/* 常规探索：按区域选择 */}
+            {getMainlineRegions()
+              .filter(region => region.explorationEvents.length > 0)
+              .map(region => (
+                <div
+                  key={region.id}
+                  onClick={() => handleStartExploration(region.id, false)}
+                  className="p-4 rounded-3xl bg-zinc-950/70 border border-cyan-500/20 hover:border-cyan-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group"
+                >
+                  <div>
+                    <h4 className="text-sm font-black text-white flex items-center gap-1.5">
+                      <Map className="w-3.5 h-3.5 text-cyan-400" />探索【{region.name}】
+                    </h4>
+                    <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
+                      {region.description}
+                    </p>
+                    <p className="text-[9px] text-cyan-400/80 mt-1 font-bold">
+                      消耗：饱食 -{region.initialCost?.food ?? 10}，魔能 -{region.initialCost?.energy ?? 10}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-cyan-400 transition-colors" />
+                </div>
+              ))}
 
             {/* Rescue explorations */}
             {rescueTargets.map(target => {
@@ -370,7 +388,7 @@ const WildernessTab: React.FC = () => {
               return (
                 <div
                   key={target.heroId}
-                  onClick={() => handleStartExploration(target.locationId)}
+                  onClick={() => handleStartExploration(target.locationId, true)}
                   className="p-4 rounded-3xl bg-zinc-950/70 border border-amber-500/20 hover:border-amber-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group animate-pulse"
                 >
                   <div>

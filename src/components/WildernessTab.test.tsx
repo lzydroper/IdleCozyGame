@@ -37,10 +37,37 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    const startButton = screen.getByText(/开始探索/i);
-    fireEvent.click(startButton);
+    fireEvent.click(screen.getByText(/探索【废土边缘】/));
 
     expect(screen.getByText(/临时背囊/i)).toBeDefined();
+  });
+
+  it('uses the region initial cost and draws from the region event pool', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05);
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 测试区域（军备测试场）事件池为空，不应出现在探索目的地
+    expect(screen.queryByText(/军备测试场/)).toBeNull();
+
+    fireEvent.click(screen.getByText(/探索【旧城废墟】/));
+
+    const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.player.food).toBe(90); // 区域 initialCost 10
+    expect(saved.exploration.inRealityExploration).toBe(true);
+    const eventId = saved.exploration.realityEventId;
+    expect([
+      'abandoned_train', 'abandoned_cart', 'waste_pool', 'thorn_thicket',
+      'wasteland_bandits', 'bat_swarm', 'hydrological_station', 'wild_fruit',
+      'ancient_library', 'sandstorm', 'magnetic_storm', 'encounter_ruin_raiders'
+    ]).toContain(eventId);
+
+    randomSpy.mockRestore();
   });
 
   it('should trigger special rescue event for Catherine at step 5', () => {
