@@ -9,7 +9,9 @@ import {
   startLevelCombatUpdate,
   isRegionUnlocked,
   isLevelUnlocked,
-  getClearedLevels
+  getClearedLevels,
+  getRegionUnlockDiagnostics,
+  getVisibleRegionsForSelector
 } from './levelCombat';
 
 const freshState = (): GameState => JSON.parse(JSON.stringify(INITIAL_STATE)) as GameState;
@@ -139,3 +141,51 @@ describe('startLevelCombatUpdate', () => {
     expect(getClearedLevels(result.state).wasteland_entrance).toContain('wasteland_entrance_1');
   });
 });
+
+describe('getRegionUnlockDiagnostics and getVisibleRegionsForSelector', () => {
+  it('returns empty diagnostics for first mainline region or test zone', () => {
+    const state = freshState();
+    expect(isRegionUnlocked(state, 'wasteland_entrance')).toBe(true);
+    expect(getRegionUnlockDiagnostics(state, 'wasteland_entrance')).toEqual([]);
+    expect(getRegionUnlockDiagnostics(state, 'equipment_test_zone')).toEqual([]);
+  });
+
+  it('diagnoses lock condition when previous mainline region is not cleared', () => {
+    const state = freshState();
+    const diags = getRegionUnlockDiagnostics(state, 'old_town_ruins');
+    expect(diags).toHaveLength(1);
+    expect(diags[0].passed).toBe(false);
+    expect(diags[0].text).toContain('废土边缘');
+    expect(diags[0].current).toBe('未通关');
+  });
+
+  it('filters visible regions to all unlocked plus only the first locked region', () => {
+    const state = freshState();
+    // Default state: wasteland_entrance is unlocked, old_town_ruins is locked (1st locked), radiated_workshop is deeper locked
+    const visible = getVisibleRegionsForSelector(state);
+    const visibleIds = visible.map(r => r.id);
+    expect(visibleIds).toContain('wasteland_entrance');
+    expect(visibleIds).toContain('old_town_ruins');
+    expect(visibleIds).not.toContain('radiated_workshop');
+    expect(visibleIds).toContain('equipment_test_zone'); // test zone is unlocked
+  });
+
+  it('shows next locked region when previous region is cleared', () => {
+    const state = freshState();
+    const clearedState: GameState = {
+      ...state,
+      combat: {
+        ...state.combat,
+        clearedLevels: {
+          wasteland_entrance: ['wasteland_entrance_1', 'wasteland_entrance_2']
+        }
+      }
+    };
+    const visible = getVisibleRegionsForSelector(clearedState);
+    const visibleIds = visible.map(r => r.id);
+    expect(visibleIds).toContain('wasteland_entrance');
+    expect(visibleIds).toContain('old_town_ruins');
+    expect(visibleIds).toContain('radiated_workshop'); // now 1st locked
+  });
+});
+

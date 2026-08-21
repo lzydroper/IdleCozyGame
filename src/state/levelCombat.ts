@@ -1,6 +1,8 @@
 import type { GameState, HeroState, CombatSettlement, CombatIdleState } from '../types/game';
-import type { LevelConfig } from '../data/regions';
-import { getMainlineRegions, getRegion, getLevel } from '../data/regionSelectors';
+import type { LevelConfig, RegionConfig } from '../data/regions';
+import { getMainlineRegions, getRegion, getLevel, getTestRegions } from '../data/regionSelectors';
+import { ITEMS_CONFIG } from '../data/items';
+import { getRegionProgressPercent } from './explorationProgress';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { HEROES_CONFIG } from '../data/heroes';
 import { COMBAT_CONFIG } from '../data/combatConfig';
@@ -40,6 +42,12 @@ export interface LevelIdleSettlementOutcome {
   stopReason?: 'stamina' | 'defeat';
 }
 
+export interface UnlockDiagnosticItem {
+  text: string;
+  current: string;
+  passed: boolean;
+}
+
 const isKnownHero = (state: GameState, heroId: string): boolean =>
   !!state.heroes[heroId] && !!HEROES_CONFIG[heroId];
 
@@ -66,15 +74,106 @@ export const isRegionCleared = (state: GameState, regionId: string): boolean => 
   return (getClearedLevels(state)[regionId] ?? []).includes(lastId);
 };
 
+export const getRegionUnlockDiagnostics = (
+  state: GameState,
+  regionId: string,
+  _mode?: 'exploration' | 'combat' | 'expedition'
+): UnlockDiagnosticItem[] => {
+  const region = getRegion(regionId);
+  if (!region || region.isTestZone) return [];
+
+  if (region.unlock && region.unlock.length > 0) {
+    return region.unlock.map((req) => {
+      if (req.type === 'regionExplored') {
+        const target = getRegion(req.regionId);
+        const currentPct = getRegionProgressPercent(state, req.regionId);
+        const passed = currentPct >= req.percent;
+        return {
+          text: `前置区域【${target?.name || req.regionId}】探索度需达 ${req.percent}%`,
+          current: `当前 ${currentPct}%`,
+          passed
+        };
+      }
+      if (req.type === 'levelCleared') {
+        const target = getRegion(req.regionId);
+        const targetLevel = getLevel(req.regionId, req.levelId);
+        const cleared = (getClearedLevels(state)[req.regionId] ?? []).includes(req.levelId);
+        return {
+          text: `通关关卡【${target?.name || req.regionId} · ${targetLevel?.name || req.levelId}】`,
+          current: cleared ? '已通关' : '未通关',
+          passed: cleared
+        };
+      }
+      if (req.type === 'itemHeld') {
+        const itemCfg = ITEMS_CONFIG[req.itemId];
+        const count = state.inventory[req.itemId] || 0;
+        const passed = count >= req.count;
+        return {
+          text: `持有关键物资【${itemCfg?.name || req.itemId} ×${req.count}】`,
+          current: `持有 ${count}/${req.count}`,
+          passed
+        };
+      }
+      return { text: '未知解锁条件', current: '未达成', passed: false };
+    });
+  }
+
+  const mainline = getMainlineRegions();
+  const idx = mainline.findIndex((r) => r.id === regionId);
+  if (idx <= 0) return [];
+
+  const prevRegion = mainline[idx - 1];
+  const cleared = isRegionCleared(state, prevRegion.id);
+  return [
+    {
+      text: `前置区域【${prevRegion.name}】全部关卡通关`,
+      current: cleared ? '已通关' : '未通关',
+      passed: cleared
+    }
+  ];
+};
+
 export const isRegionUnlocked = (state: GameState, regionId: string): boolean => {
   const region = getRegion(regionId);
   if (!region) return false;
   if (region.isTestZone) return true;
+  if (region.unlock && region.unlock.length > 0) {
+    const diags = getRegionUnlockDiagnostics(state, regionId);
+    return diags.every((d) => d.passed);
+  }
   const mainline = getMainlineRegions();
   const idx = mainline.findIndex((r) => r.id === regionId);
   if (idx === -1) return false;
   if (idx === 0) return true;
   return isRegionCleared(state, mainline[idx - 1].id);
+};
+
+export const getVisibleRegionsForSelector = (
+  state: GameState,
+  _mode?: 'exploration' | 'combat' | 'expedition'
+): RegionConfig[] => {
+  const mainline = getMainlineRegions();
+  const testRegions = getTestRegions();
+  const visible: RegionConfig[] = [];
+  let foundFirstLocked = false;
+
+  for (const region of mainline) {
+    const unlocked = isRegionUnlocked(state, region.id);
+    if (unlocked) {
+      visible.push(region);
+    } else if (!foundFirstLocked) {
+      visible.push(region);
+      foundFirstLocked = true;
+    }
+  }
+
+  for (const testRegion of testRegions) {
+    if (isRegionUnlocked(state, testRegion.id)) {
+      visible.push(testRegion);
+    }
+  }
+
+  return visible;
 };
 
 export const isLevelUnlocked = (state: GameState, regionId: string, levelId: string): boolean => {

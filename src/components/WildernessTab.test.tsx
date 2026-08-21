@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
@@ -43,6 +44,12 @@ describe('WildernessTab Component', () => {
   });
 
   it('uses the region initial cost and draws from the region event pool', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE));
+    save.combat.clearedLevels = {
+      wasteland_entrance: ['wasteland_entrance_1', 'wasteland_entrance_2']
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05);
     render(
       <GameProvider>
@@ -52,8 +59,10 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    // 测试区域（军备测试场）事件池为空，不应出现在探索目的地
-    expect(screen.queryByText(/军备测试场/)).toBeNull();
+    // 打开区域选择器切换到旧城废墟
+    fireEvent.click(screen.getByTestId('wilderness-region-card'));
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
 
     fireEvent.click(screen.getByText(/探索【旧城废墟】/));
 
@@ -252,7 +261,7 @@ describe('WildernessTab Component', () => {
     );
 
     // 切换到战斗挂机模式
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
     expect(screen.getAllByText(/废土边缘/).length).toBeGreaterThan(0); // 区域卡标题 + 下一区解锁提示
     expect(screen.getByText(/战斗体力/)).toBeDefined();
 
@@ -280,7 +289,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
     const button = screen.getAllByText(/开战（体力 -10）/)[0];
     expect(button.hasAttribute('disabled')).toBe(true);
 
@@ -449,7 +458,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
     // 初始仅首区解锁：区2、区3 显示未解锁
     expect(screen.getAllByText(/未解锁/).length).toBe(2);
     expect(screen.getByText(/废土边缘 · 鬣狗王/)).toBeDefined();
@@ -480,7 +489,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
     // 默认展开首区，因此只渲染首区 2 个关卡的挂机按钮
     const idleButtons = screen.getAllByText(/开始挂机/);
@@ -520,7 +529,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
     const idleButtons = screen.getAllByText(/开始挂机/);
     expect(idleButtons[0].hasAttribute('disabled')).toBe(true);
     fireEvent.click(idleButtons[0]);
@@ -543,7 +552,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
     // 机械搭档（诺娃 + 罗伊）：攻击 +10%
     expect(screen.getByText(/机械搭档/)).toBeDefined();
     expect(screen.getByText(/攻击 \+10%/)).toBeDefined();
@@ -580,7 +589,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
     expect(screen.getByText(/战斗平局/)).toBeDefined();
     expect(screen.queryByText(/战斗失败/)).toBeNull();
@@ -628,7 +637,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
     // 事件流日志：技能行含技能名与伤害；治疗行含恢复量
     const skillLine = screen.getByText(/发动【电涌过载】/);
@@ -657,7 +666,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
     // 挂机在线结算一场（20 秒），最近战斗结果以事件流展示
     act(() => {
@@ -679,7 +688,7 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
     // 第一场：点击开战 → 胜利结算展示
     fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
@@ -692,5 +701,82 @@ describe('WildernessTab Component', () => {
     expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
     const afterSecond = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(afterSecond.stamina).toBe(80);
+  });
+
+  it('switches between 荒野 and 战斗 sub-tabs seamlessly', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Initial state is Wilderness sub-tab
+    expect(screen.getByTestId('wilderness-region-card')).toBeDefined();
+    expect(screen.getByText('踏入废土荒野')).toBeDefined();
+
+    // Switch to Combat sub-tab
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
+    expect(screen.getByText(/战斗体力/)).toBeDefined();
+
+    // Switch back to Wilderness sub-tab
+    fireEvent.click(screen.getByRole('button', { name: '荒野' }));
+    expect(screen.getByTestId('wilderness-region-card')).toBeDefined();
+  });
+
+  it('opens RegionSelectorModal from wilderness region card and updates selection', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Click wilderness region card
+    fireEvent.click(screen.getByTestId('wilderness-region-card'));
+    expect(screen.getByTestId('region-selector-modal')).toBeDefined();
+
+    // Select old_town_ruins
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+    expect(screen.getByTestId('region-detail-modal')).toBeDefined();
+
+    // Confirm selection
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+    expect(screen.queryByTestId('region-selector-modal')).toBeNull();
+
+    // Wilderness card now reflects 旧城废墟
+    expect(screen.getByTestId('wilderness-region-card').textContent).toContain('旧城废墟');
+  });
+
+  it('opens RegionSelectorModal from combat region card and updates combat region', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Go to combat sub-tab
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
+
+    // Click combat region card
+    fireEvent.click(screen.getByTestId('combat-region-card'));
+    expect(screen.getByTestId('region-selector-modal')).toBeDefined();
+
+    // Select old_town_ruins
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+    expect(screen.getByTestId('region-detail-modal')).toBeDefined();
+
+    // Confirm selection
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+    expect(screen.queryByTestId('region-selector-modal')).toBeNull();
+
+    // Combat card now reflects 旧城废墟
+    expect(screen.getByTestId('combat-region-card').textContent).toContain('旧城废墟');
   });
 });

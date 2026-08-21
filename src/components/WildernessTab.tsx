@@ -25,6 +25,7 @@ import { getActiveBonds } from '../state/bonds';
 import { formatModifiers } from '../state/statSystem';
 import type { GameState, CombatSettlement } from '../types/game';
 import CombatEventLog from './CombatEventLog';
+import RegionSelectorModal from './RegionSelectorModal';
 
 const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -32,6 +33,20 @@ const WildernessTab: React.FC = () => {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
+  const [selectedExplorationRegionId, setSelectedExplorationRegionId] = useState<string>(
+    () => getMainlineRegions()[0]?.id || 'wasteland_entrance'
+  );
+  const [selectedCombatRegionId, setSelectedCombatRegionId] = useState<string>(
+    () => getMainlineRegions()[0]?.id || 'wasteland_entrance'
+  );
+  const [isRegionSelectorOpen, setIsRegionSelectorOpen] = useState<boolean>(false);
+  const [regionSelectorMode, setRegionSelectorMode] = useState<'exploration' | 'combat'>('exploration');
+
+  const openRegionSelector = (targetMode: 'exploration' | 'combat') => {
+    setRegionSelectorMode(targetMode);
+    setIsRegionSelectorOpen(true);
+  };
+
   // 遭遇战结算：state 中 realityEncounterId 清空后仍需继续播放动画
   const [encounterSettlement, setEncounterSettlement] = useState<CombatSettlement | null>(null);
   const [encounterEventTitle, setEncounterEventTitle] = useState<string>('遭遇战');
@@ -341,7 +356,7 @@ const WildernessTab: React.FC = () => {
           </button>
         </div>
       )}
-      {/* 探索 / 战斗 模式切换（探索中锁定，遭遇战播放期间也锁定） */}
+      {/* 荒野 / 战斗 子 Tab 切换（探索中锁定，遭遇战播放期间也锁定） */}
       {!encounterSettlement && !exploration.inRealityExploration && (
         <div className="flex gap-2 mb-3">
           <button
@@ -352,7 +367,7 @@ const WildernessTab: React.FC = () => {
                 : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <Map className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />探索荒野
+            <Map className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />荒野
           </button>
           <button
             onClick={() => setMode('combat')}
@@ -362,13 +377,16 @@ const WildernessTab: React.FC = () => {
                 : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />战斗挂机
+            <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />战斗
           </button>
         </div>
       )}
       {!encounterSettlement && (!exploration.inRealityExploration ? (
         mode === 'combat' ? (
-          <CombatPanel />
+          <CombatPanel
+            selectedRegionId={selectedCombatRegionId}
+            onOpenRegionSelector={() => openRegionSelector('combat')}
+          />
         ) : (
         <div className="space-y-4">
           {/* 未在探索中：显示探索选项 */}
@@ -380,59 +398,89 @@ const WildernessTab: React.FC = () => {
             </p>
           </div>
 
-          <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">请选择探索目的地:</h3>
-          
-          {/* Destination options */}
-          <div className="flex flex-col gap-3">
-            {/* 常规探索：按区域选择 */}
-            {getMainlineRegions()
-              .filter(region => region.explorationEvents.length > 0)
-              .map(region => (
-                <div
-                  key={region.id}
-                  onClick={() => handleStartExploration(region.id, false)}
-                  className="p-4 rounded-3xl bg-zinc-950/70 border border-cyan-500/20 hover:border-cyan-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group"
-                >
-                  <div>
-                    <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                      <Map className="w-3.5 h-3.5 text-cyan-400" />探索【{region.name}】
-                    </h4>
-                    <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
-                      {region.description}
-                    </p>
-                    <p className="text-[9px] text-cyan-400/80 mt-1 font-bold">
-                      消耗：饱食 -{region.initialCost?.food ?? 10}，魔能 -{region.initialCost?.energy ?? 10}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-cyan-400 transition-colors" />
-                </div>
-              ))}
+          {/* 荒野当前区域选择卡片（全卡片可点击） */}
+          {(() => {
+            const selectedRegion = getRegion(selectedExplorationRegionId) || getMainlineRegions()[0];
+            const isUnlocked = isRegionUnlocked(state, selectedRegion.id);
+            const progressPct = getRegionProgressPercent(state, selectedRegion.id);
 
-            {/* Rescue explorations */}
-            {rescueTargets.map(target => {
-              const loc = RESCUE_LOCATION_NAMES[target.locationId];
-              const locationName = loc?.displayName || '未知废墟';
-              const targetName = SURVIVORS_CONFIG.find(s => s.id === target.heroId)?.name || target.heroId;
-
-              return (
+            return (
+              <div className="space-y-3">
                 <div
-                  key={target.heroId}
-                  onClick={() => handleStartExploration(target.locationId, true)}
-                  className="p-4 rounded-3xl bg-zinc-950/70 border border-amber-500/20 hover:border-amber-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group animate-pulse"
+                  data-testid="wilderness-region-card"
+                  onClick={() => openRegionSelector('exploration')}
+                  className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all shadow group"
                 >
-                  <div>
-                    <h4 className="text-sm font-black text-amber-400 flex items-center gap-1.5">
-                      救援任务：寻找 {targetName}
-                    </h4>
-                    <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
-                      目的地：{locationName}。深处极其凶险，需做好战斗准备！(饱食 -15, 魔能 -15)
-                    </p>
+                  <div className="text-left">
+                    <div className="text-[10px] text-zinc-500 font-bold">当前探索区域</div>
+                    <div className="text-sm font-black text-zinc-100 flex items-center gap-1.5">
+                      <GameIcon type="zone" id={selectedRegion.id} className="w-4 h-4" />
+                      {selectedRegion.name}
+                      {!isUnlocked && (
+                        <span className="text-[9px] bg-red-950/60 text-red-400 border border-red-800/40 px-1.5 py-0.5 rounded font-bold">
+                          待解锁
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-zinc-500 mt-0.5">
+                      {isUnlocked ? `探索度 ${progressPct}%` : '待解锁'}
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-amber-500 transition-colors" />
+                  <span className="text-xs text-cyan-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                    更换 <ChevronRight className="w-3.5 h-3.5 inline-block" />
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* 快速进入当前区域探索 */}
+                <button
+                  onClick={() => handleStartExploration(selectedRegion.id, false)}
+                  disabled={!isUnlocked}
+                  className={`w-full py-3 text-xs font-black rounded-2xl shadow-lg flex items-center justify-center gap-1.5 transition-all ${
+                    isUnlocked
+                      ? 'bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 border border-cyan-400/30 text-white shadow-cyan-950/30 cursor-pointer active:scale-98'
+                      : 'bg-zinc-900 border border-zinc-800 text-zinc-600 cursor-not-allowed'
+                  }`}
+                >
+                  <Compass className="w-4 h-4" />
+                  {isUnlocked
+                    ? `探索【${selectedRegion.name}】（饱食 -${selectedRegion.initialCost?.food ?? 10}，魔能 -${selectedRegion.initialCost?.energy ?? 10}）`
+                    : `【${selectedRegion.name}】尚未解锁，无法探索`}
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* Rescue explorations */}
+          {rescueTargets.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">救援信号:</h3>
+              <div className="flex flex-col gap-2.5">
+                {rescueTargets.map(target => {
+                  const loc = RESCUE_LOCATION_NAMES[target.locationId];
+                  const locationName = loc?.displayName || '未知废墟';
+                  const targetName = SURVIVORS_CONFIG.find(s => s.id === target.heroId)?.name || target.heroId;
+
+                  return (
+                    <div
+                      key={target.heroId}
+                      onClick={() => handleStartExploration(target.locationId, true)}
+                      className="p-4 rounded-3xl bg-zinc-950/70 border border-amber-500/20 hover:border-amber-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group animate-pulse"
+                    >
+                      <div>
+                        <h4 className="text-sm font-black text-amber-400 flex items-center gap-1.5">
+                          救援任务：寻找 {targetName}
+                        </h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
+                          目的地：{locationName}。深处极其凶险，需做好战斗准备！(饱食 -15, 魔能 -15)
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-amber-500 transition-colors" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         )
       ) : (
@@ -541,6 +589,21 @@ const WildernessTab: React.FC = () => {
           </div>
         </div>
       ))}
+
+      {/* 通用区域选择器弹窗 */}
+      <RegionSelectorModal
+        isOpen={isRegionSelectorOpen}
+        mode={regionSelectorMode}
+        selectedRegionId={regionSelectorMode === 'exploration' ? selectedExplorationRegionId : selectedCombatRegionId}
+        onClose={() => setIsRegionSelectorOpen(false)}
+        onConfirmSelect={(regionId) => {
+          if (regionSelectorMode === 'exploration') {
+            setSelectedExplorationRegionId(regionId);
+          } else {
+            setSelectedCombatRegionId(regionId);
+          }
+        }}
+      />
     </div>
   );
 };
@@ -649,7 +712,10 @@ const EncounterPanel: React.FC<{
 };
 
 // === 战斗挂机面板（combat-level ticket 03）：区域 → 关卡 ===
-const CombatPanel: React.FC = () => {
+const CombatPanel: React.FC<{
+  selectedRegionId: string;
+  onOpenRegionSelector: () => void;
+}> = ({ selectedRegionId, onOpenRegionSelector }) => {
   const { state, startLevelCombat, startLevelIdle, stopLevelIdle } = useGame();
   const { showToast } = useToast();
 
@@ -666,7 +732,11 @@ const CombatPanel: React.FC = () => {
   const idleLevelId = idle?.levelId ?? null;
   const idleRegion = idleRegionId ? getRegion(idleRegionId) : undefined;
   const idleLevel = idleRegionId && idleLevelId ? getLevel(idleRegionId, idleLevelId) : undefined;
-  const [expandedRegionId, setExpandedRegionId] = useState<string | null>(() => getMainlineRegions()[0]?.id ?? null);
+  const [expandedRegionId, setExpandedRegionId] = useState<string | null>(selectedRegionId);
+
+  useEffect(() => {
+    setExpandedRegionId(selectedRegionId);
+  }, [selectedRegionId]);
 
   const regions = [...getMainlineRegions(), ...getTestRegions()];
 
@@ -740,6 +810,39 @@ const CombatPanel: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* 当前战斗区域卡片（全卡片可点击） */}
+      {(() => {
+        const selectedRegion = getRegion(selectedRegionId) || getMainlineRegions()[0];
+        const regionUnlocked = isRegionUnlocked(state, selectedRegion.id);
+
+        return (
+          <div
+            data-testid="combat-region-card"
+            onClick={onOpenRegionSelector}
+            className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-rose-500/50 transition-all shadow group"
+          >
+            <div className="text-left">
+              <div className="text-[10px] text-zinc-500 font-bold">当前战斗区域</div>
+              <div className="text-sm font-black text-zinc-100 flex items-center gap-1.5">
+                <GameIcon type="zone" id={selectedRegion.id} className="w-4 h-4" />
+                {selectedRegion.name}
+                {!regionUnlocked && (
+                  <span className="text-[9px] bg-red-950/60 text-red-400 border border-red-800/40 px-1.5 py-0.5 rounded font-bold">
+                    待解锁
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-0.5 leading-normal max-w-[260px] truncate">
+                {selectedRegion.description}
+              </p>
+            </div>
+            <span className="text-xs text-rose-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              更换 <ChevronRight className="w-3.5 h-3.5 inline-block" />
+            </span>
+          </div>
+        );
+      })()}
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
         <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Swords className="w-3.5 h-3.5" /> 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
