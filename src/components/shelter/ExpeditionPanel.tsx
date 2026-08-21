@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
-import { EXPEDITION_LOCATIONS } from '../../data/expeditionLocations';
+import { findRegionExpedition } from '../../data/regionSelectors';
+import type { DropEntry } from '../../data/regions';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
 import { ITEMS_CONFIG } from '../../data/items';
 import { getHeroName, getInvQty } from '../../utils/gameUtils';
@@ -20,7 +21,7 @@ const ExpeditionPanel: React.FC = () => {
 
   // 状态绑定：挂机远征的选择
   const [selectedExpExplorerId, setSelectedExpExplorerId] = useState<string>('');
-  const [selectedLocationId, setSelectedLocationId] = useState<string>(Object.keys(EXPEDITION_LOCATIONS)[0] || 'radar_station');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('radar_station');
   const [showExplorerPicker, setShowExplorerPicker] = useState(false);
 
   useEffect(() => {
@@ -36,9 +37,19 @@ const ExpeditionPanel: React.FC = () => {
   const getHeroFactionLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_FACTION_LABELS[HEROES_CONFIG[heroId].faction] : '';
 
+  const getExpedition = (locationId: string) => findRegionExpedition(locationId)?.expedition;
+  const renderLootNames = (entries: DropEntry[]): string =>
+    entries.map(d => d.kind === 'weighted'
+      ? d.pool.map(p => ITEMS_CONFIG[p.itemId]?.name || p.itemId).join('/')
+      : ITEMS_CONFIG[d.itemId]?.name || d.itemId).join(', ');
+  const renderLootWithChance = (d: DropEntry): string =>
+    d.kind === 'chance'
+      ? `${ITEMS_CONFIG[d.itemId]?.name || d.itemId} (${d.chancePercent}%)`
+      : renderLootNames([d]);
+
   // 探索员与地点的职阶/阵营门槛匹配校验（ADR-0018）
   const checkRequirementUnmatch = (locationId: string): boolean => {
-    const loc = EXPEDITION_LOCATIONS[locationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = getExpedition(locationId);
     const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
     const classUnmatch = loc?.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
     const factionUnmatch = loc?.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
@@ -50,9 +61,10 @@ const ExpeditionPanel: React.FC = () => {
   const currentExplorer = exp.locationId && state.shelter.assignedExplorerId
     ? state.heroes[state.shelter.assignedExplorerId]
     : null;
-  const expLocation = exp.locationId
-    ? EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS]
-    : null;
+  const expLocation = exp.locationId ? getExpedition(exp.locationId) ?? null : null;
+  const expeditionOptions = [
+    { key: 'radar_station', loc: getExpedition('radar_station') }
+  ].filter((item): item is { key: string; loc: NonNullable<ReturnType<typeof getExpedition>> } => !!item.loc);
 
   // 远征速度与间隔计算（角色效率加成已随被动系统退役，仅由地点配置决定）
   const expInterval = expLocation ? Math.max(30, Math.floor(expLocation.scavengeInterval)) : 300;
@@ -73,7 +85,7 @@ const ExpeditionPanel: React.FC = () => {
       showToast('请先指派一名英雄作为探索员！', 'warning');
       return;
     }
-    const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = getExpedition(selectedLocationId);
     if (!loc) return;
 
     // 检查英雄是否已获得（heroes 中仅含已获得的英雄，ADR-0013）
@@ -177,9 +189,9 @@ const ExpeditionPanel: React.FC = () => {
             <div className="mt-3.5 text-[9px] text-zinc-500 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
               <span className="font-bold text-zinc-400 block mb-1 flex items-center gap-1"><Search className="w-3 h-3" /> 本地可能获取的废土战利品：</span>
               <div className="flex flex-wrap gap-x-2.5 gap-y-1">
-                {expLocation.lootTable.map(loot => (
-                  <span key={loot.itemId} className="text-zinc-400">
-                    • {ITEMS_CONFIG[loot.itemId]?.name} (几率:{Math.round(loot.chance * 100)}%)
+                {expLocation.lootTable.map((loot, idx) => (
+                  <span key={idx} className="text-zinc-400">
+                    • {renderLootWithChance(loot)}
                   </span>
                 ))}
               </div>
@@ -227,7 +239,7 @@ const ExpeditionPanel: React.FC = () => {
             {/* 地点选择 */}
             <div className="space-y-2">
               <div className="grid grid-cols-1 gap-2.5">
-              {Object.entries(EXPEDITION_LOCATIONS).map(([key, loc]) => {
+              {expeditionOptions.map(({ key, loc }) => {
                 const isSelected = selectedLocationId === key;
 
                 // 门槛校验（ADR-0018：heroClass/faction）
@@ -261,7 +273,7 @@ const ExpeditionPanel: React.FC = () => {
                     {/* 地点拾荒详情 */}
                     <div className="mt-1.5 text-[9px] text-zinc-500 space-y-0.5">
                       <div>基础提炼时间: {loc.scavengeInterval} 秒/次</div>
-                      <div>可能拾得: {loc.lootTable.map(l => ITEMS_CONFIG[l.itemId]?.name).join(', ')}</div>
+                      <div>可能拾得: {renderLootNames(loc.lootTable)}</div>
                     </div>
 
                     {/* 警告信息 */}
@@ -284,9 +296,9 @@ const ExpeditionPanel: React.FC = () => {
                 <Info className="w-3.5 h-3.5 text-zinc-500" />
                 派遣口粮消耗给养：
               </span>
-              <span className={getInvQty(state.inventory, 'ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
-                {(EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) > 0
-                  ? `${getInvQty(state.inventory, 'ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty(state.inventory, 'ration')}/${EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})`
+              <span className={getInvQty(state.inventory, 'ration') >= (getExpedition(selectedLocationId)?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
+                {(getExpedition(selectedLocationId)?.rationCost ?? 0) > 0
+                  ? `${getInvQty(state.inventory, 'ration') >= (getExpedition(selectedLocationId)?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty(state.inventory, 'ration')}/${getExpedition(selectedLocationId)?.rationCost ?? 0})`
                   : '该地点无需口粮'}
               </span>
             </div>
@@ -297,7 +309,7 @@ const ExpeditionPanel: React.FC = () => {
 
           {/* 开始派遣按钮 */}
           {(() => {
-            const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
+            const loc = getExpedition(selectedLocationId);
             const requirementUnmatch = checkRequirementUnmatch(selectedLocationId);
             const rationCost = loc?.rationCost ?? 0;
             const rationShortage = rationCost > 0 && getInvQty(state.inventory, 'ration') < rationCost;

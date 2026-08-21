@@ -1,7 +1,7 @@
 import type { GameState, DutyAssignment } from '../types/game';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { findRegionExpedition } from '../data/regionSelectors';
 import { HEROES_CONFIG } from '../data/heroes';
 
 // 清除英雄在所有后勤岗位的占用（排他性：强制单岗）
@@ -79,7 +79,7 @@ export const assignHeroToDutyUpdate = (
     updatedShelter.assignedWatererId = heroId;
   } else if (duty.type === 'explorer') {
     // 远征探索员（单值岗）：校验地点 + heroClass/faction 门槛 + 口粮消耗（ADR-0018）
-    const loc = EXPEDITION_LOCATIONS[duty.targetId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = findRegionExpedition(duty.targetId)?.expedition;
     if (!loc) return NO_OP(state);
 
     const heroConfig = HEROES_CONFIG[heroId];

@@ -1,5 +1,5 @@
 import { REGION_CONFIGS } from './regions';
-import type { LevelConfig, RegionConfig } from './regions';
+import type { ExpeditionConfig, LevelConfig, RegionConfig } from './regions';
 
 const REGION_INDEX: Record<string, RegionConfig> = REGION_CONFIGS;
 const ALL_REGIONS: RegionConfig[] = Object.values(REGION_INDEX);
@@ -19,6 +19,18 @@ export const getRegionLevels = (regionId: string): LevelConfig[] =>
 
 export const getLevel = (regionId: string, levelId: string): LevelConfig | undefined =>
   REGION_INDEX[regionId]?.levels.find((level) => level.id === levelId);
+
+/** 按远征地点 id 查找所属区域与其 expedition 配置（迁移期仅 radar_station）。 */
+export const findRegionExpedition = (
+  expeditionId: string
+): { region: RegionConfig; expedition: ExpeditionConfig } | undefined => {
+  for (const region of ALL_REGIONS) {
+    if (region.expedition?.id === expeditionId) {
+      return { region, expedition: region.expedition };
+    }
+  }
+  return undefined;
+};
 
 /** 所有测试专用区域（isTestZone），不进主线。 */
 export const getTestRegions = (): RegionConfig[] =>

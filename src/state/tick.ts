@@ -6,7 +6,8 @@ import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveW
 import type { ReplantStrategy } from './greenhouse';
 import { resolveDutyBonuses } from './duty';
 import { getRecipeName } from './workshop';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { findRegionExpedition } from '../data/regionSelectors';
+import { rollDropEntries } from './levelCombat';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
@@ -185,7 +186,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   let nextLastScavengeTime = exp.lastScavengeTime;
   let autoRecallExplorer = false;
   if (exp.locationId && prev.shelter.assignedExplorerId) {
-    const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = findRegionExpedition(exp.locationId)?.expedition;
     if (loc) {
       // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
       const explorerBonuses = resolveDutyBonuses(
@@ -199,11 +200,9 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       if (ticks > 0) {
         let scavengedCount: Record<string, number> = {};
         for (let t = 0; t < ticks; t++) {
-          loc.lootTable.forEach(loot => {
-            if (Math.random() <= Math.min(1, loot.chance + explorerBonuses.lootChanceBonus)) {
-              const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
-              scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
-            }
+          const rolled = rollDropEntries(loc.lootTable, Math.random, explorerBonuses.lootChanceBonus);
+          Object.entries(rolled).forEach(([itemId, qty]) => {
+            scavengedCount[itemId] = (scavengedCount[itemId] || 0) + qty;
           });
         }
 

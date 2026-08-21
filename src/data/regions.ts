@@ -89,6 +89,21 @@ export const REGION_CONFIGS = {
     explorationStepsToClear: 10,
     explorationMilestones: [{ atPercent: 20, eventId: 'encounter_wasteland_pack' }],
     initialCost: { food: 10, energy: 10 },
+    expedition: {
+      id: 'radar_station',
+      name: '雷达站废墟',
+      displayName: '废弃雷达站',
+      shortName: '雷达站',
+      scavengeInterval: 300,
+      rationCost: 1,
+      rationConsumptionRate: 0,
+      lootTable: [
+        { kind: 'chance', itemId: 'scrap_metal', count: 2, chancePercent: 70 },
+        { kind: 'chance', itemId: 'energy_refill', count: 1, chancePercent: 10 },
+        { kind: 'chance', itemId: 'seed_glow_grass', count: 1, chancePercent: 20 },
+        { kind: 'chance', itemId: 'crystal_silicon', count: 1, chancePercent: 5 }
+      ]
+    },
     levels: [
       {
         id: 'wasteland_entrance_1',

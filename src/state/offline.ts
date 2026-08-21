@@ -6,7 +6,8 @@ import { resolveDutyBonuses } from './duty';
 import { advanceGreenhouseAutomation, maybeStopAutoFarmOnSeedDepletion } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
 import { getRecipeName } from './workshop';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
+import { findRegionExpedition } from '../data/regionSelectors';
+import { rollDropEntries } from './levelCombat';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { COMBAT_CONFIG } from '../data/combatConfig';
@@ -234,7 +235,7 @@ export function calculateDetailedOfflineProgress(
   let nextLastScavengeTime = exp.lastScavengeTime;
   let autoRecallExplorerId: string | null = null;
   if (exp.locationId && state.shelter.assignedExplorerId) {
-    const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = findRegionExpedition(exp.locationId)?.expedition;
     if (loc) {
       // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
       const explorerBonuses = resolveDutyBonuses(
@@ -253,11 +254,9 @@ export function calculateDetailedOfflineProgress(
 
       let scavengedCount: Record<string, number> = {};
       for (let i = 0; i < scavengeTicks; i++) {
-        loc.lootTable.forEach(loot => {
-          if (Math.random() <= Math.min(1, loot.chance + explorerBonuses.lootChanceBonus)) {
-            const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
-            scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
-          }
+        const rolled = rollDropEntries(loc.lootTable, Math.random, explorerBonuses.lootChanceBonus);
+        Object.entries(rolled).forEach(([itemId, qty]) => {
+          scavengedCount[itemId] = (scavengedCount[itemId] || 0) + qty;
         });
       }
 
