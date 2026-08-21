@@ -4,8 +4,9 @@
  * Buff 配置策略来自 buffTypes 注册表；applyBuff 统一 source 锁定与 Renew/Stack。
  */
 
-import type { TurnRuntime } from './turnEngine';
-import type { Modifier, ModifierNamespace } from './modifier';
+import type { TurnRuntime, BattleUnitStats } from './turnEngine';
+import { toStatModifier, type Modifier, type ModifierNamespace } from './modifier';
+import { calculateEntityStats, type StatModifier } from './statSystem';
 import {
   BUFF_CONFIGS,
   type BuffApplication,
@@ -38,6 +39,11 @@ export interface BattleContext {
 
   setFlag(unitId: string, flag: BattleFlag, value: number): void;
   getFlag(unitId: string, flag: BattleFlag): number;
+
+  canAfford(unitId: string, cost: { resource: string; amount: number }): boolean;
+  spendCost(unitId: string, cost: { resource: string; amount: number }): boolean;
+
+  resolveStats(unitId: string): BattleUnitStats;
 }
 
 export interface BattleContextInitialState {
@@ -156,6 +162,9 @@ export const createBattleContext = (
     },
 
     removeBuff(targetId, buffId) {
+      const config = buffConfigs[buffId];
+      if (config && config.removable === false) return false;
+
       const list = buffsByUnit.get(targetId);
       if (!list) return false;
       const idx = list.findIndex(b => b.buffId === buffId);
@@ -182,6 +191,56 @@ export const createBattleContext = (
 
     getFlag(unitId, flag) {
       return flagsByUnit.get(unitId)?.get(flag) ?? 0;
+    },
+
+    canAfford(unitId, cost) {
+      if (cost.resource !== 'mp') return false;
+      const unit = runtime.getUnit(unitId);
+      if (!unit) return false;
+      const current = unit.currentMp ?? unit.stats.maxMp;
+      return current >= cost.amount;
+    },
+
+    spendCost(unitId, cost) {
+      if (cost.resource !== 'mp') return false;
+      const unit = runtime.getUnit(unitId);
+      if (!unit) return false;
+      const current = unit.currentMp ?? unit.stats.maxMp;
+      if (current < cost.amount) return false;
+      unit.currentMp = current - cost.amount;
+      return true;
+    },
+
+    resolveStats(unitId) {
+      const unit = runtime.getUnit(unitId);
+      if (!unit) {
+        throw new Error('resolveStats: unknown unit ' + unitId);
+      }
+      if (!unit.statParams) return unit.stats;
+
+      const dynamicModifiers = this.getModifiers(unitId, 'stat')
+        .map(toStatModifier)
+        .filter((m): m is StatModifier => m !== null);
+      const calculated = calculateEntityStats(unit.statParams, [
+        ...unit.statParams.permanentModifiers,
+        ...dynamicModifiers
+      ]);
+
+      return {
+        attack: Math.round(calculated.attack),
+        defense: Math.round(calculated.defense),
+        maxHp: Math.max(1, Math.round(calculated.maxHp)),
+        maxMp: Math.round(calculated.maxMp),
+        critRate: calculated.critRate,
+        critDmg: calculated.critDmg,
+        critResist: calculated.critResist,
+        damageReduction: calculated.damageReduction,
+        durationReduction: calculated.durationReduction,
+        effectReduction: calculated.effectReduction,
+        cooldownReduction: calculated.cooldownReduction,
+        ...calculated.primaryAttributes,
+        ...calculated.specialAttributes
+      };
     }
   };
 };

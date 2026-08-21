@@ -5,7 +5,6 @@ import type { CombatEnemyConfig, CombatDropConfig } from '../data/combatZones';
 import { COMBAT_ZONES, COMBAT_ZONE_LIST } from '../data/combatZones';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { REALITY_EVENTS } from '../data/realityEvents';
-import type { AwakenSkillConfig } from '../data/awakening';
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import { aggregateBonus } from './bonds';
 import type { StatModifier, BaseAttributes, PrimaryAttributes, SpecialAttributes } from './statSystem';
@@ -15,15 +14,18 @@ import { collectBuffModifiers, type ActiveBuff } from './buffSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
 import { getTalentBonus } from './talents';
-import { getAwakenBonus, getAwakenSkill } from './awakening';
+import { getAwakenBonus, getAwakenAbilityId } from './awakening';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 import { calculateInitiative, runTurnEngine } from './turnEngine';
-import type { BattleUnitAbility, BattleUnitRuntime, BattleUnitSnapshot, BattleUnitStats, TurnRuntime } from './turnEngine';
+import type { BattleUnitAbility, BattleUnitSnapshot, BattleUnitStats } from './turnEngine';
+import { getAbilityConfig } from '../data/abilities';
+import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
+import { applyPassiveAbilities, collectPassiveBuffConfigs } from './abilityPassive';
+import { createAbilityRuntime } from './abilityRuntime';
 import { createBattleContext, type BattleContext } from './battleContext';
 import { createBuffTriggerHooks } from './buffRuntime';
 import { BUFF_CONFIGS } from './buffTypes';
-import { resolveEffect, type EffectInstance } from './effectSystem';
 
 // === 战斗核心（ticket 05）：三人轮询回合制自动战斗 ===
 
@@ -35,7 +37,7 @@ export interface CombatantState {
   maxHp: number;
   attack: number;
   defense: number;
-  skill?: AwakenSkillConfig; // 觉醒专属战斗技能（ticket 12，仅英雄携带）
+  abilities?: string[]; // 能力 id 列表（英雄装配与敌人/BOSS 共用入口）
   // 可重算快照（stat-bonus-unification B 方案 + 统一实体）：英雄与敌人同为「三层输入 + 常驻修饰符」配方，
   // 战斗内 buff/技能变化 → 更新 ActiveBuff 列表 → recomputeCombatant 重算，保证与面板规则一致。
   // 敌人元属性恒 0、无加成来源 → 重算恒等于入场值（幂等，无重算需求）；仅手动构造的裸单位无快照。
@@ -154,17 +156,16 @@ const combatantToTurnUnit = (
   faction: 'hero' | 'enemy'
 ): BattleUnitSnapshot => {
   const agility = combatant.snapshot?.primaryAttributes.agility ?? 0;
-  const abilities: BattleUnitAbility[] = [];
-  if (combatant.skill) {
-    abilities.push({
-      id: 'awakened_skill',
-      name: combatant.skill.name,
-      type: combatant.skill.type,
-      multiplier: combatant.skill.multiplier,
-      healPercent: combatant.skill.healPercent,
-      cooldown: combatant.skill.cooldown
-    });
+  const abilities: BattleUnitAbility[] = [
+    resolveAbilityConfig(getAbilityConfig('basic_attack')!) as unknown as BattleUnitAbility
+  ];
+  for (const abilityId of combatant.abilities ?? []) {
+    const config = getAbilityConfig(abilityId);
+    if (config) {
+      abilities.push(resolveAbilityConfig(config) as unknown as BattleUnitAbility);
+    }
   }
+  const stats = combatantStats(combatant);
   return {
     id: combatant.id,
     name: combatant.name,
@@ -173,103 +174,16 @@ const combatantToTurnUnit = (
     maxHp: combatant.maxHp,
     initiative: calculateInitiative(agility, 0),
     abilities,
-    stats: combatantStats(combatant)
-  };
-};
-
-interface DefaultAbility extends BattleUnitAbility {
-  id: string;
-  type: 'strike' | 'aoe' | 'heal';
-  multiplier?: number;
-  healPercent?: number;
-  cooldown: number;
-}
-
-const isDefaultAbility = (ability: BattleUnitAbility): ability is DefaultAbility =>
-  ability.type === 'strike' || ability.type === 'aoe' || ability.type === 'heal';
-
-/**
- * 默认行动入口（Ability 层落地前的生产适配）：
- * 选能力/选目标/技能冷却属于 Ability 模块；此处复刻旧战斗行为——
- * 英雄集火首个存活敌人，敌人集火首个存活英雄；觉醒技能冷却归零时发动，否则普通攻击。
- * 伤害/治疗统一经 resolveEffect 落地；攻击后事件在行动完成后派发。
- */
-const createDefaultActionExecutor = (
-  getBattle: () => BattleContext
-): ((unit: BattleUnitRuntime, runtime: TurnRuntime) => void) => {
-  const skillCooldown = new Map<string, number>(); // 英雄 id -> 剩余冷却（按自身行动轮）
-  let nextEffectId = 0;
-
-  const makeEffect = (
-    unit: BattleUnitRuntime,
-    kind: EffectInstance['kind'],
-    targetId: string,
-    params: EffectInstance['params'],
-    effectId: string
-  ): EffectInstance => ({
-    id: `action-${nextEffectId++}`,
-    effectId,
-    kind,
-    sourceId: unit.id,
-    targetId,
-    params,
-    origin: { kind: 'ability', id: effectId }
-  });
-
-  return (unit, _runtime) => {
-    const battle = getBattle();
-    const targets = battle.turn.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
-    const target = targets[0];
-    if (!target) return;
-
-    const skill = unit.abilities.find(isDefaultAbility);
-    const cd = skillCooldown.get(unit.id) ?? 0;
-
-    if (skill && cd === 0) {
-      skillCooldown.set(unit.id, skill.cooldown);
-      if (skill.type === 'strike') {
-        const amount = Math.round(unit.stats.attack * (skill.multiplier ?? 1));
-        const effect = makeEffect(unit, 'damage', target.id, { amount }, 'skill_strike');
-        const result = resolveEffect(battle, effect);
-        battle.turn.dispatchEvent('attackAfter', {
-          unitId: unit.id,
-          sourceId: unit.id,
-          targetId: target.id,
-          data: { kind: 'skill', skillName: skill.name, damage: result.values.damage ?? 0, amount }
-        });
-      } else if (skill.type === 'aoe') {
-        // 对当前全部存活敌人造成伤害（旧行为：一次行动对每个存活敌人各结算一次）
-        const livingTargets = battle.turn.getLivingUnits(unit.faction === 'hero' ? 'enemy' : 'hero');
-        for (const enemy of livingTargets) {
-          const amount = Math.round(unit.stats.attack * (skill.multiplier ?? 1));
-          const effect = makeEffect(unit, 'damage', enemy.id, { amount }, 'skill_aoe');
-          const result = resolveEffect(battle, effect);
-          battle.turn.dispatchEvent('attackAfter', {
-            unitId: unit.id,
-            sourceId: unit.id,
-            targetId: enemy.id,
-            data: { kind: 'skill', skillName: skill.name, damage: result.values.damage ?? 0, amount }
-          });
+    stats,
+    currentMp: stats.maxMp,
+    statParams: combatant.snapshot
+      ? {
+          baseAttributes: { ...combatant.snapshot.baseAttributes },
+          primaryAttributes: { ...combatant.snapshot.primaryAttributes },
+          specialAttributes: { ...combatant.snapshot.specialAttributes },
+          permanentModifiers: combatant.snapshot.permanentModifiers.map(m => ({ ...m }))
         }
-      } else {
-        // heal：自身治疗，不超过生命上限（治疗事件经 Effect 落地派发）
-        const heal = Math.round(unit.maxHp * ((skill.healPercent ?? 0) / 100));
-        const effect = makeEffect(unit, 'heal', unit.id, { amount: heal }, 'skill_heal');
-        resolveEffect(battle, effect);
-      }
-    } else {
-      // 冷却递减 + 普通攻击
-      skillCooldown.set(unit.id, Math.max(0, cd - 1));
-      const amount = unit.stats.attack;
-      const effect = makeEffect(unit, 'damage', target.id, { amount }, 'basic_attack');
-      const result = resolveEffect(battle, effect);
-      battle.turn.dispatchEvent('attackAfter', {
-        unitId: unit.id,
-        sourceId: unit.id,
-        targetId: target.id,
-        data: { kind: 'attack', damage: result.values.damage ?? 0, amount }
-      });
-    }
+      : undefined
   };
 };
 
@@ -295,15 +209,26 @@ export const simulateBattle = (
     ...heroes.map(combatant => combatantToTurnUnit(combatant, 'hero')),
     ...enemies.map(combatant => combatantToTurnUnit(combatant, 'enemy'))
   ];
+  const passiveConfigs = collectPassiveBuffConfigs(
+    units.flatMap(unit => unit.abilities as unknown as ResolvedAbility[])
+  );
   let battle!: BattleContext;
+  const abilityRuntime = createAbilityRuntime(() => battle);
   const result = runTurnEngine(units, {
     maxRounds,
     rng,
     setup(runtime) {
-      battle = createBattleContext(runtime, {}, BUFF_CONFIGS, createBuffTriggerHooks(() => battle));
+      battle = createBattleContext(
+        runtime,
+        {},
+        { ...BUFF_CONFIGS, ...passiveConfigs },
+        createBuffTriggerHooks(() => battle)
+      );
+      applyPassiveAbilities(battle, runtime.getLivingUnits());
+      abilityRuntime.setup(runtime);
     },
     canAct: (unit) => canActWithBuffs(battle, unit.id),
-    performAction: createDefaultActionExecutor(() => battle)
+    performAction: abilityRuntime.performAction
   });
   return {
     outcome: result.outcome,
@@ -334,6 +259,16 @@ export const combatantFromSnapshot = (
     defense: Math.round(stats.defense),
     snapshot
   };
+};
+
+// 英雄能力装配：普通攻击 + 觉醒技能（若觉醒）。未来天赋/装备触发被动在此追加接入点。
+export const collectHeroAbilities = (heroId: string, hero: HeroState): string[] => {
+  const abilities = ['basic_attack'];
+  const awakenAbilityId = getAwakenAbilityId(heroId, hero);
+  if (awakenAbilityId && getAbilityConfig(awakenAbilityId)) {
+    abilities.push(awakenAbilityId);
+  }
+  return abilities;
 };
 
 // 英雄 → 战斗单位（羁绊/装备/天赋/升星觉醒加成统一为修饰符，经 statSystem 面板快照生效；
@@ -367,7 +302,7 @@ export const heroToCombatant = (heroId: string, hero: HeroState, bonus: StatModi
     snapshot,
     hero.maxHp > 0 ? hero.hp / hero.maxHp : 1 // 当前血量按同比例缩放，保持战斗中已损比例不变
   );
-  return { ...combatant, skill: getAwakenSkill(heroId, hero) };
+  return { ...combatant, abilities: collectHeroAbilities(heroId, hero) };
 };
 
 // 战斗内任意时刻重算面板（B 方案）：常驻修饰符 + 当前 buff 修饰符，一次管道计算。
@@ -407,14 +342,15 @@ const isKnownHero = (state: GameState, heroId: string): boolean =>
 // baseAttributes 缺省值 = DEFAULT_BASE_ATTRIBUTES（与英雄同口径），元属性/特殊属性缺省全 0，
 // 快照配方供将来敌人 buff/debuff 重算）
 const enemiesToCombatants = (enemies: CombatEnemyConfig[]): CombatantState[] =>
-  enemies.map(en =>
-    combatantFromSnapshot(en.id, en.name, {
+  enemies.map(en => ({
+    ...combatantFromSnapshot(en.id, en.name, {
       baseAttributes: { ...DEFAULT_BASE_ATTRIBUTES, ...en.baseAttributes },
       primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, ...en.primaryAttributes },
       specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES, ...en.specialAttributes },
       permanentModifiers: en.modifiers ?? []
-    })
-  );
+    }),
+    abilities: en.abilities
+  }));
 
 // 战斗日志条目构造（自动战斗/探索遭遇共用）
 const makeCombatLog = (text: string): LogEntry => ({

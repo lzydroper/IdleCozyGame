@@ -20,38 +20,31 @@ export const STAR_STATS_PER_STAR: StatModifier[] = [
 // 觉醒消耗
 export const AWAKEN_COST: Record<string, number> = { arcane_orb: 1 };
 
-// 觉醒专属战斗技能：纳入轮询回合制结算（ticket 12）
-export interface AwakenSkillConfig {
-  name: string;
-  description: string;
-  type: 'strike' | 'aoe' | 'heal'; // 单体重击 / 群体攻击 / 自身治疗
-  multiplier: number;   // strike/aoe：伤害 = 攻击 × 倍率（仍受目标防御减免）
-  cooldown: number;     // 使用后的冷却回合数（按自身行动轮计，冷却中普通攻击）
-  healPercent?: number; // heal：恢复自身最大生命的百分比
-}
+// 觉醒专属战斗技能：改为引用 Ability 配置注册表（combat-ability）。
+// 数值与效果唯一来源 = src/data/abilities.ts；此处只存 abilityId。
 
 // 觉醒配置：每英雄一份（外观更名 / 强化被动 / 专属技能）
 export interface AwakenConfig {
   awakenedName: string;   // 觉醒后的名字（外观变化）
   passive: StatModifier[]; // 觉醒强化被动（百分比，战斗内生效）
-  skill: AwakenSkillConfig;
+  abilityId: string;
 }
 
 export const AWAKEN_CONFIG: Record<string, AwakenConfig> = {
   nova: {
     awakenedName: '觉醒·诺娃',
     passive: [{ stat: 'attack', kind: 'percent', value: 0.10 }],
-    skill: { name: '电涌过载', description: '对全部敌人造成 80% 攻击的群体电击伤害', type: 'aoe', multiplier: 0.8, cooldown: 3 }
+    abilityId: 'awaken_nova'
   },
   buster: {
     awakenedName: '觉醒·巴斯特',
     passive: [{ stat: 'attack', kind: 'percent', value: 0.12 }],
-    skill: { name: '拆解重击', description: '对单个敌人造成 220% 攻击的重击', type: 'strike', multiplier: 2.2, cooldown: 3 }
+    abilityId: 'awaken_buster'
   },
   soldier: {
     awakenedName: '觉醒·铁卫',
     passive: [{ stat: 'maxHp', kind: 'percent', value: 0.15 }],
-    skill: { name: '铁壁盾击', description: '对单个敌人造成 180% 攻击的盾击', type: 'strike', multiplier: 1.8, cooldown: 3 }
+    abilityId: 'awaken_soldier'
   },
   catherine: {
     awakenedName: '觉醒·凯瑟琳',
@@ -59,7 +52,7 @@ export const AWAKEN_CONFIG: Record<string, AwakenConfig> = {
       { stat: 'maxHp', kind: 'percent', value: 0.12 },
       { stat: 'defense', kind: 'percent', value: 0.05 }
     ],
-    skill: { name: '应急治疗', description: '恢复自身 40% 最大生命', type: 'heal', multiplier: 0, cooldown: 4, healPercent: 40 }
+    abilityId: 'awaken_catherine'
   },
   roy: {
     awakenedName: '觉醒·罗伊',
@@ -67,7 +60,7 @@ export const AWAKEN_CONFIG: Record<string, AwakenConfig> = {
       { stat: 'attack', kind: 'percent', value: 0.08 },
       { stat: 'defense', kind: 'percent', value: 0.05 }
     ],
-    skill: { name: '磁轨炮击', description: '对单个敌人造成 200% 攻击的炮击', type: 'strike', multiplier: 2, cooldown: 3 }
+    abilityId: 'awaken_roy'
   },
   mei: {
     awakenedName: '觉醒·阿梅',
@@ -75,17 +68,17 @@ export const AWAKEN_CONFIG: Record<string, AwakenConfig> = {
       { stat: 'maxHp', kind: 'percent', value: 0.10 },
       { stat: 'defense', kind: 'percent', value: 0.08 }
     ],
-    skill: { name: '藤蔓再生', description: '恢复自身 35% 最大生命', type: 'heal', multiplier: 0, cooldown: 4, healPercent: 35 }
+    abilityId: 'awaken_mei'
   },
   zero: {
     awakenedName: '觉醒·赛罗',
     passive: [{ stat: 'attack', kind: 'percent', value: 0.10 }],
-    skill: { name: '魂印突刺', description: '对单个敌人造成 200% 攻击的突刺', type: 'strike', multiplier: 2, cooldown: 3 }
+    abilityId: 'awaken_zero'
   },
   healer: {
     awakenedName: '觉醒·艾拉',
     passive: [{ stat: 'maxHp', kind: 'percent', value: 0.15 }],
-    skill: { name: '净化之泉', description: '恢复自身 50% 最大生命', type: 'heal', multiplier: 0, cooldown: 4, healPercent: 50 }
+    abilityId: 'awaken_healer'
   },
   apprentice: {
     awakenedName: '觉醒·小米',
@@ -93,6 +86,6 @@ export const AWAKEN_CONFIG: Record<string, AwakenConfig> = {
       { stat: 'defense', kind: 'percent', value: 0.10 },
       { stat: 'attack', kind: 'percent', value: 0.05 }
     ],
-    skill: { name: '星屑散射', description: '对全部敌人造成 70% 攻击的星屑伤害', type: 'aoe', multiplier: 0.7, cooldown: 3 }
+    abilityId: 'awaken_apprentice'
   }
 };

@@ -8,6 +8,8 @@
  * - 不硬编码眩晕等控制枚举、不硬编码伤害公式与目标选择（属于 Ability/Effect 模块）。
  */
 
+import type { BaseAttributes, PrimaryAttributes, SpecialAttributes, StatModifier } from './statSystem';
+
 // === 基础类型 ===
 
 export type UnitFaction = 'hero' | 'enemy';
@@ -32,6 +34,14 @@ export interface BattleUnitAbility {
   [key: string]: unknown;
 }
 
+/** 战斗内重算面板所需的原始配方：入场三层输入 + 常驻修饰符。 */
+export interface BattleUnitStatParams {
+  baseAttributes: BaseAttributes;
+  primaryAttributes?: Partial<PrimaryAttributes>;
+  specialAttributes?: Partial<SpecialAttributes>;
+  permanentModifiers: StatModifier[];
+}
+
 /** 战斗单位快照：Turn 的输入。先机在战前算好传入。 */
 export interface BattleUnitSnapshot {
   id: string;
@@ -42,6 +52,10 @@ export interface BattleUnitSnapshot {
   initiative: number;
   abilities: BattleUnitAbility[];
   stats: BattleUnitStats;
+  /** 入场时当前魔力；缺省由 stats.maxMp 初始化。 */
+  currentMp?: number;
+  /** 战斗内面板重算配方；缺省时 resolveStats 回退到 stats 快照。 */
+  statParams?: BattleUnitStatParams;
 }
 
 /** 一次性可变运行时战斗单位：入场时由快照创建，战后整体丢弃。 */
@@ -54,6 +68,10 @@ export interface BattleUnitRuntime {
   initiative: number;
   abilities: BattleUnitAbility[];
   stats: BattleUnitStats;
+  /** 当前魔力（战斗内可变）。 */
+  currentMp?: number;
+  /** 战斗内面板重算配方。 */
+  statParams?: BattleUnitStatParams;
   /** 全局单调递增入场序（英雄上阵序 → 敌人配置序 → 召唤序续号），作 tie-breaker。 */
   entryOrder: number;
 }
@@ -65,7 +83,7 @@ export const TURN_TIMING_KEYS = ['roundStart', 'turnStart', 'turnActive', 'turnE
 export type TurnTimingKey = (typeof TURN_TIMING_KEYS)[number];
 
 /** 标准细粒度战斗事件键（可扩展）。 */
-export const BATTLE_EVENT_KEYS = ['attackAfter', 'damageTaken', 'healingTaken', 'death', 'summon', 'effectApplied'] as const;
+export const BATTLE_EVENT_KEYS = ['abilityUsed', 'attackAfter', 'damageTaken', 'healingTaken', 'death', 'summon', 'effectApplied'] as const;
 export type BattleEventKey = (typeof BATTLE_EVENT_KEYS)[number];
 
 export type TurnEventKey = TurnTimingKey | BattleEventKey | (string & {});
@@ -204,6 +222,16 @@ const cloneSnapshotUnit = (unit: BattleUnitSnapshot, entryOrder: number): Battle
   initiative: unit.initiative,
   abilities: unit.abilities.map(ability => ({ ...ability })),
   stats: { ...unit.stats },
+  currentMp: unit.currentMp ?? unit.stats.maxMp,
+  statParams: unit.statParams
+    ? {
+        ...unit.statParams,
+        baseAttributes: { ...unit.statParams.baseAttributes },
+        primaryAttributes: unit.statParams.primaryAttributes ? { ...unit.statParams.primaryAttributes } : undefined,
+        specialAttributes: unit.statParams.specialAttributes ? { ...unit.statParams.specialAttributes } : undefined,
+        permanentModifiers: unit.statParams.permanentModifiers.map(m => ({ ...m }))
+      }
+    : undefined,
   entryOrder
 });
 

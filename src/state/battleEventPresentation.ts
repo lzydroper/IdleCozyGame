@@ -78,6 +78,26 @@ registerBattleEventPresenter({
 });
 
 registerBattleEventPresenter({
+  key: 'abilityUsed',
+  format: event => {
+    const data = event.data as {
+      abilityId?: string;
+      targetIds?: string[];
+      costPaid?: { resource: string; amount: number } | null;
+      cooldownSet?: number;
+    };
+    const ability = data.abilityId ?? 'unknown';
+    const targetIds = data.targetIds ?? [];
+    const target = targetIds.length > 1
+      ? `[${targetIds.join(', ')}]`
+      : (nameOf(event, 'target') || '无目标');
+    const cost = data.costPaid ? `消耗 ${data.costPaid.amount} ${data.costPaid.resource}` : '';
+    const cd = data.cooldownSet ? `冷却 ${data.cooldownSet}` : '';
+    return `【${nameOf(event, 'source')}】→【${target}】使用【${ability}】${cost ? ' ' + cost : ''}${cd ? ' ' + cd : ''}`;
+  }
+});
+
+registerBattleEventPresenter({
   key: 'attackAfter',
   format: event => {
     const data = event.data;

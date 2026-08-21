@@ -5,8 +5,7 @@ import {
   starUpShardCost,
   STAR_STATS_PER_STAR,
   AWAKEN_COST,
-  AWAKEN_CONFIG,
-  type AwakenSkillConfig
+  AWAKEN_CONFIG
 } from '../data/awakening';
 import type { UpdateResult } from './types';
 
@@ -99,9 +98,9 @@ export const getAwakenedPassive = (heroId: string, hero: HeroState): StatModifie
     ? (AWAKEN_CONFIG[heroId]?.passive || []).map(m => ({ ...m, source: '觉醒被动' }))
     : [];
 
-// 觉醒专属战斗技能（仅觉醒后返回配置）
-export const getAwakenSkill = (heroId: string, hero: HeroState): AwakenSkillConfig | undefined =>
-  hero.awakened ? AWAKEN_CONFIG[heroId]?.skill : undefined;
+// 觉醒专属战斗技能：仅觉醒后返回 Ability 配置 id（数值/效果在 src/data/abilities.ts）。
+export const getAwakenAbilityId = (heroId: string, hero: HeroState): string | undefined =>
+  hero.awakened ? AWAKEN_CONFIG[heroId]?.abilityId : undefined;
 
 // 觉醒展示名（未觉醒回退原名）
 export const getAwakenedName = (heroId: string, hero: HeroState): string | null =>

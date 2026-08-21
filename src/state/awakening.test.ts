@@ -3,6 +3,7 @@ import type { GameState, HeroState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG } from '../data/heroes';
 import { AWAKEN_CONFIG, STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR } from '../data/awakening';
+import { getAbilityConfig } from '../data/abilities';
 import { ITEMS_CONFIG } from '../data/items';
 import { COMBAT_ZONES } from '../data/combatZones';
 import {
@@ -10,7 +11,7 @@ import {
   awakenUpdate,
   getStarBonus,
   getAwakenedPassive,
-  getAwakenSkill,
+  getAwakenAbilityId,
   getAwakenedName,
   getAwakenBonus
 } from './awakening';
@@ -33,13 +34,11 @@ describe('升星/觉醒配置完整性（ticket 12）', () => {
       expect(cfg, heroId).toBeDefined();
       expect(cfg.awakenedName).toContain('觉醒');
       expect(Object.keys(cfg.passive).length).toBeGreaterThan(0);
-      expect(['strike', 'aoe', 'heal']).toContain(cfg.skill.type);
-      expect(cfg.skill.cooldown).toBeGreaterThan(0);
-      if (cfg.skill.type === 'heal') {
-        expect(cfg.skill.healPercent).toBeGreaterThan(0);
-      } else {
-        expect(cfg.skill.multiplier).toBeGreaterThan(0);
-      }
+      expect(cfg.abilityId).toBeTruthy();
+      const ability = getAbilityConfig(cfg.abilityId);
+      expect(ability, cfg.abilityId).toBeDefined();
+      expect(ability?.activation).toBe('active');
+      expect(ability?.cooldown).toBeGreaterThan(0);
     });
   });
 
@@ -123,12 +122,13 @@ describe('觉醒', () => {
   it('觉醒强化被动与专属技能仅在觉醒后生效', () => {
     const before = createInitialHero('nova');
     expect(getAwakenedPassive('nova', before)).toEqual([]);
-    expect(getAwakenSkill('nova', before)).toBeUndefined();
+    expect(getAwakenAbilityId('nova', before)).toBeUndefined();
 
     const after: HeroState = { ...before, star: STAR_MAX, awakened: true };
     const expectedPassive = AWAKEN_CONFIG.nova.passive.map(m => ({ ...m, source: '觉醒被动' }));
     expect(getAwakenedPassive('nova', after)).toEqual(expectedPassive);
-    expect(getAwakenSkill('nova', after)?.name).toBe('电涌过载');
+    expect(getAwakenAbilityId('nova', after)).toBe('awaken_nova');
+    expect(getAbilityConfig('awaken_nova')?.name).toBe('电涌过载');
   });
 
   it('总加成 = 星级加成 + 觉醒被动', () => {
@@ -226,7 +226,7 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     // 攻击 = round(49 × (1 + (4 + 10 + 6)/100)) = round(58.8) = 59
     //   star 3: attack +2%×2=4%；觉醒被动 +10%；天赋锋芒 ×2 = +6%
     expect(c.attack).toBe(59);
-    expect(c.skill?.name).toBe('电涌过载');
+    expect(c.abilities).toContain('awaken_nova');
   });
 });
 

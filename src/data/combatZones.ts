@@ -13,6 +13,7 @@ export interface CombatEnemyConfig {
   primaryAttributes?: Partial<PrimaryAttributes>;
   specialAttributes?: Partial<SpecialAttributes>;
   modifiers?: StatModifier[];
+  abilities?: string[];   // 可选能力 id（与英雄共用同一 Ability 模型；缺省 = 普通攻击）
 }
 
 export interface CombatDropConfig {

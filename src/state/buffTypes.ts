@@ -37,6 +37,8 @@ export interface BuffConfig {
   /** Stack=true 时每次挂载增量；Stack=false 时忽略。 */
   stackIncrement: number;
   triggers: BuffTrigger[];
+  /** 是否可被驱散；缺省 true。被动生成的永久 Buff 设 false。 */
+  removable?: boolean;
   /** forever 消耗类（如折焰）每触发消耗 1 层。 */
   consumeOnTrigger?: boolean;
   /** 配置层的效果构建：一次触发应派发哪些 Effect。 */
