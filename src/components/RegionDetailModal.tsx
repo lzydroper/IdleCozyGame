@@ -87,8 +87,14 @@ export const RegionDetailModal: React.FC<RegionDetailModalProps> = ({
           </div>
         )}
 
-        {/* 严格统一为【确认】与【取消】，按钮高度 h-9.5 */}
+        {/* 严格统一为【确认】与【取消】，按钮高度 h-9.5，双按钮对称平分 flex-1 */}
         <div className="flex gap-2 pt-1">
+          <button
+            onClick={onClose}
+            className="flex-1 h-9.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center active:scale-98 transition-all"
+          >
+            取消
+          </button>
           <button
             onClick={() => onConfirm(regionId)}
             className={`flex-1 h-9.5 text-xs font-black rounded-xl shadow cursor-pointer flex items-center justify-center active:scale-98 transition-all ${
@@ -98,12 +104,6 @@ export const RegionDetailModal: React.FC<RegionDetailModalProps> = ({
             }`}
           >
             确认
-          </button>
-          <button
-            onClick={onClose}
-            className="w-20 h-9.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center active:scale-98 transition-all"
-          >
-            取消
           </button>
         </div>
       </div>
