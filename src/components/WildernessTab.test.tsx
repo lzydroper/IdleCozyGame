@@ -784,5 +784,49 @@ describe('WildernessTab Component', () => {
     fireEvent.click(screen.getByTestId('level-detail-cancel-btn'));
     expect(screen.queryByTestId('level-detail-modal')).toBeNull();
   });
+
+  it('starts idle combat from LevelDetailModal in 挂机 mode, renders IdleCombatWidget, stops with IdleSummaryModal, and returns to 挂机 mode', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
+    save.heroes = { nova: createInitialHero('nova') };
+    save.party = ['nova'];
+    save.stamina = 100;
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+
+    // Switch to Idle mode
+    fireEvent.click(screen.getByTestId('combat-mode-idle-btn'));
+
+    // Open cleared level modal and confirm starting idle
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+    expect(screen.getByTestId('level-detail-modal')).toBeDefined();
+    fireEvent.click(screen.getByTestId('level-detail-confirm-btn'));
+
+    // View seamlessly switches to IdleCombatWidget; level list and mode toggles are hidden
+    expect(screen.getByTestId('idle-combat-widget')).toBeDefined();
+    expect(screen.queryByTestId('combat-mode-active-btn')).toBeNull();
+    expect(screen.queryByTestId('combat-region-card')).toBeNull();
+
+    // Click stop button on widget -> triggers IdleSummaryModal
+    fireEvent.click(screen.getByTestId('idle-widget-stop-btn'));
+    expect(screen.getByTestId('idle-summary-modal')).toBeDefined();
+    expect(screen.getByText('挂机已停止')).toBeDefined();
+
+    // Confirm summary modal -> closes modal and stays in 挂机 mode
+    fireEvent.click(screen.getByTestId('idle-summary-confirm-btn'));
+    expect(screen.queryByTestId('idle-summary-modal')).toBeNull();
+    expect(screen.getByTestId('combat-mode-idle-btn')).toBeDefined();
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
+  });
 });
 

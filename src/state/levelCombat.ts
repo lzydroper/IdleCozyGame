@@ -11,7 +11,6 @@ import { rollDropEntries } from './dropEngine';
 import { aggregateBonus } from './bonds';
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
-import { NO_OP } from './types';
 
 // === combat-level ticket 02：Region/Level 战斗状态与掉落结算内核（Expand） ===
 // 旧 zone 路径保留可用；新路径按 regionId + levelId 工作。
@@ -60,7 +59,13 @@ const levelIdleOrDefault = (state: GameState): CombatIdleState => {
     regionId: idle?.regionId ?? null,
     levelId: idle?.levelId ?? null,
     startTime: idle?.startTime ?? null,
-    accumulatedSeconds: idle?.accumulatedSeconds ?? 0
+    accumulatedSeconds: idle?.accumulatedSeconds ?? 0,
+    totalBattles: idle?.totalBattles ?? 0,
+    totalVictories: idle?.totalVictories ?? 0,
+    totalDefeats: idle?.totalDefeats ?? 0,
+    totalDraws: idle?.totalDraws ?? 0,
+    totalDrops: idle?.totalDrops ?? {},
+    totalSoulEchoes: idle?.totalSoulEchoes ?? 0
   };
 };
 
@@ -384,24 +389,85 @@ export const startLevelIdleUpdate = (
       ...state,
       combat: {
         ...state.combat,
-        idle: { regionId, levelId, startTime: now, accumulatedSeconds: 0 }
+        idle: {
+          regionId,
+          levelId,
+          startTime: now,
+          accumulatedSeconds: 0,
+          totalBattles: 0,
+          totalVictories: 0,
+          totalDefeats: 0,
+          totalDraws: 0,
+          totalDrops: {},
+          totalSoulEchoes: 0
+        }
       }
     },
     result: { ok: true }
   };
 };
 
-export const stopLevelIdleUpdate = (state: GameState): UpdateResult<boolean> => {
-  if (!state.combat?.idle?.regionId && !state.combat?.idle?.levelId) return NO_OP(state);
+export interface IdleSummaryData {
+  regionId: string | null;
+  levelId: string | null;
+  startTime: number | null;
+  durationSeconds: number;
+  totalBattles: number;
+  totalVictories: number;
+  totalDefeats: number;
+  totalDraws: number;
+  totalDrops: Record<string, number>;
+  totalSoulEchoes: number;
+}
+
+export interface StopLevelIdleOutcome {
+  ok: boolean;
+  summary: IdleSummaryData | null;
+}
+
+export const stopLevelIdleUpdate = (
+  state: GameState,
+  now: number = Date.now()
+): UpdateResult<StopLevelIdleOutcome> => {
+  const idle = state.combat?.idle;
+  if (!idle?.regionId && !idle?.levelId) {
+    return { state, result: { ok: false, summary: null } };
+  }
+  const startTime = idle.startTime || now;
+  const durationSeconds = Math.max(0, Math.floor((now - startTime) / 1000));
+  const summary: IdleSummaryData = {
+    regionId: idle.regionId,
+    levelId: idle.levelId,
+    startTime: idle.startTime,
+    durationSeconds,
+    totalBattles: idle.totalBattles || 0,
+    totalVictories: idle.totalVictories || 0,
+    totalDefeats: idle.totalDefeats || 0,
+    totalDraws: idle.totalDraws || 0,
+    totalDrops: { ...(idle.totalDrops || {}) },
+    totalSoulEchoes: idle.totalSoulEchoes || 0
+  };
+
   return {
     state: {
       ...state,
       combat: {
         ...state.combat,
-        idle: { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+        idle: {
+          regionId: null,
+          levelId: null,
+          startTime: null,
+          accumulatedSeconds: 0,
+          totalBattles: 0,
+          totalVictories: 0,
+          totalDefeats: 0,
+          totalDraws: 0,
+          totalDrops: {},
+          totalSoulEchoes: 0
+        }
       }
     },
-    result: true
+    result: { ok: true, summary }
   };
 };
 
@@ -535,8 +601,28 @@ export const settleLevelIdleUpdate = (
         ...next.combat,
         lastSettlement: lastSettlement ?? next.combat.lastSettlement,
         idle: idleStopped
-          ? { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
-          : { ...idle, accumulatedSeconds: leftoverSeconds }
+          ? {
+              regionId: null,
+              levelId: null,
+              startTime: null,
+              accumulatedSeconds: 0,
+              totalBattles: 0,
+              totalVictories: 0,
+              totalDefeats: 0,
+              totalDraws: 0,
+              totalDrops: {},
+              totalSoulEchoes: 0
+            }
+          : {
+              ...idle,
+              accumulatedSeconds: leftoverSeconds,
+              totalBattles: (idle.totalBattles || 0) + outcome.battlesFought,
+              totalVictories: (idle.totalVictories || 0) + outcome.victories,
+              totalDefeats: (idle.totalDefeats || 0) + outcome.defeats,
+              totalDraws: (idle.totalDraws || 0) + outcome.draws,
+              totalDrops: mergeDrops(idle.totalDrops || {}, outcome.drops),
+              totalSoulEchoes: (idle.totalSoulEchoes || 0) + outcome.soulEchoesGained
+            }
       }
     },
     result: outcome

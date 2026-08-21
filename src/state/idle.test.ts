@@ -43,21 +43,29 @@ describe('level idle (combat-level)', () => {
     expect(r.state.combat.idle?.levelId).toBe('wasteland_entrance_1');
   });
 
-  it('stops idle and preserves stamina', () => {
+  it('stops idle, preserves stamina, and returns summary data', () => {
     const started = startLevelIdleUpdate(clearedLevelState(), 'wasteland_entrance', 'wasteland_entrance_1', 1000).state;
-    const stopped = stopLevelIdleUpdate(started);
-    expect(stopped.result).toBe(true);
+    // 模拟进行 1 次结算获得收益
+    const afterBattle = settleLevelIdleUpdate(started, 100, () => 0.1).state;
+    const stopped = stopLevelIdleUpdate(afterBattle, 5000);
+    expect(stopped.result.ok).toBe(true);
+    expect(stopped.result.summary).toBeDefined();
+    expect(stopped.result.summary?.totalBattles).toBeGreaterThan(0);
+    expect(stopped.result.summary?.durationSeconds).toBe(4);
     expect(stopped.state.combat.idle?.regionId).toBeNull();
     expect(stopped.state.combat.idle?.levelId).toBeNull();
-    expect(stopped.state.stamina).toBe(started.stamina);
+    expect(stopped.state.stamina).toBe(afterBattle.stamina);
   });
 
-  it('settles level idle battles and records drops', () => {
+  it('settles level idle battles and records drops in state and outcome', () => {
     const state = startLevelIdleUpdate(WINNING_STATE, 'wasteland_entrance', 'wasteland_entrance_1', 1000).state;
-    const { result } = settleLevelIdleUpdate(state, 100, () => 0.1);
+    const { state: nextState, result } = settleLevelIdleUpdate(state, 100, () => 0.1);
     expect(result.battlesFought).toBeGreaterThan(0);
     expect(result.victories).toBe(result.battlesFought);
     expect(result.drops.scrap_metal).toBeGreaterThan(0);
+    // 纯数据持久化字段累加
+    expect(nextState.combat.idle.totalBattles).toBe(result.battlesFought);
+    expect(nextState.combat.idle.totalDrops?.scrap_metal).toBe(result.drops.scrap_metal);
   });
 
   it('records cleared levels through getClearedLevels', () => {

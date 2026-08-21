@@ -30,7 +30,14 @@ import {
 import { applyTick } from '../state/tick';
 import { summonUpdate, summonBatchUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
 import { consumeExpTomesUpdate } from '../state/combat';
-import { startLevelCombatUpdate, startLevelIdleUpdate, stopLevelIdleUpdate, type LevelCombatOutcome, type LevelIdleStartOutcome } from '../state/levelCombat';
+import {
+  startLevelCombatUpdate,
+  startLevelIdleUpdate,
+  stopLevelIdleUpdate,
+  type LevelCombatOutcome,
+  type LevelIdleStartOutcome,
+  type StopLevelIdleOutcome
+} from '../state/levelCombat';
 import {
   equipItemUpdate,
   unequipItemUpdate,
@@ -120,7 +127,7 @@ interface GameContextType {
   defendDreamLeak: (method: DreamLeakDefenseMethod) => DreamLeakDefenseOutcome;
   startLevelCombat: (regionId: string, levelId: string) => LevelCombatOutcome;
   startLevelIdle: (regionId: string, levelId: string) => LevelIdleStartOutcome;
-  stopLevelIdle: () => boolean;
+  stopLevelIdle: () => StopLevelIdleOutcome;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -718,7 +725,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  const stopLevelIdle = (): boolean => {
+  const stopLevelIdle = (): StopLevelIdleOutcome => {
     const r = stopLevelIdleUpdate(stateRef.current);
     if (r.state !== stateRef.current) {
       setState(r.state);

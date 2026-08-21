@@ -8,7 +8,7 @@ import { CATEGORY_WEIGHTS } from '../data/realityEvents';
 import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Timer, Flag, Square } from 'lucide-react';
+import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Flag } from 'lucide-react';
 import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
@@ -27,6 +27,9 @@ import RegionSelectorModal from './RegionSelectorModal';
 import LevelBrowser from './LevelBrowser';
 import LevelDetailModal from './LevelDetailModal';
 import { BattleModal } from './BattleModal';
+import IdleCombatWidget from './IdleCombatWidget';
+import IdleSummaryModal from './IdleSummaryModal';
+import type { IdleSummaryData } from '../state/levelCombat';
 
 export const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
@@ -728,17 +731,18 @@ const EncounterPanel: React.FC<{
   );
 };
 
-// === 战斗面板（combat-ui ticket 02）：关卡方块网格 + 关卡详情弹窗 ===
+// === 战斗面板（combat-ui ticket 02/05）：关卡方块网格 + 关卡详情弹窗 + 挂机监控看板 ===
 const CombatPanel: React.FC<{
   selectedRegionId: string;
   onOpenRegionSelector: () => void;
   onStartBattle: (battle: { regionId: string; levelId: string; level: LevelConfig; settlement: CombatSettlement }) => void;
 }> = ({ selectedRegionId, onOpenRegionSelector, onStartBattle }) => {
-  const { state, startLevelCombat, startLevelIdle, stopLevelIdle } = useGame();
+  const { state, startLevelCombat, startLevelIdle } = useGame();
   const { showToast } = useToast();
 
   const [combatMode, setCombatMode] = useState<'active' | 'idle'>('active');
   const [selectedLevel, setSelectedLevel] = useState<LevelConfig | null>(null);
+  const [idleSummary, setIdleSummary] = useState<IdleSummaryData | null>(null);
 
   const stamina = Math.floor(state.stamina || 0);
   const maxStamina = state.maxStamina || COMBAT_CONFIG.maxStamina;
@@ -746,8 +750,7 @@ const CombatPanel: React.FC<{
   const idle = state.combat?.idle || null;
   const idleRegionId = idle?.regionId ?? null;
   const idleLevelId = idle?.levelId ?? null;
-  const idleRegion = idleRegionId ? getRegion(idleRegionId) : undefined;
-  const idleLevel = idleRegionId && idleLevelId ? getLevel(idleRegionId, idleLevelId) : undefined;
+  const isIdling = !!(idleRegionId && idleLevelId);
 
   const selectedRegion = getRegion(selectedRegionId) || getMainlineRegions()[0];
   const regionUnlocked = isRegionUnlocked(state, selectedRegion.id, 'combat');
@@ -785,12 +788,6 @@ const CombatPanel: React.FC<{
     }
   };
 
-  const handleStopIdle = () => {
-    if (stopLevelIdle()) {
-      showToast('⏹ 挂机已停止，剩余体力保留。', 'info');
-    }
-  };
-
   return (
     <div className="space-y-3">
       {/* 战斗体力监控栏（自适应拉伸进度条） */}
@@ -809,111 +806,117 @@ const CombatPanel: React.FC<{
         </div>
       </div>
 
-      {/* 挂机中状态横幅（若已开启挂机） */}
-      {idleRegion && idleLevel && (
-        <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
-            <Timer className="w-3.5 h-3.5 text-amber-300" /> 挂机中：<GameIcon type="zone" id={idleRegion.id} className="w-3.5 h-3.5" />{idleRegion.name} · {idleLevel.name}
-            {idle?.startTime && (
-              <span className="text-[8px] font-bold text-amber-500/80">
-                自 {new Date(idle.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 起
-              </span>
-            )}
-            <span className="text-[8px] font-bold text-amber-500/80">在线自动持续战斗；体力耗尽后自动停止。</span>
-          </span>
-          <button
-            onClick={handleStopIdle}
-            className="shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98"
+      {isIdling && idleRegionId && idleLevelId ? (
+        /* 挂机中监控看板视图（IdleCombatWidget） */
+        <IdleCombatWidget
+          regionId={idleRegionId}
+          levelId={idleLevelId}
+          onStop={(summary) => {
+            if (summary) {
+              setIdleSummary(summary);
+            }
+            setCombatMode('idle');
+          }}
+        />
+      ) : (
+        /* 常规战斗选关面板 */
+        <>
+          {/* 当前战斗区域卡片（全卡片可点击，对齐原型简洁呈现） */}
+          <div
+            data-testid="combat-region-card"
+            onClick={onOpenRegionSelector}
+            className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-500/50 transition-all shadow group"
           >
-            <Square className="w-3 h-3 inline-block mr-1 -mt-0.5" />停止挂机
-          </button>
-        </div>
+            <div className="text-left">
+              <div className="text-[10px] text-zinc-500 font-bold">当前战斗区域</div>
+              <div className="text-sm font-black text-zinc-100 flex items-center gap-1.5">
+                <GameIcon type="zone" id={selectedRegion.id} className="w-4 h-4" />
+                {selectedRegion.name}
+                {!regionUnlocked && (
+                  <span className="text-[9px] bg-red-950/60 text-red-400 border border-red-800/40 px-1.5 py-0.5 rounded font-bold">
+                    待解锁
+                  </span>
+                )}
+              </div>
+            </div>
+            <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              更换 ❯
+            </span>
+          </div>
+
+          {/* 模式切换开关：挑战 vs 挂机 */}
+          <div className="flex gap-2 text-xs font-bold">
+            <button
+              data-testid="combat-mode-active-btn"
+              onClick={() => setCombatMode('active')}
+              className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
+                combatMode === 'active'
+                  ? 'bg-rose-600/30 border-rose-500/50 text-rose-300'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              挑战
+            </button>
+            <button
+              data-testid="combat-mode-idle-btn"
+              onClick={() => setCombatMode('idle')}
+              className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
+                combatMode === 'idle'
+                  ? 'bg-amber-600/30 border-amber-500/50 text-amber-300'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              挂机
+            </button>
+          </div>
+
+          {/* 关卡列表网格 */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-bold text-zinc-400 px-1 flex justify-between items-center">
+              <span>
+                {combatMode === 'active'
+                  ? '关卡列表（点击关卡查看详情）'
+                  : '关卡列表（点击已通关关卡开启挂机）'}
+              </span>
+              {!regionUnlocked && (
+                <span className="text-red-400 font-normal text-[10px]">
+                  区域待解锁 · 关卡封锁中
+                </span>
+              )}
+            </div>
+
+            <LevelBrowser
+              regionId={selectedRegionId}
+              mode={combatMode}
+              onSelectLevel={(lvl) => setSelectedLevel(lvl)}
+            />
+          </div>
+
+          {/* 关卡详情弹窗 */}
+          <LevelDetailModal
+            isOpen={!!selectedLevel}
+            regionId={selectedRegionId}
+            level={selectedLevel}
+            mode={combatMode}
+            onClose={() => setSelectedLevel(null)}
+            onConfirm={(regionId, levelId) => {
+              if (combatMode === 'active') {
+                handleStart(regionId, levelId);
+              } else {
+                handleStartIdle(regionId, levelId);
+              }
+            }}
+          />
+        </>
       )}
 
-      {/* 当前战斗区域卡片（全卡片可点击，对齐原型简洁呈现） */}
-      <div
-        data-testid="combat-region-card"
-        onClick={onOpenRegionSelector}
-        className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-500/50 transition-all shadow group"
-      >
-        <div className="text-left">
-          <div className="text-[10px] text-zinc-500 font-bold">当前战斗区域</div>
-          <div className="text-sm font-black text-zinc-100 flex items-center gap-1.5">
-            <GameIcon type="zone" id={selectedRegion.id} className="w-4 h-4" />
-            {selectedRegion.name}
-            {!regionUnlocked && (
-              <span className="text-[9px] bg-red-950/60 text-red-400 border border-red-800/40 px-1.5 py-0.5 rounded font-bold">
-                待解锁
-              </span>
-            )}
-          </div>
-        </div>
-        <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-          更换 ❯
-        </span>
-      </div>
-
-      {/* 模式切换开关：挑战 vs 挂机 */}
-      <div className="flex gap-2 text-xs font-bold">
-        <button
-          data-testid="combat-mode-active-btn"
-          onClick={() => setCombatMode('active')}
-          className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
-            combatMode === 'active'
-              ? 'bg-rose-600/30 border-rose-500/50 text-rose-300'
-              : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          挑战
-        </button>
-        <button
-          data-testid="combat-mode-idle-btn"
-          onClick={() => setCombatMode('idle')}
-          className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
-            combatMode === 'idle'
-              ? 'bg-amber-600/30 border-amber-500/50 text-amber-300'
-              : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          挂机
-        </button>
-      </div>
-
-      {/* 关卡列表网格 */}
-      <div className="space-y-2">
-        <div className="text-[11px] font-bold text-zinc-400 px-1 flex justify-between items-center">
-          <span>
-            {combatMode === 'active'
-              ? '关卡列表（点击关卡查看详情）'
-              : '关卡列表（点击已通关关卡开启挂机）'}
-          </span>
-          {!regionUnlocked && (
-            <span className="text-red-400 font-normal text-[10px]">
-              区域待解锁 · 关卡封锁中
-            </span>
-          )}
-        </div>
-
-        <LevelBrowser
-          regionId={selectedRegionId}
-          mode={combatMode}
-          onSelectLevel={(lvl) => setSelectedLevel(lvl)}
-        />
-      </div>
-
-      {/* 关卡详情弹窗 */}
-      <LevelDetailModal
-        isOpen={!!selectedLevel}
-        regionId={selectedRegionId}
-        level={selectedLevel}
-        mode={combatMode}
-        onClose={() => setSelectedLevel(null)}
-        onConfirm={(regionId, levelId) => {
-          if (combatMode === 'active') {
-            handleStart(regionId, levelId);
-          } else {
-            handleStartIdle(regionId, levelId);
-          }
+      {/* 挂机停止汇总结算弹窗 */}
+      <IdleSummaryModal
+        isOpen={!!idleSummary}
+        summary={idleSummary}
+        onClose={() => {
+          setIdleSummary(null);
+          setCombatMode('idle');
         }}
       />
     </div>

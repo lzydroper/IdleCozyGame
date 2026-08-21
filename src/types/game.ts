@@ -131,6 +131,12 @@ export interface CombatIdleState {
   levelId: string | null;     // 正在挂机的关卡（区域内 local id）
   startTime: number | null;   // 开始挂机时间戳（UI 展示用）
   accumulatedSeconds?: number; // 已累计的战斗秒数（在线逐秒累计，够一场 battleDurationSeconds 结算一场；离线结算后未用满一战的秒数保留）
+  totalBattles?: number;       // 本次挂机累计战斗场数
+  totalVictories?: number;     // 累计胜利场数
+  totalDefeats?: number;       // 累计战败场数
+  totalDraws?: number;         // 累计平局场数
+  totalDrops?: Record<string, number>; // 本次挂机累计掉落物品
+  totalSoulEchoes?: number;    // 本次挂机累计灵魂残响
 }
 
 // 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）
