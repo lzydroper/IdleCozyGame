@@ -783,15 +783,15 @@ const CombatPanel: React.FC<{
 
   return (
     <div className="space-y-3">
-      {/* 战斗体力监控栏（对齐原型样式：左标题与数值，右进度条） */}
-      <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3.5 flex items-center justify-between shadow">
-        <div>
+      {/* 战斗体力监控栏（自适应拉伸进度条） */}
+      <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3.5 flex items-center justify-between gap-4 shadow">
+        <div className="shrink-0">
           <div className="text-[11px] text-zinc-400 font-bold">战斗体力</div>
           <div className="text-sm font-black text-emerald-400 font-mono">
             {stamina} / {maxStamina}
           </div>
         </div>
-        <div className="w-40 bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-800">
+        <div className="flex-1 bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-800">
           <div
             className={`h-full transition-all duration-300 ${staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500'}`}
             style={{ width: `${staminaPct}%` }}
