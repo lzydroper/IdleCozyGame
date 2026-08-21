@@ -8,7 +8,7 @@ import { CATEGORY_WEIGHTS } from '../data/realityEvents';
 import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Timer, Flag, Handshake, Square } from 'lucide-react';
+import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Timer, Flag, Square } from 'lucide-react';
 import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
@@ -21,8 +21,6 @@ import { createInitialHero } from '../data/initialState';
 import { getMainlineRegions, getRegion, getLevel } from '../data/regionSelectors';
 import { isRegionUnlocked } from '../state/levelCombat';
 import { advanceRegionProgress, completePendingMilestone, getPendingMilestone, canTriggerPendingMilestone, getRegionProgressPercent } from '../state/explorationProgress';
-import { getActiveBonds } from '../state/bonds';
-import { formatModifiers } from '../state/statSystem';
 import type { GameState, CombatSettlement } from '../types/game';
 import type { LevelConfig } from '../data/regions';
 import CombatEventLog from './CombatEventLog';
@@ -735,10 +733,6 @@ const CombatPanel: React.FC<{
   const stamina = Math.floor(state.stamina || 0);
   const maxStamina = state.maxStamina || COMBAT_CONFIG.maxStamina;
   const staminaPct = Math.min(100, Math.round((stamina / (maxStamina || 1)) * 100));
-  const party = (state.party || []).filter(id => !!state.heroes[id]);
-  const anyWounded = party.some(id => state.heroes[id].wounded);
-  const settlement = state.combat?.lastSettlement || null;
-  const activeBonds = getActiveBonds(state.party || []);
   const idle = state.combat?.idle || null;
   const idleRegionId = idle?.regionId ?? null;
   const idleLevelId = idle?.levelId ?? null;
@@ -788,25 +782,24 @@ const CombatPanel: React.FC<{
   };
 
   return (
-    <div className="space-y-4">
-      {/* 战斗体力监控栏 */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1">
-            <Swords className="w-3.5 h-3.5 text-rose-400" /> 战斗体力
-          </span>
-          <span className="text-[10px] font-bold text-emerald-400">{stamina}/{maxStamina}</span>
+    <div className="space-y-3">
+      {/* 战斗体力监控栏（对齐原型样式：左标题与数值，右进度条） */}
+      <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3.5 flex items-center justify-between shadow">
+        <div>
+          <div className="text-[11px] text-zinc-400 font-bold">战斗体力</div>
+          <div className="text-sm font-black text-emerald-400 font-mono">
+            {stamina} / {maxStamina}
+          </div>
         </div>
-        <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-900">
+        <div className="w-40 bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-800">
           <div
-            className={'h-full transition-all duration-300 ' + (staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500')}
-            style={{ width: staminaPct + '%' }}
+            className={`h-full transition-all duration-300 ${staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500'}`}
+            style={{ width: `${staminaPct}%` }}
           />
         </div>
-        <span className="text-[8px] text-zinc-600 font-bold">每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点，战斗消耗后随时间自动回满。</span>
       </div>
 
-      {/* 挂机中状态横幅 */}
+      {/* 挂机中状态横幅（若已开启挂机） */}
       {idleRegion && idleLevel && (
         <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
           <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
@@ -827,11 +820,11 @@ const CombatPanel: React.FC<{
         </div>
       )}
 
-      {/* 当前战斗区域卡片（全卡片可点击） */}
+      {/* 当前战斗区域卡片（全卡片可点击，对齐原型简洁呈现） */}
       <div
         data-testid="combat-region-card"
         onClick={onOpenRegionSelector}
-        className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-rose-500/50 transition-all shadow group"
+        className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-500/50 transition-all shadow group"
       >
         <div className="text-left">
           <div className="text-[10px] text-zinc-500 font-bold">当前战斗区域</div>
@@ -844,12 +837,9 @@ const CombatPanel: React.FC<{
               </span>
             )}
           </div>
-          <p className="text-[10px] text-zinc-500 mt-0.5 leading-normal max-w-[260px] truncate">
-            {selectedRegion.description}
-          </p>
         </div>
-        <span className="text-xs text-rose-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-          更换 <ChevronRight className="w-3.5 h-3.5 inline-block" />
+        <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+          更换 ❯
         </span>
       </div>
 
@@ -858,10 +848,10 @@ const CombatPanel: React.FC<{
         <button
           data-testid="combat-mode-active-btn"
           onClick={() => setCombatMode('active')}
-          className={`flex-1 py-2 rounded-xl text-[11px] font-black transition-all border cursor-pointer ${
+          className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
             combatMode === 'active'
-              ? 'bg-gradient-to-r from-rose-700 to-red-700 border-rose-400/30 text-white shadow-lg shadow-rose-950/30'
-              : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              ? 'bg-rose-600/30 border-rose-500/50 text-rose-300'
+              : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
           }`}
         >
           挑战
@@ -869,92 +859,26 @@ const CombatPanel: React.FC<{
         <button
           data-testid="combat-mode-idle-btn"
           onClick={() => setCombatMode('idle')}
-          className={`flex-1 py-2 rounded-xl text-[11px] font-black transition-all border cursor-pointer ${
+          className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
             combatMode === 'idle'
-              ? 'bg-gradient-to-r from-amber-700 to-yellow-700 border-amber-400/30 text-white shadow-lg shadow-amber-950/30'
-              : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              ? 'bg-amber-600/30 border-amber-500/50 text-amber-300'
+              : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
           }`}
         >
           挂机
         </button>
       </div>
 
-      {/* 上阵小队 */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5">
-          <Swords className="w-3.5 h-3.5" /> 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）
-        </span>
-        {party.length === 0 ? (
-          <span className="text-[9px] text-zinc-600 font-bold">小队为空 —— 请前往英雄页编队（至少上阵 1 名英雄）。</span>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {party.map(id => {
-              const cfg = HEROES_CONFIG[id];
-              const hero = state.heroes[id];
-              if (!cfg || !hero) return null;
-              return (
-                <span key={id} className={'text-[9px] font-bold px-1.5 py-0.5 rounded-md border ' + (hero.wounded ? 'border-red-500/40 bg-red-950/40 text-red-400' : 'border-zinc-700 bg-zinc-950/60 text-zinc-300')}>
-                  <GameIcon type="hero" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
-                  {hero.wounded && '（重伤）'}
-                </span>
-              );
-            })}
-            {anyWounded && (
-              <span className="text-[8px] text-red-400 font-bold w-full">小队有重伤英雄，战斗被禁止，请先在英雄页治愈。</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 羁绊加成 */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5">
-          <Handshake className="w-3.5 h-3.5" /> 羁绊加成
-        </span>
-        {party.length === 0 ? (
-          <span className="text-[9px] text-zinc-600 font-bold">上阵英雄后查看羁绊触发状态。</span>
-        ) : activeBonds.length === 0 ? (
-          <span className="text-[9px] text-zinc-600 font-bold">当前队伍未触发羁绊——凑齐特定英雄组合或同阵营英雄可激活加成。</span>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {activeBonds.map(bond => (
-              <span
-                key={bond.id}
-                title={bond.description}
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300"
-              >
-                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatModifiers(bond.bonus)}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 最近一场战斗事件日志（若有） */}
-      {settlement && (
-        <CombatEventLog
-          key={'history-' + settlement.battle.rounds + '|' + settlement.battle.events.length + '|' + settlement.battle.outcome}
-          settlement={settlement}
-          zoneName={(() => {
-            const currentRegionId = state.combat?.regionId ?? null;
-            const currentLevelId = state.combat?.levelId ?? null;
-            const currentRegion = currentRegionId ? getRegion(currentRegionId) : undefined;
-            const currentLevel = currentRegionId && currentLevelId ? getLevel(currentRegionId, currentLevelId) : undefined;
-            return currentRegion ? (currentLevel ? currentRegion.name + ' · ' + currentLevel.name : currentRegion.name) : '战斗区域';
-          })()}
-        />
-      )}
-
       {/* 关卡列表网格 */}
       <div className="space-y-2">
-        <div className="flex justify-between items-center px-1">
-          <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">
+        <div className="text-[11px] font-bold text-zinc-400 px-1 flex justify-between items-center">
+          <span>
             {combatMode === 'active'
               ? '关卡列表（点击关卡查看详情）'
               : '关卡列表（点击已通关关卡开启挂机）'}
-          </h3>
+          </span>
           {!regionUnlocked && (
-            <span className="text-red-400 font-bold text-[10px]">
+            <span className="text-red-400 font-normal text-[10px]">
               区域待解锁 · 关卡封锁中
             </span>
           )}

@@ -68,6 +68,9 @@ export const BattleModal: React.FC<BattleModalProps> = ({
   const region = regionId ? getRegion(regionId) : null;
   const maxRounds = COMBAT_CONFIG.maxBattleRounds || 30;
 
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   // Initialize battle units when modal opens
   useEffect(() => {
     if (!isOpen || !level || !settlement) {
@@ -83,13 +86,14 @@ export const BattleModal: React.FC<BattleModalProps> = ({
     setShowForfeitConfirm(false);
     setFloatingDamages([]);
 
+    const currentState = stateRef.current;
     // Initialize Hero slots (up to 6)
     const initialHeroSlots: (UnitSlotState | null)[] = [null, null, null, null, null, null];
-    const party = (state.party || []).filter((id) => !!state.heroes[id]);
+    const party = (currentState.party || []).filter((id) => !!currentState.heroes[id]);
     party.forEach((heroId, index) => {
       if (index < 6) {
         const config = HEROES_CONFIG[heroId];
-        const heroState = state.heroes[heroId];
+        const heroState = currentState.heroes[heroId];
         const maxHp = heroState?.maxHp || config?.baseAttributes.maxHp || 100;
         initialHeroSlots[index] = {
           id: heroId,
@@ -127,7 +131,7 @@ export const BattleModal: React.FC<BattleModalProps> = ({
       }
     });
     setEnemySlots(initialEnemySlots);
-  }, [isOpen, level, settlement, state.party, state.heroes]);
+  }, [isOpen, level, settlement]);
 
   // Play next battle event
   useEffect(() => {
