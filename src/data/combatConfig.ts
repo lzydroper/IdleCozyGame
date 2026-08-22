@@ -8,10 +8,7 @@ export interface CombatConfig {
   encounterStaminaCost: number; // 探索战斗遭遇的体力消耗（ticket 06，ADR-0002 战斗耗体力）
   battleDurationSeconds: number; // 离线挂机（ticket 08）每场战斗所需秒数
   maxIdleSettlementSeconds: number; // 离线挂机结算时间上限（ticket 08，配置项）
-  eventStreamIntervalMs: {   // 战斗与挂机信息流每步播放间隔（毫秒），统一配置
-    normal: number;          // 1x 速度 / 挂机事件流标准步进（毫秒）
-    fast: number;            // 2x 倍速步进（毫秒）
-  };
+  baseEventIntervalMs: number;  // 战斗与挂机信息流基准单步间隔（毫秒，1x 速度基准，倍速以此做除法）
 }
 
 export const COMBAT_CONFIG: CombatConfig = {
@@ -23,8 +20,5 @@ export const COMBAT_CONFIG: CombatConfig = {
   encounterStaminaCost: 5,
   battleDurationSeconds: 5,
   maxIdleSettlementSeconds: 8 * 3600,
-  eventStreamIntervalMs: {
-    normal: 500,
-    fast: 260
-  }
+  baseEventIntervalMs: 500
 };
