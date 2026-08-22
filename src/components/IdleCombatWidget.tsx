@@ -1,14 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useGame } from '../context/GameContext';
 import { getRegion, getLevel } from '../data/regionSelectors';
 import { ITEMS_CONFIG } from '../data/items';
-import { ENEMY_CONFIGS } from '../data/enemies';
-import { formatBattleEvent } from '../state/battleEventPresentation';
-import { heroToCombatant, simulateBattle, enemyConfigToEntity } from '../state/combat';
-import { aggregateBonus } from '../state/bonds';
-import { settleLevelBattle } from '../state/levelCombat';
+import { getIdleFeedSnapshot, subscribeIdleFeed, getLastIdleStop, clearLastIdleStop, type IdleFeedEntry, type IdleStopRecord } from '../state/idleFeed';
 import type { IdleSummaryData } from '../state/levelCombat';
-import type { GameState } from '../types/game';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import GameIcon from './GameIcon';
 import { formatDuration } from '../utils/time';
@@ -19,20 +14,20 @@ export interface IdleCombatWidgetProps {
   onStop: (summary: IdleSummaryData | null) => void;
 }
 
-interface StreamEvent {
-  id: string;
-  text: string;
-  kind: 'start' | 'round' | 'turn' | 'action' | 'victory' | 'defeat' | 'next_round';
-}
-
 const MAX_STREAM_LOGS = 50;
 
+/**
+ * 挂机监控看板（combat-experience 01 / X1+X2）：
+ * 纯消费者——事件流来自 GameContext Tick 单一生产者写入的 idleFeed 环形缓冲；
+ * 本组件不再自行模拟战斗（删除原 setInterval + simulateBattle 双重模拟与队列播放器），
+ * 切换 Tab 卸载后挂机推进与事件流不受影响。
+ */
 export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   regionId,
   levelId,
   onStop
 }) => {
-  const { state, setState, stopLevelIdle } = useGame();
+  const { state, stopLevelIdle } = useGame();
   const region = getRegion(regionId);
   const level = getLevel(regionId, levelId);
 
@@ -43,18 +38,58 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   );
 
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const queueRef = useRef<{ text: string; kind: StreamEvent['kind'] }[]>([]);
-  const isSimulatingRef = useRef<boolean>(false);
 
-  const [streamEvents, setStreamEvents] = useState<StreamEvent[]>(() => [
-    {
-      id: 'init_start',
-      text: '▶ 挂机已开启：队伍进入持续战斗循环...',
-      kind: 'start'
+  // 订阅共享 feed（单一生产者写入；快照引用稳定，适配 useSyncExternalStore）。
+  const feed = useSyncExternalStore(subscribeIdleFeed, getIdleFeedSnapshot);
+
+  // 视图侧步进播放器（combat-experience 01 补丁）：生产者一次性写入整场事件行，
+  // 消费端按 baseEventIntervalMs 逐行放出，恢复旧版的流式观感；数据与视图解耦不变。
+  const [displayed, setDisplayed] = useState<IdleFeedEntry[]>([]);
+  const lastRenderedIdRef = useRef(0);
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    // 首次挂载：直接呈现缓冲尾部最近 3 行，游标快进到最新（历史不全量重放）。
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      if (feed.length > 0) {
+        const tail = feed.slice(-3);
+        lastRenderedIdRef.current = tail[tail.length - 1].id;
+        setDisplayed(tail);
+      }
+      return;
     }
-  ]);
+    const fresh = feed.filter(entry => entry.id > lastRenderedIdRef.current);
+    if (fresh.length === 0) return;
+    let index = 0;
+    const timer = setInterval(() => {
+      if (index >= fresh.length) {
+        clearInterval(timer);
+        return;
+      }
+      const entry = fresh[index];
+      index += 1;
+      lastRenderedIdRef.current = entry.id;
+      setDisplayed(prev => [...prev.slice(-(MAX_STREAM_LOGS - 1)), entry]);
+    }, COMBAT_CONFIG.baseEventIntervalMs);
+    return () => clearInterval(timer);
+  }, [feed]);
 
-  // 1s 周期刷新挂机时长
+  const visible = displayed;
+
+  // 战败回顾（combat-experience 04 / O#5）：挂机态消失且上次中断原因为战败时呈现。
+  const [defeatReview, setDefeatReview] = useState<IdleStopRecord | null>(null);
+  useEffect(() => {
+    if (!idle?.regionId) {
+      const record = getLastIdleStop();
+      if (record && record.reason === 'defeat') setDefeatReview(record);
+    } else {
+      setDefeatReview(null);
+      clearLastIdleStop();
+    }
+  }, [idle?.regionId]);
+
+  // 1s 周期刷新挂机时长（纯视图计时）
   useEffect(() => {
     const updateElapsed = () => {
       const start = idle?.startTime ?? startTime;
@@ -66,127 +101,6 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
     return () => clearInterval(timer);
   }, [idle?.startTime, startTime]);
 
-  // 战斗事件流步进播放与下一轮自动模拟推进
-  useEffect(() => {
-    if (!region || !level || !idle?.regionId) return;
-
-    const playInterval = setInterval(() => {
-      // 1. 如果队列中有待播报的战斗事件，弹出一条推入显示流
-      if (queueRef.current.length > 0) {
-        const nextEvt = queueRef.current.shift()!;
-        setStreamEvents((prev) => [
-          ...prev.slice(-MAX_STREAM_LOGS + 1),
-          {
-            id: `evt_${Date.now()}_${Math.random()}`,
-            text: nextEvt.text,
-            kind: nextEvt.kind
-          }
-        ]);
-        return;
-      }
-
-      // 2. 如果队列为空，且没有正在模拟计算，开始进行新一轮战斗模拟
-      if (isSimulatingRef.current) return;
-
-      const party = (state.party || []).filter((id) => state.heroes[id] && !state.heroes[id].wounded);
-      if (party.length === 0) {
-        const outcome = stopLevelIdle();
-        onStop(outcome.summary);
-        return;
-      }
-
-      // 检查体力是否足够开启新的一轮
-      if ((state.stamina || 0) < level.staminaCost) {
-        const outcome = stopLevelIdle();
-        onStop(outcome.summary);
-        return;
-      }
-
-      isSimulatingRef.current = true;
-
-      // 模拟战斗
-      const heroEntities = party.map((id) =>
-        heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)
-      );
-      const enemyEntities = level.enemies.map((e: string | { enemyId: string; count?: number }) => {
-        const enemyId = typeof e === 'string' ? e : e.enemyId;
-        const cfg = ENEMY_CONFIGS[enemyId];
-        return enemyConfigToEntity(cfg || {
-          id: enemyId,
-          name: enemyId,
-          description: enemyId,
-          kind: 'enemy',
-          role: 'normal',
-          faction: 'mechanical',
-          baseAttributes: { maxHp: 20, attack: 2, defense: 0 }
-        });
-      });
-
-      const battle = simulateBattle(heroEntities, enemyEntities);
-      const settled = settleLevelBattle(state, battle, party, regionId, level, Math.random);
-
-      // 将本场战斗的原始事件流格式化存入播放队列
-      const formattedLines: { text: string; kind: StreamEvent['kind'] }[] = [];
-      battle.events.forEach((evt) => {
-        const text = formatBattleEvent(evt);
-        if (!text) return;
-        const kind: StreamEvent['kind'] =
-          evt.key === 'roundStart' || evt.key === 'roundEnd'
-            ? 'round'
-            : evt.key === 'turnStart' || evt.key === 'turnEnd'
-            ? 'turn'
-            : 'action';
-        formattedLines.push({ text, kind });
-      });
-
-      if (battle.victory) {
-        formattedLines.push({ text: '战斗胜利！', kind: 'victory' });
-        formattedLines.push({ text: '▶ 开启下一轮战斗...', kind: 'next_round' });
-      } else {
-        formattedLines.push({ text: '战斗失败！小队全员重伤。', kind: 'defeat' });
-      }
-
-      queueRef.current = formattedLines;
-
-      // 结算战利品、体力扣减、场次累加与英雄血量继承
-      setState((prev) => {
-        const prevIdle = prev.combat?.idle;
-        if (!prevIdle?.regionId) return prev;
-
-        const mergedDrops = { ...(prevIdle.totalDrops || {}) };
-        Object.entries(settled.settlement.drops).forEach(([itemId, qty]) => {
-          mergedDrops[itemId] = (mergedDrops[itemId] || 0) + qty;
-        });
-
-        const nextIdle = {
-          ...prevIdle,
-          totalBattles: (prevIdle.totalBattles || 0) + 1,
-          totalVictories: (prevIdle.totalVictories || 0) + (battle.victory ? 1 : 0),
-          totalDefeats: (prevIdle.totalDefeats || 0) + (battle.partyWiped ? 1 : 0),
-          totalDrops: mergedDrops,
-          totalSoulEchoes: (prevIdle.totalSoulEchoes || 0) + settled.settlement.soulEchoes
-        };
-
-        return {
-          ...prev,
-          stamina: settled.nextStamina,
-          inventory: settled.nextInventory,
-          equipmentInventory: settled.nextEquipmentInventory as GameState['equipmentInventory'],
-          heroes: settled.nextHeroes,
-          combat: {
-            ...prev.combat,
-            idle: nextIdle,
-            lastSettlement: settled.settlement
-          }
-        };
-      });
-
-      isSimulatingRef.current = false;
-    }, COMBAT_CONFIG.baseEventIntervalMs);
-
-    return () => clearInterval(playInterval);
-  }, [region, level, idle?.regionId, state.party, state.stamina, state.heroes, state.equipment, state.inventory]);
-
   // 智能跟随滚动：仅当用户处于底部时自动下滚，若用户向上滑动查看历史则不打断
   useEffect(() => {
     const container = logContainerRef.current;
@@ -195,7 +109,14 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
     if (isAtBottom) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [streamEvents.length]);
+  }, [displayed.length]);
+
+  // 新一轮挂机开启：清空上一轮的视图缓冲，游标对齐当前 feed。
+  useEffect(() => {
+    if (!idle?.regionId) return;
+    setDisplayed([]);
+    if (feed.length > 0) lastRenderedIdRef.current = feed[feed.length - 1].id;
+  }, [idle?.startTime]);
 
   const handleStop = () => {
     const outcome = stopLevelIdle();
@@ -207,6 +128,35 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   const totalSoulEchoes = idle?.totalSoulEchoes || 0;
   const dropEntries = Object.entries(totalDrops).filter(([, qty]) => qty > 0);
   const hasLoot = dropEntries.length > 0 || totalSoulEchoes > 0;
+
+  const renderLine = (entry: { id: number; text: string; kind: string }) => {
+    if (entry.kind === 'victory') {
+      return (
+        <div key={entry.id} className="text-[11px] leading-relaxed text-emerald-300 font-bold">
+          {entry.text}
+        </div>
+      );
+    }
+    if (entry.kind === 'defeat') {
+      return (
+        <div key={entry.id} className="text-[11px] leading-relaxed text-red-400 font-bold">
+          {entry.text}
+        </div>
+      );
+    }
+    if (entry.kind === 'system') {
+      return (
+        <div key={entry.id} className="text-[11px] leading-relaxed text-amber-400 font-bold">
+          {entry.text}
+        </div>
+      );
+    }
+    return (
+      <div key={entry.id} className="text-[11px] leading-relaxed text-zinc-300">
+        {entry.text}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -235,7 +185,32 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
         </button>
       </div>
 
-      {/* 3 行固定高度可滚动的完整事件流窗口 */}
+      {/* 战败回顾（O#5） */}
+      {defeatReview && (
+        <div data-testid="idle-defeat-review" className="rounded-xl border border-red-500/40 bg-red-950/30 p-3 space-y-1.5">
+          <div className="text-xs font-black text-red-300">战败回顾</div>
+          <div className="text-[11px] text-zinc-300 leading-relaxed">
+            关卡：<span className="font-bold">{getLevel(defeatReview.regionId, defeatReview.levelId)?.name || defeatReview.levelId}</span>
+            {' · '}出战 {defeatReview.totalBattles} 场，胜利 {defeatReview.totalVictories} 场
+            {defeatReview.totalSoulEchoes > 0 && ` · 灵魂残响 ×${defeatReview.totalSoulEchoes}`}
+          </div>
+          <div className="text-[10px] text-zinc-400 leading-relaxed">
+            小队全员重伤，已自动停止挂机。请前往「英雄」页使用纳米修复剂治愈后重新开启挂机。
+          </div>
+          <button
+            data-testid="idle-defeat-review-dismiss"
+            onClick={() => {
+              clearLastIdleStop();
+              setDefeatReview(null);
+            }}
+            className="h-7 px-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-200 text-[11px] font-bold rounded-lg cursor-pointer active:scale-95 transition-all"
+          >
+            知道了
+          </button>
+        </div>
+      )}
+
+      {/* 3 行固定高度可滚动的事件流窗口（单一生产者写入，本组件纯订阅） */}
       <div className="space-y-1.5">
         <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold">
           <span>实时战斗事件流（可向上滑动查阅）</span>
@@ -246,34 +221,13 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
           data-testid="idle-log-container"
           className="h-24 bg-zinc-950/90 border border-zinc-800/80 rounded-xl p-2.5 text-xs space-y-1 overflow-y-auto log-scroll"
         >
-          {streamEvents.map((evt) => {
-            if (evt.kind === 'victory') {
-              return (
-                <div key={evt.id} className="text-[11px] leading-relaxed text-emerald-300 font-bold">
-                  {evt.text}
-                </div>
-              );
-            }
-            if (evt.kind === 'defeat') {
-              return (
-                <div key={evt.id} className="text-[11px] leading-relaxed text-red-400 font-bold">
-                  {evt.text}
-                </div>
-              );
-            }
-            if (evt.kind === 'next_round' || evt.kind === 'start') {
-              return (
-                <div key={evt.id} className="text-[11px] leading-relaxed text-amber-400 font-bold">
-                  {evt.text}
-                </div>
-              );
-            }
-            return (
-              <div key={evt.id} className="text-[11px] leading-relaxed text-zinc-300">
-                {evt.text}
-              </div>
-            );
-          })}
+          {visible.length === 0 ? (
+            <div className="text-[11px] leading-relaxed text-amber-400 font-bold">
+              ▶ 挂机已开启：队伍进入持续战斗循环...
+            </div>
+          ) : (
+            visible.map(renderLine)
+          )}
         </div>
       </div>
 
@@ -312,4 +266,3 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
 };
 
 export default IdleCombatWidget;
-

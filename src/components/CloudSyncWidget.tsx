@@ -145,7 +145,8 @@ const CloudSyncWidget: React.FC = () => {
     const charName = getCharacterName(currentUser);
     showConfirm({
       title: "从云端覆写数据",
-      message: `确定要从云端拉取并覆盖【${charName}】的本地生存数据吗？此操作将丢失本地未上传的进度，并停止当前的挂机战斗！`,
+      // O#6（combat-experience 04）：明确「挂机为本地单机行为」的多端预期。
+      message: `确定要从云端拉取并覆盖【${charName}】的本地生存数据吗？此操作将丢失本地未上传的进度，并停止当前的挂机战斗！注意：挂机进度不会上传云端，无法跨设备继承——换端前请先在本地停止挂机并结清收益。`,
       confirmText: "确认拉取并覆写",
       onConfirm: async () => {
         setIsSyncing(true);

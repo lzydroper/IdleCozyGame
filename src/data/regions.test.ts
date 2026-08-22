@@ -117,7 +117,7 @@ describe('Region/Level selectors', () => {
   });
 
   it('finds a level by regionId + local id', () => {
-    expect(getLevel('radiated_workshop', 'radiated_workshop_2')?.name).toBe('辐射车间 · 车间之主');
+    expect(getLevel('radiated_workshop', 'radiated_workshop_2')?.name).toBe('车间之主'); // 纯关卡名（U#3 方案 A）
     expect(getLevel('radiated_workshop', 'missing')).toBeUndefined();
   });
 

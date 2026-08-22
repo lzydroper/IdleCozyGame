@@ -1,5 +1,7 @@
 # 概述
 
+> 展示接口确认（combat-experience 06 / B§5.4）：未来 Buff 图标/状态栏所需数据（单位当前 Buff 列表、层数、剩余时长）由 `BattleContext.listBuffs(targetId)` / `getBuff` + `BuffInstance{stacks,duration}` 完整覆盖，无需新增引擎接口；状态栏 UI 的实施归内容牵引（出现真实 Buff 展示需求时立项）。
+
 buff理论上是玩家可见层面以及配置层面的东西，其底层最终实现是通过效果来生效的；
 
 buff的持续时间Duration理论上分为三种类型，但实际上第一种应直接用效果实现，跳过buff：

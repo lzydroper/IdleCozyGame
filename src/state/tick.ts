@@ -15,6 +15,7 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { recoverStaminaByTime } from './stamina';
 import { settleLevelIdleUpdate } from './levelCombat';
+import { pushIdleFeed, pushIdleFeedLines, setLastIdleStop } from './idleFeed';
 
 interface TickLogEntry {
   text: string;
@@ -306,6 +307,28 @@ export const applyTick = (prev: GameState, now: number): GameState => {
         : '战斗平局。';
 
       logsToAdd.push({ text: logText, type: 'combat' as const });
+
+      // 单一生产者（combat-experience 01 / X1）：真实事件流展示行推入挂机 feed。
+      pushIdleFeedLines(result.feedLines);
+    }
+    if (result.autoStopped) {
+      // 战败/体力中断回顾数据（combat-experience 04 / O#5）：在 idle 被重置前捕获累计信息。
+      const stoppedIdle = prev.combat?.idle;
+      if (stoppedIdle) {
+        setLastIdleStop({
+          reason: result.stopReason === 'defeat' ? 'defeat' : 'stamina',
+          regionId: stoppedIdle.regionId ?? '',
+          levelId: stoppedIdle.levelId ?? '',
+          totalBattles: stoppedIdle.totalBattles || 0,
+          totalVictories: stoppedIdle.totalVictories || 0,
+          totalDrops: { ...(stoppedIdle.totalDrops || {}) },
+          totalSoulEchoes: stoppedIdle.totalSoulEchoes || 0
+        });
+      }
+      pushIdleFeed(
+        result.stopReason === 'defeat' ? '⏹ 挂机停止：小队战败重伤。' : '⏹ 挂机停止：体力不足。',
+        'system'
+      );
     }
     // 无论是否结算，都要保留最新 combat（idle.accumulatedSeconds 逐秒累计）
     finalCombat = afterIdle.combat;

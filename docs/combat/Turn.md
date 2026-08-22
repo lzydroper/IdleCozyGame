@@ -99,3 +99,4 @@ stateDiagram-v2
 - **面板展平唯一函数**：`toBattleUnitStats(calculated)` 由 `battleEntity.entityStats` 与 `BattleContext.resolveStats` 共用；maxHp ≥ 1 的钳制归 statSystem 计算层，展平层只 round。配套抽共享 `cloneStatParams` helper。
 - **先机整数化**：`calculateInitiative` 出口 Math.round（见上文先机节）。
 - **战斗数值唯一权威 = BattleContext.resolveStats 即时解析**（含动态 Modifier 与元属性折算，每动作新鲜解析）；`unit.stats` 定位为入场快照、仅作兜底。残余待补齐：applyHeal 的 maxHp 钳制改用解析值、被动编译改按动作时解析、无 statParams 回退路径收紧（combat-aftermath 05）。
+- **事件流维持单一序列**（combat-experience 06 / T#8 结论）：不提供 timings/events 双视图——节奏点（roundStart/turnStart 等）与信息行由展示层 presenter 区分，当前无「回合开始停顿」类需求；若未来轮播需要节奏控制再评估。

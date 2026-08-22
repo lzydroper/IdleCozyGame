@@ -227,7 +227,7 @@ export const BattleModal: React.FC<BattleModalProps> = ({
           ]);
           setTimeout(() => {
             setFloatingDamages((prev) => prev.filter((f) => f.id !== floatId));
-          }, 750);
+          }, 750 / (speed || 1));
         }
       }
 
@@ -251,7 +251,7 @@ export const BattleModal: React.FC<BattleModalProps> = ({
           ]);
           setTimeout(() => {
             setFloatingDamages((prev) => prev.filter((f) => f.id !== floatId));
-          }, 750);
+          }, 750 / (speed || 1));
         }
       }
 
@@ -266,11 +266,11 @@ export const BattleModal: React.FC<BattleModalProps> = ({
         );
       }
 
-      // Reset hit animation trigger
+      // Reset hit animation trigger（时长随倍速缩放，combat-experience 02 / U#1）
       setTimeout(() => {
         setHeroSlots((prev) => prev.map((s) => (s ? { ...s, isHit: false } : null)));
         setEnemySlots((prev) => prev.map((s) => (s ? { ...s, isHit: false } : null)));
-      }, 250);
+      }, 250 / (speed || 1));
 
       const delay = Math.max(20, Math.round(COMBAT_CONFIG.baseEventIntervalMs / (speed || 1)));
       timerRef.current = setTimeout(playStep, delay);

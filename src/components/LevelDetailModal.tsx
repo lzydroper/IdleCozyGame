@@ -5,6 +5,7 @@ import type { LevelConfig, DropEntry } from '../data/regions';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
 import { isRegionUnlocked, isLevelUnlocked, getClearedLevels } from '../state/levelCombat';
+import { getRegion } from '../data/regionSelectors';
 import { UI_TOKENS } from '../data/uiConstants';
 import { X, AlertTriangle } from 'lucide-react';
 
@@ -47,6 +48,7 @@ export const LevelDetailModal: React.FC<LevelDetailModalProps> = ({
 
   if (!isOpen || !regionId || !level) return null;
 
+  const region = getRegion(regionId);
   const regionUnlocked = isRegionUnlocked(state, regionId, 'combat');
   const clearedLevels = getClearedLevels(state);
   const isCleared = (clearedLevels[regionId] ?? []).includes(level.id);
@@ -90,7 +92,7 @@ export const LevelDetailModal: React.FC<LevelDetailModalProps> = ({
         {/* Header */}
         <header className="flex items-center justify-between pb-2.5 border-b border-zinc-800 shrink-0">
           <div>
-            <h3 className="text-sm font-black text-zinc-100">{level.name}</h3>
+            <h3 className="text-sm font-black text-zinc-100">{region ? `${region.name} · ` : ''}{level.name}</h3>
             <div className="text-xs font-bold text-rose-400 mt-0.5">
               消耗体力: {level.staminaCost} 点
             </div>

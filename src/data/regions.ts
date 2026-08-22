@@ -107,7 +107,7 @@ export const REGION_CONFIGS = {
     levels: [
       {
         id: 'wasteland_entrance_1',
-        name: '废土边缘 · 游荡者',
+        name: '游荡者',
         enemies: ['wasteland_hound', 'mutant_rat'],
         staminaCost: 10,
         drops: [
@@ -121,7 +121,7 @@ export const REGION_CONFIGS = {
       },
       {
         id: 'wasteland_entrance_2',
-        name: '废土边缘 · 鬣狗王',
+        name: '鬣狗王',
         enemies: ['wasteland_hound_king'],
         staminaCost: 12,
         drops: [
@@ -163,7 +163,7 @@ export const REGION_CONFIGS = {
     levels: [
       {
         id: 'old_town_ruins_1',
-        name: '旧城废墟 · 拾荒者',
+        name: '拾荒者',
         enemies: ['ruin_scavenger', 'mutant_rat_elite'],
         staminaCost: 15,
         drops: [
@@ -178,7 +178,7 @@ export const REGION_CONFIGS = {
       },
       {
         id: 'old_town_ruins_2',
-        name: '旧城废墟 · 霸主',
+        name: '霸主',
         enemies: ['ruin_overlord', 'mutant_rat_elite'],
         staminaCost: 18,
         drops: [
@@ -218,7 +218,7 @@ export const REGION_CONFIGS = {
     levels: [
       {
         id: 'radiated_workshop_1',
-        name: '辐射车间 · 畸变体',
+        name: '畸变体',
         enemies: ['radiation_mutant', 'rogue_machine', 'aberrant_subject'],
         staminaCost: 20,
         drops: [
@@ -234,7 +234,7 @@ export const REGION_CONFIGS = {
       },
       {
         id: 'radiated_workshop_2',
-        name: '辐射车间 · 车间之主',
+        name: '车间之主',
         enemies: ['workshop_abomination', 'rogue_machine'],
         staminaCost: 25,
         drops: [
@@ -266,7 +266,7 @@ export const REGION_CONFIGS = {
     levels: [
       {
         id: 'equipment_test_zone_1',
-        name: '军备测试场 · 靶机',
+        name: '靶机',
         enemies: ['test_dummy'],
         staminaCost: 0,
         drops: [
@@ -284,7 +284,7 @@ export const REGION_CONFIGS = {
       },
       {
         id: 'equipment_test_zone_2',
-        name: '军备测试场 · 测试领主',
+        name: '测试领主',
         enemies: ['test_boss'],
         staminaCost: 10,
         drops: [

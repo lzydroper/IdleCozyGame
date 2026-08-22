@@ -54,7 +54,7 @@ describe('LevelDetailModal Component', () => {
       />
     );
 
-    expect(screen.getByText(level.name)).toBeDefined();
+    expect(screen.getByText(`废土边缘 · ${level.name}`)).toBeDefined(); // 全称由 UI 派生（U#3 方案 A）
     expect(screen.getByText(`消耗体力: ${level.staminaCost} 点`)).toBeDefined();
     expect(screen.getByText('敌方阵容')).toBeDefined();
     expect(screen.getByText('战利品掉落')).toBeDefined();

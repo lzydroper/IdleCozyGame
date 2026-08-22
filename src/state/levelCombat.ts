@@ -11,6 +11,7 @@ import { rollDropEntries } from './dropEngine';
 import { aggregateBonus } from './bonds';
 import { addItemRewards } from './equipment';
 import { getStamina, tryConsumeStamina } from './stamina';
+import { formatBattleEvent, isDisplayableEvent } from './battleEventPresentation';
 import type { UpdateResult } from './types';
 
 // === combat-level ticket 02：Region/Level 战斗状态与掉落结算内核（Expand） ===
@@ -40,6 +41,8 @@ export interface LevelIdleSettlementOutcome {
   staminaConsumed: number;
   autoStopped: boolean;
   stopReason?: 'stamina' | 'defeat';
+  /** 每场战斗的真实事件流展示行（combat-experience 01 / X1：单一生产者产出）。 */
+  feedLines: string[];
 }
 
 export interface UnlockDiagnosticItem {
@@ -498,7 +501,8 @@ const emptyLevelIdleOutcome = (): LevelIdleSettlementOutcome => ({
   drops: {},
   soulEchoesGained: 0,
   staminaConsumed: 0,
-  autoStopped: false
+  autoStopped: false,
+  feedLines: []
 });
 
 export const settleLevelIdleUpdate = (
@@ -587,6 +591,20 @@ export const settleLevelIdleUpdate = (
     lastSettlement = settled.settlement;
     outcome.battlesFought++;
     outcome.staminaConsumed += level.staminaCost;
+
+    // 单一生产者（combat-experience 01 / X1）：每场战斗的真实事件流转为展示行，
+    // 由 GameContext Tick 推入 idleFeed——Widget 只消费，不再自行模拟。
+    outcome.feedLines.push(
+      ...battle.events
+        .filter(isDisplayableEvent)
+        .map(ev => formatBattleEvent(ev))
+        .filter((text): text is string => Boolean(text))
+    );
+    if (battle.victory) {
+      outcome.feedLines.push('战斗胜利！');
+    } else if (battle.partyWiped) {
+      outcome.feedLines.push('战斗失败！小队全员重伤。');
+    }
 
     if (battle.victory) {
       outcome.victories++;

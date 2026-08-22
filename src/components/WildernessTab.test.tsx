@@ -486,7 +486,7 @@ describe('WildernessTab Component', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '战斗' }));
-    expect(screen.getByText(/废土边缘 · 鬣狗王/)).toBeDefined();
+    expect(screen.getByText(/鬣狗王/)).toBeDefined(); // 关卡网格显示纯关卡名（U#3 方案 A）
 
     // 单诺娃挑战区1 关底（末位关卡）→ 点击关卡卡片并确认开战 → 胜利通关
     fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_2'));
