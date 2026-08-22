@@ -10,20 +10,20 @@ import {
 const event = (overrides: Partial<BattleEvent> = {}): BattleEvent => ({
   seq: 0,
   round: 1,
-  key: 'attackAfter',
-  unitId: 'nova',
+  key: 'damageTaken',
+  unitId: 'wasteland_hound',
   sourceId: 'nova',
   targetId: 'wasteland_hound',
-  unitName: '诺娃',
+  unitName: '废土鬣狗',
   sourceName: '诺娃',
   targetName: '废土鬣狗',
-  data: { kind: 'attack', damage: 45 },
+  data: { amount: 45 },
   ...overrides
 });
 
 describe('battleEventPresentation（事件展示注册表）', () => {
   it('内置标准键可渲染为一行展示文本（优先使用名称而非 id）', () => {
-    expect(formatBattleEvent(event())).toBe('【诺娃】→【废土鬣狗】攻击 -45');
+    expect(formatBattleEvent(event())).toBe('【废土鬣狗】受到 45 点伤害');
     expect(formatBattleEvent(event({ key: 'death', unitId: 'wasteland_hound', unitName: '废土鬣狗' }))).toBe('【废土鬣狗】阵亡');
     expect(formatBattleEvent(event({ key: 'roundStart', unitId: null, unitName: null }))).toBe('第 1 轮开始');
     expect(formatBattleEvent(event({ key: 'abilityUsed', data: { abilityId: 'basic_attack' } }))).toBe('【诺娃】→【废土鬣狗】使用【普通攻击】');

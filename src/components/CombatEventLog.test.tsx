@@ -38,26 +38,26 @@ describe('CombatEventLog Component', () => {
           {
             seq: 0,
             round: 1,
-            key: 'attackAfter',
+            key: 'abilityUsed',
             unitId: 'nova',
             sourceId: 'nova',
             targetId: 'e1',
             sourceName: '诺娃',
             targetName: '废土鬣狗',
             unitName: '诺娃',
-            data: { kind: 'skill', skillName: '电涌过载', damage: 28 }
+            data: { abilityId: 'awaken_nova' }
           },
           {
             seq: 1,
             round: 1,
-            key: 'attackAfter',
+            key: 'damageTaken',
             unitId: 'e1',
-            sourceId: 'e1',
-            targetId: 'nova',
-            sourceName: '废土鬣狗',
-            targetName: '诺娃',
+            sourceId: 'nova',
+            targetId: 'e1',
+            sourceName: '诺娃',
+            targetName: '废土鬣狗',
             unitName: '废土鬣狗',
-            data: { kind: 'attack', damage: 6 }
+            data: { amount: 28 }
           },
           {
             seq: 2,
@@ -69,7 +69,7 @@ describe('CombatEventLog Component', () => {
             sourceName: '诺娃',
             targetName: '诺娃',
             unitName: '诺娃',
-            data: { kind: 'heal', skillName: '净化之泉', amount: 76 }
+            data: { amount: 76 }
           }
         ]
       },
@@ -81,8 +81,8 @@ describe('CombatEventLog Component', () => {
 
     render(<CombatEventLog settlement={settlement} zoneName="废土边缘 · 荒野哨所" />);
 
-    const skillLine = screen.getByText(/发动【电涌过载】/);
-    expect(skillLine.textContent).toContain('-28');
+    expect(screen.getByText(/使用【电涌过载】/)).toBeDefined();
+    expect(screen.getByText(/受到 28 点伤害/)).toBeDefined();
     expect(screen.getByText(/恢复 76 点生命/)).toBeDefined();
   });
 });

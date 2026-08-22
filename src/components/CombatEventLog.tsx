@@ -91,18 +91,21 @@ export const CombatEventLog: React.FC<CombatEventLogProps> = ({ settlement, zone
             暂无战斗事件。
           </div>
         ) : (
-          events.map((event, idx) => (
-            <div
-              key={event.seq}
-              className={`flex items-center justify-between p-1 rounded ${
-                idx === events.length - 1 ? 'bg-zinc-800/60 border-l-2 border-amber-400' : ''
-              }`}
-            >
-              <span className="text-zinc-500 font-bold shrink-0 w-8">#{event.seq}</span>
-              <span className="text-zinc-300 flex-1 truncate">{formatBattleEvent(event)}</span>
-              <span className="text-zinc-600 shrink-0 ml-2">R{event.round}</span>
-            </div>
-          ))
+          events
+            .map((event) => ({ event, text: formatBattleEvent(event) }))
+            .filter((item) => Boolean(item.text))
+            .map(({ event, text }, idx, arr) => (
+              <div
+                key={event.seq}
+                className={`flex items-center justify-between p-1 rounded ${
+                  idx === arr.length - 1 ? 'bg-zinc-800/60 border-l-2 border-amber-400' : ''
+                }`}
+              >
+                <span className="text-zinc-500 font-bold shrink-0 w-8">#{event.seq}</span>
+                <span className="text-zinc-300 flex-1 truncate">{text}</span>
+                <span className="text-zinc-600 shrink-0 ml-2">R{event.round}</span>
+              </div>
+            ))
         )}
       </div>
     </div>

@@ -102,18 +102,6 @@ registerBattleEventPresenter({
 });
 
 registerBattleEventPresenter({
-  key: 'attackAfter',
-  format: event => {
-    const data = event.data;
-    if (data.kind === 'heal') {
-      return `【${nameOf(event, 'unit')}】治疗自身 +${String(data.heal ?? data.amount ?? 0)}`;
-    }
-    const skillName = data.skillName ? `发动【${String(data.skillName)}】` : '攻击';
-    return `【${nameOf(event, 'source')}】→【${nameOf(event, 'target')}】${skillName} -${String(data.damage ?? data.amount ?? 0)}`;
-  }
-});
-
-registerBattleEventPresenter({
   key: 'damageTaken',
   format: event => `【${nameOf(event, 'target')}】受到 ${String(event.data.amount ?? 0)} 点伤害`
 });
@@ -145,27 +133,26 @@ registerBattleEventPresenter({
     const values = data.values ?? {};
     switch (data.kind) {
       case 'damage':
-        return `【${source}】→【${target}】效果伤害 -${String(values.damage ?? 0)}`;
       case 'heal':
-        return `【${target}】效果治疗 +${String(values.heal ?? 0)}`;
+        return '';
       case 'statModify':
         return `【${target}】属性修正 ${String(values.value ?? 0)}`;
       case 'stun':
-        return `【${target}】眩晕`;
+        return `【${target}】受到眩晕效果`;
       case 'dispel':
-        return `【${target}】驱散`;
+        return `【${target}】增益效果被驱散`;
       case 'immunityElement':
         return `【${target}】获得元素免疫`;
       case 'immunityBuff':
-        return `【${target}】获得 Buff 免疫`;
+        return `【${target}】获得状态免疫`;
       case 'taunt':
-        return `【${target}】嘲讽优先级 ${String(values.value ?? 0)}`;
+        return `【${target}】被嘲讽`;
       case 'summon':
         return `【${source}】召唤 ${String(values.count ?? 0)} 个单位`;
       case 'applyBuff':
-        return `【${target}】获得 Buff（层数 ${String(values.stacks ?? 0)}）`;
+        return `【${target}】获得状态效果`;
       default:
-        return fallbackFormat(event);
+        return '';
     }
   }
 });

@@ -158,7 +158,9 @@ export const BattleModal: React.FC<BattleModalProps> = ({
 
       // Format log text
       const logText = formatBattleEvent(evt);
-      setEventLogs((prev) => [...prev, logText]);
+      if (logText) {
+        setEventLogs((prev) => [...prev, logText]);
+      }
 
       // Handle summon event
       if (evt.key === 'summon' && evt.unitId) {
@@ -192,10 +194,10 @@ export const BattleModal: React.FC<BattleModalProps> = ({
         }
       }
 
-      // Handle damage / attack
-      if (evt.key === 'damageTaken' || evt.key === 'attackAfter' || (evt.key === 'effectApplied' && (evt.data as any)?.kind === 'damage')) {
+      // Handle damage
+      if (evt.key === 'damageTaken') {
         const targetId = evt.targetId || evt.unitId;
-        const damage = Number(evt.data?.damage ?? evt.data?.amount ?? (evt.data as any)?.values?.damage ?? 0);
+        const damage = Number(evt.data?.amount ?? evt.data?.damage ?? 0);
         const isCrit = Boolean(evt.data?.isCrit);
 
         if (targetId && damage > 0) {
@@ -229,9 +231,9 @@ export const BattleModal: React.FC<BattleModalProps> = ({
       }
 
       // Handle healing
-      if (evt.key === 'healingTaken' || (evt.key === 'effectApplied' && (evt.data as any)?.kind === 'heal')) {
+      if (evt.key === 'healingTaken') {
         const targetId = evt.targetId || evt.unitId;
-        const heal = Number(evt.data?.amount ?? evt.data?.heal ?? (evt.data as any)?.values?.heal ?? 0);
+        const heal = Number(evt.data?.amount ?? evt.data?.heal ?? 0);
         if (targetId && heal > 0) {
           setHeroSlots((prev) =>
             prev.map((slot) => {

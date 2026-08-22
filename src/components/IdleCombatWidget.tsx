@@ -129,6 +129,7 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
       const formattedLines: { text: string; kind: StreamEvent['kind'] }[] = [];
       battle.events.forEach((evt) => {
         const text = formatBattleEvent(evt);
+        if (!text) return;
         const kind: StreamEvent['kind'] =
           evt.key === 'roundStart' || evt.key === 'roundEnd'
             ? 'round'
