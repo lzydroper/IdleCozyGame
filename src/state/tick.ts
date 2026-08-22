@@ -20,7 +20,7 @@ import { settleLevelIdleUpdate } from './levelCombat';
 
 interface TickLogEntry {
   text: string;
-  type: 'event' | 'logistics' | 'system';
+  type: 'event' | 'logistics' | 'system' | 'combat';
 }
 
 // 游戏全局 Tick：推进发电机/回收站/温室/流水线/挂机探索/天数
@@ -307,10 +307,27 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       const region = getRegion(idleRegionId);
       const level = getLevel(idleRegionId, idleLevelId);
       const zoneName = region && level ? `${region.name} · ${level.name}` : idleRegionId;
+
+      const dropItems = Object.entries(result.drops)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} ×${qty}`);
+      if (result.soulEchoesGained > 0) {
+        dropItems.push(`灵魂残响 ×${result.soulEchoesGained}`);
+      }
+      const lootText = dropItems.length > 0 ? `，获得 ${dropItems.join('、')}` : '';
       const stopText = result.autoStopped && result.stopReason === 'defeat'
-        ? '，小队战败全员重伤，挂机自动停止'
+        ? '，小队战败全员重伤，挂机已自动停止'
         : '';
-      logsToAdd.push({ text: `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories}），掉落已入账${stopText}。`, type: 'logistics' as const });
+
+      const logText = result.battlesFought === 1
+        ? (result.victories === 1
+            ? `挂机战斗：在【${zoneName}】战斗 1 场（胜 1）${lootText}。`
+            : result.defeats === 1
+            ? `挂机战斗：在【${zoneName}】战斗 1 场（败 1）${stopText}。`
+            : `挂机战斗：在【${zoneName}】战斗 1 场（平 1）。`)
+        : `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories} / 平 ${result.draws} / 败 ${result.defeats}）${lootText}${stopText}。`;
+
+      logsToAdd.push({ text: logText, type: 'combat' as const });
     }
     // 无论是否结算，都要保留最新 combat（idle.accumulatedSeconds 逐秒累计）
     finalCombat = afterIdle.combat;

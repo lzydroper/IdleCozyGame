@@ -44,12 +44,19 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
 
   // 获取与当前挂机相关的战斗日志（按时间正序）
   const relevantLogs = (state.logs || [])
-    .filter(
-      (log) =>
-        log.type === 'combat' &&
-        log.timestamp >= startTime - 1000
-    )
-    .slice(0, 30)
+    .filter((log) => {
+      const isCombatOrLogistics = log.type === 'combat' || log.type === 'logistics';
+      if (!isCombatOrLogistics) return false;
+      const isRecent = log.timestamp >= startTime - 5000;
+      const hasCombatKeywords =
+        log.text.includes('挂机') ||
+        log.text.includes('战斗') ||
+        log.text.includes('击退') ||
+        log.text.includes('战败') ||
+        log.text.includes('战平');
+      return isRecent || hasCombatKeywords;
+    })
+    .slice(0, 50)
     .reverse();
 
   // 新日志自动滚到底部
@@ -118,8 +125,8 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
               minute: '2-digit',
               second: '2-digit'
             });
-            const isVictory = log.text.includes('胜利') || log.text.includes('击退');
-            const isDefeat = log.text.includes('失败') || log.text.includes('重伤');
+            const isVictory = log.text.includes('胜利') || log.text.includes('击退') || log.text.includes('胜 1') || log.text.includes('胜');
+            const isDefeat = log.text.includes('失败') || log.text.includes('重伤') || log.text.includes('败 1') || log.text.includes('战败');
             return (
               <div
                 key={log.id}
