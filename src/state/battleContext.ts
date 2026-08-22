@@ -6,10 +6,12 @@
 
 import type { TurnRuntime } from './turnEngine';
 import type { BattleUnitStats } from './battleTypes';
+import { toBattleUnitStats } from './battleTypes';
 import { toStatModifier, type Modifier, type ModifierNamespace } from './modifier';
 import { calculateEntityStats, type StatModifier } from './statSystem';
 import {
   BUFF_CONFIGS,
+  buffModifierSource,
   type BuffApplication,
   type BuffConfig,
   type BuffInstance
@@ -26,7 +28,6 @@ export type BattleFlag = string;
 
 export interface BattleContext {
   readonly turn: TurnRuntime;
-  readonly rng: () => number;
 
   addModifier(unitId: string, modifier: Modifier): string;
   removeModifier(unitId: string, modifierId: string): boolean;
@@ -47,37 +48,23 @@ export interface BattleContext {
   resolveStats(unitId: string): BattleUnitStats;
 }
 
-export interface BattleContextInitialState {
-  modifiersByUnit?: Record<string, AppliedModifier[]>;
-  buffsByUnit?: Record<string, BuffInstance[]>;
-  flagsByUnit?: Record<string, Record<string, number>>;
-}
-
 export interface BuffTriggerHooks {
-  register(instance: BuffInstance): void;
-  unregister(instance: BuffInstance): void;
+  /** 注册某实例的全部触发器；返回逐条注销句柄（combat-hygiene 04 / Turn #7）。 */
+  register(instance: BuffInstance): Array<() => void>;
 }
 
 export const createBattleContext = (
   runtime: TurnRuntime,
-  initialState: BattleContextInitialState = {},
   buffConfigs: Record<string, BuffConfig> = BUFF_CONFIGS,
   triggerHooks?: BuffTriggerHooks
 ): BattleContext => {
   const modifiersByUnit = new Map<string, AppliedModifier[]>();
   const buffsByUnit = new Map<string, BuffInstance[]>();
   const flagsByUnit = new Map<string, Map<string, number>>();
+  // Buff 触发器注销句柄：按实例 id 存于 BattleContext 自身状态（combat-hygiene 04 / B§2.5，
+  // 取代 buffRuntime 的模块级 WeakMap，跨上下文内聚）。
+  const buffTriggerHandles = new Map<string, Array<() => void>>();
   let nextModifierId = 0;
-
-  for (const [unitId, mods] of Object.entries(initialState.modifiersByUnit ?? {})) {
-    modifiersByUnit.set(unitId, mods.map(m => ({ ...m })));
-  }
-  for (const [unitId, buffs] of Object.entries(initialState.buffsByUnit ?? {})) {
-    buffsByUnit.set(unitId, buffs.map(b => ({ ...b, values: { ...(b.values ?? {}) } })));
-  }
-  for (const [unitId, flags] of Object.entries(initialState.flagsByUnit ?? {})) {
-    flagsByUnit.set(unitId, new Map(Object.entries(flags)));
-  }
 
   const removeModifiersBySourceForUnit = (unitId: string, source: string): number => {
     const list = modifiersByUnit.get(unitId);
@@ -92,9 +79,22 @@ export const createBattleContext = (
     return removed;
   };
 
+  // 全单位回收（combat-hygiene 04 / B§4.5）：Buff 可能给其他单位挂 Modifier，清理不得只扫 targetId。
+  const removeAllModifiersBySource = (source: string): number => {
+    let removed = 0;
+    for (const list of modifiersByUnit.values()) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i].modifier.source === source) {
+          list.splice(i, 1);
+          removed++;
+        }
+      }
+    }
+    return removed;
+  };
+
   return {
     turn: runtime,
-    rng: runtime.rng,
 
     addModifier(unitId, modifier) {
       const list = modifiersByUnit.get(unitId) ?? modifiersByUnit.set(unitId, []).get(unitId)!;
@@ -123,7 +123,7 @@ export const createBattleContext = (
     applyBuff(targetId, buff) {
       const config = buffConfigs[buff.buffId];
       if (!config) {
-        return { instance: { ...buff, targetId }, applied: false, refreshed: false, stacks: buff.stacks };
+        return { instance: { ...buff, targetId }, applied: false, reason: 'unknown', refreshed: false, stacks: buff.stacks };
       }
 
       const list = buffsByUnit.get(targetId) ?? buffsByUnit.set(targetId, []).get(targetId)!;
@@ -131,7 +131,7 @@ export const createBattleContext = (
 
       if (existing) {
         if (existing.sourceId !== buff.sourceId) {
-          return { instance: existing, applied: false, refreshed: false, stacks: existing.stacks };
+          return { instance: existing, applied: false, reason: 'conflict', refreshed: false, stacks: existing.stacks };
         }
 
         let duration = existing.duration;
@@ -158,7 +158,8 @@ export const createBattleContext = (
         values: { ...buff.values }
       };
       list.push(instance);
-      triggerHooks?.register(instance);
+      const handles = triggerHooks?.register(instance);
+      if (handles && handles.length > 0) buffTriggerHandles.set(instance.id, handles);
       return { instance, applied: true, refreshed: false, stacks: instance.stacks };
     },
 
@@ -171,8 +172,10 @@ export const createBattleContext = (
       const idx = list.findIndex(b => b.buffId === buffId);
       if (idx < 0) return false;
       const instance = list[idx];
-      triggerHooks?.unregister(instance);
-      removeModifiersBySourceForUnit(targetId, instance.id);
+      // 注销句柄存于本上下文（combat-hygiene 04）；Modifier 全单位回收（B§4.5）。
+      for (const handle of buffTriggerHandles.get(instance.id) ?? []) handle();
+      buffTriggerHandles.delete(instance.id);
+      removeAllModifiersBySource(buffModifierSource(instance));
       list.splice(idx, 1);
       return true;
     },
@@ -227,21 +230,8 @@ export const createBattleContext = (
         ...dynamicModifiers
       ]);
 
-      return {
-        attack: Math.round(calculated.attack),
-        defense: Math.round(calculated.defense),
-        maxHp: Math.max(1, Math.round(calculated.maxHp)),
-        maxMp: Math.round(calculated.maxMp),
-        critRate: calculated.critRate,
-        critDmg: calculated.critDmg,
-        critResist: calculated.critResist,
-        damageReduction: calculated.damageReduction,
-        durationReduction: calculated.durationReduction,
-        effectReduction: calculated.effectReduction,
-        cooldownReduction: calculated.cooldownReduction,
-        ...calculated.primaryAttributes,
-        ...calculated.specialAttributes
-      };
+      // 展平唯一走 toBattleUnitStats（combat-aftermath 04 N2）；maxHp ≥1 钳制已在 statSystem 计算层。
+      return toBattleUnitStats(calculated);
     }
   };
 };

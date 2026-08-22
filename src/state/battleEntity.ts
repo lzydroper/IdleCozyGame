@@ -10,7 +10,7 @@
 import type { HeroFaction } from '../types/game';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes, StatModifier } from './statSystem';
 import { calculateEntityStats } from './statSystem';
-import type { BattleUnitStats } from './battleTypes';
+import { cloneStatParams, toBattleUnitStats, type BattleUnitStats } from './battleTypes';
 import type { BattleUnitSnapshot, UnitSide } from './turnEngine';
 import { calculateInitiative } from './turnEngine';
 import type { ResolvedAbility } from './abilityTypes';
@@ -37,39 +37,9 @@ export interface BattleEntity {
   initiative: number;
 }
 
-/** 由配方计算完整战斗面板（三层算好后的属性）。 */
-export const entityStats = (entity: BattleEntity): BattleUnitStats => {
-  const stats = calculateEntityStats(entity.recipe, entity.recipe.permanentModifiers);
-  const sp = stats.specialAttributes;
-  return {
-    attack: Math.round(stats.attack),
-    defense: Math.round(stats.defense),
-    maxHp: Math.round(stats.maxHp),
-    maxMp: Math.round(stats.maxMp),
-    critRate: stats.critRate,
-    critDmg: stats.critDmg,
-    critResist: stats.critResist,
-    damageReduction: stats.damageReduction,
-    durationReduction: stats.durationReduction,
-    effectReduction: stats.effectReduction,
-    cooldownReduction: stats.cooldownReduction,
-    strength: stats.primaryAttributes.strength,
-    constitution: stats.primaryAttributes.constitution,
-    agility: stats.primaryAttributes.agility,
-    intelligence: stats.primaryAttributes.intelligence,
-    willpower: stats.primaryAttributes.willpower,
-    transcendence: stats.primaryAttributes.transcendence,
-    arcaneBoost: sp.arcaneBoost,
-    arcaneResistance: sp.arcaneResistance,
-    mechanicalLoad: sp.mechanicalLoad,
-    mechanicalEvolution: sp.mechanicalEvolution,
-    nightmareErosion: sp.nightmareErosion,
-    voidSpirit: sp.voidSpirit,
-    spiritInspire: sp.spiritInspire,
-    astralGuidance: sp.astralGuidance,
-    soulsealDrive: sp.soulsealDrive
-  };
-};
+/** 由配方计算完整战斗面板（三层算好后的属性）。展平统一走 toBattleUnitStats。 */
+export const entityStats = (entity: BattleEntity): BattleUnitStats =>
+  toBattleUnitStats(calculateEntityStats(entity.recipe, entity.recipe.permanentModifiers));
 
 /** BattleEntity → Turn 引擎单位快照。 */
 export const toTurnUnit = (entity: BattleEntity): BattleUnitSnapshot => {
@@ -84,12 +54,12 @@ export const toTurnUnit = (entity: BattleEntity): BattleUnitSnapshot => {
     abilities: entity.abilities,
     stats,
     currentMp: entity.mp,
-    statParams: {
-      baseAttributes: { ...entity.recipe.baseAttributes },
-      primaryAttributes: { ...entity.recipe.primaryAttributes },
-      specialAttributes: { ...entity.recipe.specialAttributes },
-      permanentModifiers: entity.recipe.permanentModifiers.map(m => ({ ...m }))
-    }
+    statParams: cloneStatParams({
+      baseAttributes: entity.recipe.baseAttributes,
+      primaryAttributes: entity.recipe.primaryAttributes,
+      specialAttributes: entity.recipe.specialAttributes,
+      permanentModifiers: entity.recipe.permanentModifiers
+    })
   };
 };
 

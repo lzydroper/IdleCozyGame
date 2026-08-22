@@ -95,6 +95,7 @@ Turn 接收**已结算的参战单位快照**，只负责流程与时机；属�
 - 先机变动只重排「本轮未行动」区间；已行动单位锁定，一轮只行动一次。
 - 队列支持中途插入到「未行动区间」（召唤物入场）。
 - 轮次边界算法：取未行动区队首 → 执行其回合 → 移入已行动区；未行动区空 → 结算「轮次结束后」→ 已行动区整体移回未行动区进入新一轮。
+- **取出队首即锁定本轮行动资格**（combat-aftermath 04 写回为正式语义）：分隔标记在 turnStart 主时机派发前即前移（防重入设计）；行动资格在该时点快照判定、本回合内不变（衔接 combat-aftermath 02 D1 眩晕快照制）。turnStart 订阅者读调试队列看到自己已处于已行动区属预期行为。
 
 ### 6. 排序规则（来源：同先机排序规则）
 
@@ -184,3 +185,4 @@ stateDiagram-v2
 - **决策来源**：`.scratch/combat-turn/map.md` 的 12 张 ticket（01–12）为唯一权威，本规范为汇编。
 - **实施入口**：本规范 + map「🏁 地图完成」为 to-tickets 的输入。
 - **回放删除**：`CombatPlaybackView` / `hpTrack` 删除；`BattleResult.actions` 演进为事件流，仅作信息轮播数据源。
+- **装配 seam 修订（combat-aftermath 05 拍板）**：`TurnConfig.setup` 将随引擎拆分（`createTurnRuntime(units, config)` + `runtime.run()`）删除——装配层（createBattle）在 run 前完成 BattleContext 构建与全部注册，Turn 输入面收窄。本规范原始接口清单不含 setup，删除后亦无需契约化。

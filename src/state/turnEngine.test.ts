@@ -50,7 +50,7 @@ describe('01 — 先机纯函数与排序键', () => {
     expect(calculateInitiative(0)).toBe(100);
     expect(calculateInitiative(100)).toBe(150); // 100 + 100/200*100
     expect(calculateInitiative(300)).toBe(175); // 100 + 300/400*100
-    expect(calculateInitiative(50, 30)).toBeCloseTo(100 + (50 / 150) * 100 + 30);
+    expect(calculateInitiative(50, 30)).toBe(163); // 出口 Math.round（combat-aftermath 04 N3 整数口径）
     expect(calculateInitiative(0, -20)).toBe(100); // fixval clamp 下限 0
     expect(calculateInitiative(0, 250)).toBe(200); // fixval clamp 上限 100 → 100 + 100
     expect(calculateInitiative(Number.MAX_VALUE, 100)).toBe(300); // 上限 300 生效
@@ -534,5 +534,30 @@ describe('setup 初始化钩子', () => {
     expect(result.rounds).toBe(0);
     expect(result.events).toHaveLength(0);
     expect(result.outcome).toBe('draw');
+  });
+});
+
+describe('边界与参数校验（combat-hygiene 05 / T#16）', () => {
+  it('入场重复 id 抛错而非静默覆盖', () => {
+    expect(() =>
+      runTurnEngine([snap('a', 'hero', 100, 30), snap('a', 'enemy', 100, 10)], { maxRounds: 1 })
+    ).toThrow(/duplicate unit id/);
+  });
+
+  it('summonUnit 与已有 id 冲突抛错', () => {
+    let runtime!: TurnRuntime;
+    runTurnEngine([snap('a', 'hero', 100, 30)], {
+      maxRounds: 0,
+      setup: (rt) => { runtime = rt; }
+    });
+    expect(() => runtime.summonUnit(snap('a', 'enemy', 50, 10))).toThrow(/duplicate unit id/);
+    expect(() => runtime.summonUnit(snap('s1', 'enemy', 50, 10))).not.toThrow();
+  });
+
+  it('空输入立即终止：英雄侧无人按既有规则判负', () => {
+    const result = runTurnEngine([], { maxRounds: 2 });
+    expect(result.outcome).toBe('defeat');
+    // 既有实现：轮次先自增再查终止，空输入在首轮 roundStart 后即判负。
+    expect(result.rounds).toBe(1);
   });
 });

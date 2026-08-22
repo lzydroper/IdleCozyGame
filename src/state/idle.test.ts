@@ -6,7 +6,8 @@ import {
   stopLevelIdleUpdate,
   settleLevelIdleUpdate,
   getClearedLevels,
-  EMPTY_IDLE_STATE
+  EMPTY_IDLE_STATE,
+  MAX_IDLE_BATTLES_PER_TICK
 } from './levelCombat';
 import { recoverStaminaByTime } from './stamina';
 
@@ -234,6 +235,21 @@ describe('level idle combat engine (combat-offline ticket 03)', () => {
       const stopped = stopLevelIdleUpdate(WINNING_STATE, 5000);
       expect(stopped.result.ok).toBe(false);
       expect(stopped.result.summary).toBeNull();
+    });
+  });
+
+  describe('per-tick settlement cap (combat-hygiene 06 / O#3)', () => {
+    it('单 Tick 结算不超过 MAX_IDLE_BATTLES_PER_TICK，余量滚回 accumulatedSeconds', () => {
+      // 体力抬到 500（该关每场 10 点），排除体力约束、单测上限本身。
+      const rich = { ...WINNING_STATE, stamina: 500, maxStamina: 500 };
+      const started = startLevelIdleUpdate(rich, 'wasteland_entrance', 'wasteland_entrance_1', 1000).state;
+      // 100 秒 ≈ 20 场（battleDurationSeconds=5），体力足够 50 场；上限截断为 10。
+      const { state: next, result } = settleLevelIdleUpdate(started, 100, () => 0.1, false);
+      expect(result.battlesFought).toBe(MAX_IDLE_BATTLES_PER_TICK);
+      expect(result.autoStopped ?? false).toBe(false);
+      // 未消化的整场时间全部滚回：100 - 10×5 = 50。
+      expect(next.combat.idle?.accumulatedSeconds).toBe(50);
+      expect(next.combat.idle?.totalBattles).toBe(MAX_IDLE_BATTLES_PER_TICK);
     });
   });
 

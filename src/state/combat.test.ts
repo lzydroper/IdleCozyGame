@@ -59,8 +59,8 @@ const makeState = (overrides?: Partial<GameState>): GameState => ({
 const fakeTurnRuntime = (): TurnRuntime => ({
   round: 0,
   rng: () => 0.5,
-  register: () => {},
-  unregister: () => {},
+  register: () => () => {},
+  unregister: () => () => {},
   dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
   dealDamage: () => 0,
   applyHeal: () => 0,
@@ -81,7 +81,7 @@ describe('canActWithBuffs', () => {
     expect(canActWithBuffs(ctx, 'b')).toBe(true);
   });
 
-  it('真实回合引擎：被眩晕单位跳过当前回合，归零后恢复行动', () => {
+  it('真实回合引擎：眩晕 duration=N 严格跳过 N 个自身回合（快照制判定）', () => {
     const hero: BattleUnitSnapshot = {
       id: 'a', name: 'a', side: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
       stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
@@ -94,10 +94,10 @@ describe('canActWithBuffs', () => {
     let ctx!: BattleContext;
 
     runTurnEngine([hero, enemy], {
-      maxRounds: 2,
+      maxRounds: 3,
       rng: () => 0.5,
       setup(runtime) {
-        ctx = createBattleContext(runtime, {}, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+        ctx = createBattleContext(runtime, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
         ctx.applyBuff('b', {
           id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b',
           stacks: 1, duration: 2, values: {}
@@ -107,7 +107,9 @@ describe('canActWithBuffs', () => {
       performAction: (unit) => { actions.push(unit.id); }
     });
 
-    expect(actions).toEqual(['a', 'a', 'b']);
+    // 快照制（combat-aftermath 02 D1）：先判定后递减。
+    // r1: a 行动，b 快照见 dur=2 跳过 → 递减为 1；r2: a 行动，b 见 1 跳过 → 归零移除；r3: b 恢复行动。
+    expect(actions).toEqual(['a', 'a', 'a', 'b']);
     expect(ctx.getBuff('b', 'stun')).toBeUndefined();
   });
 });

@@ -45,9 +45,8 @@ export const createAbilityRuntime = (getBattle: () => BattleContext): AbilityRun
     const battle = getBattle();
     const stats = battle.resolveStats(unit.id);
     const targetCtx = toTargetContext(battle);
-    const abilities = unit.abilities as unknown as ResolvedAbility[];
-
-    const candidates = abilities
+    // abilities 已是 ResolvedAbility[]（A#1 残余清理），直接遍历。
+    const candidates = unit.abilities
       .map((ability, index) => {
         if (ability.activation !== 'active') return null;
         const cooldown = cooldowns.get(unit.id)?.get(ability.id) ?? 0;
@@ -108,7 +107,8 @@ export const createAbilityRuntime = (getBattle: () => BattleContext): AbilityRun
     for (const { effect, result } of resolved) {
       if (effect.kind !== 'damage') continue;
       const params = effect.params as { amount: number };
-      const amount = Math.round(typeof params.amount === 'number' ? params.amount : 0);
+      // amount 来自公式层已取整的 values.damage / asNumber，不再重复 round（combat-aftermath 04 N1）。
+      const amount = typeof params.amount === 'number' ? params.amount : 0;
       const damage = result.values.damage ?? 0;
       const data =
         selected.ability.id === 'basic_attack'

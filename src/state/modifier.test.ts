@@ -3,7 +3,6 @@ import {
   fromStatModifier,
   toStatModifier,
   applyEffectModifiers,
-  filterModifiersByNamespace,
   type Modifier
 } from './modifier';
 
@@ -40,14 +39,5 @@ describe('统一 Modifier 适配器', () => {
     // (100 + 10) × (1 + 0.3) = 143
     expect(applyEffectModifiers(100, mods, 'effect.heal')).toBe(143);
     expect(applyEffectModifiers(100, mods, 'effect.damage')).toBe(199);
-  });
-
-  it('按命名空间过滤', () => {
-    const mods: Modifier[] = [
-      { target: 'stat.attack', op: 'add', value: 1 },
-      { target: 'effect.heal', op: 'multiply', value: 0.1 }
-    ];
-    expect(filterModifiersByNamespace(mods, 'stat')).toEqual([mods[0]]);
-    expect(filterModifiersByNamespace(mods, 'effect')).toEqual([mods[1]]);
   });
 });

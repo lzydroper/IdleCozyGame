@@ -9,8 +9,8 @@ import type { StatKey, StatModifier } from './statSystem';
 
 export type ModifierNamespace = 'stat' | 'effect';
 
-/** 效果参数名：先以不透明 string 存在，后续按 EffectKind 收窄为常量。 */
-export type EffectParamKey = string;
+/** 效果参数名（combat-hygiene 05 / E#5）：按 EffectKind 收敛为常量 union，消除拼写漂移。 */
+export type EffectParamKey = 'damage' | 'heal' | 'value' | 'duration' | 'count';
 
 export type StatTarget = `stat.${StatKey}`;
 export type EffectTarget = `effect.${EffectParamKey}`;
@@ -25,9 +25,6 @@ export interface Modifier {
 
 export const isStatTarget = (target: ModifierTarget): target is StatTarget =>
   target.startsWith('stat.');
-
-export const isEffectTarget = (target: ModifierTarget): target is EffectTarget =>
-  target.startsWith('effect.');
 
 export const fromStatModifier = (m: StatModifier): Modifier => ({
   target: `stat.${m.stat}`,
@@ -62,8 +59,3 @@ export const applyEffectModifiers = (
   }
   return (base + add) * (1 + multiply);
 };
-
-export const filterModifiersByNamespace = (
-  modifiers: readonly Modifier[],
-  namespace: ModifierNamespace
-): Modifier[] => modifiers.filter(m => m.target.startsWith(namespace + '.'));

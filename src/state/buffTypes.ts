@@ -49,6 +49,8 @@ export interface BuffApplication {
   instance: BuffInstance;
   /** false = 不同 source 冲突拒绝（或未知 buffId 不落地）。 */
   applied: boolean;
+  /** applied=false 时的细分原因：conflict=source 冲突；unknown=未注册的 buffId。 */
+  reason?: 'conflict' | 'unknown';
   /** true = 命中已有实例。 */
   refreshed: boolean;
   /** 更新后的层数。 */
@@ -95,7 +97,7 @@ const warSpiritEffects = (instance: BuffInstance, timingCtx: TurnTimingContext):
         target: 'stat.strength',
         op: 'add',
         value,
-        source: instance.id
+        source: buffModifierSource(instance)
       }
     },
     origin: { kind: 'buff', id: instance.id }
@@ -143,3 +145,6 @@ export const BUFF_CONFIGS: Record<string, BuffConfig> = {
 };
 
 export const getBuffConfig = (buffId: string): BuffConfig | undefined => BUFF_CONFIGS[buffId];
+
+/** owned Modifier 的 source 统一标记（combat-hygiene 04 / B§4.6）：挂载与回收共用同一格式，防清理脱钩。 */
+export const buffModifierSource = (instance: Pick<BuffInstance, 'id'>): string => instance.id;

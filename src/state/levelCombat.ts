@@ -54,6 +54,10 @@ const isKnownHero = (state: GameState, heroId: string): boolean =>
 const getParty = (state: GameState): string[] =>
   (state.party || []).filter((id) => isKnownHero(state, id));
 
+/** 单 Tick 挂机结算上限（combat-hygiene 06 / O#3）：防长休眠唤醒 + 瞬间大量体力造成单帧批量模拟；
+ *  未消化场次的时间经 accumulatedSeconds 滚入后续 Tick 继续消化。 */
+export const MAX_IDLE_BATTLES_PER_TICK = 10;
+
 export const EMPTY_IDLE_STATE: CombatIdleState = {
   regionId: null,
   levelId: null,
@@ -551,7 +555,9 @@ export const settleLevelIdleUpdate = (
 
   const battleCount = Math.min(
     Math.floor(totalSeconds / COMBAT_CONFIG.battleDurationSeconds),
-    staminaBattles
+    staminaBattles,
+    // 单 Tick 上限（combat-hygiene 06 / O#3）：截断的整场时间随 leftoverSeconds 滚回下个 Tick。
+    MAX_IDLE_BATTLES_PER_TICK
   );
   const leftoverSeconds = totalSeconds - battleCount * COMBAT_CONFIG.battleDurationSeconds;
 

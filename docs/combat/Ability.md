@@ -17,3 +17,15 @@
 其中数值的拦截与修正（如"受到治疗提升"）一律走统一 Modifier（见 Effect.md），Ability 不自行判断、不自行改数。
 
 Ability作为类似技能的承载体，应至少实现消耗（不硬编码限定具体资源）、冷却（回合数）、可计算触发优先级等，同时也需要为后续的全json化数据配置做铺垫
+
+## 连发（fireCount）语义定稿（combat-aftermath 03 拍板）
+
+- `fireCount` 是 EffectTemplate 的一等字段，表示该效果「连发段数」；能力级取各效果的最大值。
+- **单事件·运行时放大为唯一基准**：一次施放对每个逻辑效果只派发**一条**事件（`data.fireCount = N`）；伤害等多段效果在执行层内按 N 独立掷点（暴击等逐段独立判定）后聚合落地。**禁止编译期复制效果副本**——现状 `abilityCompiler.compileAbilityEffects` 的展开行为是待修正项（与 buffRuntime 的运行时放大叠加会形成 N² 叠乘）。
+- **连发 = 一次攻击 / 一次施放**：折焰等「按攻击次数计数」的 Buff 每次挥击只消耗 1 层；on-hit Buff 每事件只结算一次，是否读 `data.fireCount` 自行放大由各 Buff 配置决定（buffRuntime 已支持该读取）。
+- 施工状态：**挂起待内容牵引**——当前无内容产生 `fireCount>1`；补全项（修 N² 叠乘、`abilityUsed`/非攻击场景传播、compiler 去复制化）在内容需要时实施。
+
+## 事件定位定稿（combat-aftermath 05 拍板）
+
+- `abilityUsed` + `effectApplied` 是唯一的展示与测试基准事件；`attackAfter` 定位为**纯内部触发通道**（供「攻击后」触发类 Buff 订阅，如折焰），展示层已自动静默。
+- 遗留的 `kind: 'attack' | 'skill'` 与 `skillName` 事件字段为旧展示兼容，生产 UI 零消费（核验属实）——随引擎收口批删除，相关测试迁移到 `abilityUsed`/`effectApplied`。

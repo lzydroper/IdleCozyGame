@@ -41,7 +41,7 @@ const runBuffBattle = (
     maxRounds,
     rng: () => 0.5,
     setup(runtime) {
-      ctx = createBattleContext(runtime, {}, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+      ctx = createBattleContext(runtime, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
       setup(ctx);
     },
     performAction: performAction ?? (() => {})
@@ -84,8 +84,8 @@ describe('Buff 触发运行时', () => {
     const runtime: TurnRuntime = {
       round: 0,
       rng: () => 0.5,
-      register: () => {},
-      unregister: () => {},
+      register: () => () => {},
+      unregister: () => () => {},
       dispatchEvent: (key, opts = {}) => {
         const event: BattleEvent = {
           seq: events.length, round: 0, key,

@@ -53,7 +53,7 @@ const makeRuntime = (units: Map<string, BattleUnitRuntime>): { runtime: TurnRunt
   const runtime: TurnRuntime = {
     round: 0,
     rng: () => 0.5,
-    register: () => {},
+    register: () => () => {},
     unregister: () => {},
     dispatchEvent: (key, opts = {}) => {
       const event: BattleEvent = {
@@ -274,7 +274,7 @@ describe('applyBuff / stun 效果', () => {
     units.get('b')!.stats.durationReduction = 1;
     const zeroed = resolveEffect(ctx, effect('stun', { duration: 1 }));
     expect(zeroed.applied).toBe(false);
-    expect(zeroed.interrupted).toBe('negated');
+    expect(zeroed.interrupted).toBe('zeroed'); // 归零 ≠ 免疫（combat-aftermath 02 D2）
     expect(ctx.getBuff('b', 'stun')).toBeUndefined();
   });
 });

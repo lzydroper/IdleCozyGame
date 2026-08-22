@@ -38,9 +38,9 @@
 
 ## 先机 (Initiative)
 
-- 先机值在**正式进入战斗前计算一次**，战斗内维护一个优先队列，决定下个回合由谁行动。
+- 先机值在**正式进入战斗前计算一次**，战斗内维护**单队列 + 分隔标记**（实现为有序数组；先机重排仅作用于未行动区，单次 O(k log k)——小规模战斗的既定边界，combat-aftermath 04 定稿），决定下个回合由谁行动。
 - 先机不对玩家暴露具体值，但开发者应有渠道知道。
-- 公式：$100 + \frac{agility}{agility + 100} \times 100 + clamp(fixval, 0, 100)$，其中 `agility` 为元属性，`fixval` 为特殊单位（召唤物、boss 等）的修正值；英雄初始 `fixval = 0`。先机上限 300。
+- 公式：$100 + \frac{agility}{agility + 100} \times 100 + clamp(fixval, 0, 100)$，其中 `agility` 为元属性，`fixval` 为特殊单位（召唤物、boss 等）的修正值；英雄初始 `fixval = 0`。先机上限 300。计算出口统一 `Math.round` 取整，战斗内与调试队列均为整数口径（combat-aftermath 04）。
 - 战斗中先机可能因技能/buff 变动，但**只会以固定 int 值加算/减算 `fixval`**；战斗中对 `agility` 的影响不会改变先机值。
 - **召唤物**：先机的初始值只在战前对已入场单位算一次；召唤物其余值全为 0，仅在创建时由技能传入 `fixval`，并进入**本回合的待参战队列**——即召唤出来立即参战。
 
@@ -92,3 +92,10 @@ stateDiagram-v2
 4. 从待参战队列取先机最大者：按状态机走完"回合开始前 → 回合进行中 → 回合结束后"，随后移入已参战队列。
 5. 反复执行 4 直到待参战队列为空，结算所有"轮次结束后"的效果。
 6. 反复执行 3–5，直到某一方所有单位阵亡，或特殊效果使战斗结束。
+
+## 数值口径（combat-aftermath 04 定稿）
+
+- **取整发生在数值诞生的那一层（配置公式 / 编译 / 伤害公式），下游只做钳制、不重复取整**：`dealDamage` / `applyHeal` 仅负责 hp / maxHp 钳制与死亡派发，不再内部 round；事件数据直接携带已取整数值。现状三层重复取整（effectSystem 公式层 → abilityRuntime 事件数据 → turnEngine 落账）为待修正项。
+- **面板展平唯一函数**：`toBattleUnitStats(calculated)` 由 `battleEntity.entityStats` 与 `BattleContext.resolveStats` 共用；maxHp ≥ 1 的钳制归 statSystem 计算层，展平层只 round。配套抽共享 `cloneStatParams` helper。
+- **先机整数化**：`calculateInitiative` 出口 Math.round（见上文先机节）。
+- **战斗数值唯一权威 = BattleContext.resolveStats 即时解析**（含动态 Modifier 与元属性折算，每动作新鲜解析）；`unit.stats` 定位为入场快照、仅作兜底。残余待补齐：applyHeal 的 maxHp 钳制改用解析值、被动编译改按动作时解析、无 statParams 回退路径收紧（combat-aftermath 05）。

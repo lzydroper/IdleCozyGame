@@ -9,6 +9,7 @@
  */
 
 import type { BattleUnitStats, BattleUnitStatParams } from './battleTypes';
+import { cloneStatParams } from './battleTypes';
 import type { ResolvedAbility } from './abilityTypes';
 
 // === 基础类型 ===
@@ -113,11 +114,12 @@ export interface DispatchEventOptions {
 /**
  * 先机公式：100 + agility/(agility+100)*100 + clamp(fixval,0,100)，上限 300。
  * 战斗中先机变动只以固定 int 值加减 fixval（agility 不影响先机）。
+ * 出口统一 Math.round 取整——战斗内与调试队列均为整数口径（combat-aftermath 04 N3）。
  */
 export const calculateInitiative = (agility: number, fixval = 0): number => {
   const safeAgility = Math.max(0, agility);
   const clampedFix = Math.min(100, Math.max(0, fixval));
-  return Math.min(300, 100 + (safeAgility / (safeAgility + 100)) * 100 + clampedFix);
+  return Math.round(Math.min(300, 100 + (safeAgility / (safeAgility + 100)) * 100 + clampedFix));
 };
 
 /** 召唤物先机单独计算：agility 按 0 处理，先机 = 100 + clamp(fixval,0,100)。 */
@@ -135,8 +137,8 @@ export const compareByInitiative = (
 export interface TurnRuntime {
   readonly round: number;
   readonly rng: () => number;
-  /** 战斗内订阅表（每场独立实例，战斗结束整体清空）。 */
-  register(key: TurnEventKey, subscriber: TurnSubscriber, unitId?: string | null): void;
+  /** 战斗内订阅表（每场独立实例，战斗结束整体清空）。register 返回注销句柄（Turn #7）。 */
+  register(key: TurnEventKey, subscriber: TurnSubscriber, unitId?: string | null): () => void;
   unregister(key: TurnEventKey, subscriber: TurnSubscriber, unitId?: string | null): void;
   /** 派发细粒度事件（即时触发对应订阅者）。 */
   dispatchEvent(key: TurnEventKey, opts?: DispatchEventOptions): BattleEvent;
@@ -199,15 +201,7 @@ const cloneSnapshotUnit = (unit: BattleUnitSnapshot, entryOrder: number): Battle
   abilities: unit.abilities.map(ability => ({ ...ability })),
   stats: { ...unit.stats },
   currentMp: unit.currentMp ?? unit.stats.maxMp,
-  statParams: unit.statParams
-    ? {
-        ...unit.statParams,
-        baseAttributes: { ...unit.statParams.baseAttributes },
-        primaryAttributes: unit.statParams.primaryAttributes ? { ...unit.statParams.primaryAttributes } : undefined,
-        specialAttributes: unit.statParams.specialAttributes ? { ...unit.statParams.specialAttributes } : undefined,
-        permanentModifiers: unit.statParams.permanentModifiers.map(m => ({ ...m }))
-      }
-    : undefined,
+  statParams: unit.statParams ? cloneStatParams(unit.statParams) : undefined,
   entryOrder
 });
 
@@ -229,6 +223,10 @@ export const runTurnEngine = (
   const unitMap = new Map<string, BattleUnitRuntime>();
   let nextEntryOrder = 0;
   for (const unit of units) {
+    if (unitMap.has(unit.id)) {
+      // 参数校验（combat-hygiene 05 / T#16）：重复 id 静默覆盖会破坏先机排序与死亡判定，直接抛错。
+      throw new Error(`runTurnEngine: duplicate unit id '${unit.id}'`);
+    }
     unitMap.set(unit.id, cloneSnapshotUnit(unit, nextEntryOrder++));
   }
 
@@ -285,7 +283,11 @@ export const runTurnEngine = (
     };
     const extraDebug = debugExtra ?? opts.debug;
     if (debug || opts.debug) {
-      event.debug = { ...(debug ? queueDebug() : {}), ...extraDebug };
+      // debug 快照瘦身（combat-hygiene 05 / T#9）：全队列快照只附在先机可见性真正关心的时点，
+      // 其余事件仅带轻量 extra 字段，避免事件流体积 O(事件数 × 单位数) 膨胀。
+      const includeQueue =
+        debug && (key === 'roundStart' || key === 'turnStart');
+      event.debug = { ...(includeQueue ? queueDebug() : {}), ...extraDebug };
     }
     events.push(event);
     return event;
@@ -298,8 +300,10 @@ export const runTurnEngine = (
       .filter(unit => unit.hp > 0 && (side === undefined || unit.side === side))
       .sort((a, b) => a.entryOrder - b.entryOrder);
 
-  const register = (key: TurnEventKey, subscriber: TurnSubscriber, unitId: string | null = null): void => {
+  const register = (key: TurnEventKey, subscriber: TurnSubscriber, unitId: string | null = null): (() => void) => {
     subscriptions.push({ key, unitId, subscriber, order: nextSubscriptionOrder++, active: true });
+    // 订阅句柄（combat-hygiene 04 / Turn #7）：注册/注销对称，调用方无需自存 subscriber 引用。
+    return () => unregister(key, subscriber, unitId);
   };
 
   const unregister = (key: TurnEventKey, subscriber: TurnSubscriber, unitId: string | null = null): void => {
@@ -356,7 +360,8 @@ export const runTurnEngine = (
   ): number => {
     const target = unitMap.get(targetId);
     if (!target || target.hp <= 0) return 0;
-    const actual = Math.min(target.hp, Math.max(0, Math.round(amount)));
+    // 数值取整归公式层（combat-aftermath 04 N1）：此处只做 hp 钳制，不重复取整。
+    const actual = Math.min(target.hp, Math.max(0, amount));
     target.hp -= actual;
     dispatchEvent('damageTaken', {
       unitId: targetId,
@@ -378,7 +383,8 @@ export const runTurnEngine = (
   ): number => {
     const target = unitMap.get(targetId);
     if (!target || target.hp <= 0) return 0;
-    const actual = Math.min(target.maxHp - target.hp, Math.max(0, Math.round(amount)));
+    // 数值取整归公式层（combat-aftermath 04 N1）：此处只做 maxHp 钳制，不重复取整。
+    const actual = Math.min(target.maxHp - target.hp, Math.max(0, amount));
     if (actual <= 0) return 0;
     target.hp += actual;
     dispatchEvent('healingTaken', {
@@ -401,6 +407,10 @@ export const runTurnEngine = (
   };
 
   const summonUnit = (snapshot: BattleUnitSnapshot): BattleUnitRuntime => {
+    if (unitMap.has(snapshot.id)) {
+      // 防覆盖校验（combat-hygiene 05 / T#16）：召唤 id 与已有单位冲突会静默顶替原单位，直接抛错。
+      throw new Error(`summonUnit: duplicate unit id '${snapshot.id}'`);
+    }
     const unit = cloneSnapshotUnit(snapshot, nextEntryOrder++);
     unitMap.set(unit.id, unit);
     queue.push(unit.id);
@@ -469,14 +479,17 @@ export const runTurnEngine = (
       // 已行动单位本轮锁定，保证一轮只行动一次。
       sep++;
 
+      // 快照制判定（combat-aftermath 02 D1）：行动资格在 turnStart 主时机派发「之前」读取一次，
+      // 本回合内保持不变。眩晕等控制在此刻生效；随后 turnStart 触发器才递减时长——
+      // 因此 duration=N 严格跳过 N 个自身回合（先判定后递减）。
+      const canAct = canActFn(unit, runtime);
+
       settleTiming('turnStart', unit);
       if (forcedEnd) break;
 
       // 回合开始前结算后死亡（如反伤/效果致死）→ 跳过其后所有主时机。
       if (unit.hp <= 0) continue;
 
-      // canAct 在回合开始前结算后判定一次，本回合内保持不变；先判死亡，再判 canAct。
-      const canAct = canActFn(unit, runtime);
       if (canAct) {
         settleTiming('turnActive', unit);
         if (forcedEnd) break;

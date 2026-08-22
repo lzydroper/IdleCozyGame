@@ -55,8 +55,8 @@ export const applyPassiveAbilities = (
   units: readonly BattleUnitRuntime[]
 ): void => {
   for (const unit of units) {
-    const abilities = unit.abilities as unknown as ResolvedAbility[];
-    for (const ability of abilities) {
+    // BattleUnitRuntime.abilities 已是 ResolvedAbility[]（combat-entity 类型收口），无需强转（A#1 残余清理）。
+    for (const ability of unit.abilities) {
       if (ability.activation !== 'passive' || !ability.passive) continue;
       const buffId = passiveBuffId(ability.id);
       const instance: BuffInstance = {

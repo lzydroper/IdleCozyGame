@@ -25,7 +25,7 @@ import { applyPassiveAbilities, collectPassiveBuffConfigs } from './abilityPassi
 import { createAbilityRuntime } from './abilityRuntime';
 import { getStamina, tryConsumeStamina } from './stamina';
 import { createBattleContext, type BattleContext } from './battleContext';
-import { createBuffTriggerHooks } from './buffRuntime';
+import { canActWithBuffs, createBuffTriggerHooks } from './buffRuntime';
 import { BUFF_CONFIGS } from './buffTypes';
 import { buildEntity, toTurnUnit, type BattleEntity, type EntityRecipe } from './battleEntity';
 import { enemyConfigToEntity } from './entityFactory';
@@ -113,10 +113,8 @@ const enemiesToEntities = (enemyIds: string[]): BattleEntity[] =>
     return enemyConfigToEntity(en);
   });
 
-export const canActWithBuffs = (battle: BattleContext, unitId: string): boolean => {
-  const stun = battle.getBuff(unitId, 'stun');
-  return !stun || (stun.duration ?? 0) <= 0;
-};
+// 「无法行动」汇总已收口到 Buff 模块（combat-aftermath 02 D3 / Turn #14）；此处仅转发兼容旧导入。
+export { canActWithBuffs };
 
 export interface CreateBattleOptions {
   maxRounds?: number;
@@ -133,8 +131,15 @@ export const createBattle = (
 ): { run: () => BattleResult; context: BattleContext } => {
   const units: BattleUnitSnapshot[] = entities.map(toTurnUnit);
   const passiveConfigs = collectPassiveBuffConfigs(units.flatMap(unit => unit.abilities));
-  let battle!: BattleContext;
-  const abilityRuntime = createAbilityRuntime(() => battle);
+  // context 契约（combat-hygiene 05 / En#7）：run 前访问抛明确错误，而非暴露未初始化值。
+  let battleStore: BattleContext | undefined;
+  const getBattle = (): BattleContext => {
+    if (!battleStore) {
+      throw new Error('createBattle: context 在 run() 之前不可用——请先调用 run()');
+    }
+    return battleStore;
+  };
+  const abilityRuntime = createAbilityRuntime(getBattle);
   const maxRounds = options.maxRounds ?? COMBAT_CONFIG.maxBattleRounds;
   const rng = options.rng ?? Math.random;
 
@@ -143,16 +148,15 @@ export const createBattle = (
       maxRounds,
       rng,
       setup(runtime) {
-        battle = createBattleContext(
+        battleStore = createBattleContext(
           runtime,
-          {},
           { ...BUFF_CONFIGS, ...passiveConfigs },
-          createBuffTriggerHooks(() => battle)
+          createBuffTriggerHooks(getBattle)
         );
-        applyPassiveAbilities(battle, runtime.getLivingUnits());
+        applyPassiveAbilities(battleStore, runtime.getLivingUnits());
         abilityRuntime.setup(runtime);
       },
-      canAct: (unit) => canActWithBuffs(battle, unit.id),
+      canAct: (unit) => canActWithBuffs(getBattle(), unit.id),
       performAction: abilityRuntime.performAction
     });
     return {
@@ -167,8 +171,8 @@ export const createBattle = (
 
   return {
     run,
-    get context() {
-      return battle;
+    get context(): BattleContext {
+      return getBattle();
     }
   };
 };
@@ -277,7 +281,12 @@ const settleBattle = (
  * 战败 → 小队全员进入重伤（禁止上阵），无掉落无经验。
  * 战斗结果（结算 + 日志）写入 state.combat 与 state.logs。
  */
-export type EncounterBattleFailure = 'no_stamina' | 'no_party' | 'wounded' | 'unknown_event';
+export type EncounterBattleFailure =
+  | 'no_stamina'
+  | 'no_party'
+  | 'wounded'
+  | 'unknown_event'
+  | 'idle_active'; // 探索/挂机状态层互斥（combat-hygiene 06 / O#8）
 
 export interface EncounterBattleOutcome {
   settlement: CombatSettlement | null;
@@ -298,6 +307,11 @@ export const resolveEncounterBattleUpdate = (
 ): UpdateResult<EncounterBattleOutcome> => {
   const battleConfig = REALITY_EVENTS[encounterId]?.battle;
   if (!battleConfig) return { state, result: { settlement: null, failure: 'unknown_event' } };
+
+  // 状态层互斥（combat-hygiene 06 / O#8）：挂机运行中禁止探索遭遇扣体，防止绕过 UI 并发消耗。
+  if (state.combat?.idle?.regionId || state.combat?.idle?.levelId) {
+    return { state, result: { settlement: null, failure: 'idle_active' } };
+  }
 
   const party = (state.party || []).filter(id => isKnownHero(state, id));
   if (party.length === 0) return { state, result: { settlement: null, failure: 'no_party' } };

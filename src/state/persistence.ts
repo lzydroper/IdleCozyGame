@@ -179,7 +179,12 @@ export const createSaveThrottle = (intervalMs: number): ((now: number) => boolea
 };
 
 export const saveState = (username: string, state: GameState): void => {
-  localStorage.setItem(getSaveKey(username), JSON.stringify(state));
+  // 体力浮点平滑自回（如 99.3333…），存档出口规范化两位小数保持整洁可读（combat-hygiene 01 / Offline #7）。
+  const payload: GameState =
+    typeof state.stamina === 'number' && Number.isFinite(state.stamina)
+      ? { ...state, stamina: Math.round(state.stamina * 100) / 100 }
+      : state;
+  localStorage.setItem(getSaveKey(username), JSON.stringify(payload));
 };
 
 // 新开局 / 无存档时的全新状态

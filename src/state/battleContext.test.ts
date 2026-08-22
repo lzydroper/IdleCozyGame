@@ -6,7 +6,7 @@ import type { Modifier } from './modifier';
 const fakeRuntime = (): TurnRuntime => ({
   round: 0,
   rng: () => 0.5,
-  register: () => {},
+  register: () => () => {},
   unregister: () => {},
   dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
   dealDamage: () => 0,

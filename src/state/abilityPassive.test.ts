@@ -25,7 +25,7 @@ const makeUnit = (id: string, abilities: ResolvedAbility[] = []): BattleUnitRunt
 const fakeRuntime = (units: BattleUnitRuntime[]): TurnRuntime => ({
   round: 0,
   rng: () => 0.5,
-  register: () => {},
+  register: () => () => {},
   unregister: () => {},
   dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
   dealDamage: () => 0,
@@ -97,7 +97,7 @@ describe('applyPassiveAbilities', () => {
     const ability = passiveAbility();
     const unit = makeUnit('hero1', [ability]);
     const config = compilePassiveBuffConfig(ability);
-    const battle = createBattleContext(fakeRuntime([unit]), {}, { [config.buffId]: config });
+    const battle = createBattleContext(fakeRuntime([unit]), { [config.buffId]: config });
 
     applyPassiveAbilities(battle, [unit]);
 

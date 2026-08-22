@@ -6,16 +6,8 @@
 
 import type { BattleContext, BuffInstance, BuffTriggerHooks } from './battleContext';
 import type { TurnSubscriber, TurnTimingContext } from './turnEngine';
-import { getBuffConfig, type BuffTrigger } from './buffTypes';
+import { buffModifierSource, getBuffConfig, type BuffTrigger } from './buffTypes';
 import { resolveEffect, type EffectInstance } from './effectSystem';
-
-interface Registration {
-  key: string;
-  unitId: string | null;
-  subscriber: TurnSubscriber;
-}
-
-const registrations = new WeakMap<BuffInstance, Registration[]>();
 
 export const triggerOwnerId = (instance: BuffInstance, trigger: BuffTrigger): string =>
   trigger.unitRef === 'source' ? instance.sourceId : instance.targetId;
@@ -59,7 +51,7 @@ export const settleBuffTrigger = (
 ): void => {
   const effects = buildBuffEffects(instance, timingCtx);
   if (effects.some(effect => effect.kind === 'statModify')) {
-    ctx.removeModifiersBySource(instance.targetId, instance.id);
+    ctx.removeModifiersBySource(instance.targetId, buffModifierSource(instance));
   }
   for (const effect of effects) {
     resolveEffect(ctx, effect);
@@ -84,31 +76,37 @@ export const settleBuffTrigger = (
   }
 };
 
+/** 控制类 Buff 集合：命中任一即无法行动（combat-aftermath 02 D3 集合化，新控制类只需注册于此）。 */
+export const CONTROL_BUFF_KINDS: readonly string[] = ['stun'];
+
+/**
+ * 「无法行动」汇总（Turn #14 收口：从 combat.ts 迁入 Buff 模块）。
+ * 判定语义 = 快照时点读当前 duration（combat-aftermath 02 D1）：duration>0 即不可行动。
+ */
+export const canActWithBuffs = (battle: BattleContext, unitId: string): boolean =>
+  !CONTROL_BUFF_KINDS.some(kind => {
+    const buff = battle.getBuff(unitId, kind);
+    return !!buff && (buff.duration ?? 0) > 0;
+  });
+
 export const createBuffTriggerHooks = (
   getCtx: () => BattleContext
 ): BuffTriggerHooks => ({
   register(instance) {
     const config = getBuffConfig(instance.buffId);
-    if (!config) return;
+    if (!config) return [];
 
-    const records: Registration[] = [];
+    // 注册/注销经句柄对称完成（combat-hygiene 04 / Turn #7）；句柄由 BattleContext 按实例 id 保管，
+    // 本模块不再维护模块级注册表。
+    const handles: Array<() => void> = [];
     for (const trigger of config.triggers) {
       const unitId = triggerOwnerId(instance, trigger);
       const subscriber: TurnSubscriber = (timingCtx) => {
         if (!canTriggerBuff(instance, trigger, timingCtx.key, timingCtx.unit?.id ?? null)) return;
         settleBuffTrigger(getCtx(), instance, timingCtx);
       };
-      getCtx().turn.register(trigger.timing, subscriber, unitId);
-      records.push({ key: trigger.timing, unitId, subscriber });
+      handles.push(getCtx().turn.register(trigger.timing, subscriber, unitId));
     }
-    registrations.set(instance, records);
-  },
-
-  unregister(instance) {
-    const records = registrations.get(instance) ?? [];
-    for (const record of records) {
-      getCtx().turn.unregister(record.key, record.subscriber, record.unitId);
-    }
-    registrations.delete(instance);
+    return handles;
   }
 });

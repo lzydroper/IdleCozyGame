@@ -49,7 +49,8 @@ export interface EffectInstance {
   chainKey?: string;
 }
 
-export type EffectInterruption = 'resisted' | 'negated' | 'invalid' | 'recursion';
+/** 中断码（combat-aftermath 02 D2）：zeroed=时长归零/自然到期；sourceConflict=不同 source 挂同种 Buff 被拒。 */
+export type EffectInterruption = 'resisted' | 'negated' | 'invalid' | 'recursion' | 'zeroed' | 'sourceConflict';
 
 export interface EffectResult {
   applied: boolean;
@@ -296,14 +297,20 @@ const executeStun = (
     targetId: effect.targetId,
     stacks: 1,
     duration: params.duration,
-    values: {}
+    // 承载传入数值/元数据（combat-hygiene 04 / B§4.3），不再恒空对象。
+    values: { duration: params.duration }
   };
   if (params.duration <= 0) {
-    return { applied: false, interrupted: 'negated', values: {} };
+    // 时长归零 = 自然到期，区别于免疫（combat-aftermath 02 D2）。
+    return { applied: false, interrupted: 'zeroed', values: {} };
   }
   const application = ctx.applyBuff(effect.targetId, buff);
   if (!application.applied) {
-    return { applied: false, interrupted: 'negated', values: { stacks: application.stacks } };
+    return {
+      applied: false,
+      interrupted: application.reason === 'conflict' ? 'sourceConflict' : 'invalid',
+      values: { stacks: application.stacks }
+    };
   }
   return { applied: true, values: { stacks: application.stacks } };
 };
@@ -369,7 +376,12 @@ const executeApplyBuff = (
 ): EffectResult => {
   const application = ctx.applyBuff(effect.targetId, params.buffInstance);
   if (!application.applied) {
-    return { applied: false, interrupted: 'negated', values: { stacks: application.stacks } };
+    // 冲突拒绝与免疫分开编码（combat-aftermath 02 D2）；未知 buffId 属配置错误 → invalid。
+    return {
+      applied: false,
+      interrupted: application.reason === 'conflict' ? 'sourceConflict' : 'invalid',
+      values: { stacks: application.stacks }
+    };
   }
   return { applied: true, values: { stacks: application.stacks } };
 };

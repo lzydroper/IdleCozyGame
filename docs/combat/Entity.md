@@ -15,3 +15,8 @@
 英雄则是在此基础上额外拥有天赋(talent)、羁绊(bond)、装备(equipment)、成长(包括levelMilestones)、后勤(Duty)等
 
 敌人则是在此基础上**不派生父子类**：boss、nightmare 均为敌人的特殊实例，通过配置标记区分（如 `kind: 'boss' | 'nightmare'`），一视同仁地参与战斗
+
+## 装配口径（combat-aftermath 05 拍板）
+
+- **basic_attack = 缺省注入 + 可显式覆盖**：装配层默认为英雄/敌人/召唤物注入普通攻击；实体配置可显式覆盖（替换为其他能力）或清空（表达「没有普通攻击」的单位），三种实体同一规则；非法覆盖由配置校验兜底。
+- **入口统一方向**：敌人 / 梦魇 / 召唤物三入口收敛为单一公开入口 `resolveEntity(configRef | id | config)`，随召唤闭环批实施；`enemiesToEntities` 转为内部实现细节。

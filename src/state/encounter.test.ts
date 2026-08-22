@@ -6,6 +6,7 @@ import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { resolveEncounterBattleUpdate, fleeEncounterUpdate } from './combat';
+import { EMPTY_IDLE_STATE } from './levelCombat';
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
@@ -100,6 +101,21 @@ describe('resolveEncounterBattleUpdate (探索战斗汇合)', () => {
     });
     const { state: next, result } = resolveEncounterBattleUpdate(state, 'encounter_wasteland_pack');
     expect(result.failure).toBe('no_stamina');
+    expect(next).toBe(state);
+  });
+
+  it('rejects battle while level idle combat is running (combat-hygiene 06 / O#8 状态层互斥)', () => {
+    const state = makeState({
+      party: ['nova'],
+      heroes: { nova: createInitialHero('nova') },
+      exploration: inExploration({ realityEncounterId: 'encounter_wasteland_pack' }),
+      combat: {
+        ...INITIAL_STATE.combat,
+        idle: { ...EMPTY_IDLE_STATE, regionId: 'wasteland_entrance', levelId: 'wasteland_entrance_1', startTime: 1000 }
+      }
+    });
+    const { state: next, result } = resolveEncounterBattleUpdate(state, 'encounter_wasteland_pack');
+    expect(result.failure).toBe('idle_active');
     expect(next).toBe(state);
   });
 
