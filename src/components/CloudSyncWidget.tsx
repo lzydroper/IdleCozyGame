@@ -4,6 +4,8 @@ import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { useAuth } from '../hooks/useAuth';
 import { Cloud, UploadCloud, DownloadCloud, Lock, User, LogOut, RefreshCw } from 'lucide-react';
+import { sanitizeStateForCloud } from '../state/persistence';
+import { EMPTY_IDLE_STATE } from '../state/levelCombat';
 
 const CloudSyncWidget: React.FC = () => {
   const { setState, currentUser, syncCloudCharacters, isSyncing, setIsSyncing } = useGame();
@@ -103,9 +105,10 @@ const CloudSyncWidget: React.FC = () => {
       const charName = getCharacterName(currentUser);
       const parsedData = JSON.parse(serializedData);
 
-      // 需求 3：上传时剥离 logs —— 日志仅本地保存，不上传云端（节省存档体积）
-      const uploadData = { ...parsedData };
-      delete uploadData.logs;
+      // 上传前剥离 logs 并归一化置空挂机运行时 combat.idle（ADR-0020）
+      const sanitized = sanitizeStateForCloud(parsedData);
+      const uploadData = { ...sanitized };
+      delete (uploadData as Record<string, unknown>).logs;
 
       const { error } = await client.from('saves').upsert({
         id: currentUser,
@@ -142,8 +145,8 @@ const CloudSyncWidget: React.FC = () => {
     const charName = getCharacterName(currentUser);
     showConfirm({
       title: "从云端覆写数据",
-      message: `确定要从云端拉取并覆盖【${charName}】的本地生存数据吗？此操作将丢失本地未上传的进度！`,
-      confirmText: "确认拉取",
+      message: `确定要从云端拉取并覆盖【${charName}】的本地生存数据吗？此操作将丢失本地未上传的进度，并停止当前的挂机战斗！`,
+      confirmText: "确认拉取并覆写",
       onConfirm: async () => {
         setIsSyncing(true);
         try {
@@ -163,6 +166,10 @@ const CloudSyncWidget: React.FC = () => {
             // 补全 username 属性
             if (!saveObj.username) {
               saveObj.username = charName;
+            }
+            // 云端存档已清空 combat.idle，确保本地挂机状态重置
+            if (saveObj.combat) {
+              saveObj.combat = { ...saveObj.combat, idle: EMPTY_IDLE_STATE };
             }
             const dataStr = JSON.stringify(saveObj);
             localStorage.setItem(`aether_garden_save_${currentUser}`, dataStr);

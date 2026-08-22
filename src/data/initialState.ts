@@ -97,7 +97,14 @@ export const INITIAL_STATE: GameState = {
     idle: {
       regionId: null,
       levelId: null,
-      startTime: null
+      startTime: null,
+      accumulatedSeconds: 0,
+      totalBattles: 0,
+      totalVictories: 0,
+      totalDefeats: 0,
+      totalDraws: 0,
+      totalDrops: {},
+      totalSoulEchoes: 0
     }
   },
   exploration: {

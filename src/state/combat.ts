@@ -23,6 +23,7 @@ import { getAbilityConfig } from '../data/abilities';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
 import { applyPassiveAbilities, collectPassiveBuffConfigs } from './abilityPassive';
 import { createAbilityRuntime } from './abilityRuntime';
+import { getStamina, tryConsumeStamina } from './stamina';
 import { createBattleContext, type BattleContext } from './battleContext';
 import { createBuffTriggerHooks } from './buffRuntime';
 import { BUFF_CONFIGS } from './buffTypes';
@@ -224,7 +225,7 @@ const settleBattle = (
   cfg: BattleSettleConfig,
   rng: () => number
 ): BattleSettlement => {
-  const nextStamina = state.stamina - cfg.staminaCost;
+  const nextStamina = tryConsumeStamina(state, cfg.staminaCost).state.stamina;
   let nextInventory = { ...state.inventory };
   const nextEquipmentInventory = { ...state.equipmentInventory };
   const nextBag = { ...(state.exploration.realityBag || {}) };
@@ -301,7 +302,7 @@ export const resolveEncounterBattleUpdate = (
   const party = (state.party || []).filter(id => isKnownHero(state, id));
   if (party.length === 0) return { state, result: { settlement: null, failure: 'no_party' } };
   if (party.some(id => state.heroes[id].wounded)) return { state, result: { settlement: null, failure: 'wounded' } };
-  if ((state.stamina || 0) < COMBAT_CONFIG.encounterStaminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
+  if (getStamina(state) < COMBAT_CONFIG.encounterStaminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
     party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
@@ -472,7 +473,3 @@ export const consumeExpTomesUpdate = (state: GameState, heroId: string, count: n
     result: true
   };
 };
-
-// 体力恢复（tick 与离线结算共用）：随时间线性恢复，封顶体力上限
-export const recoverStamina = (stamina: number, maxStamina: number, elapsedSeconds: number): number =>
-  Math.min(maxStamina, stamina + elapsedSeconds / COMBAT_CONFIG.staminaRegenSeconds);

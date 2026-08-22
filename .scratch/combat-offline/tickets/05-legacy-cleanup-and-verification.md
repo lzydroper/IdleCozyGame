@@ -4,11 +4,11 @@
 
 **Blocked by:** 02 — 挂机战斗离线暂停与离线报告清理, 03 — 在线挂机连续战斗与中断状态机收敛, 04 — 本地持久化与云端保存隔离及覆写确认
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] 从 `COMBAT_CONFIG`（`src/data/combatConfig.ts`）中清理 `maxIdleSettlementSeconds` 等无用离线批量结算配置。
-- [ ] 清理废弃的 `IdleCombatReport` 类型及未引用的辅助代码。
-- [ ] 审查并重构所有与离线挂机、体力计算相关的历史测试用例，删除过时测试，保持新契约测试完整覆盖。
-- [ ] 运行 `npm run build`（`tsc -b && vite build`）通过。
-- [ ] 运行 `npm run lint`（`oxlint`）无报错。
-- [ ] 运行 `npx vitest run` 全量单测通过。
+- [x] 从 `COMBAT_CONFIG`（`src/data/combatConfig.ts`）中清理 `maxIdleSettlementSeconds` 等无用离线批量结算配置。
+- [x] 清理废弃的 `IdleCombatReport` 类型及未引用的辅助代码。
+- [x] 审查并重构所有与离线挂机、体力计算相关的历史测试用例，删除过时测试，保持新契约测试完整覆盖。
+- [x] 运行 `npm run build`（`tsc -b && vite build`）通过。
+- [x] 运行 `npm run lint`（`oxlint`）无报错。
+- [x] 运行 `npx vitest run` 全量单测通过。

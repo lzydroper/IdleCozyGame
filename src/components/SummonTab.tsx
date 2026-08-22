@@ -315,10 +315,6 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                   );
                 }
 
-                // 重复英雄：碎片图标与背包一致（soul=专属碎片 shard_<hero>，resonance=通用共鸣碎片）
-                const shardIconId =
-                  outcome.shardType === 'soul' && outcome.heroId ? `shard_${outcome.heroId}` : 'resonance_shard';
-
                 return (
                   <div
                     key={idx}

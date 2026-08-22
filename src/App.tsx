@@ -12,6 +12,7 @@ import CloudSyncWidget from './components/CloudSyncWidget';
 import { useToast } from './components/ToastSystem';
 import { useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
+import { sanitizeStateForCloud } from './state/persistence';
 import GameIcon from './components/GameIcon';
 import { ITEMS_CONFIG } from './data/items';
 import {
@@ -33,7 +34,6 @@ import {
   Package,
   Zap,
   Dumbbell,
-  Swords,
   ClipboardList,
   Wrench
 } from 'lucide-react';
@@ -526,12 +526,15 @@ const App: React.FC = () => {
                 const savedData = localStorage.getItem(`aether_garden_save_${currentUser}`);
                 if (savedData) {
                   const parsed = JSON.parse(savedData);
+                  const sanitized = sanitizeStateForCloud(parsed);
+                  const uploadData = { ...sanitized };
+                  delete (uploadData as Record<string, unknown>).logs;
                   await supabase.from('saves').upsert({
                     id: currentUser,
                     user_id: user.id,
                     username: newCharName.trim(),
                     days: parsed.player?.days || 1,
-                    data: parsed,
+                    data: uploadData,
                     updated_at: new Date().toISOString()
                   });
                 }
@@ -896,7 +899,7 @@ const App: React.FC = () => {
                     <span>体力: +{state.lastOfflineReport.recoveredStamina}</span>
                   </div>
                 )}
-                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 && state.lastOfflineReport.recoveredStamina === 0 && !state.lastOfflineReport.idleCombat ? (
+                {Object.keys(state.lastOfflineReport.recoveredItems).length === 0 && state.lastOfflineReport.recoveredEnergy === 0 && state.lastOfflineReport.recoveredStamina === 0 ? (
                   <div className="col-span-2 text-center text-zinc-600 py-2 text-[10px]">
                     本次无资源挂机产出 (升级设施或指派英雄以启动自动产出)
                   </div>
@@ -928,44 +931,6 @@ const App: React.FC = () => {
                       <span>{text}</span>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* 挂机战斗报告（ticket 08：确认式离线挂机结算掉落与经验） */}
-            {state.lastOfflineReport.idleCombat && (
-              <div className="bg-zinc-950/60 p-3 rounded-2xl border border-amber-500/20 space-y-2">
-                <h3 className="text-[10px] text-amber-400 font-bold border-b border-zinc-900 pb-1 flex items-center gap-1">
-                  <Swords className="w-3 h-3" />
-                  挂机战斗报告 —— {state.lastOfflineReport.idleCombat.locationName}
-                </h3>
-                <div className="text-[10px] text-zinc-300 font-mono flex flex-col gap-1">
-                  <span>
-                    战斗 {state.lastOfflineReport.idleCombat.battlesFought} 场：
-                    胜利 {state.lastOfflineReport.idleCombat.victories} · 平局 {state.lastOfflineReport.idleCombat.draws} · 战败 {state.lastOfflineReport.idleCombat.defeats}
-                  </span>
-                  {Object.keys(state.lastOfflineReport.idleCombat.drops).length > 0 && (
-                    <span className="flex flex-wrap gap-1">
-                      {Object.entries(state.lastOfflineReport.idleCombat.drops).map(([itemId, qty]) => (
-                        <span key={itemId} className="px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-950/40 text-amber-300 flex items-center gap-1">
-                          <GameIcon type="item" id={itemId} className="w-3 h-3" />
-                          {ITEMS_CONFIG[itemId]?.name || itemId} ×{qty}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                  <span>
-                    灵魂残响 ×{state.lastOfflineReport.idleCombat.soulEchoesGained} · 经验 ×{state.lastOfflineReport.idleCombat.expPerHero}/英雄 · 体力 -{state.lastOfflineReport.idleCombat.staminaConsumed}
-                  </span>
-                  {state.lastOfflineReport.idleCombat.autoStopped ? (
-                    <span className={state.lastOfflineReport.idleCombat.stopReason === 'defeat' ? 'text-red-400 font-bold' : 'text-amber-400 font-bold'}>
-                      {state.lastOfflineReport.idleCombat.stopReason === 'defeat'
-                        ? '小队战败全员重伤，挂机已自动停止，需纳米修复剂治愈。'
-                        : '体力耗尽，挂机已自动停止，恢复体力后可重新开启。'}
-                    </span>
-                  ) : (
-                    <span className="text-zinc-500">挂机仍在进行中，下次离线将继续战斗。</span>
-                  )}
                 </div>
               </div>
             )}

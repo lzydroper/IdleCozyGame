@@ -1,4 +1,4 @@
-import type { GameState, GreenhouseSlot, IdleCombatReport, OfflineReport } from '../types/game';
+import type { GameState, GreenhouseSlot, OfflineReport } from '../types/game';
 import type { FacilityType } from '../data/facilities';
 import { AUTO_RECIPES } from '../data/autoRecipes';
 import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './facility';
@@ -10,12 +10,9 @@ import { findRegionExpedition } from '../data/regionSelectors';
 import { rollDropEntries } from './dropEngine';
 import { CROPS_CONFIG } from '../data/crops';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { COMBAT_CONFIG } from '../data/combatConfig';
-import { getRegion, getLevel } from '../data/regionSelectors';
-import { settleLevelIdleUpdate } from './levelCombat';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
-import { recoverStamina } from './combat';
+import { recoverStaminaByTime } from './stamina';
 import { addItemRewards } from './equipment';
 
 // 纯函数：计算离线或Tick生长时间扣减
@@ -62,74 +59,13 @@ export function calculateDetailedOfflineProgress(
   let currentEnergy = state.player.energy;
 
   // 1. 体力离线恢复（随时间恢复，封顶体力上限）
-  const currentStamina = state.stamina || 0;
-  const nextStamina = recoverStamina(currentStamina, state.maxStamina || COMBAT_CONFIG.maxStamina, actualSeconds);
-  const recoveredStamina = Math.max(0, Math.floor(nextStamina - currentStamina));
+  const staminaRecovery = recoverStaminaByTime(state, actualSeconds);
+  const nextStamina = staminaRecovery.state.stamina ?? 0;
+  const recoveredStamina = staminaRecovery.recoveredInt;
   if (recoveredStamina > 0) {
     reportLogs.push(`战斗体力在挂机期间恢复了 ${recoveredStamina} 点。`);
   }
-
-  // 1.5. 确认式离线挂机战斗结算（ticket 08）：仅当玩家在某区域主动开启挂机后才推进；
-  // 体力耗尽或小队战败自动停止；未开启时离线不产生任何战斗结算
   let currentHeroes = { ...state.heroes };
-  let currentCombat = state.combat;
-  let finalStamina = nextStamina;
-  let idleCombat: IdleCombatReport | null = null;
-  const idleRegionId = state.combat?.idle?.regionId ?? null;
-  const idleLevelId = state.combat?.idle?.levelId ?? null;
-  if (idleRegionId && idleLevelId) {
-    const { state: afterIdle, result } = settleLevelIdleUpdate(
-      { ...state, stamina: nextStamina },
-      actualSeconds,
-      rng
-    );
-    finalStamina = afterIdle.stamina;
-    currentInventory = afterIdle.inventory;
-    currentEquipmentInventory = afterIdle.equipmentInventory;
-    currentHeroes = afterIdle.heroes;
-    currentCombat = afterIdle.combat;
-
-    if (result.battlesFought > 0 || result.autoStopped) {
-      const region = getRegion(idleRegionId);
-      const level = getLevel(idleRegionId, idleLevelId);
-      const zoneName = region && level ? `${region.name} · ${level.name}` : idleRegionId;
-      idleCombat = {
-        regionId: idleRegionId,
-        locationName: zoneName,
-        battlesFought: result.battlesFought,
-        victories: result.victories,
-        defeats: result.defeats,
-        draws: result.draws,
-        drops: { ...result.drops },
-        soulEchoesGained: result.soulEchoesGained,
-        expPerHero: 0,
-        staminaConsumed: result.staminaConsumed,
-        autoStopped: result.autoStopped,
-        stopReason: result.stopReason
-      };
-      if (result.battlesFought > 0) {
-        const dropsText = Object.entries(result.drops)
-          .map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} ×${qty}`)
-          .join('、');
-        const stopText = result.autoStopped
-          ? (result.stopReason === 'defeat'
-            ? '，小队战败全员重伤，挂机已自动停止'
-            : '，体力耗尽，挂机已自动停止')
-          : '';
-        reportLogs.push(
-          `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories} / 平 ${result.draws} / 败 ${result.defeats}），` +
-          `获得 ${dropsText || '少量材料'}、灵魂残响 ×${result.soulEchoesGained}${stopText}。`
-        );
-      } else {
-        reportLogs.push(
-          `挂机已自动停止：${result.stopReason === 'defeat' ? '小队战败全员重伤' : '体力耗尽'}，未进行战斗，剩余体力保留。`
-        );
-      }
-    } else if (currentCombat.idle?.regionId === null) {
-      // 防御性停止（区域/关卡未知、队伍为空/重伤）：无战斗结算，仅日志提示
-      reportLogs.push('挂机因队伍状态异常自动停止（关卡未知/队伍为空/重伤），未产生战斗结算。');
-    }
-  }
 
   // 2. 发电机与回收站自动产出
   let energyGained = 0;
@@ -203,7 +139,7 @@ export function calculateDetailedOfflineProgress(
 
       let scavengedCount: Record<string, number> = {};
       for (let i = 0; i < scavengeTicks; i++) {
-        const rolled = rollDropEntries(loc.lootTable, Math.random, explorerBonuses.lootChanceBonus);
+        const rolled = rollDropEntries(loc.lootTable, rng, explorerBonuses.lootChanceBonus);
         Object.entries(rolled).forEach(([itemId, qty]) => {
           scavengedCount[itemId] = (scavengedCount[itemId] || 0) + qty;
         });
@@ -320,11 +256,11 @@ export function calculateDetailedOfflineProgress(
   let updatedState: GameState = {
     ...state,
     player: { ...state.player, energy: currentEnergy },
-    stamina: finalStamina,
+    stamina: nextStamina,
     inventory: currentInventory,
     equipmentInventory: currentEquipmentInventory,
     heroes: currentHeroes,
-    combat: currentCombat,
+    combat: state.combat,
     greenhouse: finalGreenhouse,
     shelter: {
       ...state.shelter,
@@ -366,8 +302,7 @@ export function calculateDetailedOfflineProgress(
       recoveredStamina,
       recoveredItems,
       logs: reportLogs,
-      completedUpgrades: upgraded.completed.length > 0 ? upgraded.completed.map(c => `${c.text}（离线期间完成）`) : undefined,
-      idleCombat
+      completedUpgrades: upgraded.completed.length > 0 ? upgraded.completed.map(c => `${c.text}（离线期间完成）`) : undefined
     }
   };
 }

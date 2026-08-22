@@ -13,8 +13,7 @@ import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
 import { GAME_CONSTANTS } from '../data/gameConstants';
-import { COMBAT_CONFIG } from '../data/combatConfig';
-import { recoverStamina } from './combat';
+import { recoverStaminaByTime } from './stamina';
 import { settleLevelIdleUpdate } from './levelCombat';
 
 interface TickLogEntry {
@@ -27,7 +26,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   // 13 号 R3 + 04 号 04b：无活跃系统且无需推进时返回原引用（React setState bailout，消除每秒整树重渲染）。
   // 活跃系统 = 发电机/回收站/温室作物/流水线设施/挂机探索/梦魇冻结；另需推进天数。
   // 体力每 staminaRegenSeconds 秒恢复 1 点：仅当体力**跨整点**（floor 进位）时才需推进，
-  // 未跨整点的亚秒级恢复不触发渲染（recoverStamina 按 elapsedSeconds 累计，跳过不丢进度）。
+  // 未跨整点的亚秒级恢复不触发渲染（recoverStaminaByTime 按 elapsedSeconds 累计，跳过不丢进度）。
   const hasActiveSystems =
     prev.shelter.generatorLevel > 0 ||
     prev.shelter.recyclerLevel > 0 ||
@@ -37,16 +36,12 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     (prev.shelter.expedition.locationId != null && prev.shelter.assignedExplorerId != null) ||
     (prev.combat?.idle?.regionId != null) ||
     prev.activeAlert.type === 'dream_leak';
-  const staminaNotFull = (prev.stamina ?? 0) < (prev.maxStamina || COMBAT_CONFIG.maxStamina);
   const elapsedSeconds = Math.max(0, Math.floor((now - prev.lastTick) / 1000));
-  const nextStamina = recoverStamina(
-    prev.stamina ?? 0,
-    prev.maxStamina || COMBAT_CONFIG.maxStamina,
-    elapsedSeconds
-  );
-  const staminaCrossedInteger = Math.floor(nextStamina) > Math.floor(prev.stamina ?? 0);
+  const staminaRecovery = recoverStaminaByTime(prev, elapsedSeconds);
+  const staminaCrossedInteger = staminaRecovery.recoveredInt > 0;
+  const nextStamina = staminaRecovery.state.stamina ?? 0;
   const needsDayTick = now - prev.dayStartTime >= GAME_CONSTANTS.GAME_DAY_SECONDS * 1000;
-  if (!hasActiveSystems && !(staminaNotFull && staminaCrossedInteger) && !needsDayTick) {
+  if (!hasActiveSystems && !staminaCrossedInteger && !needsDayTick) {
     return prev;
   }
 

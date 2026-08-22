@@ -10,6 +10,7 @@ import { heroToCombatant, simulateBattle, enemyConfigToEntity } from './combat';
 import { rollDropEntries } from './dropEngine';
 import { aggregateBonus } from './bonds';
 import { addItemRewards } from './equipment';
+import { getStamina, tryConsumeStamina } from './stamina';
 import type { UpdateResult } from './types';
 
 // === combat-level ticket 02：Region/Level 战斗状态与掉落结算内核（Expand） ===
@@ -267,7 +268,7 @@ export const settleLevelBattle = (
   level: LevelConfig,
   rng: () => number
 ): LevelSettlement => {
-  const nextStamina = state.stamina - level.staminaCost;
+  const nextStamina = tryConsumeStamina(state, level.staminaCost).state.stamina ?? 0;
   let nextInventory = { ...state.inventory };
   let nextEquipmentInventory: Record<string, unknown> = { ...state.equipmentInventory };
   const nextHeroes = { ...state.heroes };
@@ -347,7 +348,7 @@ export const startLevelCombatUpdate = (
   const party = getParty(state);
   if (party.length === 0) return { state, result: { settlement: null, failure: 'no_party' } };
   if (party.some((id) => state.heroes[id].wounded)) return { state, result: { settlement: null, failure: 'wounded' } };
-  if ((state.stamina || 0) < level.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
+  if (getStamina(state) < level.staminaCost) return { state, result: { settlement: null, failure: 'no_stamina' } };
 
   const battle = simulateBattle(
     party.map((id) => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
@@ -407,12 +408,11 @@ export const startLevelIdleUpdate = (
   const party = getParty(state);
   if (party.length === 0) return { state, result: { ok: false, failure: 'no_party' } };
   if (party.some((id) => state.heroes[id].wounded)) return { state, result: { ok: false, failure: 'wounded' } };
-  if ((state.stamina || 0) < level.staminaCost) return { state, result: { ok: false, failure: 'no_stamina' } };
+  if (getStamina(state) < level.staminaCost) return { state, result: { ok: false, failure: 'no_stamina' } };
 
   return {
     state: {
       ...state,
-      stamina: state.stamina - level.staminaCost,
       combat: {
         ...state.combat,
         idle: {
@@ -518,7 +518,7 @@ export const settleLevelIdleUpdate = (
         ...state,
         combat: {
           ...state.combat,
-          idle: { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+          idle: EMPTY_IDLE_STATE
         }
       },
       result: emptyLevelIdleOutcome()
@@ -526,14 +526,13 @@ export const settleLevelIdleUpdate = (
   }
 
   const totalSeconds = (idle.accumulatedSeconds || 0) + elapsedSeconds;
-  const cappedSeconds = Math.min(totalSeconds, COMBAT_CONFIG.maxIdleSettlementSeconds);
-  const staminaBattles = Math.floor((state.stamina || 0) / level.staminaCost);
+  const staminaBattles = Math.floor(getStamina(state) / level.staminaCost);
   if (staminaBattles === 0) {
     if (!autoStopOnEmptyStamina) {
       return {
         state: {
           ...state,
-          combat: { ...state.combat, idle: { ...idle, accumulatedSeconds: cappedSeconds } }
+          combat: { ...state.combat, idle: { ...idle, accumulatedSeconds: totalSeconds } }
         },
         result: { ...emptyLevelIdleOutcome(), battlesFought: 0 }
       };
@@ -543,7 +542,7 @@ export const settleLevelIdleUpdate = (
         ...state,
         combat: {
           ...state.combat,
-          idle: { regionId: null, levelId: null, startTime: null, accumulatedSeconds: 0 }
+          idle: EMPTY_IDLE_STATE
         }
       },
       result: { ...emptyLevelIdleOutcome(), autoStopped: true, stopReason: 'stamina' as const }
@@ -551,13 +550,10 @@ export const settleLevelIdleUpdate = (
   }
 
   const battleCount = Math.min(
-    Math.floor(cappedSeconds / COMBAT_CONFIG.battleDurationSeconds),
+    Math.floor(totalSeconds / COMBAT_CONFIG.battleDurationSeconds),
     staminaBattles
   );
-  const leftoverSeconds = Math.min(
-    totalSeconds - battleCount * COMBAT_CONFIG.battleDurationSeconds,
-    COMBAT_CONFIG.maxIdleSettlementSeconds
-  );
+  const leftoverSeconds = totalSeconds - battleCount * COMBAT_CONFIG.battleDurationSeconds;
 
   const outcome = emptyLevelIdleOutcome();
   let next = state;
@@ -601,7 +597,7 @@ export const settleLevelIdleUpdate = (
       outcome.draws++;
     }
 
-    if (settled.nextStamina < level.staminaCost && autoStopOnEmptyStamina) {
+    if (Math.floor(settled.nextStamina) < level.staminaCost && autoStopOnEmptyStamina) {
       outcome.autoStopped = true;
       outcome.stopReason = 'stamina';
       break;

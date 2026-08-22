@@ -1,4 +1,4 @@
-import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, CombatSettlement } from '../types/game';
+import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, CombatSettlement, CombatIdleState } from '../types/game';
 import type { FacilityType } from '../data/facilities';
 import { FACILITIES_CONFIG } from '../data/facilities';
 import { calculateDetailedOfflineProgress } from './offline';
@@ -7,12 +7,73 @@ import { getTalentNodes } from './talents';
 import { getActualDuration, getMaxUpgradeLevel } from './facility';
 import { isWearableEquipment } from './equipment';
 import { AUTO_RECIPES } from '../data/autoRecipes';
+import { EMPTY_IDLE_STATE } from './levelCombat';
 
 // 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值
 const normalizeSlot = (item: EquippedItem | null | undefined): EquippedItem | null => {
   if (!item || typeof item !== 'object') return null;
   const enhance = Number.isFinite(item.enhance) ? Math.min(Math.max(item.enhance, 0), 30) : 0;
   return { itemId: item.itemId, enhance, mythic: !!item.mythic };
+};
+
+// 挂机状态归一化（combat-offline ticket 04）：防损坏存档与坏数据，校验字段有效性
+const normalizeIdleState = (idle: unknown, fallback: CombatIdleState): CombatIdleState => {
+  if (!idle || typeof idle !== 'object') {
+    return fallback;
+  }
+  const i = idle as Record<string, unknown>;
+  const regionId = typeof i.regionId === 'string' && i.regionId ? i.regionId : null;
+  const levelId = typeof i.levelId === 'string' && i.levelId ? i.levelId : null;
+  if (!regionId || !levelId) {
+    return EMPTY_IDLE_STATE;
+  }
+
+  const startTime = typeof i.startTime === 'number' && Number.isFinite(i.startTime) ? i.startTime : null;
+  const accumulatedSeconds =
+    typeof i.accumulatedSeconds === 'number' && Number.isFinite(i.accumulatedSeconds)
+      ? Math.max(0, i.accumulatedSeconds)
+      : 0;
+  const totalBattles = typeof i.totalBattles === 'number' && Number.isFinite(i.totalBattles) ? Math.max(0, i.totalBattles) : 0;
+  const totalVictories = typeof i.totalVictories === 'number' && Number.isFinite(i.totalVictories) ? Math.max(0, i.totalVictories) : 0;
+  const totalDefeats = typeof i.totalDefeats === 'number' && Number.isFinite(i.totalDefeats) ? Math.max(0, i.totalDefeats) : 0;
+  const totalDraws = typeof i.totalDraws === 'number' && Number.isFinite(i.totalDraws) ? Math.max(0, i.totalDraws) : 0;
+  const totalSoulEchoes = typeof i.totalSoulEchoes === 'number' && Number.isFinite(i.totalSoulEchoes) ? Math.max(0, i.totalSoulEchoes) : 0;
+
+  const totalDrops: Record<string, number> = {};
+  if (i.totalDrops && typeof i.totalDrops === 'object') {
+    Object.entries(i.totalDrops as Record<string, unknown>).forEach(([k, v]) => {
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+        totalDrops[k] = Math.floor(v);
+      }
+    });
+  }
+
+  return {
+    regionId,
+    levelId,
+    startTime,
+    accumulatedSeconds,
+    totalBattles,
+    totalVictories,
+    totalDefeats,
+    totalDraws,
+    totalDrops,
+    totalSoulEchoes
+  };
+};
+
+/**
+ * 云端存档过滤（ADR-0020）：上传至 Supabase 前清空挂机运行时 combat.idle，
+ * 保证云端仅保留静态进度，挂机仅存在于本地运行时。
+ */
+export const sanitizeStateForCloud = (state: GameState): GameState => {
+  return {
+    ...state,
+    combat: {
+      ...state.combat,
+      idle: EMPTY_IDLE_STATE
+    }
+  };
 };
 
 // 天赋投入归一化（ticket 11）：仅保留该英雄树中的已知节点，等级钳制 0..maxLevel，防损坏存档
@@ -381,13 +442,8 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
     clearedLevels: (parsed.combat && parsed.combat.clearedLevels) || initialState.combat.clearedLevels,
     // 旧回放（actions/hpTrack）已被事件流取代：无法消费的旧结算直接丢弃，防止战斗区黑屏
     lastSettlement: normalizeLastSettlement(parsed.combat && parsed.combat.lastSettlement),
-    // 离线挂机开关（ticket 08）：旧存档缺失时回退未挂机
-    idle: {
-      ...initialState.combat.idle,
-      ...((parsed.combat && parsed.combat.idle) || {}),
-      regionId: (parsed.combat?.idle && typeof parsed.combat.idle.regionId === 'string') ? parsed.combat.idle.regionId : null,
-      levelId: (parsed.combat?.idle && typeof parsed.combat.idle.levelId === 'string') ? parsed.combat.idle.levelId : null
-    }
+    // 挂机状态归一化（combat-offline ticket 04）：旧存档或坏数据安全回退
+    idle: normalizeIdleState(parsed.combat?.idle, initialState.combat?.idle || EMPTY_IDLE_STATE)
   }
   };
 };

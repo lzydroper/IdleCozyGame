@@ -4,10 +4,10 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] 新增 `src/state/stamina.ts`，提供标准纯函数 API：`getStamina`（整型读取）、`getMaxStamina`、`recoverStaminaByTime`（按流逝秒数自然恢复并封顶上限）、`tryConsumeStamina`（不足返回 `ok: false`，充足扣除返回新 state）、`grantStamina`（道具增补，可选突破上限）。
-- [ ] `GameState` 中体力状态保留 `stamina: number`（浮点精度）与 `maxStamina: number`，外部业务逻辑严禁直接增减 `state.stamina`。
-- [ ] `src/state/tick.ts`（在线恢复）、`src/state/offline.ts`（离线恢复）、`src/state/levelCombat.ts`（主动/挂机开战扣体）全面收敛改用新体力 API。
-- [ ] 删除 `combat.ts` 中散落的 `recoverStamina` 旧函数与冗余算术。
-- [ ] 编写 `src/state/stamina.test.ts` 覆盖自然恢复、扣除成功/失败、溢出奖励等用例，测试全绿。
+- [x] 新增 `src/state/stamina.ts`，提供标准纯函数 API：`getStamina`（整型读取）、`getMaxStamina`、`recoverStaminaByTime`（按流逝秒数自然恢复并封顶上限）、`tryConsumeStamina`（不足返回 `ok: false`，充足扣除返回新 state）、`grantStamina`（道具增补，可选突破上限）。
+- [x] `GameState` 中体力状态保留 `stamina: number`（浮点精度）与 `maxStamina: number`，外部业务逻辑严禁直接增减 `state.stamina`。
+- [x] `src/state/tick.ts`（在线恢复）、`src/state/offline.ts`（离线恢复）、`src/state/levelCombat.ts`（主动/挂机开战扣体）全面收敛改用新体力 API。
+- [x] 删除 `combat.ts` 中散落的 `recoverStamina` 旧函数与冗余算术。
+- [x] 编写 `src/state/stamina.test.ts` 覆盖自然恢复、扣除成功/失败、溢出奖励等用例，测试全绿。

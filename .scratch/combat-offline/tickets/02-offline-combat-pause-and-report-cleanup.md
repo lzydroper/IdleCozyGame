@@ -4,10 +4,10 @@
 
 **Blocked by:** 01 — 体力系统独立模块与标准 API 服务化
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] `calculateDetailedOfflineProgress`（`src/state/offline.ts`）彻底移除 `settleLevelIdleUpdate` 调用与战斗模拟，`state.combat` 原样直通返回。
-- [ ] 避难所基建升级、发电机/回收站产出、流水线加工、温室生长与自动收割、远征派遣拾荒均严格保全离线推进。
-- [ ] `OfflineReport` 接口（`src/types/game.ts`）删除 `idleCombat` 字段，`App.tsx` 离线弹窗移除「挂机战斗报告」区块，保留体力自然恢复与物资明细。
-- [ ] 离线前若处于挂机中，`state.combat.idle` 在离线结算后原样保留不变，玩家上线后在线 Tick 自动继续。
-- [ ] 单元测试覆盖离线暂停行为，验证离线不产生战斗掉落、不扣除战斗体力（体力正常自然恢复至上限）。
+- [x] `calculateDetailedOfflineProgress`（`src/state/offline.ts`）彻底移除 `settleLevelIdleUpdate` 调用与战斗模拟，`state.combat` 原样直通返回。
+- [x] 避难所基建升级、发电机/回收站产出、流水线加工、温室生长与自动收割、远征派遣拾荒均严格保全离线推进。
+- [x] `OfflineReport` 接口（`src/types/game.ts`）删除 `idleCombat` 字段，`App.tsx` 离线弹窗移除「挂机战斗报告」区块，保留体力自然恢复与物资明细。
+- [x] 离线前若处于挂机中，`state.combat.idle` 在离线结算后原样保留不变，玩家上线后在线 Tick 自动继续。
+- [x] 单元测试覆盖离线暂停行为，验证离线不产生战斗掉落、不扣除战斗体力（体力正常自然恢复至上限）。

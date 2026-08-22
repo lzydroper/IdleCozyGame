@@ -6,8 +6,7 @@ export interface CombatConfig {
   maxBattleRounds: number;   // 单场战斗回合上限（超时按战败处理）
   expPerLevel: number;       // 升到下一级所需经验 = 当前等级 * expPerLevel
   encounterStaminaCost: number; // 探索战斗遭遇的体力消耗（ticket 06，ADR-0002 战斗耗体力）
-  battleDurationSeconds: number; // 离线挂机（ticket 08）每场战斗所需秒数
-  maxIdleSettlementSeconds: number; // 离线挂机结算时间上限（ticket 08，配置项）
+  battleDurationSeconds: number; // 在线挂机每场战斗所需秒数
   baseEventIntervalMs: number;  // 战斗与挂机信息流基准单步间隔（毫秒，1x 速度基准，倍速以此做除法）
 }
 
@@ -19,6 +18,5 @@ export const COMBAT_CONFIG: CombatConfig = {
   expPerLevel: 100,
   encounterStaminaCost: 5,
   battleDurationSeconds: 5,
-  maxIdleSettlementSeconds: 8 * 3600,
   baseEventIntervalMs: 600
 };

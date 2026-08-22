@@ -261,21 +261,4 @@ export interface OfflineReport {
   recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
   logs: string[];
   completedUpgrades?: string[];            // 离线期间完成的基建升级（如 "魔导发电机 升级至 Lv.3"）
-  idleCombat?: IdleCombatReport | null;    // 确认式离线挂机战斗结算（ticket 08）
-}
-
-// 离线挂机战斗结算报告（ticket 08）：重连弹窗展示掉落与经验
-export interface IdleCombatReport {
-  regionId: string;
-  locationName: string;
-  battlesFought: number;   // 本次离线实际战斗场数
-  victories: number;       // 胜利场数
-  defeats: number;         // 战败场数（战败即自动停止挂机）
-  draws: number;           // 平局场数
-  drops: Record<string, number>;     // 累计掉落（已入账）
-  soulEchoesGained: number;          // 累计灵魂残响
-  expPerHero: number;                // 每位上阵英雄累计获得经验
-  staminaConsumed: number;           // 挂机战斗消耗的体力
-  autoStopped: boolean;              // 是否自动停止（体力耗尽 / 战败）
-  stopReason?: 'stamina' | 'defeat';
 }
