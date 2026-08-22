@@ -38,6 +38,8 @@ export interface BattleContext {
   removeBuff(targetId: string, buffId: string): boolean;
   getBuff(targetId: string, buffId: string): BuffInstance | undefined;
   listBuffs(targetId: string): BuffInstance[];
+  /** 运行时追加 Buff 配置（combat-summon-closure 03）：召唤单位自带被动时即时注册。 */
+  registerBuffConfigs(configs: Record<string, BuffConfig>): void;
 
   setFlag(unitId: string, flag: BattleFlag, value: number): void;
   getFlag(unitId: string, flag: BattleFlag): number;
@@ -186,6 +188,11 @@ export const createBattleContext = (
 
     listBuffs(targetId) {
       return [...(buffsByUnit.get(targetId) ?? [])];
+    },
+
+    registerBuffConfigs(configs) {
+      // 运行时配置追加（combat-summon-closure 03 / A#6）：召唤单位自带被动时即时注册。
+      buffConfigs = { ...buffConfigs, ...configs };
     },
 
     setFlag(unitId, flag, value) {

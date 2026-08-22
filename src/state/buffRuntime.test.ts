@@ -104,6 +104,7 @@ describe('Buff 触发运行时', () => {
       },
       applyHeal: () => 0,
       applyHpDelta: () => 0,
+      generateUnitId: (base) => base,
       updateInitiative: () => {},
       summonUnit: () => unitB,
       requestEnd: () => {},

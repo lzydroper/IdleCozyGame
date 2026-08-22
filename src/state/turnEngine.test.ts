@@ -543,6 +543,28 @@ describe('边界与参数校验（combat-hygiene 05 / T#16）', () => {
     expect(() => runtime.summonUnit(snap('s1', 'enemy', 50, 10))).not.toThrow();
   });
 
+  it('summon 事件来源 = 显式 sourceId（combat-summon-closure 01 / T#6）', () => {
+    const rt = createTurnRuntime([snap('a', 'hero', 100, 30)], { maxRounds: 0 });
+    const summoned: Array<{ source: string | null; unit: string | null; slot: number }> = [];
+    rt.register('summon', ctx => {
+      summoned.push({
+        source: ctx.source?.id ?? null,
+        unit: ctx.unit?.id ?? null,
+        slot: (ctx.data as { targetSlotIndex?: number }).targetSlotIndex ?? -1
+      });
+    });
+    rt.summonUnit(snap('s1', 'hero', 50, 10), 'a');
+    expect(summoned).toEqual([{ source: 'a', unit: 's1', slot: 1 }]); // 英雄侧已有 a → 推荐槽位 1
+  });
+
+  it('generateUnitId：base 空闲原样返回，冲突追加 -N（combat-summon-closure 02 / E#3）', () => {
+    const rt = createTurnRuntime([snap('s1', 'hero', 50, 10)], { maxRounds: 0 });
+    expect(rt.generateUnitId('fresh')).toBe('fresh');
+    expect(rt.generateUnitId('s1')).toBe('s1-1');
+    rt.summonUnit(snap('s1-1', 'hero', 50, 10));
+    expect(rt.generateUnitId('s1')).toBe('s1-2');
+  });
+
   it('空输入立即终止：英雄侧无人按既有规则判负', () => {
     const result = runTurnEngine([], { maxRounds: 2 });
     expect(result.outcome).toBe('defeat');

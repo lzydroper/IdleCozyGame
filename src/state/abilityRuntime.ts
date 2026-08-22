@@ -9,6 +9,7 @@ import { selectTargets, type AbilityTargetContext } from './abilityTargeting';
 import { compileAbilityEffects } from './abilityCompiler';
 import { resolveEffect } from './effectSystem';
 import type { ResolvedAbility } from './abilityTypes';
+import { applyPassiveAbilities, collectPassiveBuffConfigs } from './abilityPassive';
 
 const toTargetContext = (battle: BattleContext): AbilityTargetContext => ({
   getLivingUnits: (faction) => battle.turn.getLivingUnits(faction),
@@ -35,10 +36,25 @@ export const createAbilityRuntime = (getBattle: () => BattleContext): AbilityRun
   };
 
   const setup = (runtime: TurnRuntime): void => {
+    const registerCooldownTick = (unitId: string, rt: TurnRuntime): void => {
+      const subscriber: TurnSubscriber = () => tickCooldowns(unitId);
+      rt.register('turnEnd', subscriber, unitId);
+    };
     for (const unit of runtime.getLivingUnits()) {
-      const subscriber: TurnSubscriber = () => tickCooldowns(unit.id);
-      runtime.register('turnEnd', subscriber, unit.id);
+      registerCooldownTick(unit.id, runtime);
     }
+    // 召唤落地 seam（combat-summon-closure 03 / A#6）：战斗中入场的单位
+    // 补注册冷却 tick，并编译/挂载其自带被动（含运行时注册被动配置）。
+    runtime.register('summon', timingCtx => {
+      const unit = timingCtx.unit;
+      if (!unit) return;
+      registerCooldownTick(unit.id, runtime);
+      const battle = getBattle();
+      battle.registerBuffConfigs(
+        collectPassiveBuffConfigs(unit.abilities, id => battle.resolveStats(id))
+      );
+      applyPassiveAbilities(battle, [unit]);
+    });
   };
 
   const performAction = (unit: BattleUnitRuntime, _runtime: TurnRuntime): void => {

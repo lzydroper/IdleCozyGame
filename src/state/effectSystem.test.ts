@@ -257,6 +257,8 @@ describe('summon 效果', () => {
     expect(ctx.turn.getUnit('s1')).toBeDefined();
     expect(ctx.turn.getUnit('s1-1')).toBeDefined();
     expect(events.some(e => e.key === 'summon' && e.unitId === 's1')).toBe(true);
+    // 来源透传（combat-summon-closure 01 / T#6）：召唤者 = effect.sourceId。
+    expect(events.some(e => e.key === 'summon' && e.sourceId === 'a')).toBe(true);
   });
 
   it('effect.count 修正从来源读取，count=1 时修正后创建对应数量', () => {

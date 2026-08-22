@@ -102,13 +102,19 @@ export const makeFakeRuntime = (units: BattleUnitRuntime[] = []): FakeRuntimeHan
       return actual;
     },
     applyHpDelta: () => 0,
+    generateUnitId: base => {
+      if (!map.has(base)) return base;
+      let n = 1;
+      while (map.has(`${base}-${n}`)) n++;
+      return `${base}-${n}`;
+    },
     updateInitiative: () => {},
-    summonUnit: snapshot => {
+    summonUnit: (snapshot, sourceId = null) => {
       const unit = snapshot as BattleUnitRuntime;
       map.set(unit.id, unit);
       emit('summon', {
         unitId: unit.id,
-        sourceId: unit.id,
+        sourceId: sourceId ?? unit.id,
         targetId: null,
         data: { initiative: snapshot.initiative }
       });

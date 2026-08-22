@@ -9,7 +9,7 @@ import type { BattleContext, BuffInstance } from './battleContext';
 import { applyEffectModifiers, type Modifier } from './modifier';
 import { COMBAT_DAMAGE_CONFIG } from '../data/statConfig';
 import { toTurnUnit } from './battleEntity';
-import { createEntityFromConfig, type EntityConfigRef } from './entityFactory';
+import { resolveEntity, type EntityConfigRef } from './entityFactory';
 
 export type DamageElement = 'physical' | 'arcane' | 'mechanical' | 'nightmare' | 'spirit' | 'astral' | 'soulseal';
 
@@ -316,10 +316,12 @@ const executeSummon = (
   const source = ctx.turn.getUnit(effect.sourceId);
   const side = source?.side ?? 'enemy';
   for (let i = 0; i < count; i++) {
-    const id = i === 0 ? effect.targetId : `${effect.targetId}-${i}`;
-    const entity = createEntityFromConfig(configRef, { side, id });
+    // id 分配收口（combat-summon-closure 02 / E#3）：首个沿用 effect.targetId（冲突即抛错），
+    // 后续由运行时分配唯一 id，弃用 targetId-N 手工拼接。
+    const requestedId = i === 0 ? effect.targetId : ctx.turn.generateUnitId(effect.targetId);
+    const entity = resolveEntity(configRef, { side, id: requestedId });
     const named = i === 0 ? entity : { ...entity, name: `${entity.name}${i + 1}` };
-    ctx.turn.summonUnit(toTurnUnit(named));
+    ctx.turn.summonUnit(toTurnUnit(named), effect.sourceId); // 来源透传（T#6）
   }
   return { applied: true, values: { count } };
 };

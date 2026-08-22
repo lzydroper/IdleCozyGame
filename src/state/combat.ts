@@ -28,6 +28,7 @@ import { createBattleContext, type BattleContext } from './battleContext';
 import { canActWithBuffs, createBuffTriggerHooks } from './buffRuntime';
 import { BUFF_CONFIGS } from './buffTypes';
 import { buildEntity, toTurnUnit, type BattleEntity, type EntityRecipe } from './battleEntity';
+import { resolveEntity } from './entityFactory';
 import { enemyConfigToEntity } from './entityFactory';
 
 export { enemyConfigToEntity };
@@ -105,12 +106,11 @@ export const heroToCombatant = (
   });
 };
 
-// 敌人 id → BattleEntity。
+// 敌人 id → BattleEntity（统一走 resolveEntity 公开入口，combat-summon-closure 04 / M4）。
 const enemiesToEntities = (enemyIds: string[]): BattleEntity[] =>
   enemyIds.map(id => {
-    const en = ENEMY_CONFIGS[id];
-    if (!en) throw new Error(`Unknown enemy id: ${id}`);
-    return enemyConfigToEntity(en);
+    if (!ENEMY_CONFIGS[id]) throw new Error(`Unknown enemy id: ${id}`);
+    return resolveEntity(id);
   });
 
 // 「无法行动」汇总已收口到 Buff 模块（combat-aftermath 02 D3 / Turn #14）；此处仅转发兼容旧导入。

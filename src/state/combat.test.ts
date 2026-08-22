@@ -21,6 +21,8 @@ import { ENEMY_CONFIGS } from '../data/enemies';
 import { createBattleContext, type BattleContext } from './battleContext';
 import { BUFF_CONFIGS } from './buffTypes';
 import { createBuffTriggerHooks } from './buffRuntime';
+import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
+import { createAbilityRuntime } from './abilityRuntime';
 import { createTurnRuntime, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime } from './turnEngine';
 
 describe('BattleEntity 装配（统一实体）', () => {
@@ -65,6 +67,7 @@ const fakeTurnRuntime = (): TurnRuntime => ({
   dealDamage: () => 0,
   applyHeal: () => 0,
   applyHpDelta: () => 0,
+  generateUnitId: (base) => base,
   updateInitiative: () => {},
   summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', side: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
   requestEnd: () => {},
@@ -112,6 +115,40 @@ describe('canActWithBuffs', () => {
     // r1: a 行动，b 快照见 dur=2 跳过 → 递减为 1；r2: a 行动，b 见 1 跳过 → 归零移除；r3: b 恢复行动。
     expect(actions).toEqual(['a', 'a', 'a', 'b']);
     expect(ctx.getBuff('b', 'stun')).toBeUndefined();
+  });
+});
+
+describe('召唤落地 seam（combat-summon-closure 03 / A#6）', () => {
+  it('战斗中召唤的单位自动挂载自带被动（含运行时配置注册）', () => {
+    const passive = resolveAbilityConfig({
+      id: 'lifesteal_test',
+      name: '吸血',
+      description: '',
+      activation: 'passive',
+      passive: {
+        triggers: [{ timing: 'attackAfter', unitRef: 'source' }],
+        effects: [{ kind: 'heal', params: { amount: { kind: 'flat', value: 5 } } }]
+      }
+    }) as ResolvedAbility;
+
+    const hero: BattleUnitSnapshot = {
+      id: 'a', name: 'a', side: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5 }
+    };
+    const engine = createTurnRuntime([hero], { maxRounds: 1, performAction: () => {} });
+    let ctx!: BattleContext;
+    ctx = createBattleContext(engine, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+    const abilityRuntime = createAbilityRuntime(() => ctx);
+    abilityRuntime.setup(engine);
+
+    // 模拟战斗中召唤：summon 事件同步触发落地 seam。
+    engine.summonUnit({
+      id: 's1', name: 's1', side: 'hero', hp: 50, maxHp: 50, initiative: 10,
+      abilities: [passive],
+      stats: { attack: 5, defense: 0, maxHp: 50, maxMp: 0, critRate: 0, critDmg: 1.5 }
+    }, 'a');
+
+    expect(ctx.getBuff('s1', 'passive:lifesteal_test')).toBeDefined();
   });
 });
 

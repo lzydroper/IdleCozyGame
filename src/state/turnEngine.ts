@@ -150,8 +150,10 @@ export interface TurnRuntime {
   applyHpDelta(targetId: string, delta: number, sourceId?: string | null, data?: Record<string, unknown>): number;
   /** 先机变动：只重排本轮未行动区间；已行动单位本轮锁定。 */
   updateInitiative(unitId: string, initiative: number): void;
-  /** 召唤物入场：进入本轮未行动区按先机排位，本轮必行动一次。 */
-  summonUnit(snapshot: BattleUnitSnapshot): BattleUnitRuntime;
+  /** 召唤物入场：进入本轮未行动区按先机排位，本轮必行动一次。sourceId = 真正的召唤者（事件来源）。 */
+  summonUnit(snapshot: BattleUnitSnapshot, sourceId?: string | null): BattleUnitRuntime;
+  /** 唯一 id 分配（E#3）：base 可用则原样返回，否则追加 -N 直到空闲。 */
+  generateUnitId(base: string): string;
   /** 强制结束标记 + 结果（victory/defeat/draw），循环下一检查点即终止。 */
   requestEnd(outcome: BattleOutcome): void;
   getUnit(id: string): BattleUnitRuntime | undefined;
@@ -447,7 +449,15 @@ export const createTurnRuntime = (
     }
   };
 
-  const summonUnit = (snapshot: BattleUnitSnapshot): BattleUnitRuntime => {
+  // 唯一 id 分配（combat-summon-closure 02 / E#3）：base 冲突时追加 -N 直到空闲。
+  const generateUnitId = (base: string): string => {
+    if (!unitMap.has(base)) return base;
+    let n = 1;
+    while (unitMap.has(`${base}-${n}`)) n++;
+    return `${base}-${n}`;
+  };
+
+  const summonUnit = (snapshot: BattleUnitSnapshot, sourceId: string | null = null): BattleUnitRuntime => {
     if (unitMap.has(snapshot.id)) {
       // 防覆盖校验（combat-hygiene 05 / T#16）：召唤 id 与已有单位冲突会静默顶替原单位，直接抛错。
       throw new Error(`summonUnit: duplicate unit id '${snapshot.id}'`);
@@ -458,9 +468,19 @@ export const createTurnRuntime = (
     sortPendingSection();
     dispatchEvent('summon', {
       unitId: unit.id,
-      sourceId: unit.id,
+      // 来源修正（combat-summon-closure 01 / T#6）：sourceId = 真正的召唤者；缺省（无主召唤）才是自身。
+      sourceId: sourceId ?? unit.id,
       targetId: null,
-      data: { initiative: unit.initiative }
+      data: {
+        initiative: unit.initiative,
+        // 槽位推荐（combat-summon-closure 05 / U#4 引擎侧）：召唤者同侧第 N 个空位启发式，
+        // 英雄侧占 0-2、敌方侧占 3-5；表现层批次④可按阵型细化。
+        targetSlotIndex: (() => {
+          const sideBase = unit.side === 'hero' ? 0 : 3;
+          const sameSideCount = getLivingUnits(unit.side).length;
+          return Math.min(5, sideBase + Math.max(0, sameSideCount - 1));
+        })()
+      }
     });
     return unit;
   };
@@ -482,6 +502,7 @@ export const createTurnRuntime = (
     applyHpDelta,
     updateInitiative,
     summonUnit,
+    generateUnitId,
     requestEnd,
     getUnit,
     getLivingUnits
