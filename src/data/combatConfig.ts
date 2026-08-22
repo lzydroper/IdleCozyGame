@@ -20,5 +20,5 @@ export const COMBAT_CONFIG: CombatConfig = {
   encounterStaminaCost: 5,
   battleDurationSeconds: 5,
   maxIdleSettlementSeconds: 8 * 3600,
-  baseEventIntervalMs: 500
+  baseEventIntervalMs: 1000
 };
