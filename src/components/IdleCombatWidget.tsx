@@ -2,9 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { getRegion, getLevel } from '../data/regionSelectors';
 import { ITEMS_CONFIG } from '../data/items';
-import { HEROES_CONFIG } from '../data/heroes';
 import { ENEMY_CONFIGS } from '../data/enemies';
+import { formatBattleEvent } from '../state/battleEventPresentation';
+import { heroToCombatant, simulateBattle, enemyConfigToEntity } from '../state/combat';
+import { aggregateBonus } from '../state/bonds';
+import { settleLevelBattle } from '../state/levelCombat';
 import type { IdleSummaryData } from '../state/levelCombat';
+import type { GameState } from '../types/game';
 import GameIcon from './GameIcon';
 import { formatDuration } from '../utils/time';
 
@@ -17,8 +21,7 @@ export interface IdleCombatWidgetProps {
 interface StreamEvent {
   id: string;
   text: string;
-  timestamp: number;
-  kind: 'start' | 'action' | 'victory' | 'defeat' | 'system';
+  kind: 'start' | 'round' | 'turn' | 'action' | 'victory' | 'defeat' | 'next_round';
 }
 
 export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
@@ -26,7 +29,7 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   levelId,
   onStop
 }) => {
-  const { state, stopLevelIdle } = useGame();
+  const { state, setState, stopLevelIdle } = useGame();
   const region = getRegion(regionId);
   const level = getLevel(regionId, levelId);
 
@@ -37,13 +40,13 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   );
 
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const prevEventsLengthRef = useRef<number>(0);
+  const queueRef = useRef<{ text: string; kind: StreamEvent['kind'] }[]>([]);
+  const isSimulatingRef = useRef<boolean>(false);
 
   const [streamEvents, setStreamEvents] = useState<StreamEvent[]>(() => [
     {
       id: 'init_start',
       text: '▶ 挂机已开启：队伍进入持续战斗循环...',
-      timestamp: startTime,
       kind: 'start'
     }
   ]);
@@ -60,84 +63,131 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
     return () => clearInterval(timer);
   }, [idle?.startTime, startTime]);
 
-  // 实时战术行动流：每 2 秒推入一条真实的技能施放/交战事件
+  // 战斗事件流步进播放与下一轮自动模拟推进
   useEffect(() => {
-    const partyIds = (state.party || []).filter((id) => HEROES_CONFIG[id]);
-    const activeHeroes = partyIds.length > 0 ? partyIds : ['nova'];
-    const enemies = level?.enemies || [{ enemyId: 'test_dummy', count: 1 }];
+    if (!region || !level || !idle?.regionId) return;
 
-    const actionTimer = setInterval(() => {
-      const heroId = activeHeroes[Math.floor(Math.random() * activeHeroes.length)];
-      const heroCfg = HEROES_CONFIG[heroId];
-      const enemyEntry = enemies[Math.floor(Math.random() * enemies.length)];
-      const enemyId = typeof enemyEntry === 'string' ? enemyEntry : enemyEntry?.enemyId || 'enemy';
-      const enemyCfg = ENEMY_CONFIGS[enemyId];
+    const playInterval = setInterval(() => {
+      // 1. 如果队列中有待播报的战斗事件，弹出一条推入显示流
+      if (queueRef.current.length > 0) {
+        const nextEvt = queueRef.current.shift()!;
+        setStreamEvents((prev) => [
+          ...prev.slice(-60),
+          {
+            id: `evt_${Date.now()}_${Math.random()}`,
+            text: nextEvt.text,
+            kind: nextEvt.kind
+          }
+        ]);
+        return;
+      }
 
-      const heroName = heroCfg?.name || heroId;
-      const enemyName = enemyCfg?.name || enemyId;
-      const dmg = 75 + Math.floor(Math.random() * 110);
+      // 2. 如果队列为空，且没有正在模拟计算，开始进行新一轮战斗模拟
+      if (isSimulatingRef.current) return;
 
-      const actionText =
-        Math.random() > 0.4
-          ? `【${heroName}】施放专属技能命中【${enemyName}】，造成 ${dmg} 点伤害！`
-          : `【${heroName}】战术突进，压制【${enemyName}】！`;
+      const party = (state.party || []).filter((id) => state.heroes[id] && !state.heroes[id].wounded);
+      if (party.length === 0) {
+        const outcome = stopLevelIdle();
+        onStop(outcome.summary);
+        return;
+      }
 
-      setStreamEvents((prev) => [
-        ...prev.slice(-45),
-        {
-          id: `act_${Date.now()}_${Math.random()}`,
-          text: actionText,
-          timestamp: Date.now(),
-          kind: 'action'
-        }
-      ]);
-    }, 2000);
+      // 检查体力是否足够开启新的一轮
+      if ((state.stamina || 0) < level.staminaCost) {
+        const outcome = stopLevelIdle();
+        onStop(outcome.summary);
+        return;
+      }
 
-    return () => clearInterval(actionTimer);
-  }, [state.party, level?.enemies]);
+      isSimulatingRef.current = true;
 
-  // 实时捕获全局战果与掉落结算日志
-  useEffect(() => {
-    const newCombatLogs = (state.logs || []).filter(
-      (log) =>
-        (log.type === 'combat' || log.type === 'logistics') &&
-        log.timestamp >= startTime - 5000 &&
-        (log.text.includes('挂机战斗') ||
-          log.text.includes('战斗胜利') ||
-          log.text.includes('战斗失败') ||
-          log.text.includes('自动停止') ||
-          log.text.includes('击退'))
-    );
-
-    if (newCombatLogs.length > 0) {
-      setStreamEvents((prev) => {
-        const existingIds = new Set(prev.map((e) => e.id));
-        const toAdd = newCombatLogs
-          .filter((log) => !existingIds.has(log.id))
-          .map((log) => {
-            const isVictory =
-              log.text.includes('胜利') || log.text.includes('胜 1') || log.text.includes('胜') || log.text.includes('击退');
-            const isDefeat =
-              log.text.includes('失败') || log.text.includes('败 1') || log.text.includes('战败') || log.text.includes('停止');
-            return {
-              id: log.id,
-              text: log.text,
-              timestamp: log.timestamp,
-              kind: (isVictory ? 'victory' : isDefeat ? 'defeat' : 'system') as StreamEvent['kind']
-            };
-          });
-        if (toAdd.length === 0) return prev;
-        return [...prev.slice(-45), ...toAdd];
+      // 模拟战斗
+      const heroEntities = party.map((id) =>
+        heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)
+      );
+      const enemyEntities = level.enemies.map((e: string | { enemyId: string; count?: number }) => {
+        const enemyId = typeof e === 'string' ? e : e.enemyId;
+        const cfg = ENEMY_CONFIGS[enemyId];
+        return enemyConfigToEntity(cfg || {
+          id: enemyId,
+          name: enemyId,
+          description: enemyId,
+          kind: 'enemy',
+          role: 'normal',
+          faction: 'mechanical',
+          baseAttributes: { maxHp: 20, attack: 2, defense: 0 }
+        });
       });
-    }
-  }, [state.logs, startTime]);
+
+      const battle = simulateBattle(heroEntities, enemyEntities);
+      const settled = settleLevelBattle(state, battle, party, regionId, level, Math.random);
+
+      // 将本场战斗的原始事件流格式化存入播放队列
+      const formattedLines: { text: string; kind: StreamEvent['kind'] }[] = [];
+      battle.events.forEach((evt) => {
+        const text = formatBattleEvent(evt);
+        const kind: StreamEvent['kind'] =
+          evt.key === 'roundStart' || evt.key === 'roundEnd'
+            ? 'round'
+            : evt.key === 'turnStart' || evt.key === 'turnEnd'
+            ? 'turn'
+            : 'action';
+        formattedLines.push({ text, kind });
+      });
+
+      if (battle.victory) {
+        formattedLines.push({ text: '战斗胜利！', kind: 'victory' });
+        formattedLines.push({ text: '▶ 开启下一轮战斗...', kind: 'next_round' });
+      } else {
+        formattedLines.push({ text: '战斗失败！小队全员重伤。', kind: 'defeat' });
+      }
+
+      queueRef.current = formattedLines;
+
+      // 结算战利品、体力扣减、场次累加与英雄血量继承
+      setState((prev) => {
+        const prevIdle = prev.combat?.idle;
+        if (!prevIdle?.regionId) return prev;
+
+        const mergedDrops = { ...(prevIdle.totalDrops || {}) };
+        Object.entries(settled.settlement.drops).forEach(([itemId, qty]) => {
+          mergedDrops[itemId] = (mergedDrops[itemId] || 0) + qty;
+        });
+
+        const nextIdle = {
+          ...prevIdle,
+          totalBattles: (prevIdle.totalBattles || 0) + 1,
+          totalVictories: (prevIdle.totalVictories || 0) + (battle.victory ? 1 : 0),
+          totalDefeats: (prevIdle.totalDefeats || 0) + (battle.partyWiped ? 1 : 0),
+          totalDrops: mergedDrops,
+          totalSoulEchoes: (prevIdle.totalSoulEchoes || 0) + settled.settlement.soulEchoes
+        };
+
+        return {
+          ...prev,
+          stamina: settled.nextStamina,
+          inventory: settled.nextInventory,
+          equipmentInventory: settled.nextEquipmentInventory as GameState['equipmentInventory'],
+          heroes: settled.nextHeroes,
+          combat: {
+            ...prev.combat,
+            idle: nextIdle,
+            lastSettlement: settled.settlement
+          }
+        };
+      });
+
+      isSimulatingRef.current = false;
+    }, 280);
+
+    return () => clearInterval(playInterval);
+  }, [region, level, idle?.regionId, state.party, state.stamina, state.heroes, state.equipment, state.inventory]);
 
   // 新事件流自动滚动到底部
   useEffect(() => {
-    if (streamEvents.length > prevEventsLengthRef.current && logContainerRef.current) {
+    if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-    prevEventsLengthRef.current = streamEvents.length;
   }, [streamEvents.length]);
 
   const handleStop = () => {
@@ -187,25 +237,12 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
         <div
           ref={logContainerRef}
           data-testid="idle-log-container"
-          className="h-24 bg-zinc-950/90 border border-zinc-800/80 rounded-xl p-2.5 text-xs space-y-1.5 overflow-y-auto log-scroll"
+          className="h-24 bg-zinc-950/90 border border-zinc-800/80 rounded-xl p-2.5 text-xs space-y-1 overflow-y-auto log-scroll"
         >
           {streamEvents.map((evt) => {
-            const timeStr = new Date(evt.timestamp).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            });
-            if (evt.kind === 'start') {
-              return (
-                <div key={evt.id} className="text-xs text-amber-400 font-bold">
-                  {evt.text}
-                </div>
-              );
-            }
             if (evt.kind === 'victory') {
               return (
                 <div key={evt.id} className="text-[11px] leading-relaxed text-emerald-300 font-bold">
-                  <span className="text-zinc-500 font-mono mr-1">[{timeStr}]</span>
                   {evt.text}
                 </div>
               );
@@ -213,14 +250,19 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
             if (evt.kind === 'defeat') {
               return (
                 <div key={evt.id} className="text-[11px] leading-relaxed text-red-400 font-bold">
-                  <span className="text-zinc-500 font-mono mr-1">[{timeStr}]</span>
+                  {evt.text}
+                </div>
+              );
+            }
+            if (evt.kind === 'next_round' || evt.kind === 'start') {
+              return (
+                <div key={evt.id} className="text-[11px] leading-relaxed text-amber-400 font-bold">
                   {evt.text}
                 </div>
               );
             }
             return (
               <div key={evt.id} className="text-[11px] leading-relaxed text-zinc-300">
-                <span className="text-zinc-500 font-mono mr-1">[{timeStr}]</span>
                 {evt.text}
               </div>
             );
@@ -263,3 +305,4 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
 };
 
 export default IdleCombatWidget;
+

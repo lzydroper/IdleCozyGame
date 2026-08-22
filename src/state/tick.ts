@@ -15,7 +15,6 @@ import { HEROES_CONFIG } from '../data/heroes';
 import { GAME_CONSTANTS } from '../data/gameConstants';
 import { COMBAT_CONFIG } from '../data/combatConfig';
 import { recoverStamina } from './combat';
-import { getRegion, getLevel } from '../data/regionSelectors';
 import { settleLevelIdleUpdate } from './levelCombat';
 
 interface TickLogEntry {
@@ -304,28 +303,12 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       finalStamina = afterIdle.stamina;
       finalInventory = afterIdle.inventory;
       finalHeroes = afterIdle.heroes;
-      const region = getRegion(idleRegionId);
-      const level = getLevel(idleRegionId, idleLevelId);
-      const zoneName = region && level ? `${region.name} · ${level.name}` : idleRegionId;
 
-      const dropItems = Object.entries(result.drops)
-        .filter(([, qty]) => qty > 0)
-        .map(([id, qty]) => `${ITEMS_CONFIG[id]?.name || id} ×${qty}`);
-      if (result.soulEchoesGained > 0) {
-        dropItems.push(`灵魂残响 ×${result.soulEchoesGained}`);
-      }
-      const lootText = dropItems.length > 0 ? `，获得 ${dropItems.join('、')}` : '';
-      const stopText = result.autoStopped && result.stopReason === 'defeat'
-        ? '，小队战败全员重伤，挂机已自动停止'
-        : '';
-
-      const logText = result.battlesFought === 1
-        ? (result.victories === 1
-            ? `挂机战斗：在【${zoneName}】战斗 1 场（胜 1）${lootText}。`
-            : result.defeats === 1
-            ? `挂机战斗：在【${zoneName}】战斗 1 场（败 1）${stopText}。`
-            : `挂机战斗：在【${zoneName}】战斗 1 场（平 1）。`)
-        : `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories} / 平 ${result.draws} / 败 ${result.defeats}）${lootText}${stopText}。`;
+      const logText = result.victories > 0
+        ? '战斗胜利！'
+        : result.defeats > 0
+        ? '战斗失败！小队全员重伤。'
+        : '战斗平局。';
 
       logsToAdd.push({ text: logText, type: 'combat' as const });
     }

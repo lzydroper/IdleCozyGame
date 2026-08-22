@@ -285,7 +285,7 @@ describe('applyTick 挂机在线推进（修复 09）', () => {
   it('在线结算一场后写入挂机战斗日志（修复：挂机日志不丢失）', () => {
     const state = tickSeconds(makeIdleState(), 5);
     // 挂机日志出现在最新日志中
-    expect(state.logs.some(l => l.text.includes('挂机战斗：在【') && l.text.includes('1 场'))).toBe(true);
+    expect(state.logs.some(l => l.text.includes('战斗胜利！'))).toBe(true);
   });
 
   it('体力不足一场时挂机保持等待，不自动停止（问题 4）', () => {

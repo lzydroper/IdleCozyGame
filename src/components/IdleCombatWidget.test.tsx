@@ -85,9 +85,8 @@ describe('IdleCombatWidget Component', () => {
     expect(dropsText).toContain('灵魂残响');
     expect(dropsText).toContain('40');
 
-    // 实时事件流窗口中显示历史战况
+    // 实时事件流窗口中显示初始循环战况
     expect(screen.getByText(/队伍进入持续战斗循环/)).toBeDefined();
-    expect(screen.getByText(/战斗胜利！小队在【废土边缘 · 荒野哨所】击退敌人/)).toBeDefined();
   });
 
   it('invokes stopLevelIdle and onStop callback with summary data when clicking stop button', () => {

@@ -526,21 +526,21 @@ describe('WildernessTab Component', () => {
     expect(confirmBtn.hasAttribute('disabled')).toBe(false);
     fireEvent.click(confirmBtn);
 
-    // 挂机状态横幅出现：不立即战斗、不消耗体力
+    // 挂机状态出现：首轮扣除体力
     expect(screen.getByText(/挂机中：/)).toBeDefined();
     expect(screen.getAllByText(/停止挂机/).length).toBeGreaterThan(0);
     let saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(saved.combat.idle.regionId).toBe('wasteland_entrance');
     expect(saved.combat.idle.levelId).toBe('wasteland_entrance_1');
     expect(saved.combat.lastSettlement).toBeNull();
-    expect(saved.stamina).toBe(100);
+    expect(saved.stamina).toBe(90);
 
     // 停止挂机：剩余体力保留
     fireEvent.click(screen.getAllByText(/停止挂机/)[0]);
     saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(saved.combat.idle.regionId).toBeNull();
     expect(saved.combat.idle.levelId).toBeNull();
-    expect(saved.stamina).toBe(100);
+    expect(saved.stamina).toBe(90);
   });
 
   it('blocks idle arming when stamina is insufficient', () => {
