@@ -102,6 +102,11 @@ registerBattleEventPresenter({
 });
 
 registerBattleEventPresenter({
+  key: 'attackAfter',
+  format: () => ''
+});
+
+registerBattleEventPresenter({
   key: 'damageTaken',
   format: event => `【${nameOf(event, 'target')}】受到 ${String(event.data.amount ?? 0)} 点伤害`
 });
