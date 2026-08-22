@@ -141,7 +141,11 @@ export const BattleModal: React.FC<BattleModalProps> = ({
   useEffect(() => {
     if (!isOpen || !settlement || showSettlement || showForfeitConfirm) return;
 
-    const events = settlement.battle.events || [];
+    const events = (settlement.battle.events || []).filter((evt) => {
+      if (evt.key === 'attackAfter') return false;
+      if (evt.key === 'effectApplied' && (evt.data?.kind === 'damage' || evt.data?.kind === 'heal')) return false;
+      return true;
+    });
 
     const playStep = () => {
       if (eventIndexRef.current >= events.length) {
@@ -297,9 +301,13 @@ export const BattleModal: React.FC<BattleModalProps> = ({
 
   const handleSkip = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    const events = settlement.battle.events || [];
+    const events = (settlement.battle.events || []).filter((evt) => {
+      if (evt.key === 'attackAfter') return false;
+      if (evt.key === 'effectApplied' && (evt.data?.kind === 'damage' || evt.data?.kind === 'heal')) return false;
+      return true;
+    });
     eventIndexRef.current = events.length;
-    setEventLogs(events.map(formatBattleEvent));
+    setEventLogs(events.map(formatBattleEvent).filter(Boolean));
 
     if (settlement.battle.victory) {
       setEnemySlots((prev) => prev.map((s) => (s ? { ...s, currentHp: 0 } : null)));
