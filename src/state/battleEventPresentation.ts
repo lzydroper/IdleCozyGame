@@ -83,13 +83,11 @@ registerBattleEventPresenter({
   format: event => {
     const data = event.data as {
       abilityId?: string;
-      abilityName?: string;
       targetIds?: string[];
       costPaid?: { resource: string; amount: number } | null;
       cooldownSet?: number;
     };
     const abilityName =
-      data.abilityName ??
       (data.abilityId ? ABILITY_CONFIGS[data.abilityId]?.name : undefined) ??
       data.abilityId ??
       '未知技能';
