@@ -111,8 +111,8 @@ after   → 成功则 dispatchEvent('effectApplied', payload)
 
 ### 4. 审核与抵抗（来源：04）
 
-- 二元抵抗仅：`stun` / `dispel` / `immunityBuff` / `taunt`。
-- 命中判定：`source.willpower >= target.willpower`。
+- **修订（跨 effort，见 `.scratch/combat-buff/spec.md` §7；combat-aftermath 02 确认口径）**：`stun` 已移出二元抵抗，改为 `durationReduction` 时长减免、`ceil` 后归零即不生效，归零中断码为 `'zeroed'`（新增，与免疫 `'negated'` 区分）。二元抵抗现仅：`dispel` / `immunityBuff` / `taunt`。
+- 命中判定（仅仍走二元抵抗的 kind）：`source.willpower >= target.willpower`。
 - 命中后：`target.effectReduction` 减数值、`target.durationReduction` 减持续。
 - 审核顺序：抵抗 → 无效化 → 执行；任一不通过即 `interrupted`，不进入 during。
 - 每 EffectKind 声明 `audit: { affinity: 'harmful' | 'beneficial' | 'neutral'; resist: 'none' | 'will' }`。

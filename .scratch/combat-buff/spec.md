@@ -115,7 +115,7 @@ interface BuffApplication {
 - **Renew 取 max**：`renew=true` 时 `duration = max(现有剩余, 新传入值)`，不缩短。
 - **Stack 无上限**：`stack=true` 时 `stacks += stackIncrement`；**无 maxStack 上限**。
 - **两策略独立判定**：同时为 true 时，重复获得 = 刷时长（max）**且** 层数 +增量。
-- 冲突拒绝在 Effect 层的 interrupted 编码是复用 `'negated'` 还是新增 `'sourceConflict'` 由 to-tickets 定，语义不受影响。
+- 冲突拒绝在 Effect 层的 interrupted 编码：**新增 `'sourceConflict'`**（combat-aftermath 02 拍板——免疫拒绝与设计性 source 拒绝语义不同，不复用 `'negated'`）。
 - `EffectResult.values` 填 `{ stacks }`；其余信息由 Buff 模块负责展示。
 
 ### 4. Trigger 形状与注册（来源：02）
@@ -125,8 +125,8 @@ interface BuffApplication {
   - `unitRef: 'source'` = Buff 的来源单位（如「来源阵亡时触发」）。
   - 不设 `'self'` 第三值——`self` 恒等于 `target`，避免三值冗余。
 - Buff 按每条 Trigger 把效果注册到对应时机；注册键建议 `(timingKey, unitId)`，避免「全局事件 × 所有单位 buff」的 O(N×M) 过滤。
-- 效果可触发接口：`canTrigger(ctx, timingKey, currentOwnerId): boolean`。时机派发时传入**当前回合归属单位**（或事件相关单位），效果据此判定是否命中自己关注的目标；判定不通过则不计算。
-- temporary 的 Trigger 必须是**每个目标回合至多一次**的时机（如「目标的回合开始前 / 回合结束后」等轮次主时机）；需要「下 N 次攻击」之类消耗语义的，用 forever + 层数消耗（见 §6），不得用 `temporary(N)` 混淆。
+- 效果可触发接口（combat-aftermath 02 定稿为实现形状）：`canTriggerBuff(instance, trigger, timingKey, currentOwnerId): boolean`——实例级四参，由各 Trigger 的闭包捕获 instance/trigger，注册键 `(timingKey, unitId)` 先过滤再判定。原草案的效果级三参 `canTrigger(ctx, …)` 形状废弃，以实现为准写回。
+- temporary 的 Trigger 必须是**每个目标回合至多一次**的时机（如「目标的回合开始前 / 回合结束后」等轮次主时机）；需要「下 N 次攻击」之类消耗语义的，用 forever + 层数消耗（见 §6），不得用 `temporary(N)` 混淆。（combat-aftermath 02 裁定：「至多一次」为**约定而非运行时守卫**——同一 temporary Buff 配置多个同回合可命中的 Trigger 视为配置错误，靠评审与测试拦截，运行时不设防。）
 
 ### 5. temporary 递减与 fireCount 解耦（来源：01 / 07）
 
@@ -134,6 +134,7 @@ interface BuffApplication {
 - **一次触发结算 = duration 只减 1**，无论该次触发内效果被放大/触发多少次。
 - **回合结束不参与递减**——避免「触发被跳过仍被回合结束扣时长」这类 bug。
 - `fireCount`（放大器提高的效果触发次数）属 Effect / Ability 接线：一次触发时效果被触发 N 次 = N 次独立计算/落地。
+- **连发与计次口径（combat-aftermath 03 拍板）**：多段基准 = **单事件·运行时放大**——一次连发攻击对 Buff 触发而言是**一次事件**（折焰类每次挥击只耗 1 层）；on-hit Buff 是否读 `data.fireCount` 自行放大由其自身配置决定（buffRuntime 已支持）。编译期效果复制（abilityCompiler 现状）废弃，为待修正项。
 - Buff 的**持续结算独立于 `fireCount`**：层数默认不变；层数变化的唯一来源是 Stack（挂载 +增量）与显式消耗（见 §6）。
 - 例：灼烧 5 层、剩余 2 回合，被「加重灼烧」（灼烧生效 2 次）→ 下一次触发：灼烧效果触发 2 次，结算后层数仍 5，duration 2→1（不得变 0）。
 
@@ -155,9 +156,10 @@ interface BuffApplication {
 
 - **移除眩晕的二元意志抵抗**：`source.willpower >= target.willpower → resisted` 不再适用于 stun。
 - 眩晕改为**时长减免**：`rounds = max(0, ceil(rounds_base × (1 - durationReduction)))`。
-  - `rounds === 0` 即「意志过高 → 眩晕效果归零」：buff 不生效 / 提前结束，目标该回合不跳过。
+  - `rounds === 0` 即「意志过高 → 眩晕效果归零」：buff 不生效 / 提前结束，目标该回合不跳过。归零/提前结束的 interrupted 编码为**新增的 `'zeroed'`**（combat-aftermath 02 拍板，与免疫的 `'negated'` 区分）。
   - `durationReduction` = 意志 × 意志-持续减免系数，**不设 0.80 上限**（区别于 `effectReduction` 的 0.80 clamp），否则「归零」无法达成。
   - 「上取整」保证：`rounds_base=1` 时只有减免 ≥100% 才归零，其余仍为 1；多回合时长则连续缩减。
+- **眩晕判定口径（combat-aftermath 02 拍板·快照制）**：行动资格在目标 turnStart 主时机派发**之前**快照判定（先判定后递减），`duration=N` 严格跳过 N 个自身回合，本回合内判定结果不变。实现落点：`turnEngine.ts` 的 `canActFn` 读数需移到 `settleTiming('turnStart', unit)` 之前（现状在其后，造成 duration=1 完全不跳的 off-by-one）。
 - 免疫独立：免疫眩晕走 `immunityBuff:stun` 标志（Effect 层 `negated`），与意志减免无关。
 - 本修订同步作用于 Effect 模块的 stun 审核表与 stun executor，属跨 effort 修订。
 
