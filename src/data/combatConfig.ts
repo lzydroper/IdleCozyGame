@@ -17,6 +17,6 @@ export const COMBAT_CONFIG: CombatConfig = {
   maxBattleRounds: 60,
   expPerLevel: 100,
   encounterStaminaCost: 5,
-  battleDurationSeconds: 20,
+  battleDurationSeconds: 5,
   maxIdleSettlementSeconds: 8 * 3600
 };

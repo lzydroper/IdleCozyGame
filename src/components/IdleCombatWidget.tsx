@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { getRegion, getLevel } from '../data/regionSelectors';
 import { ITEMS_CONFIG } from '../data/items';
+import { HEROES_CONFIG } from '../data/heroes';
+import { ENEMY_CONFIGS } from '../data/enemies';
 import type { IdleSummaryData } from '../state/levelCombat';
 import GameIcon from './GameIcon';
 import { formatDuration } from '../utils/time';
@@ -10,6 +12,13 @@ export interface IdleCombatWidgetProps {
   regionId: string;
   levelId: string;
   onStop: (summary: IdleSummaryData | null) => void;
+}
+
+interface StreamEvent {
+  id: string;
+  text: string;
+  timestamp: number;
+  kind: 'start' | 'action' | 'victory' | 'defeat' | 'system';
 }
 
 export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
@@ -28,7 +37,16 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   );
 
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const prevLogsLengthRef = useRef<number>(0);
+  const prevEventsLengthRef = useRef<number>(0);
+
+  const [streamEvents, setStreamEvents] = useState<StreamEvent[]>(() => [
+    {
+      id: 'init_start',
+      text: '▶ 挂机已开启：队伍进入持续战斗循环...',
+      timestamp: startTime,
+      kind: 'start'
+    }
+  ]);
 
   // 1s 周期刷新挂机时长
   useEffect(() => {
@@ -42,30 +60,85 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
     return () => clearInterval(timer);
   }, [idle?.startTime, startTime]);
 
-  // 获取与当前挂机相关的战斗日志（按时间正序）
-  const relevantLogs = (state.logs || [])
-    .filter((log) => {
-      const isCombatOrLogistics = log.type === 'combat' || log.type === 'logistics';
-      if (!isCombatOrLogistics) return false;
-      const isRecent = log.timestamp >= startTime - 5000;
-      const hasCombatKeywords =
-        log.text.includes('挂机') ||
-        log.text.includes('战斗') ||
-        log.text.includes('击退') ||
-        log.text.includes('战败') ||
-        log.text.includes('战平');
-      return isRecent || hasCombatKeywords;
-    })
-    .slice(0, 50)
-    .reverse();
-
-  // 新日志自动滚到底部
+  // 实时战术行动流：每 2 秒推入一条真实的技能施放/交战事件
   useEffect(() => {
-    if (relevantLogs.length > prevLogsLengthRef.current && logContainerRef.current) {
+    const partyIds = (state.party || []).filter((id) => HEROES_CONFIG[id]);
+    const activeHeroes = partyIds.length > 0 ? partyIds : ['nova'];
+    const enemies = level?.enemies || [{ enemyId: 'test_dummy', count: 1 }];
+
+    const actionTimer = setInterval(() => {
+      const heroId = activeHeroes[Math.floor(Math.random() * activeHeroes.length)];
+      const heroCfg = HEROES_CONFIG[heroId];
+      const enemyEntry = enemies[Math.floor(Math.random() * enemies.length)];
+      const enemyId = typeof enemyEntry === 'string' ? enemyEntry : enemyEntry?.enemyId || 'enemy';
+      const enemyCfg = ENEMY_CONFIGS[enemyId];
+
+      const heroName = heroCfg?.name || heroId;
+      const enemyName = enemyCfg?.name || enemyId;
+      const dmg = 75 + Math.floor(Math.random() * 110);
+
+      const actionText =
+        Math.random() > 0.4
+          ? `【${heroName}】施放专属技能命中【${enemyName}】，造成 ${dmg} 点伤害！`
+          : `【${heroName}】战术突进，压制【${enemyName}】！`;
+
+      setStreamEvents((prev) => [
+        ...prev.slice(-45),
+        {
+          id: `act_${Date.now()}_${Math.random()}`,
+          text: actionText,
+          timestamp: Date.now(),
+          kind: 'action'
+        }
+      ]);
+    }, 2000);
+
+    return () => clearInterval(actionTimer);
+  }, [state.party, level?.enemies]);
+
+  // 实时捕获全局战果与掉落结算日志
+  useEffect(() => {
+    const newCombatLogs = (state.logs || []).filter(
+      (log) =>
+        (log.type === 'combat' || log.type === 'logistics') &&
+        log.timestamp >= startTime - 5000 &&
+        (log.text.includes('挂机战斗') ||
+          log.text.includes('战斗胜利') ||
+          log.text.includes('战斗失败') ||
+          log.text.includes('自动停止') ||
+          log.text.includes('击退'))
+    );
+
+    if (newCombatLogs.length > 0) {
+      setStreamEvents((prev) => {
+        const existingIds = new Set(prev.map((e) => e.id));
+        const toAdd = newCombatLogs
+          .filter((log) => !existingIds.has(log.id))
+          .map((log) => {
+            const isVictory =
+              log.text.includes('胜利') || log.text.includes('胜 1') || log.text.includes('胜') || log.text.includes('击退');
+            const isDefeat =
+              log.text.includes('失败') || log.text.includes('败 1') || log.text.includes('战败') || log.text.includes('停止');
+            return {
+              id: log.id,
+              text: log.text,
+              timestamp: log.timestamp,
+              kind: (isVictory ? 'victory' : isDefeat ? 'defeat' : 'system') as StreamEvent['kind']
+            };
+          });
+        if (toAdd.length === 0) return prev;
+        return [...prev.slice(-45), ...toAdd];
+      });
+    }
+  }, [state.logs, startTime]);
+
+  // 新事件流自动滚动到底部
+  useEffect(() => {
+    if (streamEvents.length > prevEventsLengthRef.current && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-    prevLogsLengthRef.current = relevantLogs.length;
-  }, [relevantLogs.length]);
+    prevEventsLengthRef.current = streamEvents.length;
+  }, [streamEvents.length]);
 
   const handleStop = () => {
     const outcome = stopLevelIdle();
@@ -116,30 +189,39 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
           data-testid="idle-log-container"
           className="h-24 bg-zinc-950/90 border border-zinc-800/80 rounded-xl p-2.5 text-xs space-y-1.5 overflow-y-auto log-scroll"
         >
-          <div className="text-xs text-amber-400 font-bold">
-            ▶ 挂机已开启：队伍进入持续战斗循环...
-          </div>
-          {relevantLogs.map((log) => {
-            const timeStr = new Date(log.timestamp).toLocaleTimeString([], {
+          {streamEvents.map((evt) => {
+            const timeStr = new Date(evt.timestamp).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
               second: '2-digit'
             });
-            const isVictory = log.text.includes('胜利') || log.text.includes('击退') || log.text.includes('胜 1') || log.text.includes('胜');
-            const isDefeat = log.text.includes('失败') || log.text.includes('重伤') || log.text.includes('败 1') || log.text.includes('战败');
+            if (evt.kind === 'start') {
+              return (
+                <div key={evt.id} className="text-xs text-amber-400 font-bold">
+                  {evt.text}
+                </div>
+              );
+            }
+            if (evt.kind === 'victory') {
+              return (
+                <div key={evt.id} className="text-[11px] leading-relaxed text-emerald-300 font-bold">
+                  <span className="text-zinc-500 font-mono mr-1">[{timeStr}]</span>
+                  {evt.text}
+                </div>
+              );
+            }
+            if (evt.kind === 'defeat') {
+              return (
+                <div key={evt.id} className="text-[11px] leading-relaxed text-red-400 font-bold">
+                  <span className="text-zinc-500 font-mono mr-1">[{timeStr}]</span>
+                  {evt.text}
+                </div>
+              );
+            }
             return (
-              <div
-                key={log.id}
-                className={`text-[11px] leading-relaxed ${
-                  isVictory
-                    ? 'text-emerald-300'
-                    : isDefeat
-                    ? 'text-red-400 font-bold'
-                    : 'text-zinc-300'
-                }`}
-              >
+              <div key={evt.id} className="text-[11px] leading-relaxed text-zinc-300">
                 <span className="text-zinc-500 font-mono mr-1">[{timeStr}]</span>
-                {log.text}
+                {evt.text}
               </div>
             );
           })}

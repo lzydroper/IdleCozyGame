@@ -262,28 +262,28 @@ describe('applyTick 挂机在线推进（修复 09）', () => {
     return state;
   };
 
-  it('在线 20 秒结算一场：写回放、扣体力、挂机保持', () => {
-    const state = tickSeconds(makeIdleState(), 20);
+  it('在线 5 秒结算一场：写回放、扣体力、挂机保持', () => {
+    const state = tickSeconds(makeIdleState(), 5);
     // 够一场 → 写最近一场回放（问题 2：挂机后回放区可查看）
     expect(state.combat.lastSettlement).not.toBeNull();
     expect(state.combat.lastSettlement?.battle.victory).toBe(true);
-    // 体力被消耗（20 秒回复 +6，扣 10 → 低于上限）
+    // 体力被消耗
     expect(state.stamina).toBeLessThan(COMBAT_CONFIG.maxStamina);
     // 挂机保持开启（问题 1：在线持续推进）
     expect(state.combat.idle.regionId).toBe('wasteland_entrance');
     expect(state.combat.idle.levelId).toBe('wasteland_entrance_1');
-    // 秒数清零（一场 20 秒已结算）
+    // 秒数清零（一场 5 秒已结算）
     expect(state.combat.idle.accumulatedSeconds).toBe(0);
   });
 
-  it('在线不足一场的秒数继续累计（19 秒不结算）', () => {
-    const state = tickSeconds(makeIdleState(), 19);
+  it('在线不足一场的秒数继续累计（4 秒不结算）', () => {
+    const state = tickSeconds(makeIdleState(), 4);
     expect(state.combat.lastSettlement).toBeNull();
-    expect(state.combat.idle.accumulatedSeconds).toBe(19);
+    expect(state.combat.idle.accumulatedSeconds).toBe(4);
   });
 
   it('在线结算一场后写入挂机战斗日志（修复：挂机日志不丢失）', () => {
-    const state = tickSeconds(makeIdleState(), 20);
+    const state = tickSeconds(makeIdleState(), 5);
     // 挂机日志出现在最新日志中
     expect(state.logs.some(l => l.text.includes('挂机战斗：在【') && l.text.includes('1 场'))).toBe(true);
   });
