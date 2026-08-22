@@ -273,7 +273,7 @@ export const BattleModal: React.FC<BattleModalProps> = ({
       timerRef.current = setTimeout(playStep, delay);
     };
 
-    const delay = Math.max(20, Math.round(COMBAT_CONFIG.baseEventIntervalMs / (speed || 1)));
+    const delay = Math.round(COMBAT_CONFIG.baseEventIntervalMs / (speed || 1));
     timerRef.current = setTimeout(playStep, delay);
 
     return () => {

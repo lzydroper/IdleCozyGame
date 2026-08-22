@@ -181,7 +181,7 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
       });
 
       isSimulatingRef.current = false;
-    }, Math.max(20, Math.round(COMBAT_CONFIG.baseEventIntervalMs / 2)));
+    }, COMBAT_CONFIG.baseEventIntervalMs);
 
     return () => clearInterval(playInterval);
   }, [region, level, idle?.regionId, state.party, state.stamina, state.heroes, state.equipment, state.inventory]);
