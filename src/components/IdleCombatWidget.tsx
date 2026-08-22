@@ -9,6 +9,7 @@ import { aggregateBonus } from '../state/bonds';
 import { settleLevelBattle } from '../state/levelCombat';
 import type { IdleSummaryData } from '../state/levelCombat';
 import type { GameState } from '../types/game';
+import { COMBAT_CONFIG } from '../data/combatConfig';
 import GameIcon from './GameIcon';
 import { formatDuration } from '../utils/time';
 
@@ -180,7 +181,7 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
       });
 
       isSimulatingRef.current = false;
-    }, 280);
+    }, COMBAT_CONFIG.eventStreamIntervalMs.fast);
 
     return () => clearInterval(playInterval);
   }, [region, level, idle?.regionId, state.party, state.stamina, state.heroes, state.equipment, state.inventory]);

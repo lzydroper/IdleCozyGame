@@ -269,11 +269,15 @@ export const BattleModal: React.FC<BattleModalProps> = ({
         setEnemySlots((prev) => prev.map((s) => (s ? { ...s, isHit: false } : null)));
       }, 250);
 
-      const delay = speed === 2 ? 260 : 550;
+      const delay = speed === 2
+        ? COMBAT_CONFIG.eventStreamIntervalMs.fast
+        : COMBAT_CONFIG.eventStreamIntervalMs.normal;
       timerRef.current = setTimeout(playStep, delay);
     };
 
-    const initialDelay = speed === 2 ? 150 : 350;
+    const initialDelay = speed === 2
+      ? Math.round(COMBAT_CONFIG.eventStreamIntervalMs.fast * 0.6)
+      : Math.round(COMBAT_CONFIG.eventStreamIntervalMs.normal * 0.6);
     timerRef.current = setTimeout(playStep, initialDelay);
 
     return () => {
