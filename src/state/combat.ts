@@ -159,7 +159,8 @@ export const createBattle = (
       victory: result.outcome === 'victory',
       partyWiped: result.outcome === 'defeat',
       rounds: result.rounds,
-      events: result.events
+      events: result.events,
+      finalHp: result.finalHp
     };
   };
 

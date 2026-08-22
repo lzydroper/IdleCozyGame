@@ -11,7 +11,6 @@ import { rollDropEntries } from './dropEngine';
 import { aggregateBonus } from './bonds';
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
-import type { BattleEvent } from './turnEngine';
 
 // === combat-level ticket 02：Region/Level 战斗状态与掉落结算内核（Expand） ===
 // 旧 zone 路径保留可用；新路径按 regionId + levelId 工作。
@@ -260,31 +259,6 @@ const mergeDrops = (target: Record<string, number>, extra: Record<string, number
   return next;
 };
 
-export const calculateHeroEndHp = (heroId: string, hero: HeroState, events: BattleEvent[]): number => {
-  let hp = hero.hp;
-  for (const evt of events) {
-    if (evt.key === 'death' && (evt.unitId === heroId || evt.unitName === heroId)) {
-      return 0;
-    }
-    if (evt.key === 'damageTaken' && (evt.targetId === heroId || evt.targetName === heroId)) {
-      hp = Math.max(0, hp - Number(evt.data?.amount ?? 0));
-    }
-    if (evt.key === 'healingTaken' && (evt.targetId === heroId || evt.targetName === heroId || evt.unitId === heroId)) {
-      hp = Math.min(hero.maxHp, hp + Number(evt.data?.amount ?? 0));
-    }
-    if (evt.key === 'effectApplied' && (evt.targetId === heroId || evt.targetName === heroId)) {
-      const data = evt.data as { kind?: string; values?: Record<string, number> };
-      if (data?.kind === 'damage' && data.values?.damage) {
-        hp = Math.max(0, hp - Number(data.values.damage));
-      }
-      if (data?.kind === 'heal' && data.values?.heal) {
-        hp = Math.min(hero.maxHp, hp + Number(data.values.heal));
-      }
-    }
-  }
-  return hp;
-};
-
 export const settleLevelBattle = (
   state: GameState,
   battle: ReturnType<typeof simulateBattle>,
@@ -312,12 +286,12 @@ export const settleLevelBattle = (
     party.forEach((id) => {
       const hero = nextHeroes[id];
       if (hero) {
-        const endHp = calculateHeroEndHp(id, hero, battle.events);
-        if (endHp <= 0) {
+        const finalHp = battle.finalHp?.[id] ?? hero.hp;
+        if (finalHp <= 0) {
           nextHeroes[id] = { ...hero, hp: 0, wounded: true };
           woundedHeroIds.push(id);
         } else {
-          nextHeroes[id] = { ...hero, hp: endHp };
+          nextHeroes[id] = { ...hero, hp: finalHp };
         }
       }
     });

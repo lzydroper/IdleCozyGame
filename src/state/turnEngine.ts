@@ -176,6 +176,7 @@ export interface TurnResult {
   outcome: BattleOutcome;
   rounds: number;
   events: BattleEvent[];
+  finalHp: Record<string, number>;
 }
 
 const DEFAULT_MAX_ROUNDS = 60;
@@ -511,5 +512,9 @@ export const runTurnEngine = (
   }
 
   const outcome = forcedEnd ?? checkTermination() ?? 'draw';
-  return { outcome, rounds: round, events };
+  const finalHp: Record<string, number> = {};
+  for (const u of unitMap.values()) {
+    finalHp[u.id] = u.hp;
+  }
+  return { outcome, rounds: round, events, finalHp };
 };

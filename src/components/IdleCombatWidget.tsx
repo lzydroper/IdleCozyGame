@@ -24,6 +24,8 @@ interface StreamEvent {
   kind: 'start' | 'round' | 'turn' | 'action' | 'victory' | 'defeat' | 'next_round';
 }
 
+const MAX_STREAM_LOGS = 50;
+
 export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
   regionId,
   levelId,
@@ -72,7 +74,7 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
       if (queueRef.current.length > 0) {
         const nextEvt = queueRef.current.shift()!;
         setStreamEvents((prev) => [
-          ...prev.slice(-60),
+          ...prev.slice(-MAX_STREAM_LOGS + 1),
           {
             id: `evt_${Date.now()}_${Math.random()}`,
             text: nextEvt.text,
@@ -183,10 +185,13 @@ export const IdleCombatWidget: React.FC<IdleCombatWidgetProps> = ({
     return () => clearInterval(playInterval);
   }, [region, level, idle?.regionId, state.party, state.stamina, state.heroes, state.equipment, state.inventory]);
 
-  // 新事件流自动滚动到底部
+  // 智能跟随滚动：仅当用户处于底部时自动下滚，若用户向上滑动查看历史则不打断
   useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    const container = logContainerRef.current;
+    if (!container) return;
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 24;
+    if (isAtBottom) {
+      container.scrollTop = container.scrollHeight;
     }
   }, [streamEvents.length]);
 

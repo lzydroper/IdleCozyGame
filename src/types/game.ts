@@ -112,6 +112,7 @@ export interface BattleResult {
   partyWiped: boolean;    // outcome === 'defeat'（英雄全灭 → 重伤触发条件）
   rounds: number;         // 实际进行的轮次数
   events: BattleEvent[];  // 事件流（含主时机与细粒度事件，按 seq 单调递增）
+  finalHp?: Record<string, number>; // 参战单位战后剩余生命值快照（unitId -> hp）
 }
 
 // 战斗结算：掉落/经验/重伤入账
