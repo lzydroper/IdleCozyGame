@@ -357,8 +357,12 @@ export const startLevelCombatUpdate = (
   );
 
   const settled = settleLevelBattle(state, battle, party, regionId, level, rng);
+  const dropText =
+    Object.entries(settled.settlement.drops)
+      .map(([id, q]) => `${ITEMS_CONFIG[id]?.name || id} ×${q}`)
+      .join('、') || '少量材料';
   const logText = battle.victory
-    ? `战斗胜利！小队在【${region.name} · ${level.name}】击退敌人，获得 ${Object.entries(settled.settlement.drops).map(([id, q]) => `${id}×${q}`).join('、') || '少量材料'}。`
+    ? `战斗胜利！小队在【${region.name} · ${level.name}】击退敌人，获得 ${dropText}。`
     : battle.partyWiped
       ? `战斗失败！小队在【${region.name} · ${level.name}】全员倒下，进入重伤状态。`
       : `战斗平局！小队在【${region.name} · ${level.name}】鏖战至回合上限未分胜负。`;
