@@ -277,7 +277,9 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
             {/* 结果列表网格 */}
             <div
               className={`w-full flex-1 grid ${
-                resultOutcomes.length === 1 ? 'grid-cols-1 max-w-[140px] mx-auto' : 'grid-cols-4'
+                resultOutcomes.length === 1
+                ? 'grid-cols-1 max-w-[140px] mx-auto'
+                : 'grid-cols-4'
               } gap-2 overflow-y-auto content-start p-1 min-h-0 overscroll-contain`}
             >
               {resultOutcomes.map((outcome, idx) => {
@@ -304,10 +306,10 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                       key={idx}
                       className="w-full aspect-square p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center flex flex-col items-center justify-between select-none"
                     >
-                      <span className="text-[8px] text-zinc-500">通用碎片</span>
+                      {/* <span className="text-[8px] text-zinc-500">通用碎片</span> */}
                       <GameIcon type="item" id="resonance_shard" className="w-9 h-9 shrink-0" />
                       <div className="w-full flex flex-col items-center leading-none">
-                        <span className="text-[10px] font-bold text-zinc-300 truncate max-w-full">共鸣 x{outcome.shardsGained}</span>
+                        <span className="text-[10px] font-bold text-zinc-300 truncate max-w-full">共鸣碎片 x{outcome.shardsGained}</span>
                       </div>
                     </div>
                   );
@@ -341,9 +343,8 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                       {outcome.isNew ? (
                         <span className="text-[8px] font-bold text-amber-400 mt-0.5">解锁新英雄</span>
                       ) : (
-                        <span className="flex items-center justify-center gap-0.5 text-[8px] font-bold text-purple-300 mt-0.5">
-                          <GameIcon type="item" id={shardIconId} className="w-2.5 h-2.5" />
-                          <span>x{outcome.shardsGained}</span>
+                        <span className="text-[8px] font-bold text-purple-300 mt-0.5 truncate max-w-full">
+                          英雄碎片 x{outcome.shardsGained}
                         </span>
                       )}
                     </div>
