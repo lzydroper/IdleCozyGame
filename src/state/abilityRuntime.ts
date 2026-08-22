@@ -86,6 +86,7 @@ export const createAbilityRuntime = (getBattle: () => BattleContext): AbilityRun
       targetId: selected.targets[0]?.id ?? null,
       data: {
         abilityId: selected.ability.id,
+        abilityName: selected.ability.name,
         targetIds: selected.targets.map((target) => target.id),
         costPaid: selected.ability.cost ?? null,
         cooldownSet,

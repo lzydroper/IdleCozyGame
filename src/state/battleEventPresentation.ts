@@ -6,6 +6,7 @@
  *   UI 消费端（CombatEventLog 等）只调用 formatBattleEvent，不需要再改 switch/label 表。
  */
 import type { BattleEvent, TurnEventKey } from './turnEngine';
+import { ABILITY_CONFIGS } from '../data/abilities';
 
 export interface BattleEventPresenter {
   key: TurnEventKey;
@@ -82,18 +83,23 @@ registerBattleEventPresenter({
   format: event => {
     const data = event.data as {
       abilityId?: string;
+      abilityName?: string;
       targetIds?: string[];
       costPaid?: { resource: string; amount: number } | null;
       cooldownSet?: number;
     };
-    const ability = data.abilityId ?? 'unknown';
+    const abilityName =
+      data.abilityName ??
+      (data.abilityId ? ABILITY_CONFIGS[data.abilityId]?.name : undefined) ??
+      data.abilityId ??
+      '未知技能';
     const targetIds = data.targetIds ?? [];
     const target = targetIds.length > 1
       ? `[${targetIds.join(', ')}]`
       : (nameOf(event, 'target') || '无目标');
     const cost = data.costPaid ? `消耗 ${data.costPaid.amount} ${data.costPaid.resource}` : '';
     const cd = data.cooldownSet ? `冷却 ${data.cooldownSet}` : '';
-    return `【${nameOf(event, 'source')}】→【${target}】使用【${ability}】${cost ? ' ' + cost : ''}${cd ? ' ' + cd : ''}`;
+    return `【${nameOf(event, 'source')}】→【${target}】使用【${abilityName}】${cost ? ' ' + cost : ''}${cd ? ' ' + cd : ''}`;
   }
 });
 

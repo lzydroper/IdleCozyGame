@@ -26,6 +26,8 @@ describe('battleEventPresentation（事件展示注册表）', () => {
     expect(formatBattleEvent(event())).toBe('【诺娃】→【废土鬣狗】攻击 -45');
     expect(formatBattleEvent(event({ key: 'death', unitId: 'wasteland_hound', unitName: '废土鬣狗' }))).toBe('【废土鬣狗】阵亡');
     expect(formatBattleEvent(event({ key: 'roundStart', unitId: null, unitName: null }))).toBe('第 1 轮开始');
+    expect(formatBattleEvent(event({ key: 'abilityUsed', data: { abilityId: 'basic_attack' } }))).toBe('【诺娃】→【废土鬣狗】使用【普通攻击】');
+    expect(formatBattleEvent(event({ key: 'abilityUsed', data: { abilityId: 'awaken_nova', abilityName: '电涌过载' } }))).toBe('【诺娃】→【废土鬣狗】使用【电涌过载】');
   });
 
   it('新事件键可注册 presenter，注册后 UI 消费端无需改动', () => {
