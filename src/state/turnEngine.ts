@@ -146,6 +146,8 @@ export interface TurnRuntime {
   dealDamage(targetId: string, amount: number, sourceId?: string | null, data?: Record<string, unknown>): number;
   /** 结算治疗：回复 hp（不超上限）、派发 healingTaken。返回实际治疗量。 */
   applyHeal(targetId: string, amount: number, sourceId?: string | null, data?: Record<string, unknown>): number;
+  /** 统一 hp 变更入口（T#4）：正负双向、0/maxHp 双钳制、归零派发 death（死亡单位不重复结算）。返回带符号实际变化量。 */
+  applyHpDelta(targetId: string, delta: number, sourceId?: string | null, data?: Record<string, unknown>): number;
   /** 先机变动：只重排本轮未行动区间；已行动单位本轮锁定。 */
   updateInitiative(unitId: string, initiative: number): void;
   /** 召唤物入场：进入本轮未行动区按先机排位，本轮必行动一次。 */
@@ -164,8 +166,6 @@ export interface TurnConfig {
   maxRounds?: number;
   /** RNG 函数参数注入：生产传 Math.random、测试传固定种子。 */
   rng?: () => number;
-  /** 初始化钩子：在 runtime 建好、队列排序后、第 1 轮开始前调用一次（maxRounds<=0 也调用）。仅用于 register/unregister 与组装战斗上下文，不派发事件、不改 hp/先机。 */
-  setup?: (runtime: TurnRuntime) => void;
   /** canAct 谓词（由 Buff 状态汇总；Turn 不硬编码眩晕等枚举）。默认恒 true。 */
   canAct?: (unit: BattleUnitRuntime, runtime: TurnRuntime) => boolean;
   /** 行动入口（Ability 层注入）：在「回合进行中」调用。默认空操作。 */
@@ -210,10 +210,17 @@ const cloneSnapshotUnit = (unit: BattleUnitSnapshot, entryOrder: number): Battle
  * 给定参战单位快照 + 配置 + rng → { outcome, events }。
  * 无副作用、无外部依赖；同一输入 + 同一 rng 种子 → 逐字节一致的事件流。
  */
-export const runTurnEngine = (
+/**
+ * 引擎实例：运行时 + 单发执行入口。
+ * 装配顺序（combat-assembly 01 / M3）：createTurnRuntime → 装配层构建 BattleContext /
+ * 注册订阅与被动 → engine.run()。TurnConfig 不再持有 setup seam。
+ */
+export type TurnEngine = TurnRuntime & { run: () => TurnResult };
+
+export const createTurnRuntime = (
   units: readonly BattleUnitSnapshot[],
   config: TurnConfig = {}
-): TurnResult => {
+): TurnEngine => {
   const maxRounds = config.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const rng = config.rng ?? Math.random;
   const canActFn = config.canAct ?? (() => true);
@@ -396,6 +403,40 @@ export const runTurnEngine = (
     return actual;
   };
 
+  // 统一 hp 变更入口（combat-assembly 05 / T#4）：为 dot / 护盾吸收 / 处决 / 复活提供受控 seam。
+  const applyHpDelta = (
+    targetId: string,
+    delta: number,
+    sourceId: string | null = null,
+    data: Record<string, unknown> = {}
+  ): number => {
+    const target = unitMap.get(targetId);
+    if (!target || target.hp <= 0 || delta === 0) return 0;
+    const next = Math.min(target.maxHp, Math.max(0, target.hp + delta));
+    const actual = next - target.hp;
+    if (actual === 0) return 0;
+    target.hp = next;
+    if (delta < 0) {
+      dispatchEvent('damageTaken', {
+        unitId: targetId,
+        sourceId,
+        targetId,
+        data: { ...data, amount: -actual }
+      });
+    } else {
+      dispatchEvent('healingTaken', {
+        unitId: targetId,
+        sourceId,
+        targetId,
+        data: { ...data, amount: actual }
+      });
+    }
+    if (target.hp <= 0) {
+      dispatchEvent('death', { unitId: targetId, sourceId, targetId, data });
+    }
+    return actual;
+  };
+
   const updateInitiative = (unitId: string, initiative: number): void => {
     const unit = unitMap.get(unitId);
     if (!unit) return;
@@ -438,6 +479,7 @@ export const runTurnEngine = (
     dispatchEvent,
     dealDamage,
     applyHeal,
+    applyHpDelta,
     updateInitiative,
     summonUnit,
     requestEnd,
@@ -458,9 +500,9 @@ export const runTurnEngine = (
   queue.sort(compareQueueIds);
   sep = 0;
 
-  config.setup?.(runtime);
-
-  while (round < maxRounds && !forcedEnd) {
+  // 单发执行（combat-assembly 01）：从当前状态推进至终止。装配层在调用前完成全部注册。
+  const run = (): TurnResult => {
+    while (round < maxRounds && !forcedEnd) {
     round++;
     settleTiming('roundStart', null);
     if (forcedEnd) break;
@@ -524,10 +566,19 @@ export const runTurnEngine = (
     queue.sort(compareQueueIds);
   }
 
-  const outcome = forcedEnd ?? checkTermination() ?? 'draw';
-  const finalHp: Record<string, number> = {};
-  for (const u of unitMap.values()) {
-    finalHp[u.id] = u.hp;
-  }
-  return { outcome, rounds: round, events, finalHp };
+    const outcome = forcedEnd ?? checkTermination() ?? 'draw';
+    const finalHp: Record<string, number> = {};
+    for (const u of unitMap.values()) {
+      finalHp[u.id] = u.hp;
+    }
+    return { outcome, rounds: round, events, finalHp };
+  };
+
+  return { ...runtime, run };
 };
+
+/** 兼容薄壳：一次性构建并执行。 */
+export const runTurnEngine = (
+  units: readonly BattleUnitSnapshot[],
+  config: TurnConfig = {}
+): TurnResult => createTurnRuntime(units, config).run();

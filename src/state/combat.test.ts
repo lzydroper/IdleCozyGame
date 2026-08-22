@@ -21,7 +21,7 @@ import { ENEMY_CONFIGS } from '../data/enemies';
 import { createBattleContext, type BattleContext } from './battleContext';
 import { BUFF_CONFIGS } from './buffTypes';
 import { createBuffTriggerHooks } from './buffRuntime';
-import { runTurnEngine, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime } from './turnEngine';
+import { createTurnRuntime, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime } from './turnEngine';
 
 describe('BattleEntity 装配（统一实体）', () => {
   it('heroToCombatant 产出 BattleEntity，英雄专属字段已结算进配方', () => {
@@ -64,6 +64,7 @@ const fakeTurnRuntime = (): TurnRuntime => ({
   dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
   dealDamage: () => 0,
   applyHeal: () => 0,
+  applyHpDelta: () => 0,
   updateInitiative: () => {},
   summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', side: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
   requestEnd: () => {},
@@ -93,19 +94,19 @@ describe('canActWithBuffs', () => {
     const actions: string[] = [];
     let ctx!: BattleContext;
 
-    runTurnEngine([hero, enemy], {
+    // 装配前移（combat-assembly 01）：context 与眩晕 Buff 在 run 前就绪。
+    const engine = createTurnRuntime([hero, enemy], {
       maxRounds: 3,
       rng: () => 0.5,
-      setup(runtime) {
-        ctx = createBattleContext(runtime, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
-        ctx.applyBuff('b', {
-          id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b',
-          stacks: 1, duration: 2, values: {}
-        });
-      },
       canAct: (unit) => canActWithBuffs(ctx, unit.id),
       performAction: (unit) => { actions.push(unit.id); }
     });
+    ctx = createBattleContext(engine, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+    ctx.applyBuff('b', {
+      id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b',
+      stacks: 1, duration: 2, values: {}
+    });
+    engine.run();
 
     // 快照制（combat-aftermath 02 D1）：先判定后递减。
     // r1: a 行动，b 快照见 dur=2 跳过 → 递减为 1；r2: a 行动，b 见 1 跳过 → 归零移除；r3: b 恢复行动。

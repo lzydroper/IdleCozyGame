@@ -7,8 +7,9 @@ import {
   passiveBuffId
 } from './abilityPassive';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
-import type { TurnRuntime, BattleEvent, BattleUnitRuntime, TurnTimingContext } from './turnEngine';
+import type { TurnRuntime, BattleUnitRuntime, TurnTimingContext } from './turnEngine';
 import type { BuffInstance } from './battleContext';
+import { makeFakeRuntime } from './testFixtures/battleRuntime';
 
 const makeUnit = (id: string, abilities: ResolvedAbility[] = []): BattleUnitRuntime => ({
   id,
@@ -22,20 +23,8 @@ const makeUnit = (id: string, abilities: ResolvedAbility[] = []): BattleUnitRunt
   entryOrder: 1
 });
 
-const fakeRuntime = (units: BattleUnitRuntime[]): TurnRuntime => ({
-  round: 0,
-  rng: () => 0.5,
-  register: () => () => {},
-  unregister: () => {},
-  dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
-  dealDamage: () => 0,
-  applyHeal: () => 0,
-  updateInitiative: () => {},
-  summonUnit: () => units[0],
-  requestEnd: () => {},
-  getUnit: (id) => units.find((u) => u.id === id),
-  getLivingUnits: (side) => units.filter((u) => u.hp > 0 && (side === undefined || u.side === side))
-});
+// 共享工厂（combat-assembly 04 / E#7）。
+const fakeRuntime = (units: BattleUnitRuntime[]): TurnRuntime => makeFakeRuntime(units).runtime;
 
 const passiveAbility = (): ResolvedAbility =>
   resolveAbilityConfig({

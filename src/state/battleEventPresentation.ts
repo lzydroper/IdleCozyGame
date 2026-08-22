@@ -6,6 +6,7 @@
  *   UI 消费端（CombatEventLog 等）只调用 formatBattleEvent，不需要再改 switch/label 表。
  */
 import type { BattleEvent, TurnEventKey } from './turnEngine';
+import { EFFECT_EXECUTORS, type EffectKind } from './effectSystem';
 import { ABILITY_CONFIGS } from '../data/abilities';
 
 export interface BattleEventPresenter {
@@ -131,35 +132,19 @@ registerBattleEventPresenter({
 registerBattleEventPresenter({
   key: 'effectApplied',
   format: event => {
+    // 展示文案统一来自 EFFECT_EXECUTORS 注册表（combat-assembly 04 / E#6）：
+    // 新增 EffectKind 只改 effectSystem 一处，本文件零硬编码。
     const data = event.data as {
       kind?: string;
       values?: Record<string, number>;
     };
-    const source = nameOf(event, 'source') || nameOf(event, 'unit');
-    const target = nameOf(event, 'target');
-    const values = data.values ?? {};
-    switch (data.kind) {
-      case 'damage':
-      case 'heal':
-        return '';
-      case 'statModify':
-        return `【${target}】属性修正 ${String(values.value ?? 0)}`;
-      case 'stun':
-        return `【${target}】受到眩晕效果`;
-      case 'dispel':
-        return `【${target}】增益效果被驱散`;
-      case 'immunityElement':
-        return `【${target}】获得元素免疫`;
-      case 'immunityBuff':
-        return `【${target}】获得状态免疫`;
-      case 'taunt':
-        return `【${target}】被嘲讽`;
-      case 'summon':
-        return `【${source}】召唤 ${String(values.count ?? 0)} 个单位`;
-      case 'applyBuff':
-        return `【${target}】获得状态效果`;
-      default:
-        return '';
-    }
+    const kind = data.kind as EffectKind | undefined;
+    const present = kind ? EFFECT_EXECUTORS[kind]?.present : undefined;
+    if (!present) return '';
+    return present({
+      source: nameOf(event, 'source') || nameOf(event, 'unit'),
+      target: nameOf(event, 'target'),
+      values: data.values ?? {}
+    });
   }
 });

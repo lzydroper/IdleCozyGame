@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runTurnEngine, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime, type TurnTimingContext } from './turnEngine';
+import { createTurnRuntime, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnResult, type TurnRuntime, type TurnTimingContext } from './turnEngine';
 import { createBattleContext, type BattleContext } from './battleContext';
 import { BUFF_CONFIGS, type BuffInstance } from './buffTypes';
 import { canTriggerBuff, createBuffTriggerHooks, settleBuffTrigger } from './buffRuntime';
@@ -35,17 +35,17 @@ const runBuffBattle = (
   maxRounds: number,
   setup: (ctx: BattleContext) => void,
   performAction?: (unit: BattleUnitRuntime, runtime: TurnRuntime) => void
-): { result: ReturnType<typeof runTurnEngine>; ctx: BattleContext } => {
-  let ctx!: BattleContext;
-  const result = runTurnEngine(units, {
+): { result: TurnResult; ctx: BattleContext } => {
+  // 装配前移（combat-assembly 01）：引擎先建，context/订阅在 run 前完成。
+  const engine = createTurnRuntime(units, {
     maxRounds,
     rng: () => 0.5,
-    setup(runtime) {
-      ctx = createBattleContext(runtime, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
-      setup(ctx);
-    },
     performAction: performAction ?? (() => {})
   });
+  let ctx!: BattleContext;
+  ctx = createBattleContext(engine, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+  setup(ctx);
+  const result = engine.run();
   return { result, ctx };
 };
 
@@ -103,6 +103,7 @@ describe('Buff 触发运行时', () => {
         return actual;
       },
       applyHeal: () => 0,
+      applyHpDelta: () => 0,
       updateInitiative: () => {},
       summonUnit: () => unitB,
       requestEnd: () => {},

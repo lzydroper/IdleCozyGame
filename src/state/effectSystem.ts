@@ -125,6 +125,16 @@ interface BeforeResult {
   params: EffectInstance['params'];
 }
 
+interface BeforeEnv {
+  mods: Modifier[];
+  effectReduction: number;
+  durationReduction: number;
+}
+
+/**
+ * 共享审核流（combat-assembly 04 / E#6）：有效性 / 二元抵抗 / 免疫 flag / 参数修正。
+ * 各 kind 的差异全部收敛到 EFFECT_EXECUTORS 注册表（见文件尾），新增 EffectKind 只改一处。
+ */
 const applyBefore = (ctx: BattleContext, effect: EffectInstance): BeforeResult => {
   const mods = ctx.getModifiers(effect.targetId, 'effect');
   const source = ctx.turn.getUnit(effect.sourceId);
@@ -146,81 +156,24 @@ const applyBefore = (ctx: BattleContext, effect: EffectInstance): BeforeResult =
     }
   }
 
-  // 无效化：元素免疫 / Buff 免疫标记在落地前拦截对应效果。
   if (!isSummon) {
-    if (effect.kind === 'damage') {
-      const p = effect.params as EffectParamsMap['damage'];
-      if (p.element && ctx.getFlag(effect.targetId, `immunityElement:${p.element}`) > 0) {
-        return { allowed: false, interrupted: 'negated', params: effect.params };
-      }
-    }
-    if (effect.kind === 'applyBuff') {
-      const p = effect.params as EffectParamsMap['applyBuff'];
-      if (ctx.getFlag(effect.targetId, `immunityBuff:${p.buffInstance.buffId}`) > 0) {
-        return { allowed: false, interrupted: 'negated', params: effect.params };
-      }
-    }
-    if (effect.kind === 'stun' && ctx.getFlag(effect.targetId, 'immunityBuff:stun') > 0) {
+    const flagKey = EFFECT_EXECUTORS[effect.kind].immunityFlag?.(effect);
+    if (flagKey && ctx.getFlag(effect.targetId, flagKey) > 0) {
       return { allowed: false, interrupted: 'negated', params: effect.params };
     }
   }
 
   const targetUnit = target!;
-  const effectReduction = isSummon ? 0 : targetUnit.stats.effectReduction || 0;
-  const durationReduction = isSummon ? 0 : targetUnit.stats.durationReduction || 0;
-
-  switch (effect.kind) {
-    case 'damage': {
-      const p = effect.params as EffectParamsMap['damage'];
-      return {
-        allowed: true,
-        params: { ...p, amount: applyEffectModifiers(p.amount, mods, 'effect.damage') }
-      };
-    }
-    case 'heal': {
-      const p = effect.params as EffectParamsMap['heal'];
-      return {
-        allowed: true,
-        params: { ...p, amount: applyEffectModifiers(p.amount, mods, 'effect.heal') }
-      };
-    }
-    case 'statModify': {
-      const p = effect.params as EffectParamsMap['statModify'];
-      let value = applyEffectModifiers(p.modifier.value, mods, 'effect.value');
-      if (value < 0) value = value * (1 - effectReduction);
-      return {
-        allowed: true,
-        params: { modifier: { ...p.modifier, value } }
-      };
-    }
-    case 'stun': {
-      const p = effect.params as EffectParamsMap['stun'];
-      const modified = applyEffectModifiers(p.duration, mods, 'effect.duration');
-      const duration = Math.max(0, Math.ceil(modified * (1 - durationReduction)));
-      return { allowed: true, params: { duration } };
-    }
-    case 'taunt': {
-      const p = effect.params as EffectParamsMap['taunt'];
-      const value = applyEffectModifiers(p.value, mods, 'effect.value') * (1 - effectReduction);
-      return { allowed: true, params: { value } };
-    }
-    case 'summon': {
-      const p = effect.params as EffectParamsMap['summon'];
-      const countMods = ctx.getModifiers(effect.sourceId, 'effect');
-      const count = Math.max(1, Math.round(applyEffectModifiers(p.count, countMods, 'effect.count')));
-      return { allowed: true, params: { count, configRef: p.configRef } };
-    }
-    case 'applyBuff': {
-      const p = effect.params as EffectParamsMap['applyBuff'];
-      const instance: BuffInstance = { ...p.buffInstance };
-      if (instance.duration !== null) {
-        instance.duration = applyEffectModifiers(instance.duration, mods, 'effect.duration');
-      }
-      return { allowed: true, params: { buffInstance: instance } };
-    }
-    default:
-      return { allowed: true, params: effect.params };
+  const env: BeforeEnv = {
+    mods,
+    effectReduction: isSummon ? 0 : targetUnit.stats.effectReduction || 0,
+    durationReduction: isSummon ? 0 : targetUnit.stats.durationReduction || 0
+  };
+  const modifyParams = EFFECT_EXECUTORS[effect.kind].before;
+  if (!modifyParams) {
+    return { allowed: true, params: effect.params };
   }
+  return { allowed: true, params: modifyParams(ctx, effect, env) };
 };
 
 const executeDamage = (
@@ -263,6 +216,8 @@ const executeHeal = (
     return { applied: false, interrupted: 'invalid', values: {} };
   }
 
+  // 治疗钳制基准以解析值为准（combat-assembly 03 / M1）：maxHp 增益 Buff 生效期内上限随之提高。
+  target.maxHp = ctx.resolveStats(target.id).maxHp;
   const actual = ctx.turn.applyHeal(target.id, params.amount, source.id, {
     kind: 'effect',
     effectId: effect.id,
@@ -386,34 +341,126 @@ const executeApplyBuff = (
   return { applied: true, values: { stacks: application.stacks } };
 };
 
+// === EffectKind 注册表（combat-assembly 04 / E#6）===
+// 新增一个 EffectKind 只需在此追加一条：before（参数修正）/ immunityFlag / during（必填）/ present（展示文案）。
+
+export interface EffectExecutorPresentArgs {
+  source: string;
+  target: string;
+  values: Record<string, number>;
+}
+
+export interface EffectExecutor {
+  /** 免疫拦截 flag 键；返回 null/undefined 表示无免疫检查。 */
+  immunityFlag?: (effect: EffectInstance) => string | null;
+  /** before 阶段参数修正；缺省原样放行。 */
+  before?: (ctx: BattleContext, effect: EffectInstance, env: BeforeEnv) => EffectInstance['params'];
+  /** during 阶段执行。 */
+  during: (ctx: BattleContext, effect: EffectInstance, params: EffectInstance['params']) => EffectResult;
+  /** 展示文案（battleEventPresentation 消费）；缺省不展示。 */
+  present?: (args: EffectExecutorPresentArgs) => string;
+}
+
+/** 按 kind 定型包装器：条目内 params 为该 kind 的精确形状，边界处单点收窄。 */
+const defineExecutor = <K extends EffectKind>(
+  executor: Omit<EffectExecutor, 'during'> & {
+    during: (ctx: BattleContext, effect: EffectInstance, params: EffectParamsMap[K]) => EffectResult;
+  }
+): EffectExecutor => ({
+  ...executor,
+  during: (ctx, effect, params) => executor.during(ctx, effect, params as EffectParamsMap[K])
+});
+
+export const EFFECT_EXECUTORS: Record<EffectKind, EffectExecutor> = {
+  damage: defineExecutor<'damage'>({
+    immunityFlag: effect => {
+      const p = effect.params as EffectParamsMap['damage'];
+      return p.element ? `immunityElement:${p.element}` : null;
+    },
+    before: (_ctx, effect, env) => {
+      const p = effect.params as EffectParamsMap['damage'];
+      return { ...p, amount: applyEffectModifiers(p.amount, env.mods, 'effect.damage') };
+    },
+    during: executeDamage
+  }),
+  heal: defineExecutor<'heal'>({
+    before: (_ctx, effect, env) => {
+      const p = effect.params as EffectParamsMap['heal'];
+      return { ...p, amount: applyEffectModifiers(p.amount, env.mods, 'effect.heal') };
+    },
+    during: executeHeal
+  }),
+  statModify: defineExecutor<'statModify'>({
+    before: (_ctx, effect, env) => {
+      const p = effect.params as EffectParamsMap['statModify'];
+      let value = applyEffectModifiers(p.modifier.value, env.mods, 'effect.value');
+      if (value < 0) value = value * (1 - env.effectReduction);
+      return { modifier: { ...p.modifier, value } };
+    },
+    during: executeStatModify,
+    present: ({ target, values }) => `【${target}】属性修正 ${String(values.value ?? 0)}`
+  }),
+  stun: defineExecutor<'stun'>({
+    immunityFlag: () => 'immunityBuff:stun',
+    before: (_ctx, effect, env) => {
+      const p = effect.params as EffectParamsMap['stun'];
+      const modified = applyEffectModifiers(p.duration, env.mods, 'effect.duration');
+      return { duration: Math.max(0, Math.ceil(modified * (1 - env.durationReduction))) };
+    },
+    during: executeStun,
+    present: ({ target }) => `【${target}】受到眩晕效果`
+  }),
+  dispel: defineExecutor<'dispel'>({
+    during: executeDispel,
+    present: ({ target }) => `【${target}】增益效果被驱散`
+  }),
+  immunityElement: defineExecutor<'immunityElement'>({
+    during: executeImmunityElement,
+    present: ({ target }) => `【${target}】获得元素免疫`
+  }),
+  immunityBuff: defineExecutor<'immunityBuff'>({
+    during: executeImmunityBuff,
+    present: ({ target }) => `【${target}】获得状态免疫`
+  }),
+  taunt: defineExecutor<'taunt'>({
+    before: (_ctx, effect, env) => {
+      const p = effect.params as EffectParamsMap['taunt'];
+      return { value: applyEffectModifiers(p.value, env.mods, 'effect.value') * (1 - env.effectReduction) };
+    },
+    during: executeTaunt,
+    present: ({ target }) => `【${target}】被嘲讽`
+  }),
+  summon: defineExecutor<'summon'>({
+    before: (ctx, effect) => {
+      // 召唤数量取来源侧 effect.* 修正（多目标例外）。
+      const p = effect.params as EffectParamsMap['summon'];
+      const countMods = ctx.getModifiers(effect.sourceId, 'effect');
+      const count = Math.max(1, Math.round(applyEffectModifiers(p.count, countMods, 'effect.count')));
+      return { count, configRef: p.configRef };
+    },
+    during: executeSummon,
+    present: ({ source, values }) => `【${source}】召唤 ${String(values.count ?? 0)} 个单位`
+  }),
+  applyBuff: defineExecutor<'applyBuff'>({
+    immunityFlag: effect => `immunityBuff:${(effect.params as EffectParamsMap['applyBuff']).buffInstance.buffId}`,
+    before: (_ctx, effect, env) => {
+      const p = effect.params as EffectParamsMap['applyBuff'];
+      const instance: BuffInstance = { ...p.buffInstance };
+      if (instance.duration !== null) {
+        instance.duration = applyEffectModifiers(instance.duration, env.mods, 'effect.duration');
+      }
+      return { buffInstance: instance };
+    },
+    during: executeApplyBuff,
+    present: ({ target }) => `【${target}】获得状态效果`
+  })
+};
+
 const executeDuring = (
   ctx: BattleContext,
   effect: EffectInstance,
   params: EffectInstance['params']
-): EffectResult => {
-  switch (effect.kind) {
-    case 'damage':
-      return executeDamage(ctx, effect, params as EffectParamsMap['damage']);
-    case 'heal':
-      return executeHeal(ctx, effect, params as EffectParamsMap['heal']);
-    case 'statModify':
-      return executeStatModify(ctx, effect, params as EffectParamsMap['statModify']);
-    case 'stun':
-      return executeStun(ctx, effect, params as EffectParamsMap['stun']);
-    case 'dispel':
-      return executeDispel(ctx, effect, params as EffectParamsMap['dispel']);
-    case 'immunityElement':
-      return executeImmunityElement(ctx, effect, params as EffectParamsMap['immunityElement']);
-    case 'immunityBuff':
-      return executeImmunityBuff(ctx, effect, params as EffectParamsMap['immunityBuff']);
-    case 'taunt':
-      return executeTaunt(ctx, effect, params as EffectParamsMap['taunt']);
-    case 'summon':
-      return executeSummon(ctx, effect, params as EffectParamsMap['summon']);
-    case 'applyBuff':
-      return executeApplyBuff(ctx, effect, params as EffectParamsMap['applyBuff']);
-  }
-};
+): EffectResult => EFFECT_EXECUTORS[effect.kind].during(ctx, effect, params);
 
 export const resolveEffect = (
   ctx: BattleContext,

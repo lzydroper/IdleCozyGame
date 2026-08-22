@@ -3,6 +3,7 @@ import {
   calculateInitiative,
   calculateSummonInitiative,
   compareByInitiative,
+  createTurnRuntime,
   runTurnEngine,
   type BattleUnitSnapshot,
   type BattleUnitRuntime,
@@ -497,40 +498,32 @@ describe('05 — 事件触发与强制结束', () => {
   });
 });
 
-describe('setup 初始化钩子', () => {
-  it('在首轮前调用一次，并可用于注册主时机订阅', () => {
+describe('createTurnRuntime 装配（combat-assembly 01：setup seam 删除）', () => {
+  it('run 前可直接注册主时机订阅，首轮前生效', () => {
     const calls: string[] = [];
-    let setupRuntime: TurnRuntime | null = null;
-    runTurnEngine(
+    const engine = createTurnRuntime(
       [snap('a', 'hero', 100, 30), snap('e', 'enemy', 100, 10)],
-      {
-        maxRounds: 1,
-        setup(runtime) {
-          setupRuntime = runtime;
-          calls.push('setup');
-          runtime.register(
-            'turnStart',
-            ctx => {
-              if (ctx.unit?.id === 'a') calls.push('sub-a');
-            },
-            'a'
-          );
-        },
-        performAction: basicAttackAction(5)
-      }
+      { maxRounds: 1, performAction: basicAttackAction(5) }
     );
+    calls.push('setup');
+    engine.register(
+      'turnStart',
+      ctx => {
+        if (ctx.unit?.id === 'a') calls.push('sub-a');
+      },
+      'a'
+    );
+    engine.run();
     expect(calls).toEqual(['setup', 'sub-a']);
-    expect(setupRuntime).not.toBeNull();
-    expect(typeof setupRuntime!.register).toBe('function');
+    expect(typeof engine.register).toBe('function');
   });
 
-  it('maxRounds = 0 也调用 setup，且不进入任何轮次', () => {
-    let called = false;
-    const result = runTurnEngine(
+  it('maxRounds = 0：引擎可构建、run 不进入任何轮次', () => {
+    const engine = createTurnRuntime(
       [snap('a', 'hero', 100, 30), snap('e', 'enemy', 100, 10)],
-      { maxRounds: 0, setup: () => { called = true; }, performAction: () => {} }
+      { maxRounds: 0, performAction: () => {} }
     );
-    expect(called).toBe(true);
+    const result = engine.run();
     expect(result.rounds).toBe(0);
     expect(result.events).toHaveLength(0);
     expect(result.outcome).toBe('draw');
@@ -545,11 +538,7 @@ describe('边界与参数校验（combat-hygiene 05 / T#16）', () => {
   });
 
   it('summonUnit 与已有 id 冲突抛错', () => {
-    let runtime!: TurnRuntime;
-    runTurnEngine([snap('a', 'hero', 100, 30)], {
-      maxRounds: 0,
-      setup: (rt) => { runtime = rt; }
-    });
+    const runtime = createTurnRuntime([snap('a', 'hero', 100, 30)], { maxRounds: 0 });
     expect(() => runtime.summonUnit(snap('a', 'enemy', 50, 10))).toThrow(/duplicate unit id/);
     expect(() => runtime.summonUnit(snap('s1', 'enemy', 50, 10))).not.toThrow();
   });
@@ -559,5 +548,40 @@ describe('边界与参数校验（combat-hygiene 05 / T#16）', () => {
     expect(result.outcome).toBe('defeat');
     // 既有实现：轮次先自增再查终止，空输入在首轮 roundStart 后即判负。
     expect(result.rounds).toBe(1);
+  });
+});
+
+describe('applyHpDelta 统一入口（combat-assembly 05 / T#4）', () => {
+  const makeEngine = (): TurnRuntime =>
+    createTurnRuntime(
+      [snap('a', 'hero', 100, 30), snap('b', 'enemy', 100, 10)],
+      { maxRounds: 0 }
+    );
+
+  it('正 delta 回复并钳制 maxHp，派发 healingTaken', () => {
+    const rt = makeEngine();
+    rt.getUnit('a')!.hp = 50;
+    expect(rt.applyHpDelta('a', 999)).toBe(50); // 钳到 maxHp
+    expect(rt.getUnit('a')!.hp).toBe(100);
+    expect(rt.applyHpDelta('a', -10)).toBe(-10);
+    expect(rt.getUnit('a')!.hp).toBe(90);
+  });
+
+  it('负 delta 归零派发一次 death；对死亡单位操作返回 0', () => {
+    const rt = makeEngine();
+    const deathEvents: number[] = [];
+    rt.register('death', (ctx) => { deathEvents.push(ctx.round); }, null);
+    expect(rt.applyHpDelta('a', -150)).toBe(-100);
+    expect(rt.getUnit('a')!.hp).toBe(0);
+    expect(deathEvents.length).toBe(1);
+    expect(rt.applyHpDelta('a', 50)).toBe(0);
+    expect(rt.applyHpDelta('a', -5)).toBe(0);
+    expect(deathEvents.length).toBe(1);
+  });
+
+  it('delta 为 0 或未知单位返回 0', () => {
+    const rt = makeEngine();
+    expect(rt.applyHpDelta('a', 0)).toBe(0);
+    expect(rt.applyHpDelta('ghost', -10)).toBe(0);
   });
 });

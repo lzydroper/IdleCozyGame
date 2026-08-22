@@ -169,13 +169,18 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 8);
-    const skills = result.events.filter(
-      e => e.key === 'attackAfter' && e.data.kind === 'skill' && e.data.skillName === '拆解重击'
+    // 技能识别走 abilityUsed（combat-assembly 02 / M2：attackAfter 已瘦身为纯内部触发通道）
+    const casts = result.events.filter(
+      e => e.key === 'abilityUsed' && e.data.abilityId === 'awaken_buster'
     );
     // 回合 1 发动；冷却 3 → 回合 5 再发动（自身行动轮）
-    expect(skills.map(e => e.round)).toEqual([1, 5]);
-    // 伤害 = 攻击 ×2.2（防御 0）：round(58 × 2.2) = 128
-    expect(skills[0].data.damage).toBe(Math.round(58 * 2.2));
+    expect(casts.map(e => e.round)).toEqual([1, 5]);
+    // 伤害 = 攻击 ×2.2（防御 0）：round(58 × 2.2) = 128，经 effectApplied 验证
+    const strikeDamage = result.events.find(
+      e => e.key === 'effectApplied' && e.round === 1 && e.data.kind === 'damage' &&
+        ((casts[0].data as { targetIds: string[] }).targetIds as string[]).includes(e.targetId ?? '')
+    );
+    expect((strikeDamage!.data as { values: { damage: number } }).values.damage).toBe(Math.round(58 * 2.2));
   });
 
   it('aoe 技能：一次行动对全部存活敌人造成伤害', () => {
@@ -185,12 +190,18 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
-    const round1Skills = result.events.filter(
-      e => e.round === 1 && e.key === 'attackAfter' && e.data.kind === 'skill'
+    const cast = result.events.find(
+      e => e.round === 1 && e.key === 'abilityUsed' && e.data.abilityId === 'awaken_nova'
     );
-    expect(round1Skills).toHaveLength(2); // 两个敌人都吃到
-    expect(round1Skills.every(e => e.data.skillName === '电涌过载')).toBe(true);
-    expect(round1Skills[0].data.damage).toBe(Math.round(58 * 0.8));
+    expect(cast).toBeDefined();
+    expect((cast!.data as { targetIds: string[] }).targetIds).toEqual(['e1', 'e2']); // 两个敌人都吃到
+    const round1Damages = result.events.filter(
+      e => e.round === 1 && e.key === 'attackAfter' && (e.targetId === 'e1' || e.targetId === 'e2')
+    );
+    expect(round1Damages.map(e => e.data.damage)).toEqual([
+      Math.round(58 * 0.8),
+      Math.round(58 * 0.8)
+    ]);
   });
 
   it('heal 技能：恢复自身生命且不超过上限', () => {
@@ -226,9 +237,10 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     const nova: HeroState = createInitialHero('nova');
     const heroes = [heroToCombatant('nova', nova)];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
-    const attackEvents = result.events.filter(e => e.key === 'attackAfter');
-    expect(attackEvents.some(e => e.data.kind === 'skill')).toBe(false);
-    expect(attackEvents.every(e => e.data.kind === 'attack')).toBe(true);
+    const skillCasts = result.events.filter(
+      e => e.key === 'abilityUsed' && e.data.abilityId !== 'basic_attack'
+    );
+    expect(skillCasts).toHaveLength(0);
   });
 
   it('升星/觉醒百分比加成计入战斗数值（与天赋叠加）', () => {

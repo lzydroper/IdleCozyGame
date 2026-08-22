@@ -1,22 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createBattleContext, type BuffInstance } from './battleContext';
-import type { TurnRuntime, BattleEvent, BattleUnitRuntime } from './turnEngine';
+import type { TurnRuntime } from './turnEngine';
 import type { Modifier } from './modifier';
+import { makeFakeRuntime } from './testFixtures/battleRuntime';
 
-const fakeRuntime = (): TurnRuntime => ({
-  round: 0,
-  rng: () => 0.5,
-  register: () => () => {},
-  unregister: () => {},
-  dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
-  dealDamage: () => 0,
-  applyHeal: () => 0,
-  updateInitiative: () => {},
-  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', side: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
-  requestEnd: () => {},
-  getUnit: () => undefined,
-  getLivingUnits: () => []
-});
+// 共享工厂（combat-assembly 04 / E#7）。
+const fakeRuntime = (): TurnRuntime => makeFakeRuntime().runtime;
 
 const buff = (buffId: string, duration: number | null = 3, overrides: Partial<BuffInstance> = {}): BuffInstance => ({
   id: overrides.id ?? buffId + '-1',

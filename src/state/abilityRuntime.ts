@@ -106,32 +106,14 @@ export const createAbilityRuntime = (getBattle: () => BattleContext): AbilityRun
 
     for (const { effect, result } of resolved) {
       if (effect.kind !== 'damage') continue;
-      const params = effect.params as { amount: number };
-      // amount 来自公式层已取整的 values.damage / asNumber，不再重复 round（combat-aftermath 04 N1）。
-      const amount = typeof params.amount === 'number' ? params.amount : 0;
+      // attackAfter 定位为纯内部触发通道（combat-assembly 02 / M2）：
+      // 展示语义由 abilityUsed/effectApplied 承载；fireCount 传播属挂起内容项（roadmap 桶 D）。
       const damage = result.values.damage ?? 0;
-      const data =
-        selected.ability.id === 'basic_attack'
-          ? {
-              kind: 'attack' as const,
-              abilityId: selected.ability.id,
-              damage,
-              amount,
-              fireCount: compiled.fireCount
-            }
-          : {
-              kind: 'skill' as const,
-              skillName: selected.ability.name,
-              abilityId: selected.ability.id,
-              damage,
-              amount,
-              fireCount: compiled.fireCount
-            };
       battle.turn.dispatchEvent('attackAfter', {
         unitId: unit.id,
         sourceId: unit.id,
         targetId: effect.targetId,
-        data
+        data: { damage }
       });
     }
   };

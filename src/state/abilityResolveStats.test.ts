@@ -1,21 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { createBattleContext } from './battleContext';
-import type { TurnRuntime, BattleEvent, BattleUnitRuntime } from './turnEngine';
+import type { TurnRuntime, BattleUnitRuntime } from './turnEngine';
+import { makeFakeRuntime } from './testFixtures/battleRuntime';
 
-const fakeRuntime = (unit: BattleUnitRuntime): TurnRuntime => ({
-  round: 0,
-  rng: () => 0.5,
-  register: () => () => {},
-  unregister: () => {},
-  dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
-  dealDamage: () => 0,
-  applyHeal: () => 0,
-  updateInitiative: () => {},
-  summonUnit: () => unit,
-  requestEnd: () => {},
-  getUnit: (id) => (id === unit.id ? unit : undefined),
-  getLivingUnits: () => [unit]
-});
+// 共享工厂（combat-assembly 04 / E#7）。
+const fakeRuntime = (unit: BattleUnitRuntime): TurnRuntime => makeFakeRuntime([unit]).runtime;
 
 const makeUnit = (): BattleUnitRuntime => ({
   id: 'a',
@@ -53,10 +42,10 @@ describe('resolveStats', () => {
     expect(ctx.resolveStats('a').attack).toBe(180);
   });
 
-  it('无 statParams 时回退到静态面板', () => {
+  it('无 statParams 时抛明确错误（combat-assembly 03 / M1 回退收紧）', () => {
     const u = makeUnit();
     u.statParams = undefined;
     const ctx = createBattleContext(fakeRuntime(u));
-    expect(ctx.resolveStats('a').attack).toBe(120);
+    expect(() => ctx.resolveStats('a')).toThrow(/缺少 statParams/);
   });
 });

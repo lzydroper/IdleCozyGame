@@ -17,7 +17,7 @@ import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenAbilityId } from './awakening';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
-import { runTurnEngine } from './turnEngine';
+import { createTurnRuntime } from './turnEngine';
 import type { BattleUnitSnapshot } from './turnEngine';
 import { getAbilityConfig } from '../data/abilities';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
@@ -130,7 +130,6 @@ export const createBattle = (
   options: CreateBattleOptions = {}
 ): { run: () => BattleResult; context: BattleContext } => {
   const units: BattleUnitSnapshot[] = entities.map(toTurnUnit);
-  const passiveConfigs = collectPassiveBuffConfigs(units.flatMap(unit => unit.abilities));
   // context 契约（combat-hygiene 05 / En#7）：run 前访问抛明确错误，而非暴露未初始化值。
   let battleStore: BattleContext | undefined;
   const getBattle = (): BattleContext => {
@@ -143,22 +142,29 @@ export const createBattle = (
   const maxRounds = options.maxRounds ?? COMBAT_CONFIG.maxBattleRounds;
   const rng = options.rng ?? Math.random;
 
+  // 装配前移（combat-assembly 01 / M3）：引擎运行时先建，BattleContext / 被动 / Ability 注册
+  // 全部在 run() 之前完成——TurnConfig.setup seam 已删除。
+  const engine = createTurnRuntime(units, {
+    maxRounds,
+    rng,
+    canAct: (unit) => canActWithBuffs(getBattle(), unit.id),
+    performAction: abilityRuntime.performAction
+  });
+  // 被动效果结算时经 resolveStats 解析（combat-assembly 03 / M1）。
+  const passiveConfigs = collectPassiveBuffConfigs(
+    units.flatMap(unit => unit.abilities),
+    (unitId) => getBattle().resolveStats(unitId)
+  );
+  battleStore = createBattleContext(
+    engine,
+    { ...BUFF_CONFIGS, ...passiveConfigs },
+    createBuffTriggerHooks(getBattle)
+  );
+  applyPassiveAbilities(battleStore, engine.getLivingUnits());
+  abilityRuntime.setup(engine);
+
   const run = (): BattleResult => {
-    const result = runTurnEngine(units, {
-      maxRounds,
-      rng,
-      setup(runtime) {
-        battleStore = createBattleContext(
-          runtime,
-          { ...BUFF_CONFIGS, ...passiveConfigs },
-          createBuffTriggerHooks(getBattle)
-        );
-        applyPassiveAbilities(battleStore, runtime.getLivingUnits());
-        abilityRuntime.setup(runtime);
-      },
-      canAct: (unit) => canActWithBuffs(getBattle(), unit.id),
-      performAction: abilityRuntime.performAction
-    });
+    const result = engine.run();
     return {
       outcome: result.outcome,
       victory: result.outcome === 'victory',

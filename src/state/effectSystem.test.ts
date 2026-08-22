@@ -7,113 +7,13 @@ import {
   calculateDamageAmount,
   type EffectInstance
 } from './effectSystem';
+import { makeBattleUnit, makeFakeRuntime } from './testFixtures/battleRuntime';
 
-const makeUnit = (
-  id: string,
-  hp: number,
-  overrides: Partial<BattleUnitRuntime> = {}
-): BattleUnitRuntime => ({
-  id,
-  name: id,
-  side: 'hero',
-  hp,
-  maxHp: hp,
-  initiative: 100,
-  abilities: [],
-  stats: {
-    attack: 20,
-    defense: 0,
-    maxHp: hp,
-    maxMp: 0,
-    critRate: 0,
-    critDmg: 1.5,
-    critResist: 0,
-    damageReduction: 0,
-    durationReduction: 0,
-    effectReduction: 0,
-    cooldownReduction: 0,
-    strength: 0,
-    constitution: 0,
-    agility: 0,
-    intelligence: 0,
-    willpower: 0,
-    transcendence: 0,
-    arcaneBoost: 0,
-    arcaneResistance: 0,
-    mechanicalEvolution: 0,
-    voidSpirit: 0
-  },
-  entryOrder: 0,
-  ...overrides
-});
+// 共享工厂（combat-assembly 04 / E#7）：单位与 runtime 桩抽取到 testFixtures/battleRuntime。
+const makeUnit = makeBattleUnit;
 
-const makeRuntime = (units: Map<string, BattleUnitRuntime>): { runtime: TurnRuntime; events: BattleEvent[] } => {
-  const events: BattleEvent[] = [];
-  let seq = 0;
-  const runtime: TurnRuntime = {
-    round: 0,
-    rng: () => 0.5,
-    register: () => () => {},
-    unregister: () => {},
-    dispatchEvent: (key, opts = {}) => {
-      const event: BattleEvent = {
-        seq: seq++,
-        round: 0,
-        key,
-        unitId: opts.unitId ?? null,
-        sourceId: opts.sourceId ?? null,
-        targetId: opts.targetId ?? null,
-        unitName: null,
-        sourceName: null,
-        targetName: null,
-        data: opts.data ?? {}
-      };
-      events.push(event);
-      return event;
-    },
-    dealDamage: (targetId, amount, sourceId = null, data = {}) => {
-      const target = units.get(targetId);
-      if (!target || target.hp <= 0) return 0;
-      const actual = Math.min(target.hp, Math.max(0, Math.round(amount)));
-      target.hp -= actual;
-      runtime.dispatchEvent('damageTaken', { unitId: targetId, sourceId, targetId, data: { ...data, amount: actual } });
-      if (target.hp <= 0) {
-        runtime.dispatchEvent('death', { unitId: targetId, sourceId, targetId, data });
-      }
-      return actual;
-    },
-    applyHeal: (targetId, amount, sourceId = null, data = {}) => {
-      const target = units.get(targetId);
-      if (!target || target.hp <= 0) return 0;
-      const actual = Math.min(target.maxHp - target.hp, Math.max(0, Math.round(amount)));
-      if (actual <= 0) return 0;
-      target.hp += actual;
-      runtime.dispatchEvent('healingTaken', { unitId: targetId, sourceId, targetId, data: { ...data, amount: actual } });
-      return actual;
-    },
-    updateInitiative: () => {},
-    summonUnit: snapshot => {
-      const unit: BattleUnitRuntime = {
-        id: snapshot.id,
-        name: snapshot.name,
-        side: snapshot.side,
-        hp: Math.max(0, snapshot.hp),
-        maxHp: snapshot.maxHp,
-        initiative: snapshot.initiative,
-        abilities: snapshot.abilities.map(a => ({ ...a })),
-        stats: { ...snapshot.stats },
-        entryOrder: units.size
-      };
-      units.set(unit.id, unit);
-      runtime.dispatchEvent('summon', { unitId: unit.id, sourceId: unit.id, targetId: null, data: { initiative: unit.initiative } });
-      return unit;
-    },
-    requestEnd: () => {},
-    getUnit: id => units.get(id),
-    getLivingUnits: () => []
-  };
-  return { runtime, events };
-};
+const makeRuntime = (units: Map<string, BattleUnitRuntime>): { runtime: TurnRuntime; events: BattleEvent[] } =>
+  makeFakeRuntime([...units.values()]);
 
 const makeCtx = (units: Map<string, BattleUnitRuntime>): { ctx: BattleContext; events: BattleEvent[] } => {
   const { runtime, events } = makeRuntime(units);
@@ -151,9 +51,11 @@ describe('resolveEffect 主 seam', () => {
   });
 
   it('治疗效果落地：恢复生命并派发 effectApplied', () => {
+    const b = makeUnit('b', 100);
+    b.hp = 80; // 80/100：缺 2 0 点余量
     const units = new Map<string, BattleUnitRuntime>([
       ['a', makeUnit('a', 100)],
-      ['b', makeUnit('b', 80, { maxHp: 100 })]
+      ['b', b]
     ]);
     const { ctx, events } = makeCtx(units);
     const result = resolveEffect(ctx, effect('heal', { amount: 10 }));
@@ -165,9 +67,11 @@ describe('resolveEffect 主 seam', () => {
   });
 
   it('effect.* Modifier 修正效果数值', () => {
+    const b = makeUnit('b', 100);
+    b.hp = 80;
     const units = new Map<string, BattleUnitRuntime>([
       ['a', makeUnit('a', 100)],
-      ['b', makeUnit('b', 80, { maxHp: 100 })]
+      ['b', b]
     ]);
     const { ctx } = makeCtx(units);
     ctx.addModifier('b', { target: 'effect.heal', op: 'multiply', value: 0.1 });
@@ -350,8 +254,8 @@ describe('summon 效果', () => {
 
     expect(result.applied).toBe(true);
     expect(result.values.count).toBe(2);
-    expect(units.has('s1')).toBe(true);
-    expect(units.has('s1-1')).toBe(true);
+    expect(ctx.turn.getUnit('s1')).toBeDefined();
+    expect(ctx.turn.getUnit('s1-1')).toBeDefined();
     expect(events.some(e => e.key === 'summon' && e.unitId === 's1')).toBe(true);
   });
 
@@ -364,8 +268,8 @@ describe('summon 效果', () => {
 
     expect(result.applied).toBe(true);
     expect(result.values.count).toBe(2);
-    expect(units.has('s1')).toBe(true);
-    expect(units.has('s1-1')).toBe(true);
+    expect(ctx.turn.getUnit('s1')).toBeDefined();
+    expect(ctx.turn.getUnit('s1-1')).toBeDefined();
   });
 });
 

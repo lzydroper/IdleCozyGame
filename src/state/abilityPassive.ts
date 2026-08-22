@@ -7,11 +7,21 @@ import type { BattleContext, BuffInstance } from './battleContext';
 import type { BuffConfig } from './buffTypes';
 import type { ResolvedAbility } from './abilityTypes';
 import type { BattleUnitRuntime, TurnTimingContext } from './turnEngine';
+import type { BattleUnitStats } from './battleTypes';
 import { compileAbilityEffects } from './abilityCompiler';
 
 export const passiveBuffId = (abilityId: string): string => 'passive:' + abilityId;
 
-export const compilePassiveBuffConfig = (ability: ResolvedAbility): BuffConfig => {
+/**
+ * statsResolver（combat-assembly 03 / M1）：被动效果在「触发结算时」经 resolveStats 取数，
+ * 战斗内动态 Modifier（含元属性折算）即时生效；缺省回退入场静态快照（仅测试用）。
+ */
+export type PassiveStatsResolver = (unitId: string) => BattleUnitStats;
+
+export const compilePassiveBuffConfig = (
+  ability: ResolvedAbility,
+  resolveStats?: PassiveStatsResolver
+): BuffConfig => {
   const passive = ability.passive;
   return {
     buffId: passiveBuffId(ability.id),
@@ -26,7 +36,8 @@ export const compilePassiveBuffConfig = (ability: ResolvedAbility): BuffConfig =
       const source = timingCtx.runtime.getUnit(instance.sourceId);
       if (!source) return [];
       const target = timingCtx.target ?? timingCtx.unit ?? source;
-      const stats = source.stats;
+      // 结算时解析（resolveStats 唯一权威），不再读入场静态快照。
+      const stats = resolveStats ? resolveStats(instance.sourceId) : source.stats;
       const passiveAbility: ResolvedAbility = { ...ability, effects: passive.effects };
       let localSeq = 0;
       const makeId = (): string => {
@@ -39,12 +50,13 @@ export const compilePassiveBuffConfig = (ability: ResolvedAbility): BuffConfig =
 };
 
 export const collectPassiveBuffConfigs = (
-  abilities: ResolvedAbility[]
+  abilities: ResolvedAbility[],
+  resolveStats?: PassiveStatsResolver
 ): Record<string, BuffConfig> => {
   const configs: Record<string, BuffConfig> = {};
   for (const ability of abilities) {
     if (ability.activation === 'passive' && ability.passive) {
-      configs[passiveBuffId(ability.id)] = compilePassiveBuffConfig(ability);
+      configs[passiveBuffId(ability.id)] = compilePassiveBuffConfig(ability, resolveStats);
     }
   }
   return configs;

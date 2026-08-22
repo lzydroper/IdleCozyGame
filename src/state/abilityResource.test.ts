@@ -1,21 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { createBattleContext } from './battleContext';
-import { runTurnEngine, type TurnRuntime, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot } from './turnEngine';
+import { createTurnRuntime, type TurnRuntime, type BattleUnitRuntime, type BattleUnitSnapshot } from './turnEngine';
+import { makeFakeRuntime } from './testFixtures/battleRuntime';
 
-const fakeRuntime = (unit: BattleUnitRuntime): TurnRuntime => ({
-  round: 0,
-  rng: () => 0.5,
-  register: () => () => {},
-  unregister: () => {},
-  dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
-  dealDamage: () => 0,
-  applyHeal: () => 0,
-  updateInitiative: () => {},
-  summonUnit: () => unit,
-  requestEnd: () => {},
-  getUnit: (id) => (id === unit.id ? unit : undefined),
-  getLivingUnits: () => [unit]
-});
+// 共享工厂（combat-assembly 04 / E#7）。
+const fakeRuntime = (unit: BattleUnitRuntime): TurnRuntime => makeFakeRuntime([unit]).runtime;
 
 const unit = (id: string, currentMp: number, maxMp: number): BattleUnitRuntime => ({
   id,
@@ -64,13 +53,7 @@ describe('资源消耗 seam', () => {
       abilities: [],
       stats: { attack: 1, defense: 0, maxHp: 10, maxMp: 7, critRate: 0, critDmg: 1.5 }
     };
-    let runtime: TurnRuntime | null = null;
-    runTurnEngine([snapshot], {
-      maxRounds: 0,
-      setup: (rt) => {
-        runtime = rt;
-      }
-    });
-    expect(runtime!.getUnit('a')?.currentMp).toBe(7);
+    const runtime = createTurnRuntime([snapshot], { maxRounds: 0 });
+    expect(runtime.getUnit('a')?.currentMp).toBe(7);
   });
 });

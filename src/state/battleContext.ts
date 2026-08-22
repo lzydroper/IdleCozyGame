@@ -220,7 +220,11 @@ export const createBattleContext = (
       if (!unit) {
         throw new Error('resolveStats: unknown unit ' + unitId);
       }
-      if (!unit.statParams) return unit.stats;
+      // 回退收紧（combat-assembly 03 / M1）：所有实体工厂均产 statParams；
+      // 缺失只可能来自构造残缺，静默回退会掩盖动态 Modifier 失效。
+      if (!unit.statParams) {
+        throw new Error(`resolveStats: unit '${unitId}' 缺少 statParams`);
+      }
 
       const dynamicModifiers = this.getModifiers(unitId, 'stat')
         .map(toStatModifier)
