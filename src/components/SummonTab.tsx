@@ -264,9 +264,9 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
       {/* 召唤结果展示 Modal (Result Outcome) */}
       {resultOutcomes && resultOutcomes.length > 0 && (
-        <div className="absolute inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[85vh] p-4 flex flex-col gap-3 shadow-2xl animate-in zoom-in-95 duration-200">
-            <header className="text-center">
+        <div className="absolute inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 select-none">
+          <div className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col justify-between shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <header className="text-center shrink-0">
               <h3 className="text-sm font-black text-zinc-100 flex items-center justify-center gap-1.5">
                 <Sparkles className="w-4.5 h-4.5 text-amber-400" />
                 {resultOutcomes.length === 1 ? '招募获得' : `${resultOutcomes.length} 连招募获得`}
@@ -276,9 +276,9 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
             {/* 结果列表网格 */}
             <div
-              className={`w-full grid ${
-                resultOutcomes.length === 1 ? 'grid-cols-1 max-w-[120px] mx-auto' : 'grid-cols-5'
-              } gap-2 max-h-72 overflow-y-auto p-1`}
+              className={`w-full flex-1 grid ${
+                resultOutcomes.length === 1 ? 'grid-cols-1 max-w-[160px] mx-auto' : 'grid-cols-2'
+              } gap-2.5 overflow-y-auto p-1 min-h-0`}
             >
               {resultOutcomes.map((outcome, idx) => {
                 const config = outcome.heroId ? HEROES_CONFIG[outcome.heroId] : null;
@@ -287,11 +287,13 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                   return (
                     <div
                       key={idx}
-                      className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-zinc-950/80 border border-amber-400/80 text-center aspect-square select-none"
+                      className="flex flex-col items-center justify-between p-3 rounded-2xl bg-zinc-950/80 border border-amber-400/80 text-center aspect-square select-none"
                     >
-                      <span className="text-[7px] font-bold text-purple-300">保底</span>
-                      <GameIcon type="item" id="arcane_orb" className="w-8 h-8" />
-                      <span className="text-[9px] font-black text-amber-200 max-w-full truncate">奥术星体</span>
+                      <span className="text-[9px] font-bold text-purple-300">100抽保底</span>
+                      <GameIcon type="item" id="arcane_orb" className="w-12 h-12 my-auto" />
+                      <div className="w-full flex flex-col items-center leading-none">
+                        <span className="text-xs font-black text-amber-200">奥术星体 x1</span>
+                      </div>
                     </div>
                   );
                 }
@@ -300,11 +302,13 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                   return (
                     <div
                       key={idx}
-                      className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center aspect-square select-none"
+                      className="flex flex-col items-center justify-between p-3 rounded-2xl bg-zinc-950/80 border border-zinc-800 text-center aspect-square select-none"
                     >
-                      <span className="text-[7px] text-zinc-500">共鸣</span>
-                      <GameIcon type="item" id="resonance_shard" className="w-8 h-8" />
-                      <span className="text-[9px] font-bold text-zinc-300 max-w-full truncate">碎片 x{outcome.shardsGained}</span>
+                      <span className="text-[9px] text-zinc-500">通用碎片</span>
+                      <GameIcon type="item" id="resonance_shard" className="w-12 h-12 my-auto" />
+                      <div className="w-full flex flex-col items-center leading-none">
+                        <span className="text-xs font-bold text-zinc-200">共鸣碎片 x{outcome.shardsGained}</span>
+                      </div>
                     </div>
                   );
                 }
@@ -316,30 +320,30 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                 return (
                   <div
                     key={idx}
-                    className={`flex flex-col items-center justify-between p-1.5 rounded-xl border relative overflow-hidden text-center aspect-square select-none ${
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border relative overflow-hidden text-center aspect-square select-none ${
                       outcome.isNew
-                        ? 'bg-zinc-950/80 border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.25)]'
+                        ? 'bg-zinc-950/80 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.2)]'
                         : 'bg-zinc-950/80 border-zinc-800'
                     }`}
                   >
                     {outcome.isNew && (
-                      <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-amber-500 text-amber-950 text-[7px] font-black uppercase shadow">
+                      <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-amber-500 text-amber-950 text-[8px] font-black uppercase shadow">
                         NEW!
                       </span>
                     )}
 
-                    <GameIcon type="hero" id={config.id} className="w-8 h-8 rounded-lg mt-0.5" />
+                    <GameIcon type="hero" id={config.id} className="w-13 h-13 rounded-xl mt-1 shadow" />
 
-                    <div className="w-full flex flex-col items-center leading-none">
-                      <span className="text-[9px] font-black text-zinc-100 max-w-full truncate">
+                    <div className="w-full flex flex-col items-center leading-tight">
+                      <span className="text-xs font-black text-zinc-100 max-w-full truncate">
                         {config.name}
                       </span>
                       {outcome.isNew ? (
-                        <span className="text-[7px] font-bold text-amber-400 mt-0.5">解锁新英雄</span>
+                        <span className="text-[9px] font-bold text-amber-400 mt-0.5">解锁新英雄</span>
                       ) : (
-                        <span className="flex items-center justify-center gap-0.5 text-[7px] font-bold text-purple-300 mt-0.5">
-                          <GameIcon type="item" id={shardIconId} className="w-2.5 h-2.5" />
-                          <span>x{outcome.shardsGained}</span>
+                        <span className="flex items-center justify-center gap-1 text-[9px] font-bold text-purple-300 mt-0.5">
+                          <GameIcon type="item" id={shardIconId} className="w-3 h-3" />
+                          <span>{outcome.shardType === 'soul' ? '碎片' : '共鸣'} x{outcome.shardsGained}</span>
                         </span>
                       )}
                     </div>
@@ -350,7 +354,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
             <button
               onClick={() => setResultOutcomes(null)}
-              className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 font-black text-amber-950 text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 font-black text-amber-950 text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 mt-2"
             >
               <CheckCircle2 className="w-4 h-4 text-amber-950" />
               收下
