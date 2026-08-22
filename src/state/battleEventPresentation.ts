@@ -51,6 +51,8 @@ export const formatBattleEvent = (event: BattleEvent): string => {
   return presenter ? presenter.format(event) : fallbackFormat(event);
 };
 
+export const isDisplayableEvent = (event: BattleEvent): boolean => Boolean(formatBattleEvent(event));
+
 // === 内置 presenter：标准键（引擎契约的一部分） ===
 
 registerBattleEventPresenter({

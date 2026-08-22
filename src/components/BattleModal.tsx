@@ -137,23 +137,23 @@ export const BattleModal: React.FC<BattleModalProps> = ({
     setEnemySlots(initialEnemySlots);
   }, [isOpen, level, settlement]);
 
+  const displaySteps = React.useMemo(() => {
+    return (settlement?.battle.events || [])
+      .map((evt) => ({ evt, text: formatBattleEvent(evt) }))
+      .filter((step) => Boolean(step.text));
+  }, [settlement]);
+
   // Play next battle event
   useEffect(() => {
     if (!isOpen || !settlement || showSettlement || showForfeitConfirm) return;
 
-    const events = (settlement.battle.events || []).filter((evt) => {
-      if (evt.key === 'attackAfter') return false;
-      if (evt.key === 'effectApplied' && (evt.data?.kind === 'damage' || evt.data?.kind === 'heal')) return false;
-      return true;
-    });
-
     const playStep = () => {
-      if (eventIndexRef.current >= events.length) {
+      if (eventIndexRef.current >= displaySteps.length) {
         setShowSettlement(true);
         return;
       }
 
-      const evt = events[eventIndexRef.current];
+      const { evt, text: logText } = displaySteps[eventIndexRef.current];
       eventIndexRef.current++;
 
       if (evt.round) {
@@ -161,10 +161,7 @@ export const BattleModal: React.FC<BattleModalProps> = ({
       }
 
       // Format log text
-      const logText = formatBattleEvent(evt);
-      if (logText) {
-        setEventLogs((prev) => [...prev, logText]);
-      }
+      setEventLogs((prev) => [...prev, logText]);
 
       // Handle summon event
       if (evt.key === 'summon' && evt.unitId) {
@@ -285,7 +282,7 @@ export const BattleModal: React.FC<BattleModalProps> = ({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isOpen, settlement, speed, showSettlement, showForfeitConfirm]);
+  }, [isOpen, settlement, speed, showSettlement, showForfeitConfirm, displaySteps]);
 
   // Auto scroll logs to bottom
   useEffect(() => {
@@ -301,13 +298,8 @@ export const BattleModal: React.FC<BattleModalProps> = ({
 
   const handleSkip = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    const events = (settlement.battle.events || []).filter((evt) => {
-      if (evt.key === 'attackAfter') return false;
-      if (evt.key === 'effectApplied' && (evt.data?.kind === 'damage' || evt.data?.kind === 'heal')) return false;
-      return true;
-    });
-    eventIndexRef.current = events.length;
-    setEventLogs(events.map(formatBattleEvent).filter(Boolean));
+    eventIndexRef.current = displaySteps.length;
+    setEventLogs(displaySteps.map((s) => s.text));
 
     if (settlement.battle.victory) {
       setEnemySlots((prev) => prev.map((s) => (s ? { ...s, currentHp: 0 } : null)));
