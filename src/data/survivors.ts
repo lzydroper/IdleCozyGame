@@ -1,5 +1,5 @@
 /**
- * 幸存者档案（ADR-0013：幸存者=英雄的剧情别称；config-json-migration 批次③ 归位）：
+ * 幸存者档案（ADR-0013：幸存者=英雄的剧情别称；config-json-migration 批次② 归位）：
  * 数据本体 data/entities/survivors.json——本文件仅转发兼容存量引用（批次④收口删除）。
  */
 export interface SurvivorConfig {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { HEROES_CONFIG } from './heroes';
-import type { HeroState } from '../types/game';
+import { HEROES_CONFIG } from './entities.loader';
+import type { HeroState } from '../../types/game';
 
 describe('Facility Duty & Hero Meta Attributes', () => {
   it('defines unique duty meta attributes for each hero', () => {

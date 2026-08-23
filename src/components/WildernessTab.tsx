@@ -16,7 +16,7 @@ import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
-import { SURVIVORS_CONFIG } from '../data/survivors';
+import { SURVIVORS_CONFIG } from '../configs/loaders/entities.loader';
 import { createInitialHero } from '../data/initialState';
 import { getMainlineRegions, getRegion, getLevel } from '../data/regionSelectors';
 import { isRegionUnlocked } from '../state/levelCombat';

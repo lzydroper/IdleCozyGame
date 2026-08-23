@@ -80,3 +80,16 @@ export interface HeroConfig extends Omit<EntityConfigBase, 'baseAttributes'> {
   /** 后勤驻守 Meta（duty.json 段）。 */
   dutyMeta?: HeroDutyMeta;
 }
+
+// === 幸存者档案（ADR-0013：幸存者=英雄的剧情别称） ===
+
+export interface SurvivorConfig {
+  id: string;
+  name: string;
+  role: 'farmer' | 'engineer' | 'scout' | 'guard' | 'chemist' | 'scavenger';
+  /** 角色中文职位名，供 UI 直接显示（避免重复 ternary 硬编码） */
+  roleLabel: string;
+  backstory: string;
+  dreamTrigger: string;
+  realityLocationId: string;
+}

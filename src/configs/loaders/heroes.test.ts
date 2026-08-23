@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState } from '../types/game';
-import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, STARTER_HERO_ID } from './heroes';
-import { INITIAL_HEROES, createInitialHero, INITIAL_STATE } from './initialState';
-import { mergeSavedState } from '../state/persistence';
-import { getLevelMilestoneBonus, getMilestoneModifiers } from './heroGrowth';
+import type { GameState } from '../../types/game';
+import { HEROES_CONFIG, STARTER_HERO_ID } from './entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../constants/heroDisplay';
+import { INITIAL_HEROES, createInitialHero, INITIAL_STATE } from '../seed/initialState';
+import { mergeSavedState } from '../../state/persistence';
+import { getLevelMilestoneBonus, getMilestoneModifiers } from '../../state/heroGrowth';
 
 describe('Heroes data config', () => {
   it('has 9 heroes with valid class and faction labels', () => {

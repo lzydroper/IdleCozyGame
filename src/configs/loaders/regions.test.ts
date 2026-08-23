@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { REGION_CONFIGS } from '../configs/loaders/regions.loader';
-import type { DropEntry, RegionConfig } from '../configs/types/region.types';
-import { ENEMY_CONFIGS } from './enemies';
-import { REALITY_EVENTS } from './realityEvents';
-import { EXPLORATION_CONFIG } from '../configs/constants/explorationConfig';
+import { REGION_CONFIGS } from './regions.loader';
+import type { DropEntry, RegionConfig } from '../types/region.types';
+import { ENEMY_CONFIGS } from './entities.loader';
+import { REALITY_EVENTS } from './event.loader';
+import { EXPLORATION_CONFIG } from '../constants/explorationConfig';
 import {
   getMainlineRegions,
   getRegion,
   getRegionLevels,
   getLevel,
   findRegionByLevelId
-} from './regionSelectors';
+} from '../../state/regionSelectors';
 
 const allRegions: RegionConfig[] = Object.values(REGION_CONFIGS);
 

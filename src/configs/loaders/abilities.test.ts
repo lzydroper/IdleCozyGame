@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAbilityConfig } from '../state/abilityTypes';
-import { ABILITY_CONFIGS, getAbilityConfig } from './abilities';
+import { resolveAbilityConfig } from '../../state/abilityTypes';
+import { ABILITY_CONFIGS, getAbilityConfig } from './combat.loader';
 
 describe('Ability 配置解析', () => {
   it('resolveAbilityConfig 填充默认值', () => {
