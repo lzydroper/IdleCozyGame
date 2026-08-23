@@ -53,6 +53,8 @@
 - `.reasonix/` — 22 Reasonix agent skills (permissions in `reasonix.toml`: `run_skill`, `explore`)
 - `.agents/` — excluded from git via `.gitignore`
 - `docs/project_architecture.md` — detailed architecture reference written for AI onboarding
+- `docs/dev-guide.md` — 开发侧：代码组织、战斗子系统地图、扩展菜谱（新增 EffectKind/Buff/时机等）
+- `docs/config-guide.md` — 配置侧：各域 json 字段参考（必填/缺省）、内容任务配方（新英雄/敌人/事件等）
 - `SRC_DIRS` for full-context packing: `src/`, `docs/`, `*.json`, `*.config.*`
 
 ## Agent skills
