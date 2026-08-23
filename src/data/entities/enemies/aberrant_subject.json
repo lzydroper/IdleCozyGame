@@ -1,0 +1,13 @@
+{
+  "id": "aberrant_subject",
+  "name": "畸变实验体",
+  "description": "畸变的人造实验体。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 70,
+    "attack": 18,
+    "defense": 5
+  }
+}

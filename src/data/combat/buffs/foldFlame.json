@@ -1,0 +1,28 @@
+{
+  "stack": true,
+  "renew": false,
+  "stackIncrement": 5,
+  "triggers": [
+    {
+      "unitRef": "target",
+      "timing": "attackAfter"
+    }
+  ],
+  "consumeOnTrigger": true,
+  "effects": [
+    {
+      "params": {
+        "amount": {
+          "value": 5,
+          "kind": "flat"
+        }
+      },
+      "label": "fold_flame_bonus",
+      "targetRef": "eventTarget",
+      "kind": "damage"
+    }
+  ],
+  "removable": true,
+  "buffId": "foldFlame",
+  "durationKind": "forever"
+}

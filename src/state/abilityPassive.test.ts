@@ -7,8 +7,7 @@ import {
   passiveBuffId
 } from './abilityPassive';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
-import type { TurnRuntime, BattleUnitRuntime, TurnTimingContext } from './turnEngine';
-import type { BuffInstance } from './battleContext';
+import type { TurnRuntime, BattleUnitRuntime } from './turnEngine';
 import { makeFakeRuntime } from './testFixtures/battleRuntime';
 
 const makeUnit = (id: string, abilities: ResolvedAbility[] = []): BattleUnitRuntime => ({
@@ -47,37 +46,12 @@ describe('compilePassiveBuffConfig', () => {
     expect(config.triggers).toEqual([{ timing: 'attackAfter', unitRef: 'source' }]);
   });
 
-  it('createEffects 生成来源→目标的被动效果', () => {
+  it('effects 直载模板（批次③数据驱动：公式由物化器结算时解析）', () => {
     const ability = passiveAbility();
     const config = compilePassiveBuffConfig(ability);
-    const source = makeUnit('hero1', [ability]);
-    const target = makeUnit('enemy1');
-    const instance: BuffInstance = {
-      id: 'passive:hero1:lifesteal',
-      buffId: passiveBuffId('lifesteal'),
-      sourceId: 'hero1',
-      targetId: 'hero1',
-      stacks: 1,
-      duration: null,
-      values: {}
-    };
-    const runtime = fakeRuntime([source, target]);
-    const timingCtx = {
-      key: 'attackAfter',
-      round: 1,
-      unit: source,
-      source,
-      target,
-      runtime,
-      data: {}
-    } as TurnTimingContext;
-
-    const effects = config.createEffects(instance, timingCtx);
-    expect(effects).toHaveLength(1);
-    expect(effects[0].kind).toBe('heal');
-    expect(effects[0].sourceId).toBe('hero1');
-    expect(effects[0].targetId).toBe('enemy1');
-    expect(effects[0].params).toEqual({ amount: 5 });
+    expect(config.effects).toEqual([
+      { kind: 'heal', params: { amount: { kind: 'flat', value: 5 } } }
+    ]);
   });
 });
 

@@ -1,0 +1,13 @@
+{
+  "id": "workshop_abomination",
+  "name": "车间之主·畸变聚合体",
+  "description": "辐射车间深处的畸变聚合体。",
+  "kind": "enemy",
+  "role": "boss",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 260,
+    "attack": 26,
+    "defense": 10
+  }
+}

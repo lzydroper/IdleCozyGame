@@ -50,9 +50,7 @@ export const createAbilityRuntime = (getBattle: () => BattleContext): AbilityRun
       if (!unit) return;
       registerCooldownTick(unit.id, runtime);
       const battle = getBattle();
-      battle.registerBuffConfigs(
-        collectPassiveBuffConfigs(unit.abilities, id => battle.resolveStats(id))
-      );
+      battle.registerBuffConfigs(collectPassiveBuffConfigs(unit.abilities));
       applyPassiveAbilities(battle, [unit]);
     });
   };

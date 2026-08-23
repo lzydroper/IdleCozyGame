@@ -1,0 +1,20 @@
+{
+  "id": "awaken_soldier",
+  "name": "铁壁盾击",
+  "description": "对单个敌人造成 {attackPct} 攻击的盾击。",
+  "activation": "active",
+  "targeting": "enemy:first",
+  "cooldown": 3,
+  "priority": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "params": {
+        "amount": {
+          "kind": "attack",
+          "multiplier": 1.8
+        }
+      }
+    }
+  ]
+}

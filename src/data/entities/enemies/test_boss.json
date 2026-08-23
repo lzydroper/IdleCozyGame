@@ -1,0 +1,13 @@
+{
+  "id": "test_boss",
+  "name": "测试领主",
+  "description": "军备测试场的领主。",
+  "kind": "enemy",
+  "role": "boss",
+  "faction": "mechanical",
+  "baseAttributes": {
+    "maxHp": 20,
+    "attack": 2,
+    "defense": 0
+  }
+}

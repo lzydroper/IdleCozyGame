@@ -150,11 +150,8 @@ export const createBattle = (
     canAct: (unit) => canActWithBuffs(getBattle(), unit.id),
     performAction: abilityRuntime.performAction
   });
-  // 被动效果结算时经 resolveStats 解析（combat-assembly 03 / M1）。
-  const passiveConfigs = collectPassiveBuffConfigs(
-    units.flatMap(unit => unit.abilities),
-    (unitId) => getBattle().resolveStats(unitId)
-  );
+  // 被动效果模板直载（批次③：公式由 buffRuntime 物化器在结算时经 resolveStats 解析）。
+  const passiveConfigs = collectPassiveBuffConfigs(units.flatMap(unit => unit.abilities));
   battleStore = createBattleContext(
     engine,
     { ...BUFF_CONFIGS, ...passiveConfigs },

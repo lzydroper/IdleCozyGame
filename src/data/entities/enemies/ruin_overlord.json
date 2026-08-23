@@ -1,0 +1,13 @@
+{
+  "id": "ruin_overlord",
+  "name": "废墟霸主",
+  "description": "旧城废墟的霸主。",
+  "kind": "enemy",
+  "role": "boss",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 150,
+    "attack": 20,
+    "defense": 8
+  }
+}

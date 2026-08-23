@@ -1,0 +1,20 @@
+{
+  "id": "awaken_zero",
+  "name": "魂印突刺",
+  "description": "对单个敌人造成 {attackPct} 攻击的突刺。",
+  "activation": "active",
+  "targeting": "enemy:first",
+  "cooldown": 3,
+  "priority": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "params": {
+        "amount": {
+          "kind": "attack",
+          "multiplier": 2
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "wasteland_hound_king",
+  "name": "废土鬣狗王",
+  "description": "废土边缘的鬣狗首领。",
+  "kind": "enemy",
+  "role": "boss",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 90,
+    "attack": 13,
+    "defense": 5
+  }
+}

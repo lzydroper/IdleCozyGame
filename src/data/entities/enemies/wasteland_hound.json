@@ -1,0 +1,13 @@
+{
+  "id": "wasteland_hound",
+  "name": "废土鬣狗",
+  "description": "饥饿的变异鬣狗。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 45,
+    "attack": 9,
+    "defense": 3
+  }
+}
