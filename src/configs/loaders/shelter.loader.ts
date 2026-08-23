@@ -6,7 +6,7 @@
 import facilitiesJson from '../../data/shelter/facilities.json';
 import shelterUpgradesJson from '../../data/shelter/shelterUpgrades.json';
 import type { UpgradePath } from '../../types/config';
-import { iconFor } from '../mappings/iconMap';
+import { resolveArtOrDefault } from '../mappings/artMap';
 import { devGuardTable } from './devGuard';
 import type { FacilityConfig, FacilityType } from '../types/gameplay.types';
 
@@ -16,8 +16,9 @@ const injectIcons = <T extends object>(domain: string, raw: Record<string, T>): 
   const out: Record<string, T> = {};
   for (const [key, row] of Object.entries(raw)) {
     const rowAny = row as RawRow;
-    if (typeof rowAny.iconKey === 'string') {
-      out[key] = { ...(rowAny as object), icon: iconFor(rowAny.iconKey) } as T;
+    const rawIcon = typeof rowAny.icon === 'string' ? rowAny.icon : undefined;
+    if (rawIcon) {
+      out[key] = { ...(rowAny as object), icon: resolveArtOrDefault(rawIcon) } as T;
     } else {
       out[key] = row;
     }

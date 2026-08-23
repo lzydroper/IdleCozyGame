@@ -2,6 +2,7 @@
   "id": "soldier",
   "name": "铁卫",
   "description": "避难所防御队长，擅长防御部署与阵地战。",
+  "icon": "entities/heroes/soldier.png",
   "kind": "hero",
   "heroClass": "guardian",
   "faction": "spirit",
@@ -18,11 +19,6 @@
     "willpower": 4,
     "transcendence": 2
   },
-  "sprite": {
-    "sheet": "survivors",
-    "index": 6
-  },
-  "iconKey": "shield",
   "starter": false,
   "order": 2
 }

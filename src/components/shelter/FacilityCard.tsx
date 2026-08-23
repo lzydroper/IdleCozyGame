@@ -336,12 +336,18 @@ export const FacilitySection: React.FC<{ type: FacilityType }> = ({ type }) => {
   const cfg = FACILITIES_CONFIG[type];
   if (!cfg) return null;
   const theme = FACILITY_THEMES[type] ?? DEFAULT_THEME;
-  const Icon = cfg.icon;
+  const art = cfg.icon; // GameArt：切图 URL 或 Lucide 组件（icon 单字段统一）
   return (
     <FacilityTypeSection
       type={type}
       theme={theme}
-      icon={<Icon className={`w-4 h-4 ${theme.accent}`} />}
+      icon={
+        art.kind === 'image' ? (
+          <img src={art.url} alt={cfg.name} draggable={false} className={`w-4 h-4 object-contain ${theme.accent}`} />
+        ) : (
+          <art.Icon className={`w-4 h-4 ${theme.accent}`} />
+        )
+      }
     />
   );
 };

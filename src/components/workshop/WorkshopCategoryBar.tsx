@@ -14,7 +14,7 @@ interface WorkshopCategoryBarProps {
 const WorkshopCategoryBar: React.FC<WorkshopCategoryBarProps> = ({ active, counts, onChange }) => (
   <div className="flex gap-1.5 mb-3">
     {WORKSHOP_CATEGORIES.map(cat => {
-      const CatIcon = iconFor(cat.iconKey); // iconKey 装配解析（config-json-migration 03 号票）
+      const CatIcon = iconFor(cat.icon); // icon 字符串解析（icon 单字段约定）
       const isActive = active === cat.id;
       return (
         <button

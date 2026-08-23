@@ -1,29 +1,17 @@
-// 物品定义类型（单一真相源，ADR-0015）：分类四值 + sprite 图标索引 + Lucide 回退。
-import type { LucideIcon } from 'lucide-react';
-// iconKey：json 侧字符串键（loader 经 mappings/iconMap 注入 icon 组件，combat-experience 03 号票）。
+// 物品定义类型（单一真相源，ADR-0015）：分类四值 + icon 单字段视觉。
+// icon：json 侧字符串（.png 切图路径或 Lucide iconKey），装配后为 GameArt 判别联合。
+import type { GameArt } from './art.types';
 
 // 物品分类：道具 / 资源 / 碎片 / 装备（ADR-0014）
 export type ItemCategory = 'item' | 'resource' | 'shard' | 'equipment';
-
-// spritesheet 类型：物品三张 4x4 表 + 英雄立绘 3x3 表
-export type ItemSheet = 'seeds' | 'materials' | 'supplies' | 'survivors';
-
-export interface ItemSprite {
-  sheet: ItemSheet;
-  index: number;
-}
 
 export interface ItemMeta {
   id: string;
   name: string;
   description: string;
   category: ItemCategory;
-  /** spritesheet 图标索引；未配置时用 icon（Lucide）回退渲染「待补 sprite」标记 */
-  sprite?: ItemSprite;
-  /** json 侧图标键（loader 注入为 icon 组件） */
-  iconKey?: string;
-  /** Lucide 回退图标（sprite 缺失时显示；装配后存在） */
-  icon?: LucideIcon;
+  /** 视觉（装配后必存在）：切图 URL 或 Lucide 组件，由 artMap.resolveArt 解析 */
+  icon: GameArt;
   useEffect?: {
     stats?: Partial<Record<'food' | 'energy' | 'sanity', number>>;
     pollution?: number;

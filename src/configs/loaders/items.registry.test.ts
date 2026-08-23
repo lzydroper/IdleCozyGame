@@ -4,12 +4,9 @@ import { describe, it, expect } from 'vitest';
 import { ITEMS_CONFIG, ITEM_CATEGORIES } from './items.loader';
 import { EQUIPMENT_CONFIG } from './equipment.loader';
 import { HEROES_CONFIG } from './entities.loader';
+import { SPRITE_URLS } from '../mappings/artMap';
 
-// 显式共享 sprite 格子的白名单：materials sheet 16 格已满（17 个物品），
-// void_core 与 void_essence 共图是已知决策（ADR-0015 冲突显式化），补图后移除。
-const SHARED_SPRITE_GROUPS: Record<string, string[][]> = {
-  materials: [['void_essence', 'void_core']]
-};
+// 旧 spritesheet 共享白名单已随切图管线退役：每条目独立 png 或 Lucide，无共享冲突概念。
 
 describe('物品注册表一致性', () => {
   it('每条目 id 与 key 一致，category 均为合法枚举', () => {
@@ -91,28 +88,24 @@ describe('物品注册表一致性', () => {
     }
   });
 
-  it('sprite 索引无冲突（显式共享白名单除外）', () => {
-    const seen = new Map<string, string[]>();
+  it('每条目装配后必有视觉（icon 单字段统一，切图 URL 或 Lucide 组件）', () => {
     for (const [id, meta] of Object.entries(ITEMS_CONFIG)) {
-      if (!meta.sprite) continue;
-      const key = `${meta.sprite.sheet}:${meta.sprite.index}`;
-      const list = seen.get(key) ?? [];
-      list.push(id);
-      seen.set(key, list);
-    }
-    for (const [key, ids] of seen) {
-      if (ids.length <= 1) continue;
-      const sheet = key.split(':')[0];
-      const whitelisted = (SHARED_SPRITE_GROUPS[sheet] ?? []).some(
-        group => group.length === ids.length && group.every(id => ids.includes(id))
-      );
-      expect(whitelisted, `sprite 冲突: ${key} -> ${ids.join(', ')}`).toBe(true);
+      expect(meta.icon, id).toBeDefined();
+      if (meta.icon.kind === 'image') {
+        expect(meta.icon.url, id).toContain('sprites');
+      } else {
+        expect(typeof meta.icon.Icon).toBe('object');
+      }
     }
   });
 
-  it('每条目至少配置 sprite 或 Lucide 回退图标，保证渲染不裸奔', () => {
+  it('切图路径引用必须真实存在（artMap 构建期 glob 兜底之外的显式断言）', () => {
     for (const [id, meta] of Object.entries(ITEMS_CONFIG)) {
-      expect(meta.sprite ?? meta.icon, id).toBeDefined();
+      if (meta.icon.kind === 'image') {
+        expect(meta.icon.url.length, id).toBeGreaterThan(0);
+      }
     }
+    expect(SPRITE_URLS['entities/heroes/nova.png'], '英雄立绘切图在管线中').toBeDefined();
+    expect(SPRITE_URLS['items/resources/glow_fiber.png']).toBeDefined();
   });
 });

@@ -3,170 +3,126 @@
     "id": "ration",
     "name": "压缩口粮",
     "description": "高热量压缩食物",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 0
-    },
+    "icon": "items/consumables/ration.png",
     "useEffect": {
       "stats": {
         "food": 30
       }
-    },
-    "iconKey": "package"
+    }
   },
   "hot_stew": {
     "id": "hot_stew",
     "name": "魔能熔岩热烩",
     "description": "大范围恢复饱食度的魔力食物。",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 6
-    },
+    "icon": "soup",
     "useEffect": {
       "stats": {
         "food": 60
       }
-    },
-    "iconKey": "soup"
+    }
   },
   "ration_deluxe": {
     "id": "ration_deluxe",
     "name": "高级生存罐头",
     "description": "印有红色爱心徽标和铁皮密封扣的废土罐头",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 10
-    },
+    "icon": "package-open",
     "useEffect": {
       "stats": {
         "food": 45
       }
-    },
-    "iconKey": "package-open"
+    }
   },
   "energy_refill": {
     "id": "energy_refill",
     "name": "能量补充剂",
     "description": "恢复魔能的补充剂",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 1
-    },
+    "icon": "zap",
     "useEffect": {
       "stats": {
         "energy": 30
       }
-    },
-    "iconKey": "zap"
+    }
   },
   "stimpack": {
     "id": "stimpack",
     "name": "废土肾上腺素",
     "description": "橙色瞬时急救药剂针管，激发魔能的极限求生药剂",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 11
-    },
+    "icon": "cross",
     "useEffect": {
       "stats": {
         "energy": 15
       }
-    },
-    "iconKey": "cross"
+    }
   },
   "canteen": {
     "id": "canteen",
     "name": "军用水壶",
     "description": "带迷彩保温护套和电子屏显示的科技感军用大水壶",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 13
-    },
+    "icon": "items/consumables/canteen.png",
     "useEffect": {
       "stats": {
         "food": 15
       }
-    },
-    "iconKey": "cup-soda"
+    }
   },
   "sanity_capsule": {
     "id": "sanity_capsule",
     "name": "稳定胶囊",
     "description": "维持精神稳定的胶囊药物",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 3
-    },
+    "icon": "pill",
     "useEffect": {
       "capsuleCharge": {
         "sanity_capsule": 1
       }
-    },
-    "iconKey": "pill"
+    }
   },
   "warp_capsule": {
     "id": "warp_capsule",
     "name": "跃迁胶囊",
     "description": "梦境中的传送工具",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 4
-    },
+    "icon": "orbit",
     "useEffect": {
       "capsuleCharge": {
         "warp_capsule": 1
       }
-    },
-    "iconKey": "orbit"
+    }
   },
   "nanite_injector": {
     "id": "nanite_injector",
     "name": "纳米修复注射针",
     "description": "治愈战斗中重伤的英雄，使其恢复至满状态。",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 7
-    },
-    "iconKey": "syringe"
+    "icon": "items/consumables/nanite_injector.png"
   },
   "purifying_serum": {
     "id": "purifying_serum",
     "name": "心灵净化血清",
     "description": "清除大量心灵污染度，稳定理智的净化血清。",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 8
-    },
+    "icon": "flask-conical",
     "useEffect": {
       "stats": {
         "sanity": 30
       },
       "pollution": -30
-    },
-    "iconKey": "flask-conical"
+    }
   },
   "dream_lantern": {
     "id": "dream_lantern",
     "name": "引梦魔灯",
     "description": "散发深蓝色星光光晕、带有魔导浮雕的复古手提挂灯",
-    "sprite": {
-      "sheet": "supplies",
-      "index": 15
-    },
+    "icon": "items/consumables/dream_lantern.png",
     "useEffect": {
       "stats": {
         "sanity": 10
       }
-    },
-    "iconKey": "lamp"
+    }
   },
   "exp_tome": {
     "id": "exp_tome",
     "name": "经验手册",
     "description": "记载战斗心得的战术手册，使用后为英雄提供 100 点经验。",
+    "icon": "book-open",
     "useEffect": {
       "heroExp": 100
-    },
-    "iconKey": "book-open"
+    }
   }
 }

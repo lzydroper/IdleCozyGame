@@ -64,7 +64,7 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
     expect(idleSlots.length).toBeGreaterThan(0);
   });
 
-  it('renders planted crops with output item icon (GameIcon) and no img element', () => {
+  it('renders planted crops with output item icon (GameIcon 切图管线)', () => {
     const save = structuredClone(INITIAL_STATE) as GameState;
     save.greenhouse.slots[0] = { id: 1, cropId: 'glow_grass', growthProgress: 30, growthTimeLeft: 21, isWatered: true };
     renderGreenhouse(save);
@@ -73,8 +73,10 @@ describe('ShelterTab Component UI - Integrated Greenhouse', () => {
     expect(screen.getByText('辐射荧光草')).toBeDefined();
     // 湿润标记（10）
     expect(screen.getAllByText('湿润').length).toBe(1);
-    // 无任何 <img>（作物单图已删除，产出物品 icon 走 GameIcon sprite）
-    expect(screen.queryAllByRole('img').length).toBe(0);
+    // icon 单字段统一后：产出物品 glow_fiber 持切图，GameIcon 渲染真实 <img>
+    const imgs = screen.getAllByRole('img');
+    expect(imgs.length).toBeGreaterThan(0);
+    expect(imgs[0].getAttribute('src')).toMatch(/sprites/);
   });
 
   it('renders 4 tab buttons and switches between them', () => {

@@ -6,7 +6,7 @@
 import type { EnemyConfig, AwakenConfig, SurvivorConfig } from '../../configs/types/entity.types';
 import type { TalentNodeConfig } from '../../configs/types/progression.types';
 import type { HeroConfig } from '../../configs/types/entity.types';
-import { iconFor } from '../mappings/iconMap';
+import { resolveArtOrDefault } from '../mappings/artMap';
 import { devGuardTable } from './devGuard';
 
 const enemyModules = import.meta.glob('../../data/entities/enemies/*.json', {
@@ -101,12 +101,12 @@ for (const [path, mod] of Object.entries(heroInfoMods)) {
 heroEntries.sort((a, b) => a.order - b.order);
 
 for (const { id, duty, awaken, talent, growth, info } of heroEntries) {
-  const iconKey = typeof info.iconKey === 'string' ? info.iconKey : '';
+  const rawIcon = typeof info.icon === 'string' ? info.icon : undefined;
   HEROES_CONFIG[id] = {
     ...(info as unknown as HeroConfig),
     levelMilestones: growth?.levelMilestones ?? {},
     dutyMeta: { bonuses: (duty?.bonuses ?? []) as NonNullable<HeroConfig['dutyMeta']>['bonuses'] },
-    icon: iconFor(iconKey)
+    icon: resolveArtOrDefault(rawIcon)
   };
 
   if (awaken?.ability?.id) {

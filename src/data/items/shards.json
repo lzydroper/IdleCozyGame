@@ -3,12 +3,12 @@
     "id": "arcane_orb",
     "name": "奥术星体",
     "description": "蕴含星界奥术之力的天体核心，满星英雄觉醒的终局素材（仅辐射车间 BOSS 掉落）。",
-    "iconKey": "sparkle"
+    "icon": "sparkle"
   },
   "resonance_shard": {
     "id": "resonance_shard",
     "name": "共鸣碎片",
     "description": "通用灵魂碎片，可用于任意英雄的升星",
-    "iconKey": "sparkles"
+    "icon": "sparkles"
   }
 }

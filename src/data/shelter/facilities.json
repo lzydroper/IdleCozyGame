@@ -4,6 +4,7 @@
     "name": "魔导冶炼炉",
     "shortName": "熔炉",
     "description": "自动熔炼金属",
+    "icon": "flame",
     "effectLabel": "效率",
     "levels": [
       {
@@ -64,14 +65,14 @@
         3600,
         21600
       ]
-    },
-    "iconKey": "flame"
+    }
   },
   "assembler": {
     "id": "assembler",
     "name": "微型芯片组装台",
     "shortName": "组装台",
     "description": "自动组装物品",
+    "icon": "cpu",
     "effectLabel": "效率",
     "levels": [
       {
@@ -132,7 +133,6 @@
         3600,
         21600
       ]
-    },
-    "iconKey": "cpu"
+    }
   }
 }

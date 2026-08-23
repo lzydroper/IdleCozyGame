@@ -2,6 +2,7 @@
   "id": "catherine",
   "name": "凯瑟琳",
   "description": "前辐射防治所主任，常年镇守边陲、熟悉梦魇的侵蚀手段。",
+  "icon": "entities/heroes/catherine.png",
   "kind": "hero",
   "heroClass": "guardian",
   "faction": "nightmare",
@@ -18,11 +19,6 @@
     "willpower": 6,
     "transcendence": 1
   },
-  "sprite": {
-    "sheet": "survivors",
-    "index": 3
-  },
-  "iconKey": "heart-pulse",
   "starter": false,
   "order": 3
 }

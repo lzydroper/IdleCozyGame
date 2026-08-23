@@ -52,3 +52,23 @@
 > 验证：tsc ✓ · build ✓ · vitest **741/741** ✓ · oxlint **0 errors**；
 > data = **98 文件全 json**。survivors.json 经裁决保持独立（ADR-0013 叙事域分离：
 > backstory/dreamTrigger/realityLocationId 服务梦境共鸣→现实救援链）。
+
+## 视觉单字段统一（批次④ 追加工单 G 组：icon 单字段 + 切图入管线）
+
+用户切图落盘 public/assets 后提出三合一诉求：①public 无哈希/无检查 ②死文件清理
+③sprite/iconKey 双轨混乱。裁决：迁入 src 管线 + 多余切图随包发布。
+
+| # | 内容 | 状态 |
+|---|---|---|
+| G1 | 切图迁移：public/assets/* → **src/assets/sprites/** ×56；4 张大 spritesheet（~5.5MB）+ icons.svg + hero/react/vite.svg 退役删除；public 仅剩 favicon.svg | ✅ |
+| G2 | artMap 上线：configs/mappings/artMap.ts（import.meta.glob '?url' eager → SPRITE_URLS 逻辑路径→哈希 URL；resolveArt/resolveArtOrDefault）+ configs/types/art.types.ts（GameArt = image url \| glyph Icon）；缺图 DEV 告警 + HelpCircle 兜底 | ✅ |
+| G3 | icon 单字段统一：json 行恰一个 `icon` 字符串（.png 相对 sprites 根路径或 iconKey），sprite{sheet,index}/iconKey 全域退役（items 四表 + heroInfo×9 + facilities + shelterUpgrades + equipment + workshopCategories 常量）；ItemMeta.icon: GameArt 必填 | ✅ |
+| G4 | 派生链适配：英雄碎片直接继承英雄 GameArt 对象（同一立绘零定义）；装备背包条目经 resolveArtOrDefault 解析装备域原始字符串；GameIcon 重写（img/glyph/汉字三级回退，雪碧图数学与 SPRITE_GRID/sheetUrl 删除）；FacilitySection 直渲点改判别渲染 | ✅ |
+| G5 | 测试换血：registry.test sprite 冲突白名单测试消亡 → icon 完整性 + SPRITE_URLS 显式断言；ShelterTab.test「无 img」断言反转为「产出物品渲染真实 img 且 src 含 sprites」 | ✅ |
+
+> 实施记录（G 组）：codemod（.scratch/config-json-migration/codemod-icon-unify.mjs）
+> 全树按 id 搜 png——defensive_turret/shield_battery 用户切在 consumables 夹但数据属
+> resource，json 显式路径天然跨夹引用无需挪文件；heroInfo 为单对象非行表走独立分支；
+> 断言不可写死生产哈希形态（vitest 环境为源路径）。dist 验证：56 张切图全部哈希文件名
+> 发射（均 >4KB 不内联）、spritesheet_* 归零。
+> 验证：tsc ✓ · build ✓ · vitest **741/741** ✓ · oxlint **0 errors**。

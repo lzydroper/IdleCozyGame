@@ -1,12 +1,12 @@
 /**
  * 实体域类型（config-json-migration 批次③：自 data/entityConfig.ts 与 data/heroes.ts 收口）。
- * icon 双字段模式：json 存 iconKey（字符串），装配后注入 icon 组件（mappings/iconMap）。
+ * icon 单字段模式：json 存字符串（.png 切图路径或 iconKey），装配后解析为 GameArt（mappings/artMap）。
  */
-import type { LucideIcon } from 'lucide-react';
 import type { HeroClass, HeroFaction } from '../../types/game';
 import type { FacilityType } from './gameplay.types';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../../state/statSystem';
 import type { StatModifier } from '../../state/statSystem';
+import type { GameArt } from './art.types';
 
 export type EntityKind = 'hero' | 'enemy' | 'other';
 
@@ -29,11 +29,8 @@ export interface EntityConfigBase {
   specialAttributes?: Partial<SpecialAttributes>;
   modifiers?: import('../../state/statSystem').StatModifier[];
   abilities?: AbilityRef[];
-  sprite?: { sheet: string; index: number };
-  /** json 侧图标键 */
-  iconKey?: string;
-  /** 装配后注入的 Lucide 回退图标 */
-  icon?: LucideIcon;
+  /** json 侧 icon 字符串，装配后解析为 GameArt */
+  icon?: GameArt;
 }
 
 export interface EnemyConfig extends EntityConfigBase {
@@ -70,12 +67,14 @@ export interface HeroLevelMilestones {
   [level: number]: Partial<BaseAttributes & PrimaryAttributes & SpecialAttributes>;
 }
 
-export interface HeroConfig extends Omit<EntityConfigBase, 'baseAttributes'> {
+export interface HeroConfig extends Omit<EntityConfigBase, 'baseAttributes' | 'icon'> {
   kind: 'hero';
   heroClass: HeroClass;
   baseAttributes: BaseAttributes;
   primaryAttributes: PrimaryAttributes;
   specialAttributes?: Partial<SpecialAttributes>;
+  /** 视觉（装配后必存在）：英雄立绘切图或 Lucide 回退 */
+  icon: GameArt;
   /** 里程碑加成（growth.json 段）。 */
   levelMilestones?: HeroLevelMilestones;
   /** 后勤驻守 Meta（duty.json 段）。 */

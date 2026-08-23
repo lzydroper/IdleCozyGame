@@ -2,6 +2,7 @@
   "id": "roy",
   "name": "罗伊",
   "description": "前废土矿山工程师，擅长修理各种机械设备。",
+  "icon": "entities/heroes/roy.png",
   "kind": "hero",
   "heroClass": "conductor",
   "faction": "mechanical",
@@ -18,11 +19,6 @@
     "willpower": 2,
     "transcendence": 3
   },
-  "sprite": {
-    "sheet": "survivors",
-    "index": 0
-  },
-  "iconKey": "wrench",
   "starter": false,
   "order": 4
 }

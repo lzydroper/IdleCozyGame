@@ -33,7 +33,9 @@
 ## Project architecture
 
 - **`src/context/GameContext.tsx`** (~1392 lines) — central game state machine, all core game logic, offline tick calculation, account management
-- **`src/configs/`** — config layer: `types/` (domain interfaces), `constants/` (numeric/UI constants), `loaders/` (json import + assertion + DEV guard, per-domain), `mappings/iconMap.ts` (iconKey → Lucide), `seed/initialState.ts`. Consumers import ONLY from loaders/constants/types — never from json directly
+- **`src/configs/`** — config layer: `types/` (domain interfaces), `constants/` (numeric/UI constants), `loaders/` (json import + assertion + DEV guard, per-domain), `mappings/iconMap.ts` (iconKey → Lucide) + `mappings/artMap.ts` (icon string → GameArt), `seed/initialState.ts`. Consumers import ONLY from loaders/constants/types — never from json directly
+- **Visuals（icon 单字段）** — json rows carry ONE `icon` string: a `.png` path relative to `src/assets/sprites/` (build-pipeline, hashed URLs, missing file fails the build) or a Lucide iconKey. Loaders resolve to `GameArt` (`{kind:'image'|'glyph'}`); render via `GameIcon`. No `sprite {sheet,index}` / `iconKey` fields remain
+- **`public/`** — root-level static files served verbatim (currently only `favicon.svg`). Runtime-string-addressed assets belong here ONLY if they cannot go through the import pipeline
 - **`src/data/`** — pure `.json` content data organized by gameplay domain (`regions/<NN_id>/`, `entities/{heroes,enemies}/`, `equipment/`, `items/`, `workshop/`, `shelter/`, `farming/`, `events/`, `combat/`, `progression/`). **JSON only — no .ts files**; identity comes from json content fields (e.g. `id`), folder naming is convention not contract
 - **`src/types/config.ts`** — pure configuration interfaces (`PassiveEffect`, `CostFormula`, `UpgradePath`)
 - **`src/types/game.ts`** — all TypeScript interfaces (`GameState`, `PlayerStats`, `GreenhouseSlot`, etc.)

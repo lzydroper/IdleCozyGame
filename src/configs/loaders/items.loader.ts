@@ -1,29 +1,29 @@
 /**
- * items 域装配（config-json-migration 批次② 2.1；批次④后续收敛）：
+ * items 域装配（config-json-migration 批次② 2.1；批次④后续收敛 + icon 单字段统一）：
  * 消费方只 import 本文件。四来源合并唯一 ITEMS_CONFIG：
  *   1. consumables / resources：显式分表 json；
- *   2. 英雄灵魂碎片：按英雄名册派生（shard_<id>；贴图/图标与英雄本体同源，零额外定义，
+ *   2. 英雄灵魂碎片：按英雄名册派生（shard_<id>；视觉直接继承英雄本体 GameArt，零额外定义，
  *      运行时 `shard_${heroId}` 约定已由 state/awakening·summon·seed 共享）；shards.json
  *      仅保留通用碎片（奥术星体/共鸣碎片），显式行可覆盖派生；
- *   3. 系列装备条目：由 EQUIPMENT_CONFIG 派生（name/description/iconKey 单一真相在装备行）；
+ *   3. 系列装备条目：由 EQUIPMENT_CONFIG 派生（name/description/icon 单一真相在装备行，
+ *      装备域 icon 保持原始字符串，此处经 artMap 解析）；
  *      equipmentItems.json 仅保留独立物品（强化魔晶/图纸）。
- * 分表默认 category 由 assembleSheet 注入——json 不再显式书写等于默认值的字段。
+ * 分表默认 category 由 assembleSheet 注入；icon 字符串统一经 artMap.resolveArt 解析为 GameArt。
  */
 import consumablesJson from '../../data/items/consumables.json';
 import resourcesJson from '../../data/items/resources.json';
 import shardsJson from '../../data/items/shards.json';
 import equipmentItemsJson from '../../data/items/equipmentItems.json';
-import { iconFor } from '../mappings/iconMap';
 import { devGuardTable } from './devGuard';
+import { resolveArtOrDefault } from '../mappings/artMap';
 import { HEROES_CONFIG } from './entities.loader';
 import { EQUIPMENT_CONFIG } from './equipment.loader';
-import type { ItemCategory, ItemMeta, ItemSprite } from '../types/item.types';
-import type { HeroConfig } from '../types/entity.types';
+import type { ItemCategory, ItemMeta } from '../types/item.types';
 
-// json 侧行形状：category/iconKey 可省（分表默认注入 / iconMap 装配），其余字段同 ItemMeta。
-type RawItemMeta = Omit<ItemMeta, 'icon' | 'category' | 'iconKey'> & {
+// json 侧行形状：icon 为字符串（.png 切图路径或 iconKey），category 可省（分表默认注入）。
+type RawItemMeta = Omit<ItemMeta, 'icon' | 'category'> & {
   category?: ItemCategory;
-  iconKey?: string;
+  icon?: string;
 };
 
 const assembleSheet = (
@@ -38,26 +38,22 @@ const assembleSheet = (
       ...row,
       id: row.id ?? key,
       category: row.category ?? category,
-      icon: row.iconKey ? iconFor(row.iconKey) : undefined
+      icon: resolveArtOrDefault(row.icon)
     };
   }
   return out;
 };
 
-/** 英雄灵魂碎片派生：身份 = shard_<heroId>（与库存键约定同源），展示与图标随英雄本体。 */
+/** 英雄灵魂碎片派生：身份 = shard_<heroId>（与库存键约定同源），视觉直接继承英雄 GameArt。 */
 const deriveHeroShards = (): Record<string, ItemMeta> => {
   const out: Record<string, ItemMeta> = {};
   for (const [id, hero] of Object.entries(HEROES_CONFIG)) {
-    const h = hero as HeroConfig;
-    const sprite = h.sprite as ItemSprite | undefined;
     out[`shard_${id}`] = {
       id: `shard_${id}`,
-      name: `${h.name}灵魂碎片`,
-      description: `${h.name}的专属碎片，用于升星`,
+      name: `${hero.name}灵魂碎片`,
+      description: `${hero.name}的专属碎片，用于升星`,
       category: 'shard',
-      sprite,
-      iconKey: typeof h.iconKey === 'string' ? h.iconKey : undefined,
-      icon: undefined
+      icon: hero.icon
     };
   }
   return out;
@@ -72,8 +68,7 @@ const deriveEquipmentItems = (): Record<string, ItemMeta> => {
       name: cfg.name,
       description: cfg.description,
       category: 'equipment',
-      iconKey: cfg.iconKey,
-      icon: cfg.iconKey ? iconFor(cfg.iconKey) : undefined
+      icon: resolveArtOrDefault(cfg.icon)
     };
   }
   return out;

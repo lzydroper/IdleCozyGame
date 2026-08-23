@@ -2,8 +2,7 @@
 // name/description 已删除，显示文案从产出物完全推导，见 state/workshop.ts 辅助函数）
 import type { ItemCategory } from '../configs/types/item.types';
 import type { FacilityType } from '../configs/types/gameplay.types';
-
-import type { LucideIcon } from 'lucide-react';
+import type { GameArt } from '../configs/types/art.types';
 
 export interface CropConfig {
   id: string;
@@ -37,7 +36,7 @@ export interface UpgradePath {
   description: string;
   category: 'base' | 'facility';
   effectLabel: string;          // Label describing the effect (e.g. "离线最大挂机续航时间")
-  icon?: LucideIcon;                  // 图标组件引用（同 HEROES_CONFIG.icon，经 GameIcon 注册表渲染）
+  icon?: GameArt;                     // 装配后解析（json icon 字符串 → artMap），经 GameIcon 渲染
   unlockRequirements?: UnlockRequirement[];  // 解锁条件（满足后才在列表中显示）
   levels: UpgradeLevel[];       // 等级表（单一真相源）；最高等级由 levels 推导（getMaxUpgradeLevel）
 }

@@ -3,6 +3,7 @@
     "id": "battery",
     "name": "蓄电池",
     "description": "延长离线收益结算上限",
+    "icon": "items/consumables/battery.png",
     "category": "base",
     "effectLabel": "离线最大挂机续航时间",
     "levels": [
@@ -94,13 +95,13 @@
         "effectText": "13.0h",
         "duration": 172800
       }
-    ],
-    "iconKey": "battery"
+    ]
   },
   "generator": {
     "id": "generator",
     "name": "魔导发电机",
     "description": "离线自动恢复魔能",
+    "icon": "zap",
     "category": "base",
     "effectLabel": "能量凝结率",
     "levels": [
@@ -201,13 +202,13 @@
         "effectText": "3.00 能量/分",
         "duration": 172800
       }
-    ],
-    "iconKey": "zap"
+    ]
   },
   "recycler": {
     "id": "recycler",
     "name": "物资自动回收站",
     "description": "离线自动收集废旧金属",
+    "icon": "refresh-cw",
     "category": "base",
     "effectLabel": "废铁提炼率",
     "levels": [
@@ -308,13 +309,13 @@
         "effectText": "1.20 废铁/分",
         "duration": 172800
       }
-    ],
-    "iconKey": "refresh-cw"
+    ]
   },
   "greenhouse_dock": {
     "id": "greenhouse_dock",
     "name": "温室智能扩展坞",
     "description": "扩建温室培养槽（原工坊建筑配方迁移至基建）",
+    "icon": "sprout",
     "category": "base",
     "effectLabel": "培养槽上限",
     "levels": [
@@ -349,7 +350,6 @@
         "effectText": "8 槽（上限）",
         "duration": 43200
       }
-    ],
-    "iconKey": "sprout"
+    ]
   }
 }
