@@ -1,0 +1,36 @@
+{
+  "id": "wasteland_entrance",
+  "name": "废土边缘",
+  "description": "避难所大门外的第一片废土，游荡着饥饿的变异鬣狗与鼠群，是检验小队战力的最佳训练场。",
+  "order": 1,
+  "recommendedLevel": 1,
+  "enemyPool": [
+    "wasteland_hound",
+    "mutant_rat",
+    "wasteland_hound_king"
+  ],
+  "explorationEvents": [
+    "ruined_truck",
+    "rusty_safe",
+    "toxic_swamp",
+    "military_caches",
+    "mutant_beast",
+    "cozy_hotspring",
+    "abandoned_camp",
+    "mysterious_capsule",
+    "acid_rain_storm",
+    "radiation_leak",
+    "encounter_wasteland_pack"
+  ],
+  "explorationStepsToClear": 10,
+  "explorationMilestones": [
+    {
+      "atPercent": 20,
+      "eventId": "encounter_wasteland_pack"
+    }
+  ],
+  "initialCost": {
+    "food": 10,
+    "energy": 10
+  }
+}

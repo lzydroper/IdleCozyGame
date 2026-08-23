@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
 import { getRegion } from '../data/regionSelectors';
-import type { LevelConfig } from '../data/regions';
+import type { LevelConfig } from '../configs/types/region.types';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { isRegionUnlocked, isLevelUnlocked, getClearedLevels } from '../state/levelCombat';
 import { Crown } from 'lucide-react';

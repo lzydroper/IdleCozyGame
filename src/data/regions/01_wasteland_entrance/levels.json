@@ -1,0 +1,97 @@
+[
+  {
+    "id": "wasteland_entrance_1",
+    "name": "游荡者",
+    "enemies": [
+      "wasteland_hound",
+      "mutant_rat"
+    ],
+    "staminaCost": 10,
+    "drops": [
+      {
+        "kind": "chance",
+        "itemId": "scrap_metal",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "chance",
+        "itemId": "glow_fiber",
+        "count": 2,
+        "chancePercent": 40
+      },
+      {
+        "kind": "chance",
+        "itemId": "enhance_stone",
+        "count": 2,
+        "chancePercent": 50
+      },
+      {
+        "kind": "chance",
+        "itemId": "exp_tome",
+        "count": 1,
+        "chancePercent": 35
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "wasteland_entrance_2",
+    "name": "鬣狗王",
+    "enemies": [
+      "wasteland_hound_king"
+    ],
+    "staminaCost": 12,
+    "drops": [
+      {
+        "kind": "chance",
+        "itemId": "scrap_metal",
+        "count": 3,
+        "chancePercent": 80
+      },
+      {
+        "kind": "chance",
+        "itemId": "glow_fiber",
+        "count": 2,
+        "chancePercent": 50
+      },
+      {
+        "kind": "chance",
+        "itemId": "mana_dust",
+        "count": 2,
+        "chancePercent": 30
+      },
+      {
+        "kind": "chance",
+        "itemId": "enhance_stone",
+        "count": 2,
+        "chancePercent": 70
+      },
+      {
+        "kind": "chance",
+        "itemId": "exp_tome",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 7
+      }
+    ]
+  }
+]

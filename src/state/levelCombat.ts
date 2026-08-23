@@ -1,5 +1,5 @@
 import type { GameState, HeroState, CombatSettlement, CombatIdleState } from '../types/game';
-import type { LevelConfig, RegionConfig } from '../data/regions';
+import type { LevelConfig, RegionConfig } from '../configs/types/region.types';
 import { getMainlineRegions, getRegion, getLevel, getTestRegions } from '../data/regionSelectors';
 import { ITEMS_CONFIG } from '../data/items';
 import { getRegionProgressPercent } from './explorationProgress';

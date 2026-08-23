@@ -1,0 +1,117 @@
+[
+  {
+    "id": "old_town_ruins_1",
+    "name": "拾荒者",
+    "enemies": [
+      "ruin_scavenger",
+      "mutant_rat_elite"
+    ],
+    "staminaCost": 15,
+    "drops": [
+      {
+        "kind": "chance",
+        "itemId": "scrap_metal",
+        "count": 2,
+        "chancePercent": 70
+      },
+      {
+        "kind": "chance",
+        "itemId": "alloy_plate",
+        "count": 1,
+        "chancePercent": 30
+      },
+      {
+        "kind": "chance",
+        "itemId": "mana_dust",
+        "count": 2,
+        "chancePercent": 30
+      },
+      {
+        "kind": "chance",
+        "itemId": "enhance_stone",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "chance",
+        "itemId": "exp_tome",
+        "count": 1,
+        "chancePercent": 35
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 6
+      }
+    ]
+  },
+  {
+    "id": "old_town_ruins_2",
+    "name": "霸主",
+    "enemies": [
+      "ruin_overlord",
+      "mutant_rat_elite"
+    ],
+    "staminaCost": 18,
+    "drops": [
+      {
+        "kind": "chance",
+        "itemId": "alloy_plate",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "chance",
+        "itemId": "ember_weapon",
+        "count": 1,
+        "chancePercent": 15
+      },
+      {
+        "kind": "chance",
+        "itemId": "ember_armor",
+        "count": 1,
+        "chancePercent": 10
+      },
+      {
+        "kind": "chance",
+        "itemId": "ember_trinket",
+        "count": 1,
+        "chancePercent": 10
+      },
+      {
+        "kind": "chance",
+        "itemId": "enhance_stone",
+        "count": 3,
+        "chancePercent": 80
+      },
+      {
+        "kind": "chance",
+        "itemId": "exp_tome",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 2
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 13
+      }
+    ],
+    "firstClearDrops": [
+      {
+        "kind": "fixed",
+        "itemId": "blueprint_ember_armory",
+        "count": 1
+      }
+    ]
+  }
+]

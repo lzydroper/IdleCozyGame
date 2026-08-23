@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { REGION_CONFIGS } from './regions';
-import type { DropEntry, RegionConfig } from './regions';
+import { REGION_CONFIGS } from '../configs/loaders/regions.loader';
+import type { DropEntry, RegionConfig } from '../configs/types/region.types';
 import { ENEMY_CONFIGS } from './enemies';
 import { REALITY_EVENTS } from './realityEvents';
 import { EXPLORATION_CONFIG } from '../configs/constants/explorationConfig';

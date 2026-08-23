@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import { LevelDetailModal } from './LevelDetailModal';
-import { REGION_CONFIGS } from '../data/regions';
+import { REGION_CONFIGS } from '../configs/loaders/regions.loader';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 

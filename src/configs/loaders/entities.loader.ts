@@ -6,6 +6,7 @@
 import type { EnemyConfig } from '../../configs/types/entity.types';
 import type { AwakenConfig } from '../../data/awakening';
 import type { TalentNodeConfig } from '../../data/talents';
+import type { SurvivorConfig } from '../../data/survivors';
 import type { HeroConfig } from '../../configs/types/entity.types';
 import { iconFor } from '../mappings/iconMap';
 import { devGuardTable } from './devGuard';
@@ -110,3 +111,8 @@ for (const { id, duty, awaken, talent, growth, info } of heroEntries) {
 
 export const STARTER_HERO_ID: string =
   Object.values(HEROES_CONFIG).find(cfg => (cfg as unknown as { starter?: boolean }).starter)?.id ?? 'nova';
+
+// === 幸存者档案（ADR-0013） ===
+import survivorsJson from '../../data/entities/survivors.json';
+
+export const SURVIVORS_CONFIG = survivorsJson as unknown as SurvivorConfig[];

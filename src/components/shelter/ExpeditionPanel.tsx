@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { findRegionExpedition, findRegionIdByExpedition, getRegion } from '../../data/regionSelectors';
-import type { DropEntry } from '../../data/regions';
+import type { DropEntry } from '../../configs/types/region.types';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
 import { ITEMS_CONFIG } from '../../data/items';
 import { getHeroName, getInvQty } from '../../utils/gameUtils';

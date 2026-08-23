@@ -22,7 +22,7 @@ import { getMainlineRegions, getRegion, getLevel } from '../data/regionSelectors
 import { isRegionUnlocked } from '../state/levelCombat';
 import { advanceRegionProgress, completePendingMilestone, getPendingMilestone, canTriggerPendingMilestone, getRegionProgressPercent } from '../state/explorationProgress';
 import type { GameState, CombatSettlement } from '../types/game';
-import type { LevelConfig } from '../data/regions';
+import type { LevelConfig } from '../configs/types/region.types';
 import RegionSelectorModal from './RegionSelectorModal';
 import LevelBrowser from './LevelBrowser';
 import LevelDetailModal from './LevelDetailModal';

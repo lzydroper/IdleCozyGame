@@ -10,7 +10,9 @@
 | 2 | abilities json 化：combat/abilities/*.json ×10（description token {attackPct}/{maxHpPct}）+ combat.loader（glob + 插值器 + ABILITY_CONFIGS/BASIC_ATTACK/getAbilityConfig 出口）；data/abilities.ts 转 shim | ✅ |
 | 3 | buff 数据驱动：公式词表三原子（perStack/livingEnemies + values 覆盖）+ 物化器进 buffRuntime + combat/buffs/\<buffId\>.json ×4 + BuffConfig.createEffects 退役 + 被动链统一 | ✅ |
 | 4 | 英雄五文件拆分：9 × \<heroId\>/{heroInfo,duty,awaken,talent,growth}.json + heroes.loader（五 glob 归并、缺省段语义、**order 内容字段保序**）+ data/heroes.ts 转 shim；HERO_TALENTS/AWAKEN_CONFIG 出口随 loader；entityConfig.ts 类型收口 configs/types/entity.types.ts | ✅ |
-| 5 | regions NN_ 重组织：每区域 {regionInfo,levels,expedition}.json + regions.loader(glob) + regionSelectors 移 src/state/ | pending |
+| 5 | regions NN_ 重组织：每区域 {regionInfo,levels,expedition}.json + regions.loader(glob，order 内容字段排序) + regionSelectors 移 src/state/（data 侧转 shim）；region 类型收口 configs/types/region.types.ts；**顺手补漏**：survivors.json + entities.loader 出口 | ✅ |
+
+> 实施记录（工单4/5）：英雄 order 内容字段解决「glob 字母序 vs authored 发布序」漂移（召唤池/图鉴回归）；regions 同构用 regionInfo.order；**同名共存陷阱**——data/regions.ts shim 与 data/regions/ json 目录同名导致 TS 模块解析歧义（类型静默变 any），解法=提前删 shim、消费方直连新家（survivors 漏网亦顺手收口）。
 
 > 实施记录（工单1/2）：转换器 scripts/convert-batch3.test.ts 完成使命后删除；glob 域 TS 收窄 = loader 内 `as` 单点断言；`Object.entries` 解构弃名防 noUnusedParameters。
 

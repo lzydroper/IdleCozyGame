@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
-import type { LevelConfig, DropEntry } from '../data/regions';
+import type { LevelConfig, DropEntry } from '../configs/types/region.types';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
 import { isRegionUnlocked, isLevelUnlocked, getClearedLevels } from '../state/levelCombat';

@@ -1,7 +1,7 @@
 import type { GameState, HeroState, HeroEquipment, EquippedItem, LogEntry, BattleResult, CombatSettlement } from '../types/game';
 import type { HeroConfig } from '../data/heroes';
 import { HEROES_CONFIG } from '../data/heroes';
-import type { DropEntry } from '../data/regions';
+import type { DropEntry } from '../configs/types/region.types';
 import { rollDropEntries } from './dropEngine';
 import { advanceRegionProgress } from './explorationProgress';
 import { ENEMY_CONFIGS } from '../data/enemies';

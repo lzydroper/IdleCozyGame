@@ -1,4 +1,4 @@
-import type { DropEntry } from '../data/regions';
+import type { DropEntry } from '../configs/types/region.types';
 
 /** 按 DropEntry 三形态掷骰，返回 itemId -> 数量。chanceBonus 为 0-1 概率加成。 */
 export const rollDropEntries = (

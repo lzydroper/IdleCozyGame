@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
-import type { LevelConfig } from '../data/regions';
+import type { LevelConfig } from '../configs/types/region.types';
 import type { CombatSettlement } from '../types/game';
 import { getRegion } from '../data/regionSelectors';
 import { ENEMY_CONFIGS } from '../data/enemies';

@@ -1,4 +1,4 @@
-import type { DropEntry } from './regions';
+import type { DropEntry } from '../configs/types/region.types';
 
 export type RealityEventType = 'common' | 'danger' | 'combat' | 'welfare' | 'relic' | 'anomaly' | 'encounter';
 
