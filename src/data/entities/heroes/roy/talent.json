@@ -1,0 +1,21 @@
+[
+  {
+    "id": "hero_roy_synergy",
+    "name": "机械协同",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.02
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "requires": [
+      "trunk_conductor_resonance"
+    ]
+  }
+]

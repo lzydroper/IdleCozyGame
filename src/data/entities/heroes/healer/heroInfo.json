@@ -1,0 +1,28 @@
+{
+  "id": "healer",
+  "name": "艾拉",
+  "description": "精通净化药剂调配的药剂师，以奥术药剂维系队伍续航。",
+  "kind": "hero",
+  "heroClass": "conductor",
+  "faction": "arcane",
+  "baseAttributes": {
+    "maxHp": 115,
+    "attack": 16,
+    "defense": 11
+  },
+  "primaryAttributes": {
+    "strength": 1,
+    "constitution": 4,
+    "agility": 3,
+    "intelligence": 7,
+    "willpower": 6,
+    "transcendence": 2
+  },
+  "sprite": {
+    "sheet": "survivors",
+    "index": 7
+  },
+  "iconKey": "flask-conical",
+  "starter": false,
+  "order": 7
+}

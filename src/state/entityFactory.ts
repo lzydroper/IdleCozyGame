@@ -9,7 +9,7 @@
 
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { HEROES_CONFIG, type HeroConfig } from '../data/heroes';
-import type { EnemyConfig } from '../data/entityConfig';
+import type { EnemyConfig } from '../configs/types/entity.types';
 import { getAbilityConfig } from '../data/abilities';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
 import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';

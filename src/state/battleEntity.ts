@@ -14,7 +14,7 @@ import { cloneStatParams, toBattleUnitStats, type BattleUnitStats } from './batt
 import type { BattleUnitSnapshot, UnitSide } from './turnEngine';
 import { calculateInitiative } from './turnEngine';
 import type { ResolvedAbility } from './abilityTypes';
-import type { EntityKind, EnemyRole } from '../data/entityConfig';
+import type { EntityKind, EnemyRole } from '../configs/types/entity.types';
 
 export interface EntityRecipe {
   baseAttributes: BaseAttributes;

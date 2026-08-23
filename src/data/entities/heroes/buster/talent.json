@@ -1,0 +1,21 @@
+[
+  {
+    "id": "hero_buster_hunter",
+    "name": "废土猎手",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.02
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "requires": [
+      "trunk_attacker_edge"
+    ]
+  }
+]

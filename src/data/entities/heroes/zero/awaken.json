@@ -1,0 +1,11 @@
+{
+  "awakenedName": "觉醒·赛罗",
+  "passive": [
+    {
+      "stat": "attack",
+      "kind": "percent",
+      "value": 0.1
+    }
+  ],
+  "abilityId": "awaken_zero"
+}

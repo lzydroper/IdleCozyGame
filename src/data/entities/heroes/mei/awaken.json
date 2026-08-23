@@ -1,0 +1,16 @@
+{
+  "awakenedName": "觉醒·阿梅",
+  "passive": [
+    {
+      "stat": "maxHp",
+      "kind": "percent",
+      "value": 0.1
+    },
+    {
+      "stat": "defense",
+      "kind": "percent",
+      "value": 0.08
+    }
+  ],
+  "abilityId": "awaken_mei"
+}

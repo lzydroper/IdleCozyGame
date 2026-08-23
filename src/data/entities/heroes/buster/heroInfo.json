@@ -1,0 +1,28 @@
+{
+  "id": "buster",
+  "name": "巴斯特",
+  "description": "在废土中行走了二十年的清道夫硬汉，能从垃圾堆里淘出核心部件。",
+  "kind": "hero",
+  "heroClass": "attacker",
+  "faction": "astral",
+  "baseAttributes": {
+    "maxHp": 110,
+    "attack": 32,
+    "defense": 10
+  },
+  "primaryAttributes": {
+    "strength": 8,
+    "constitution": 5,
+    "agility": 3,
+    "intelligence": 2,
+    "willpower": 2,
+    "transcendence": 2
+  },
+  "sprite": {
+    "sheet": "survivors",
+    "index": 4
+  },
+  "iconKey": "hand-metal",
+  "starter": false,
+  "order": 1
+}

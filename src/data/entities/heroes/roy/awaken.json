@@ -1,0 +1,16 @@
+{
+  "awakenedName": "觉醒·罗伊",
+  "passive": [
+    {
+      "stat": "attack",
+      "kind": "percent",
+      "value": 0.08
+    },
+    {
+      "stat": "defense",
+      "kind": "percent",
+      "value": 0.05
+    }
+  ],
+  "abilityId": "awaken_roy"
+}

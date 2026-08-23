@@ -1,8 +1,13 @@
 /**
- * entities 开放集合域装配（config-json-migration 批次③ 3.4）：
- * 敌人每实体一文件 glob 归并；身份取 json 内容 id（路径透明原则）。
+ * entities 开放集合域装配（config-json-migration 批次③ 工单4）：
+ * 英雄五文件归并——文件夹分组定归属，身份取 heroInfo.id（路径透明）；
+ * 缺省段语义：缺 duty/awaken/talent/growth 文件即对应段缺省。
  */
-import type { EnemyConfig } from '../../data/entityConfig';
+import type { EnemyConfig } from '../../configs/types/entity.types';
+import type { AwakenConfig } from '../../data/awakening';
+import type { TalentNodeConfig } from '../../data/talents';
+import type { HeroConfig } from '../../configs/types/entity.types';
+import { iconFor } from '../mappings/iconMap';
 import { devGuardTable } from './devGuard';
 
 const enemyModules = import.meta.glob('../../data/entities/enemies/*.json', {
@@ -15,3 +20,93 @@ export const ENEMY_CONFIGS: Record<string, EnemyConfig> = devGuardTable(
     Object.entries(enemyModules).map(([, mod]) => [mod.default.id, mod.default])
   )
 );
+
+// === 英雄五文件 ===
+
+type Json = Record<string, unknown>;
+
+const heroInfoMods = import.meta.glob('../../data/entities/heroes/*/heroInfo.json', { eager: true }) as Record<
+  string,
+  { default: Json }
+>;
+const dutyMods = import.meta.glob('../../data/entities/heroes/*/duty.json', { eager: true }) as Record<
+  string,
+  { default: Json }
+>;
+const awakenMods = import.meta.glob('../../data/entities/heroes/*/awaken.json', { eager: true }) as Record<
+  string,
+  { default: Json }
+>;
+const talentMods = import.meta.glob('../../data/entities/heroes/*/talent.json', { eager: true }) as Record<
+  string,
+  { default: unknown[] }
+>;
+const growthMods = import.meta.glob('../../data/entities/heroes/*/growth.json', { eager: true }) as Record<
+  string,
+  { default: Json }
+>;
+
+const folderOf = (path: string): string | null =>
+  path.match(/entities\/heroes\/([^/]+)\//)?.[1] ?? null;
+
+export const HEROES_CONFIG: Record<string, HeroConfig> = {};
+export const AWAKEN_CONFIG: Record<string, AwakenConfig> = {};
+export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {};
+
+const heroEntries: Array<{
+  order: number;
+  id: string;
+  info: Json;
+  duty?: { bonuses?: unknown[] };
+  awaken?: AwakenConfig;
+  talent?: TalentNodeConfig[];
+  growth?: { levelMilestones?: HeroConfig['levelMilestones'] };
+}> = [];
+
+for (const [path, mod] of Object.entries(heroInfoMods)) {
+  const folder = folderOf(path);
+  if (!folder) continue;
+  const info = mod.default;
+  const id = String(info.id);
+  const duty = dutyMods[`../../data/entities/heroes/${folder}/duty.json`]?.default as
+    | { bonuses?: HeroConfig['dutyMeta'] extends undefined ? never[] : NonNullable<HeroConfig['dutyMeta']>['bonuses'] }
+    | undefined;
+  const awaken = awakenMods[`../../data/entities/heroes/${folder}/awaken.json`]?.default as
+    | unknown as AwakenConfig
+    | undefined;
+  const talent = talentMods[`../../data/entities/heroes/${folder}/talent.json`]?.default as
+    | TalentNodeConfig[]
+    | undefined;
+  const growth = growthMods[`../../data/entities/heroes/${folder}/growth.json`]?.default as
+    | { levelMilestones?: HeroConfig['levelMilestones'] }
+    | undefined;
+
+  heroEntries.push({
+    order: typeof info.order === 'number' ? info.order : 999,
+    id,
+    info,
+    duty,
+    awaken,
+    talent,
+    growth
+  });
+}
+
+// 按 order 内容字段排序——英雄池/图鉴顺序与文件组织无关（路径透明 + 确定性）。
+heroEntries.sort((a, b) => a.order - b.order);
+
+for (const { id, duty, awaken, talent, growth, info } of heroEntries) {
+  const iconKey = typeof info.iconKey === 'string' ? info.iconKey : '';
+  HEROES_CONFIG[id] = {
+    ...(info as unknown as HeroConfig),
+    levelMilestones: growth?.levelMilestones ?? {},
+    dutyMeta: { bonuses: (duty?.bonuses ?? []) as NonNullable<HeroConfig['dutyMeta']>['bonuses'] },
+    icon: iconFor(iconKey)
+  };
+
+  if (awaken && awaken.abilityId) AWAKEN_CONFIG[id] = awaken;
+  if (Array.isArray(talent)) HERO_TALENTS[id] = talent;
+}
+
+export const STARTER_HERO_ID: string =
+  Object.values(HEROES_CONFIG).find(cfg => (cfg as unknown as { starter?: boolean }).starter)?.id ?? 'nova';

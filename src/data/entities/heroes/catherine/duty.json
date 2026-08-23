@@ -1,0 +1,11 @@
+{
+  "bonuses": [
+    {
+      "scope": {
+        "kind": "all"
+      },
+      "speedMultiplier": 0.15,
+      "yieldMultiplier": 0.1
+    }
+  ]
+}

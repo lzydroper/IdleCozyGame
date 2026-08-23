@@ -1,0 +1,11 @@
+{
+  "awakenedName": "觉醒·铁卫",
+  "passive": [
+    {
+      "stat": "maxHp",
+      "kind": "percent",
+      "value": 0.15
+    }
+  ],
+  "abilityId": "awaken_soldier"
+}

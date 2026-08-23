@@ -1,0 +1,26 @@
+[
+  {
+    "id": "hero_mei_bounty",
+    "name": "自然馈赠",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "maxHp",
+        "kind": "percent",
+        "value": 0.02
+      },
+      {
+        "stat": "defense",
+        "kind": "percent",
+        "value": 0.01
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "requires": [
+      "trunk_conductor_resonance"
+    ]
+  }
+]

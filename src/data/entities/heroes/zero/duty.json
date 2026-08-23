@@ -1,0 +1,16 @@
+{
+  "bonuses": [
+    {
+      "scope": {
+        "kind": "expedition"
+      },
+      "intervalReduction": 0.2
+    },
+    {
+      "scope": {
+        "kind": "all"
+      },
+      "speedMultiplier": 0.2
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "hero_catherine_radiation",
+    "name": "辐射抗性",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "maxHp",
+        "kind": "percent",
+        "value": 0.03
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "requires": [
+      "trunk_guardian_bulwark"
+    ]
+  }
+]

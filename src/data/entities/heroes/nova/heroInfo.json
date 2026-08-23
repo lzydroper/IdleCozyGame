@@ -1,0 +1,28 @@
+{
+  "id": "nova",
+  "name": "诺娃",
+  "description": "前联合防卫军魔导机甲的备用驾驶员，擅长让魔导设施过载运转。",
+  "kind": "hero",
+  "heroClass": "attacker",
+  "faction": "mechanical",
+  "baseAttributes": {
+    "maxHp": 100,
+    "attack": 35,
+    "defense": 8
+  },
+  "primaryAttributes": {
+    "strength": 7,
+    "constitution": 3,
+    "agility": 3,
+    "intelligence": 6,
+    "willpower": 1,
+    "transcendence": 2
+  },
+  "sprite": {
+    "sheet": "survivors",
+    "index": 5
+  },
+  "iconKey": "rocket",
+  "starter": true,
+  "order": 0
+}

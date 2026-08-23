@@ -1,0 +1,56 @@
+[
+  {
+    "id": "hero_nova_overdrive",
+    "name": "过载引擎",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.02
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "gate": [
+      {
+        "type": "awakened"
+      },
+      {
+        "type": "talent",
+        "nodeId": "hero_nova_booster",
+        "operator": "equal",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "id": "hero_nova_booster",
+    "name": "澎湃激发",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.02
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 2
+    },
+    "gate": [
+      {
+        "type": "awakened"
+      },
+      {
+        "type": "talent",
+        "nodeId": "hero_nova_overdrive",
+        "operator": "equal",
+        "value": 0
+      }
+    ]
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "id": "apprentice",
+  "name": "小米",
+  "description": "在废土中长大的拾荒学徒，星野之间练就了一双巧手。",
+  "kind": "hero",
+  "heroClass": "conductor",
+  "faction": "astral",
+  "baseAttributes": {
+    "maxHp": 108,
+    "attack": 19,
+    "defense": 10
+  },
+  "primaryAttributes": {
+    "strength": 3,
+    "constitution": 4,
+    "agility": 4,
+    "intelligence": 5,
+    "willpower": 3,
+    "transcendence": 4
+  },
+  "sprite": {
+    "sheet": "survivors",
+    "index": 8
+  },
+  "iconKey": "hammer",
+  "starter": false,
+  "order": 8
+}

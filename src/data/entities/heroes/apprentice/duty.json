@@ -1,0 +1,11 @@
+{
+  "bonuses": [
+    {
+      "scope": {
+        "kind": "all"
+      },
+      "yieldMultiplier": 0.15,
+      "costReduction": 0.1
+    }
+  ]
+}

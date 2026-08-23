@@ -1,0 +1,11 @@
+{
+  "awakenedName": "觉醒·巴斯特",
+  "passive": [
+    {
+      "stat": "attack",
+      "kind": "percent",
+      "value": 0.12
+    }
+  ],
+  "abilityId": "awaken_buster"
+}

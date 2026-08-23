@@ -1,0 +1,16 @@
+{
+  "awakenedName": "觉醒·小米",
+  "passive": [
+    {
+      "stat": "defense",
+      "kind": "percent",
+      "value": 0.1
+    },
+    {
+      "stat": "attack",
+      "kind": "percent",
+      "value": 0.05
+    }
+  ],
+  "abilityId": "awaken_apprentice"
+}

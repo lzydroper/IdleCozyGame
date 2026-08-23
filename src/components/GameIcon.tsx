@@ -6,7 +6,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { FACILITIES_CONFIG, isFacilityType } from '../data/facilities';
-import type { ItemSheet, ItemSprite } from '../configs/types/item.types';
+
 
 export type GameIconType = 'item' | 'hero' | 'enemy' | 'zone' | 'upgrade';
 
@@ -19,7 +19,7 @@ export interface GameIconProps extends React.HTMLAttributes<HTMLDivElement> {
 // 敌人/区域为纯 Lucide 映射（iconMaps 数据层）。新增类型只需在注册表加一行。
 interface IconSource {
   name?: string;        // 汉字回退来源（取 name[0]）
-  sprite?: ItemSprite;  // spritesheet 图块
+  sprite?: { sheet: string; index: number };  // spritesheet 图块
   icon?: LucideIcon;    // Lucide 回退
 }
 
@@ -36,7 +36,7 @@ const ICON_SOURCE_REGISTRY: Record<
 };
 
 // spritesheet 网格规格：英雄立绘（survivors）3x3，物品类（seeds/materials/supplies）4x4
-const SPRITE_GRID: Record<ItemSheet, { columns: number; rows: number }> = {
+const SPRITE_GRID: Record<string, { columns: number; rows: number }> = {
   survivors: { columns: 3, rows: 3 },
   seeds: { columns: 4, rows: 4 },
   materials: { columns: 4, rows: 4 },
