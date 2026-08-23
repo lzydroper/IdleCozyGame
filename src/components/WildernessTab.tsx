@@ -88,8 +88,8 @@ export const WildernessTab: React.FC = () => {
         .filter((event): event is RealityEvent => Boolean(event));
       if (events.length === 0) return;
 
-      // 1. 根据分类大权重筛选事件类型（按 id 预排序——顺序无关的确定性加权，combat-experience 05）
-      const availableCategories = Array.from(new Set(events.map(e => e.type))).sort();
+      // 1. 根据分类大权重筛选事件类型（保持池内 authored 顺序，combat-experience 05）
+      const availableCategories = Array.from(new Set(events.map(e => e.type)));
       const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
 
       let randomCatNum = Math.random() * totalCatWeight;
@@ -103,10 +103,8 @@ export const WildernessTab: React.FC = () => {
         randomCatNum -= catWeight;
       }
 
-      // 2. 筛选对应类别下的具体事件（按 id 排序保证与数据文件组织无关），根据具体事件权重进行二次筛选
-      const catEvents = events
-        .filter(e => e.type === selectedCat)
-        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      // 2. 筛选对应类别下的具体事件（保持池内 authored 顺序），根据具体事件权重进行二次筛选
+      const catEvents = events.filter(e => e.type === selectedCat);
       const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
 
       let randomEvtNum = Math.random() * totalEventWeight;

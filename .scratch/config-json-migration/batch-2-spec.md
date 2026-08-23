@@ -19,6 +19,6 @@
 3. **glob 自碰撞**——`reality_order.json` 撞 `reality_*.json` 被当事件混入池。改名 `realityOrder.json` 规避；后续新增元数据文件命名须避开域内 glob 模式。
 4. **事件池枚举序变化破坏确定性 rng 测试**——event.loader 按 realityOrder.json 重排归并结果，「路径透明」与行为稳定兼得。
 
-## 遗留（下一会话首项）
+## 遗留（已解决 ✅）
 
-- ⏸ WildernessTab.test 两条用例 skip 中：SwipeCard 牌堆在新事件装载下未渲染 ruined_truck 卡（loader 数据探针完好=31 条含目标事件；疑似牌堆消费侧对「当前事件 vs 预览堆」的取数路径问题）。诊断后修复并取消跳过。
+- ~~WildernessTab 两条用例 skip~~ **已修复**：根因是组件内按 id 排序打乱了 loader 经 realityOrder.json 保留的 authored 枚举序（rand=0 应命中首事件 ruined_truck，排序后落到 anomaly/酸雨卡）。撤除两处 `.sort()`、信任 loader 稳定序后 24/24 通过。经验：**路径透明原则下，顺序稳定性由 loader 单点保证，消费方不得再排序**。
