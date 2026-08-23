@@ -3,7 +3,7 @@ import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
 import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
-import { HEROES_CONFIG } from '../data/heroes';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 import { EMPTY_DUTY_BONUS, resolveDutyBonuses, type DutyResolvedBonus } from './duty';
 
 // 反查温室驻守（浇水岗）英雄的加成（作用域化：bonuses 中匹配温室的加成聚合生效）

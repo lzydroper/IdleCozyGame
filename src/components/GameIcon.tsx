@@ -2,10 +2,12 @@ import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ENEMY_ICON_MAP, ZONE_ICON_MAP } from './iconMaps';
-import { ITEMS_CONFIG } from '../data/items';
-import { HEROES_CONFIG } from '../data/heroes';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { FACILITIES_CONFIG, isFacilityType } from '../data/facilities';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { SHELTER_UPGRADES, FACILITIES_CONFIG, isFacilityType } from '../configs/loaders/shelter.loader';
+
+
+
 
 
 export type GameIconType = 'item' | 'hero' | 'enemy' | 'zone' | 'upgrade';

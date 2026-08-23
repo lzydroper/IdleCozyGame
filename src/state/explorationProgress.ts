@@ -1,5 +1,5 @@
 import type { GameState } from '../types/game';
-import { getRegion } from '../data/regionSelectors';
+import { getRegion } from './regionSelectors';
 import { EXPLORATION_CONFIG } from '../configs/constants/explorationConfig';
 
 export const getRegionProgress = (state: GameState, regionId: string): number =>

@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import ItemDetailModal from './ItemDetailModal';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 import type { HeroState, PlayerStats } from '../types/game';
 
 describe('ItemDetailModal Component', () => {

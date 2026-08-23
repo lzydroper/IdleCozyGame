@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
 import {
   resolveWatererBonuses,

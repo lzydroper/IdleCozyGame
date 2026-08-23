@@ -1,10 +1,11 @@
 import type { GameState, HeroState, CombatSettlement, CombatIdleState } from '../types/game';
 import type { LevelConfig, RegionConfig } from '../configs/types/region.types';
-import { getMainlineRegions, getRegion, getLevel, getTestRegions } from '../data/regionSelectors';
-import { ITEMS_CONFIG } from '../data/items';
+import { getMainlineRegions, getRegion, getLevel, getTestRegions } from './regionSelectors';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { ENEMY_CONFIGS, HEROES_CONFIG } from '../configs/loaders/entities.loader';
+
 import { getRegionProgressPercent } from './explorationProgress';
-import { ENEMY_CONFIGS } from '../data/enemies';
-import { HEROES_CONFIG } from '../data/heroes';
+
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { heroToCombatant, simulateBattle, enemyConfigToEntity } from './combat';
 import { rollDropEntries } from './dropEngine';
@@ -248,7 +249,6 @@ const enemiesToEntities = (enemyIds: string[]) =>
     if (!enemy) throw new Error(`Unknown enemy id: ${id}`);
     return enemyConfigToEntity(enemy);
   });
-
 
 interface LevelSettlement {
   nextStamina: number;

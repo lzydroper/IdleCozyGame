@@ -3,8 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
-import { INITIAL_STATE } from '../../data/initialState';
-import { SHELTER_UPGRADES } from '../../data/shelterUpgrades';
+import { INITIAL_STATE } from '../../configs/seed/initialState';
+import { SHELTER_UPGRADES } from '../../configs/loaders/shelter.loader';
+
 import type { GameState } from '../../types/game';
 
 describe('ShelterTab Component UI - Integrated Greenhouse', () => {

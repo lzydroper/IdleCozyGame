@@ -6,7 +6,7 @@ import { ToastProvider } from './ToastSystem';
 import { LevelBrowser } from './LevelBrowser';
 import { REGION_CONFIGS } from '../configs/loaders/regions.loader';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 const makeTestState = (): GameState => {
   const state: GameState = JSON.parse(JSON.stringify(INITIAL_STATE));

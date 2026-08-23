@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../data/heroes';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../configs/constants/heroDisplay';
 import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../configs/constants/heroLore';
 import { getAwakenedName } from '../state/awakening';
 import { describeDutyBonuses } from '../state/duty';

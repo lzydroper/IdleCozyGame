@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { BattleResult, GameState } from '../types/game';
-import { INITIAL_STATE } from '../data/initialState';
-import { STARTER_HERO_ID } from '../data/heroes';
-import { getLevel } from '../data/regionSelectors';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+import { STARTER_HERO_ID } from '../configs/loaders/entities.loader';
+import { getLevel } from './regionSelectors';
+
 import { rollDropEntries } from './dropEngine';
 import {
   settleLevelBattle,

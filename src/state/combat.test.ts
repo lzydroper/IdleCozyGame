@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG } from '../data/heroes';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG, ENEMY_CONFIGS } from '../configs/loaders/entities.loader';
+import { heroBaseAttributes } from './heroGrowth';
+
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { applyTick } from './tick';
-import { heroBaseAttributes } from '../data/heroGrowth';
+
 import {
   applyHeroExp,
   consumeExpTomesUpdate,
@@ -17,7 +19,7 @@ import {
   createBattle,
   canActWithBuffs
 } from './combat';
-import { ENEMY_CONFIGS } from '../data/enemies';
+
 import { createBattleContext, type BattleContext } from './battleContext';
 import { BUFF_CONFIGS } from './buffTypes';
 import { createBuffTriggerHooks } from './buffRuntime';

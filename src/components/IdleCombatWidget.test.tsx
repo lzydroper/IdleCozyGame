@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import IdleCombatWidget from './IdleCombatWidget';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 describe('IdleCombatWidget Component', () => {
   beforeEach(() => {

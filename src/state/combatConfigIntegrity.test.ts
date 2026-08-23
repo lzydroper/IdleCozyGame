@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { validateCombatConfigIntegrity } from './entityFactory';
-import { getAbilityConfig } from '../data/abilities';
-import { ABILITY_CONFIGS } from '../data/abilities';
+import { getAbilityConfig, ABILITY_CONFIGS } from '../configs/loaders/combat.loader';
 
 describe('战斗配置完整性（combat-hygiene 05 / En#4/#9 seam）', () => {
   it('basic_attack 必存在且可解析', () => {

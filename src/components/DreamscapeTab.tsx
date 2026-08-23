@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addItemRewards, isWearableEquipment } from '../state/equipment';
-import { RESCUE_LOCATION_NAMES } from '../data/rescueLocations';
+import { RESCUE_LOCATION_NAMES } from '../configs/loaders/event.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
 import { DREAM_EVENTS } from '../configs/loaders/event.loader';
 import type { DreamChoice } from '../configs/types/event.types';
 import { SURVIVORS_CONFIG } from '../configs/loaders/entities.loader';
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
 import { Sparkles, Brain, AlertOctagon, MoonStar, Backpack, BarChart3, Pill, Orbit } from 'lucide-react';
-import { ITEMS_CONFIG } from '../data/items';
+
 import { NIGHTMARE_CONFIG } from '../configs/constants/nightmareConfig';
 import { isDreamLockdownActive, getDreamLockdownRemaining } from '../state/nightmare';
 

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState, HeroState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG } from '../data/heroes';
-import { AWAKEN_CONFIG, STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR } from '../data/awakening';
-import { getAbilityConfig } from '../data/abilities';
-import { ITEMS_CONFIG } from '../data/items';
-import { getLevel } from '../data/regionSelectors';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG, AWAKEN_CONFIG } from '../configs/loaders/entities.loader';
+import { STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR } from '../configs/constants/awakeningConstants';
+import { getAbilityConfig } from '../configs/loaders/combat.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { getLevel } from './regionSelectors';
+
 import {
   starUpUpdate,
   awakenUpdate,

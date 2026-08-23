@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { HeroClass, HeroFaction } from '../../types/game';
 import type { FacilityType } from './gameplay.types';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../../state/statSystem';
+import type { StatModifier } from '../../state/statSystem';
 
 export type EntityKind = 'hero' | 'enemy' | 'other';
 
@@ -93,3 +94,11 @@ export interface SurvivorConfig {
   dreamTrigger: string;
   realityLocationId: string;
 }
+
+// === 升星与觉醒（ticket 12；awaken.json 段） ===
+
+export type AwakenConfig = {
+  awakenedName: string;   // 觉醒后的名字（外观变化）
+  passive: StatModifier[]; // 觉醒强化被动（百分比，战斗内生效）
+  abilityId: string;      // 觉醒专属技能引用（combat/abilities/<id>.json）
+};

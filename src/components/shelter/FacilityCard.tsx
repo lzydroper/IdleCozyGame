@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { AUTO_RECIPES } from '../../data/autoRecipes';
-import { ITEMS_CONFIG } from '../../data/items';
-import { HEROES_CONFIG } from '../../data/heroes';
+import { AUTO_RECIPES } from '../../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../../configs/loaders/entities.loader';
+import type { FacilityType } from '../../configs/types/gameplay.types';
+import { FACILITIES_CONFIG } from '../../configs/loaders/shelter.loader';
+
 import { getInvQty } from '../../utils/gameUtils';
 import { getActualDuration, resolveDutyBonus, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeDisplayName } from '../../state/workshop';
@@ -12,8 +15,7 @@ import DutyAssignModal from './DutyAssignModal';
 import StartTaskModal from './StartTaskModal';
 import CancelTaskModal from './CancelTaskModal';
 import type { AutomationFacility } from '../../types/game';
-import type { FacilityType } from '../../data/facilities';
-import { FACILITIES_CONFIG } from '../../data/facilities';
+
 import { TrendingUp, UserCog, Plus, XCircle } from 'lucide-react';
 
 // ─────────────────────────────────────────────

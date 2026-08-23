@@ -1,9 +1,9 @@
 // 物品注册表一致性测试（数据层 seam）：单一真相源兜底，防止配置腐坏。
 // 先例：src/data/heroes.test.ts（数据配置测试）。
 import { describe, it, expect } from 'vitest';
-import { ITEMS_CONFIG, ITEM_CATEGORIES } from './index';
-import { EQUIPMENT_CONFIG } from '../equipment';
-import { HEROES_CONFIG } from '../heroes';
+import { ITEMS_CONFIG, ITEM_CATEGORIES } from './items.loader';
+import { EQUIPMENT_CONFIG } from './equipment.loader';
+import { HEROES_CONFIG } from './entities.loader';
 
 // 显式共享 sprite 格子的白名单：materials sheet 16 格已满（17 个物品），
 // void_core 与 void_essence 共图是已知决策（ADR-0015 冲突显式化），补图后移除。

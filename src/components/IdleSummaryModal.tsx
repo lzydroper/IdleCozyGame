@@ -1,6 +1,6 @@
 import React from 'react';
 import type { IdleSummaryData } from '../state/levelCombat';
-import { ITEMS_CONFIG } from '../data/items';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
 import GameIcon from './GameIcon';
 import { formatDuration } from '../utils/time';
 

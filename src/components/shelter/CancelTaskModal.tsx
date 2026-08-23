@@ -2,13 +2,15 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { AUTO_RECIPES } from '../../data/autoRecipes';
-import { ITEMS_CONFIG } from '../../data/items';
+import { AUTO_RECIPES } from '../../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import type { FacilityType } from '../../configs/types/gameplay.types';
+
 import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { resolveDutyBonus, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeDisplayName } from '../../state/workshop';
-import type { FacilityType } from '../../data/facilities';
+
 import { X, AlertTriangle } from 'lucide-react';
 
 // 取消任务确认弹窗（issue 08 变体 B）：展示"已产出的 X 批将保留，将退还：材料 ×Y"。

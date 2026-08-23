@@ -1,0 +1,53 @@
+{
+  "wasteland": {
+    "id": "wasteland",
+    "name": "废土系列",
+    "faction": "mechanical",
+    "factionLabel": "【机械】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.05 }] },
+      { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.08 }] },
+      { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.10 }] }
+    ],
+    "mythicAffix": [{ "stat": "attack", "kind": "percent", "value": 0.03 }]
+  },
+  "ember": {
+    "id": "ember",
+    "name": "余烬系列",
+    "faction": "spirit",
+    "factionLabel": "【英灵】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.08 }] },
+      { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.10 }] },
+      { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.15 }] }
+    ],
+    "mythicAffix": [{ "stat": "maxHp", "kind": "percent", "value": 0.05 }]
+  },
+  "dreamveil": {
+    "id": "dreamveil",
+    "name": "幽梦系列",
+    "faction": "arcane",
+    "factionLabel": "【奥术】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.08 }] },
+      { "threshold": 20, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.10 }] },
+      { "threshold": 30, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.12 }] }
+    ],
+    "mythicAffix": [{ "stat": "defense", "kind": "percent", "value": 0.05 }]
+  },
+  "starcore": {
+    "id": "starcore",
+    "name": "星核系列",
+    "faction": "astral",
+    "factionLabel": "【星界】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.10 }] },
+      { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.12 }] },
+      { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.18 }] }
+    ],
+    "mythicAffix": [
+      { "stat": "attack", "kind": "percent", "value": 0.05 },
+      { "stat": "defense", "kind": "percent", "value": 0.05 }
+    ]
+  }
+}

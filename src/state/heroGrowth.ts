@@ -4,7 +4,7 @@
  */
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes, StatModifier, StatKey } from './statSystem';
 import { DEFAULT_BASE_ATTRIBUTES } from '../configs/constants/statConfig';
-import type { HeroConfig } from '../data/heroes';
+import type { HeroConfig } from '../configs/types/entity.types';
 import { HERO_GROWTH_BY_CLASS } from '../configs/loaders/progression.loader';
 export interface HeroGrowthConfig {
   attackPerLevel: number;     // 基础攻击面板

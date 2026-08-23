@@ -1,9 +1,10 @@
 import type { GameState, DutyAssignment } from '../types/game';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
-import { findRegionExpedition, findRegionIdByExpedition } from '../data/regionSelectors';
+import { findRegionExpedition, findRegionIdByExpedition } from './regionSelectors';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 import { isRegionUnlocked } from './levelCombat';
-import { HEROES_CONFIG } from '../data/heroes';
+
 
 // 清除英雄在所有后勤岗位的占用（排他性：强制单岗）
 // 更新 hero.logisticsFacilityId + shelter 缓存索引 + expedition 状态

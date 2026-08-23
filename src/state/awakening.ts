@@ -1,12 +1,7 @@
 import type { GameState, HeroState } from '../types/game';
 import type { StatModifier } from './statSystem';
-import {
-  STAR_MAX,
-  starUpShardCost,
-  STAR_STATS_PER_STAR,
-  AWAKEN_COST,
-  AWAKEN_CONFIG
-} from '../data/awakening';
+import { STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR, AWAKEN_COST } from '../configs/constants/awakeningConstants';
+import { AWAKEN_CONFIG } from '../configs/loaders/entities.loader';
 import type { UpdateResult } from './types';
 
 // === 升星与觉醒（ticket 12）：终局养成闭环 ===

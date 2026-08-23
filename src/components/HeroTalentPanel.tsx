@@ -1,9 +1,11 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
-import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { formatTalentGate, buildTalentTree } from '../data/talents';
-import type { TalentNodeConfig } from '../data/talents';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS } from '../configs/constants/heroDisplay';
+import { formatTalentGate, buildTalentTree } from '../state/talentsTree';
+import type { TalentNodeConfig } from '../configs/types/progression.types';
+
 import { formatModifiers } from '../state/statSystem';
 import { getTalentLevel, getInvestedPoints, isTalentNodeUnlocked, firstUnmetTalentGate, evaluateTalentGate } from '../state/talents';
 import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move, Award } from 'lucide-react';

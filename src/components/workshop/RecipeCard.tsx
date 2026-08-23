@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { ITEMS_CONFIG } from '../../data/items';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
 import type { Recipe } from '../../types/config';
 import { getRecipeDisplayName, getRecipeDescription } from '../../state/workshop';
 import GameIcon from '../GameIcon';

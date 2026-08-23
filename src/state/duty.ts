@@ -1,7 +1,9 @@
-import type { HeroDutyMeta, DutyScope } from '../data/heroes';
+import type { HeroDutyMeta, DutyScope } from '../configs/types/entity.types';
+import { FACILITIES_CONFIG } from '../configs/loaders/shelter.loader';
+import type { FacilityType } from '../configs/types/gameplay.types';
 import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
-import { FACILITIES_CONFIG } from '../data/facilities';
-import type { FacilityType } from '../data/facilities';
+
+
 
 // 统一解析后的加成值（已按岗位作用域聚合，同类型多条累加）
 export interface DutyResolvedBonus {

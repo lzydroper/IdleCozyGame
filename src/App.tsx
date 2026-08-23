@@ -14,7 +14,7 @@ import { useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { sanitizeStateForCloud } from './state/persistence';
 import GameIcon from './components/GameIcon';
-import { ITEMS_CONFIG } from './data/items';
+import { ITEMS_CONFIG } from './configs/loaders/items.loader';
 import {
   Compass,
   Moon,

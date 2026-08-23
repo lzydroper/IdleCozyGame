@@ -3,16 +3,13 @@ import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import type { EquipmentSlot } from '../types/game';
-import {
-  EQUIPMENT_CONFIG,
-  EQUIPMENT_SETS,
-  ENHANCE_MAX,
-  FACTION_EQUIPMENT_BONUS_PERCENT,
-  enhanceCost,
-  FORGE_COST
-} from '../data/equipment';
-import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
-import { ITEMS_CONFIG } from '../data/items';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS } from '../configs/loaders/equipment.loader';
+import { ENHANCE_MAX, FACTION_EQUIPMENT_BONUS_PERCENT, enhanceCost, FORGE_COST } from '../configs/constants/equipmentConstants';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_FACTION_LABELS } from '../configs/constants/heroDisplay';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
+
 import { getEquippedStatParts, getSetEnhanceProgress } from '../state/equipment';
 import { formatModifiers, type StatKey } from '../state/statSystem';
 import EquipSelectorModal from './EquipSelectorModal';

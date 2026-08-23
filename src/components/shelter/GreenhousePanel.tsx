@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { CROPS_CONFIG } from '../../configs/loaders/gameplay.loader';
-import { ITEMS_CONFIG } from '../../data/items';
-import { HEROES_CONFIG } from '../../data/heroes';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../../configs/loaders/entities.loader';
+
 import { resolveWatererBonuses } from '../../state/greenhouse';
 import { getHeroName } from '../../utils/gameUtils';
 import { useToast } from '../ToastSystem';

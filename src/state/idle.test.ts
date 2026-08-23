@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 import {
   startLevelIdleUpdate,
   stopLevelIdleUpdate,

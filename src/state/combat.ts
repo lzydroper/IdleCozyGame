@@ -1,25 +1,30 @@
 import type { GameState, HeroState, HeroEquipment, EquippedItem, LogEntry, BattleResult, CombatSettlement } from '../types/game';
-import type { HeroConfig } from '../data/heroes';
-import { HEROES_CONFIG } from '../data/heroes';
+import type { HeroConfig } from '../configs/types/entity.types';
+import { HEROES_CONFIG, ENEMY_CONFIGS } from '../configs/loaders/entities.loader';
+import { REALITY_EVENTS } from '../configs/loaders/event.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { heroBaseAttributes, getMilestoneModifiers } from './heroGrowth';
+import { getAbilityConfig } from '../configs/loaders/combat.loader';
+
 import type { DropEntry } from '../configs/types/region.types';
 import { rollDropEntries } from './dropEngine';
 import { advanceRegionProgress } from './explorationProgress';
-import { ENEMY_CONFIGS } from '../data/enemies';
+
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
-import { REALITY_EVENTS } from '../data/realityEvents';
+
 import { getHeroEquipmentBonus, addItemRewards } from './equipment';
 import { aggregateBonus } from './bonds';
 import type { StatModifier, BaseAttributes, PrimaryAttributes, SpecialAttributes } from './statSystem';
 import { DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
-import { ITEMS_CONFIG } from '../data/items';
-import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
+
+
 import { getTalentBonus } from './talents';
 import { getAwakenBonus, getAwakenAbilityId } from './awakening';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 import { createTurnRuntime } from './turnEngine';
 import type { BattleUnitSnapshot } from './turnEngine';
-import { getAbilityConfig } from '../data/abilities';
+
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
 import { applyPassiveAbilities, collectPassiveBuffConfigs } from './abilityPassive';
 import { createAbilityRuntime } from './abilityRuntime';

@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import type { LevelConfig } from '../configs/types/region.types';
 import type { CombatSettlement } from '../types/game';
-import { getRegion } from '../data/regionSelectors';
-import { ENEMY_CONFIGS } from '../data/enemies';
-import { HEROES_CONFIG } from '../data/heroes';
-import { ITEMS_CONFIG } from '../data/items';
+import { getRegion } from '../state/regionSelectors';
+import { ENEMY_CONFIGS, HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
 import { formatBattleEvent } from '../state/battleEventPresentation';
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 

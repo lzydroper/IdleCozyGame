@@ -1,9 +1,13 @@
 import type { AutomationFacility, GameState } from '../types/game';
-import { HEROES_CONFIG } from '../data/heroes';
-import { AUTO_RECIPES } from '../data/autoRecipes';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../data/facilities';
-import { ITEMS_CONFIG } from '../data/items';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+import { SHELTER_UPGRADES, FACILITIES_CONFIG, isFacilityType } from '../configs/loaders/shelter.loader';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
+
+
+
 import type { UpgradeLevel, UnlockRequirement } from '../types/config';
 import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';

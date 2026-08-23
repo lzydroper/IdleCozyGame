@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import type { EquipmentSlot } from '../types/game';
-import {
-  EQUIPMENT_CONFIG,
-  EQUIPMENT_SETS,
-  EQUIPMENT_SLOTS,
-  EQUIPMENT_SLOT_LABELS,
-  ENHANCE_MAX,
-  enhanceCost,
-  FORGE_COST
-} from '../data/equipment';
-import { ITEMS_CONFIG } from '../data/items';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS } from '../configs/loaders/equipment.loader';
+import { EQUIPMENT_SLOTS, EQUIPMENT_SLOT_LABELS, ENHANCE_MAX, enhanceCost, FORGE_COST } from '../configs/constants/equipmentConstants';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
 import GameIcon from './GameIcon';
 import { SLOT_ICON_MAP } from './iconMaps';
 import { Backpack, Hammer } from 'lucide-react';

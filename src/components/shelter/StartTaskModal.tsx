@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { AUTO_RECIPES } from '../../data/autoRecipes';
-import { ITEMS_CONFIG } from '../../data/items';
+import { AUTO_RECIPES } from '../../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import type { FacilityType } from '../../configs/types/gameplay.types';
+
 import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { getActualDuration, resolveDutyBonus, getMaxAffordableBatches, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeName, getRecipeDisplayName } from '../../state/workshop';
 import { formatDuration } from '../../utils/gameUtils';
-import type { FacilityType } from '../../data/facilities';
+
 import { X, Zap, Hammer } from 'lucide-react';
 
 // 生产弹窗（issue 08 变体 B）：配方选择 + 批次滑条（上限 = floor(材料 / 每批折扣成本)）

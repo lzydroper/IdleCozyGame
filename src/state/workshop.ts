@@ -1,8 +1,10 @@
 import type { GameState, PlayerStats } from '../types/game';
 import type { Recipe } from '../types/config';
-import type { ItemCategory } from '../data/items';
-import { RECIPES_CONFIG } from '../data/recipes';
-import { ITEMS_CONFIG } from '../data/items';
+import type { ItemCategory } from '../configs/types/item.types';
+import { RECIPES_CONFIG } from '../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
+
 import { addItemRewards } from './equipment';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';

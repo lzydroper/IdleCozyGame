@@ -4,8 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import ShelterTab from './ShelterTab';
-import { INITIAL_STATE } from '../../data/initialState';
-import { FACILITIES_CONFIG } from '../../data/facilities';
+import { INITIAL_STATE } from '../../configs/seed/initialState';
+import { FACILITIES_CONFIG } from '../../configs/loaders/shelter.loader';
+
 import type { GameState } from '../../types/game';
 
 describe('FacilityCard 单任务状态摘要 UI（issue 06）', () => {

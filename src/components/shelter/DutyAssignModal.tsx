@@ -1,7 +1,9 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
-import { FACILITIES_CONFIG } from '../../data/facilities';
+import { HEROES_CONFIG } from '../../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../configs/constants/heroDisplay';
+import { FACILITIES_CONFIG } from '../../configs/loaders/shelter.loader';
+
 import type { HeroState } from '../../types/game';
 import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import { User, X } from 'lucide-react';

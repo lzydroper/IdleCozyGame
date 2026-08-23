@@ -5,7 +5,7 @@ import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import WildernessTab from './WildernessTab';
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 describe('WildernessTab Component', () => {
   beforeEach(() => {

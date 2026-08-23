@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
-import { HEROES_CONFIG } from '../data/heroes';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, Check, HeartCrack } from 'lucide-react';
 import GameIcon from './GameIcon';

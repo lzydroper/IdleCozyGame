@@ -7,7 +7,7 @@
  */
 import type { BattleEvent, TurnEventKey } from './turnEngine';
 import { EFFECT_EXECUTORS, type EffectKind } from './effectSystem';
-import { ABILITY_CONFIGS } from '../data/abilities';
+import { ABILITY_CONFIGS } from '../configs/loaders/combat.loader';
 
 export interface BattleEventPresenter {
   key: TurnEventKey;

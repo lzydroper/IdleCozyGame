@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { simulateBattle } from './combat';
 import { buildEntity, type BattleEntity } from './battleEntity';
 import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
-import { getAbilityConfig } from '../data/abilities';
+import { getAbilityConfig } from '../configs/loaders/combat.loader';
 import { resolveAbilityConfig } from './abilityTypes';
 
 const makeEntity = (

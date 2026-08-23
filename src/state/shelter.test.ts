@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { assignHeroToDutyUpdate } from './shelter';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 import type { GameState } from '../types/game';
 
 // 构造带多个英雄的测试状态

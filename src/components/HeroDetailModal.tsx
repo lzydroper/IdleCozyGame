@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
-import {
-  HEROES_CONFIG,
-  HERO_CLASS_LABELS,
-  HERO_FACTION_LABELS,
-  HERO_CLASS_COLORS
-} from '../data/heroes';
-import { STAR_MAX, starUpShardCost } from '../data/awakening';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../configs/constants/heroDisplay';
+import { STAR_MAX, starUpShardCost } from '../configs/constants/awakeningConstants';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { EQUIPMENT_CONFIG } from '../configs/loaders/equipment.loader';
+import { heroBaseAttributes, getMilestoneModifiers } from '../state/heroGrowth';
+
 import { getAwakenedName, getAwakenBonus } from '../state/awakening';
-import { ITEMS_CONFIG } from '../data/items';
-import { EQUIPMENT_CONFIG } from '../data/equipment';
+
+
 import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp } from '../state/combat';
 import { getTalentBonus } from '../state/talents';
 import { describeDutyBonuses } from '../state/duty';
 import { aggregateBonus } from '../state/bonds';
-import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
+
 import { DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats, type StatModifier } from '../state/statSystem';

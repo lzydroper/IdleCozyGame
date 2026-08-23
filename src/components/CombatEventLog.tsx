@@ -3,7 +3,7 @@ import type { CombatSettlement, BattleResult } from '../types/game';
 import { formatBattleEvent } from '../state/battleEventPresentation';
 import { CheckCircle2, AlertTriangle, Swords, Gem, Sparkles } from 'lucide-react';
 import GameIcon from './GameIcon';
-import { ITEMS_CONFIG } from '../data/items';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
 
 interface CombatEventLogProps {
   settlement: CombatSettlement;

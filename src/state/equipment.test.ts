@@ -1,18 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState, HeroEquipment, EquippedItem, EquipmentSlot } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import {
-  EQUIPMENT_SETS,
-  EQUIPMENT_SLOTS,
-  FORGE_COST,
-  enhanceCost,
-  EQUIPMENT_LIST
-} from '../data/equipment';
-import { ITEMS_CONFIG } from '../data/items';
-import { RECIPES_CONFIG } from '../data/recipes';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { EQUIPMENT_SETS, EQUIPMENT_LIST } from '../configs/loaders/equipment.loader';
+import { EQUIPMENT_SLOTS, FORGE_COST, enhanceCost } from '../configs/constants/equipmentConstants';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { RECIPES_CONFIG } from '../configs/loaders/workshop.loader';
+import { getRegion, getLevel } from './regionSelectors';
+import { DREAM_EVENTS } from '../configs/loaders/event.loader';
+
+
+
 import type { StatModifier } from './statSystem';
-import { getRegion, getLevel } from '../data/regionSelectors';
-import { DREAM_EVENTS } from '../data/dreamEvents';
+
+
 import {
   equipItemUpdate,
   unequipItemUpdate,

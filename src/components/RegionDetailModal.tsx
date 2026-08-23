@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
-import { getRegion } from '../data/regionSelectors';
+import { getRegion } from '../state/regionSelectors';
 import { isRegionUnlocked, getRegionUnlockDiagnostics } from '../state/levelCombat';
 import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { Check, X } from 'lucide-react';

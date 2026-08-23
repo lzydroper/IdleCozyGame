@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 import { calculateDetailedOfflineProgress } from './offline';
 
 const makeTestState = (overrides?: Partial<GameState>): GameState => ({

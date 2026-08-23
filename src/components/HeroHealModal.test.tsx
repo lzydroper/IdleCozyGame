@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import HeroHealModal from './HeroHealModal';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 import type { HeroState } from '../types/game';
 
 describe('HeroHealModal Component (纳米修复剂治愈重伤, ticket 05)', () => {

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { getLevel } from './regionSelectors';
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
-import { getLevel } from '../data/regionSelectors';
+
 import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { applyTick } from './tick';
 import type { GameState, GreenhouseSlot } from '../types/game';

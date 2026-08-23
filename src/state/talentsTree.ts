@@ -2,9 +2,9 @@
  * 天赋树运行时组装（config-json-migration 批次② 自 data/talents.ts 迁出——运行时逻辑归位 state）。
  * 数据源：职阶主干 = progression.loader（json）；英雄专属节点 = data/talents.ts HERO_TALENTS（批次③迁英雄 talent.json）。
  */
-import type { TalentGate, TalentNodeConfig } from '../data/talents';
-import { TALENT_TRUNKS, HERO_TALENTS } from '../data/talents';
-import { HEROES_CONFIG } from '../data/heroes';
+import type { TalentGate, TalentNodeConfig } from '../configs/types/progression.types';
+import { TALENT_TRUNKS } from '../configs/loaders/progression.loader';
+import { HERO_TALENTS, HEROES_CONFIG } from '../configs/loaders/entities.loader';
 
 // 门控可读文案（07 号，UI 选中节点展示）：nameOf 解析节点 id → 名称
 // talent 的 equal 0 渲染为「未投入」（互斥语义友好化）

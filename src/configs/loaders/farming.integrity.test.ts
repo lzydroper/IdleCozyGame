@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { CROPS_CONFIG } from './gameplay.loader';
-import { ITEMS_CONFIG } from '../../data/items';
+import { ITEMS_CONFIG } from './items.loader';
 
 // 完整性 seam 五项检查的参考实现（config-json-migration 批次① 1.4）。
 describe('farming/crops integrity（五项检查样板）', () => {

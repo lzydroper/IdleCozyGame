@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createSaveThrottle, AUTO_SAVE_INTERVAL_MS, sanitizeStateForCloud, mergeSavedState } from './persistence';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 import { EMPTY_IDLE_STATE } from './levelCombat';
 import type { GameState } from '../types/game';
 

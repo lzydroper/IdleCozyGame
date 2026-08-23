@@ -1,12 +1,14 @@
 import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, CombatSettlement, CombatIdleState } from '../types/game';
-import type { FacilityType } from '../data/facilities';
-import { FACILITIES_CONFIG } from '../data/facilities';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { FACILITIES_CONFIG } from '../configs/loaders/shelter.loader';
+import { AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
 import { getActualDuration, getMaxUpgradeLevel } from './facility';
 import { isWearableEquipment } from './equipment';
-import { AUTO_RECIPES } from '../data/autoRecipes';
+
 import { EMPTY_IDLE_STATE } from './levelCombat';
 
 // 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值

@@ -1,17 +1,22 @@
 import type { GameState, LogEntry } from '../types/game';
-import type { FacilityType } from '../data/facilities';
-import { AUTO_RECIPES } from '../data/autoRecipes';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+import { findRegionExpedition } from './regionSelectors';
+import { SHELTER_UPGRADES } from '../configs/loaders/shelter.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+
 import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './facility';
 import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonuses } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
 import { resolveDutyBonuses } from './duty';
 import { getRecipeName } from './workshop';
-import { findRegionExpedition } from '../data/regionSelectors';
+
 import { rollDropEntries } from './dropEngine';
 import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { ITEMS_CONFIG } from '../data/items';
-import { HEROES_CONFIG } from '../data/heroes';
+
+
+
 import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { recoverStaminaByTime } from './stamina';
 import { settleLevelIdleUpdate } from './levelCombat';

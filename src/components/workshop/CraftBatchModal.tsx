@@ -4,7 +4,7 @@ import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
 import type { Recipe } from '../../types/config';
 import { getRecipeDisplayName, getRecipeMainReward, computeMaxBatch } from '../../state/workshop';
-import { ITEMS_CONFIG } from '../../data/items';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
 import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { WORKSHOP_TOASTS } from './constants';

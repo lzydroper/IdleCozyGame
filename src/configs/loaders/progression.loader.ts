@@ -8,9 +8,8 @@ import bondsJson from '../../data/progression/bonds.json';
 import talentTrunksJson from '../../data/progression/talentTrunks.json';
 import growthByClassJson from '../../data/progression/growthByClass.json';
 import type { HeroClass } from '../../types/game';
-import type { TalentNodeConfig } from '../../data/talents';
+import type { TalentNodeConfig, BondConfig } from '../../configs/types/progression.types';
 import type { HeroGrowthConfig } from '../../state/heroGrowth';
-import type { BondConfig } from '../../data/bonds';
 
 export const BONDS = bondsJson as unknown as BondConfig[];
 // 形状沿用 data/talents.ts 的既有接口（类型仅引用，运行时零循环）。

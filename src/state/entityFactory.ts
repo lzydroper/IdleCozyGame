@@ -7,10 +7,12 @@
  * 完整英雄装配走 combat.heroToCombatant。
  */
 
-import { ENEMY_CONFIGS } from '../data/enemies';
-import { HEROES_CONFIG, type HeroConfig } from '../data/heroes';
+import { ENEMY_CONFIGS, HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import type { HeroConfig } from '../configs/types/entity.types';
+import { getAbilityConfig } from '../configs/loaders/combat.loader';
+
 import type { EnemyConfig } from '../configs/types/entity.types';
-import { getAbilityConfig } from '../data/abilities';
+
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
 import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
 import { buildEntity, type BattleEntity, type EntityRecipe } from './battleEntity';

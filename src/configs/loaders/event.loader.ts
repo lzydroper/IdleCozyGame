@@ -30,7 +30,7 @@ for (const [id, evt] of Object.entries(merged)) {
 export const REALITY_EVENTS = ordered as unknown as Record<string, RealityEvent>;
 
 // 形状沿用 data/dreamEvents.ts 的既有接口。
-import type { DreamEvent } from '../../data/dreamEvents';
+import type { DreamEvent, RealityEvent } from '../types/event.types';
 
 export const DREAM_EVENTS = devGuardTable(
   'events/dream',
@@ -39,7 +39,6 @@ export const DREAM_EVENTS = devGuardTable(
 );
 
 // 形状沿用 data/realityEvents.ts 的既有接口（类型仅引用，运行时零循环）。
-import type { RealityEvent } from '../../data/realityEvents';
 
 export const RESCUE_EVENTS = rescueEventsJson as unknown as Record<string, RealityEvent>;
 

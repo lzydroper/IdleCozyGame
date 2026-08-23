@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { HEROES_CONFIG } from '../data/heroes';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 import { SUMMON_CONFIG } from '../configs/constants/summonConfig';
 import type { SummonOutcome } from '../state/summon';
 import { useToast } from './ToastSystem';

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
-import { ITEMS_CONFIG } from '../../data/items';
-import { SHELTER_UPGRADES } from '../../data/shelterUpgrades';
-import { FACILITIES_CONFIG, isFacilityType, type FacilityType, type FacilityConfig } from '../../data/facilities';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import { SHELTER_UPGRADES, FACILITIES_CONFIG, isFacilityType } from '../../configs/loaders/shelter.loader';
+import type { FacilityType, FacilityConfig } from '../../configs/types/gameplay.types';
+
+
 import type { UpgradeLevel } from '../../types/config';
 import { useToast } from '../ToastSystem';
 import GameIcon from '../GameIcon';

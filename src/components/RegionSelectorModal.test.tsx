@@ -5,7 +5,7 @@ import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import RegionSelectorModal from './RegionSelectorModal';
 import RegionDetailModal from './RegionDetailModal';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 import type { GameState } from '../types/game';
 
 describe('RegionSelectorModal and RegionDetailModal Components', () => {

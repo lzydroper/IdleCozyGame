@@ -1,8 +1,9 @@
 import type { GameState, HeroState } from '../types/game';
 import type { HeroClass } from '../types/game';
-import { HEROES_CONFIG } from '../data/heroes';
-import type { TalentNodeConfig, TalentGate } from '../data/talents';
-import { TALENT_TRUNKS, HERO_TALENTS } from '../data/talents';
+import { HEROES_CONFIG, HERO_TALENTS } from '../configs/loaders/entities.loader';
+import type { TalentNodeConfig, TalentGate } from '../configs/types/progression.types';
+import { TALENT_TRUNKS } from '../configs/loaders/progression.loader';
+
 import type { StatModifier } from './statSystem';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';

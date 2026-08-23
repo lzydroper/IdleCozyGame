@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useGame } from '../context/GameContext';
-import { getRegion, getLevel } from '../data/regionSelectors';
-import { ITEMS_CONFIG } from '../data/items';
+import { getRegion, getLevel } from '../state/regionSelectors';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
 import { getIdleFeedSnapshot, subscribeIdleFeed, getLastIdleStop, clearLastIdleStop, type IdleFeedEntry, type IdleStopRecord } from '../state/idleFeed';
 import type { IdleSummaryData } from '../state/levelCombat';
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { GameState, EquipmentSlot, DutyAssignment } from '../types/game';
-import type { FacilityType } from '../data/facilities';
-import { INITIAL_STATE } from '../data/initialState';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
 import { getAccountsList, saveState, loadOrCreateState, createFreshState, createNewAccountState, createSaveThrottle, AUTO_SAVE_INTERVAL_MS } from '../state/persistence';

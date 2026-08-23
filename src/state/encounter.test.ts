@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { REALITY_EVENTS } from '../data/realityEvents';
-import { ENEMY_CONFIGS } from '../data/enemies';
-import { ITEMS_CONFIG } from '../data/items';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { REALITY_EVENTS } from '../configs/loaders/event.loader';
+import { ENEMY_CONFIGS } from '../configs/loaders/entities.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { resolveEncounterBattleUpdate, fleeEncounterUpdate } from './combat';
 import { EMPTY_IDLE_STATE } from './levelCombat';

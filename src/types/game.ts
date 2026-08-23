@@ -1,4 +1,4 @@
-import type { FacilityType } from '../data/facilities';
+import type { FacilityType } from '../configs/types/gameplay.types';
 import type { BattleEvent, BattleOutcome } from '../state/turnEngine';
 
 export interface PlayerStats {

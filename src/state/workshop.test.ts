@@ -8,9 +8,10 @@ import {
   craftItemUpdate,
   computeMaxBatch,
 } from './workshop';
-import { RECIPES_CONFIG } from '../data/recipes';
-import { AUTO_RECIPES } from '../data/autoRecipes';
-import { INITIAL_STATE } from '../data/initialState';
+import { RECIPES_CONFIG, AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+
+
 import type { GameState } from '../types/game';
 
 const makeState = (overrides?: Partial<GameState>): GameState =>

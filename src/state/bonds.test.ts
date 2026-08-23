@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import type { BattleResult } from '../types/game';
-import { createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
-import { BONDS } from '../data/bonds';
+import { createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_FACTION_LABELS } from '../configs/constants/heroDisplay';
+import { BONDS } from '../configs/loaders/progression.loader';
+
+
 import { formatModifiers } from './statSystem';
 import type { HeroFaction } from '../types/game';
 import { getActiveBonds, aggregateBonus } from './bonds';

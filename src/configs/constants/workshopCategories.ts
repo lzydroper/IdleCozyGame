@@ -1,6 +1,6 @@
 // 工坊分类栏位配置（config-json-migration 批次① 自 data/workshopCategories.ts 归位 constants，
 // 用户裁决②：分类实为常量配置；icon 组件引用改 iconKey + mappings/iconMap 解析）。
-import type { ItemCategory } from '../../data/items';
+import type { ItemCategory } from '../types/item.types';
 
 export type WorkshopCategory = ItemCategory;
 

@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addItemRewards, isWearableEquipment } from '../state/equipment';
-import { RESCUE_LOCATION_NAMES } from '../data/rescueLocations';
-import { REALITY_EVENTS } from '../data/realityEvents';
-import type { RealityEvent, EventChoice } from '../data/realityEvents';
-import { CATEGORY_WEIGHTS } from '../data/realityEvents';
-import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
+import { RESCUE_LOCATION_NAMES, REALITY_EVENTS, RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../configs/loaders/event.loader';
+import type { RealityEvent, EventChoice } from '../configs/types/event.types';
+import { CATEGORY_WEIGHTS } from '../configs/constants/eventWeights';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { ENEMY_CONFIGS, HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { createInitialHero } from '../configs/seed/initialState';
+import { getMainlineRegions, getRegion, getLevel } from '../state/regionSelectors';
+
+
+
+
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
 import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Flag } from 'lucide-react';
 import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
-import { ITEMS_CONFIG } from '../data/items';
+
 import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
-import { ENEMY_CONFIGS } from '../data/enemies';
+
 import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
-import { HEROES_CONFIG } from '../data/heroes';
+
 import { SURVIVORS_CONFIG } from '../configs/loaders/entities.loader';
-import { createInitialHero } from '../data/initialState';
-import { getMainlineRegions, getRegion, getLevel } from '../data/regionSelectors';
+
+
 import { isRegionUnlocked } from '../state/levelCombat';
 import { advanceRegionProgress, completePendingMilestone, getPendingMilestone, canTriggerPendingMilestone, getRegionProgressPercent } from '../state/explorationProgress';
 import type { GameState, CombatSettlement } from '../types/game';

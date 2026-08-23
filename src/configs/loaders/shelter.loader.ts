@@ -34,3 +34,6 @@ export const SHELTER_UPGRADES = devGuardTable(
   'shelter/shelterUpgrades',
   shelterUpgradesJson as unknown as Record<string, UpgradePath>
 );
+
+/** 设施类型守卫：字符串 → FacilityType 判定（装配域内断言，供 UI 与后勤流程共用）。 */
+export const isFacilityType = (t: string): t is FacilityType => t in FACILITIES_CONFIG;

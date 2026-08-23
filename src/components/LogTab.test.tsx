@@ -4,7 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import LogTab from './LogTab';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 
 describe('LogTab Component (物品四分类：道具/资源/碎片/装备)', () => {
   beforeEach(() => {

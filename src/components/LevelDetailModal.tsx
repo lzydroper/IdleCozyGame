@@ -2,10 +2,12 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import type { LevelConfig, DropEntry } from '../configs/types/region.types';
-import { ENEMY_CONFIGS } from '../data/enemies';
-import { ITEMS_CONFIG } from '../data/items';
+import { ENEMY_CONFIGS } from '../configs/loaders/entities.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { getRegion } from '../state/regionSelectors';
+
 import { isRegionUnlocked, isLevelUnlocked, getClearedLevels } from '../state/levelCombat';
-import { getRegion } from '../data/regionSelectors';
+
 import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, AlertTriangle } from 'lucide-react';
 

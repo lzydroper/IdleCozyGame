@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { TALENT_TRUNKS, HERO_TALENTS, buildTalentTree, formatTalentGate } from '../data/talents';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG, HERO_TALENTS } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS } from '../configs/constants/heroDisplay';
+import { TALENT_TRUNKS } from '../configs/loaders/progression.loader';
+import { buildTalentTree, formatTalentGate } from './talentsTree';
+import type { TalentNodeConfig } from '../configs/types/progression.types';
+
 import {
   getTalentNodes,
   getTalentBonus,
@@ -13,7 +17,7 @@ import {
   evaluateTalentGate,
   isTalentNodeUnlocked
 } from './talents';
-import type { TalentNodeConfig } from '../data/talents';
+
 import type { StatModifier } from './statSystem';
 import { applyHeroExp, heroToCombatant } from './combat';
 import { entityStats } from './battleEntity';

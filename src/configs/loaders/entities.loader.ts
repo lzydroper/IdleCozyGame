@@ -3,10 +3,8 @@
  * 英雄五文件归并——文件夹分组定归属，身份取 heroInfo.id（路径透明）；
  * 缺省段语义：缺 duty/awaken/talent/growth 文件即对应段缺省。
  */
-import type { EnemyConfig } from '../../configs/types/entity.types';
-import type { AwakenConfig } from '../../data/awakening';
-import type { TalentNodeConfig } from '../../data/talents';
-import type { SurvivorConfig } from '../../data/survivors';
+import type { EnemyConfig, AwakenConfig, SurvivorConfig } from '../../configs/types/entity.types';
+import type { TalentNodeConfig } from '../../configs/types/progression.types';
 import type { HeroConfig } from '../../configs/types/entity.types';
 import { iconFor } from '../mappings/iconMap';
 import { devGuardTable } from './devGuard';

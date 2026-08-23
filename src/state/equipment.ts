@@ -1,13 +1,6 @@
 import type { GameState, HeroEquipment, EquippedItem, EquipmentSlot, HeroFaction } from '../types/game';
-import {
-  EQUIPMENT_CONFIG,
-  EQUIPMENT_SETS,
-  ENHANCE_MAX,
-  MYTHIC_STAT_MULTIPLIER,
-  FACTION_EQUIPMENT_BONUS_MULTIPLIER,
-  enhanceCost,
-  FORGE_COST
-} from '../data/equipment';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS } from '../configs/loaders/equipment.loader';
+import { ENHANCE_MAX, MYTHIC_STAT_MULTIPLIER, FACTION_EQUIPMENT_BONUS_MULTIPLIER, enhanceCost, FORGE_COST } from '../configs/constants/equipmentConstants';
 import type { StatModifier, StatKey } from './statSystem';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
