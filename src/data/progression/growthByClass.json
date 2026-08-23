@@ -1,0 +1,26 @@
+{
+  "guardian": {
+    "attackPerLevel": 1,
+    "defensePerLevel": 5,
+    "maxHpPerLevel": 12,
+    "maxMpPerLevel": 3,
+    "critRatePerLevel": 0,
+    "critDmgPerLevel": 0
+  },
+  "attacker": {
+    "attackPerLevel": 3,
+    "defensePerLevel": 1,
+    "maxHpPerLevel": 3,
+    "maxMpPerLevel": 6,
+    "critRatePerLevel": 0.002,
+    "critDmgPerLevel": 0.002
+  },
+  "conductor": {
+    "attackPerLevel": 2,
+    "defensePerLevel": 2,
+    "maxHpPerLevel": 9,
+    "maxMpPerLevel": 9,
+    "critRatePerLevel": 0.001,
+    "critDmgPerLevel": 0.001
+  }
+}

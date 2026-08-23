@@ -12,9 +12,9 @@ import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Flag } from 'lucid
 import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
 import { ITEMS_CONFIG } from '../data/items';
-import { GAME_CONSTANTS } from '../data/gameConstants';
+import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { ENEMY_CONFIGS } from '../data/enemies';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SURVIVORS_CONFIG } from '../data/survivors';
 import { createInitialHero } from '../data/initialState';
@@ -88,8 +88,8 @@ export const WildernessTab: React.FC = () => {
         .filter((event): event is RealityEvent => Boolean(event));
       if (events.length === 0) return;
 
-      // 1. 根据分类大权重筛选事件类型
-      const availableCategories = Array.from(new Set(events.map(e => e.type)));
+      // 1. 根据分类大权重筛选事件类型（按 id 预排序——顺序无关的确定性加权，combat-experience 05）
+      const availableCategories = Array.from(new Set(events.map(e => e.type))).sort();
       const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
 
       let randomCatNum = Math.random() * totalCatWeight;
@@ -103,8 +103,10 @@ export const WildernessTab: React.FC = () => {
         randomCatNum -= catWeight;
       }
 
-      // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
-      const catEvents = events.filter(e => e.type === selectedCat);
+      // 2. 筛选对应类别下的具体事件（按 id 排序保证与数据文件组织无关），根据具体事件权重进行二次筛选
+      const catEvents = events
+        .filter(e => e.type === selectedCat)
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
       const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
 
       let randomEvtNum = Math.random() * totalEventWeight;

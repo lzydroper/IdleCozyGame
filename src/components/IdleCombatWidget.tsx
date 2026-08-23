@@ -4,7 +4,7 @@ import { getRegion, getLevel } from '../data/regionSelectors';
 import { ITEMS_CONFIG } from '../data/items';
 import { getIdleFeedSnapshot, subscribeIdleFeed, getLastIdleStop, clearLastIdleStop, type IdleFeedEntry, type IdleStopRecord } from '../state/idleFeed';
 import type { IdleSummaryData } from '../state/levelCombat';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import GameIcon from './GameIcon';
 import { formatDuration } from '../utils/time';
 

@@ -8,7 +8,7 @@ import type { ReplantStrategy } from './greenhouse';
 import { getRecipeName } from './workshop';
 import { findRegionExpedition } from '../data/regionSelectors';
 import { rollDropEntries } from './dropEngine';
-import { CROPS_CONFIG } from '../data/crops';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';

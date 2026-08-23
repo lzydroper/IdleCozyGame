@@ -1,12 +1,12 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../data/heroes';
-import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../data/heroLore';
+import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../configs/constants/heroLore';
 import { getAwakenedName } from '../state/awakening';
 import { describeDutyBonuses } from '../state/duty';
 import { useGame } from '../context/GameContext';
 import GameIcon from './GameIcon';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, Award, Shield, Sparkles, Factory, Wrench, Package } from 'lucide-react';
 
 export interface HeroDossierModalProps {

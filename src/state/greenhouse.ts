@@ -1,6 +1,6 @@
 import type { GameState } from '../types/game';
-import { CROPS_CONFIG } from '../data/crops';
-import { GAME_CONSTANTS } from '../data/gameConstants';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
+import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
 import { HEROES_CONFIG } from '../data/heroes';

@@ -1,5 +1,5 @@
 import type { HeroDutyMeta, DutyScope } from '../data/heroes';
-import { CROPS_CONFIG } from '../data/crops';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
 import { FACILITIES_CONFIG } from '../data/facilities';
 import type { FacilityType } from '../data/facilities';
 

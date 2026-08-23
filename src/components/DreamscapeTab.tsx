@@ -9,7 +9,7 @@ import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
 import { Sparkles, Brain, AlertOctagon, MoonStar, Backpack, BarChart3, Pill, Orbit } from 'lucide-react';
 import { ITEMS_CONFIG } from '../data/items';
-import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { NIGHTMARE_CONFIG } from '../configs/constants/nightmareConfig';
 import { isDreamLockdownActive, getDreamLockdownRemaining } from '../state/nightmare';
 
 const DreamscapeTab: React.FC = () => {

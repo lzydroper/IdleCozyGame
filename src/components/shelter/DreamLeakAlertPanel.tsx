@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { NIGHTMARE_CONFIG } from '../../data/nightmareConfig';
+import { NIGHTMARE_CONFIG } from '../../configs/constants/nightmareConfig';
 import { getDreamLockdownMinutes } from '../../state/nightmare';
 import { ShieldAlert, Siren, Skull, Shield, HeartCrack, HeartPulse } from 'lucide-react';
 

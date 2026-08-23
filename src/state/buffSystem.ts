@@ -7,7 +7,7 @@
  */
 
 import type { StatModifier } from './statSystem';
-import { BUFF_LIMIT_CONFIG } from '../data/statConfig';
+import { BUFF_LIMIT_CONFIG } from '../configs/constants/statConfig';
 
 export interface ActiveBuff {
   id: string;

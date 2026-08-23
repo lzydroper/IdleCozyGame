@@ -1,6 +1,6 @@
 import type { BattleResult, GameState } from '../types/game';
 import { enemyConfigToEntity } from './combat';
-import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { NIGHTMARE_CONFIG } from '../configs/constants/nightmareConfig';
 import type { EnemyConfig } from '../data/entityConfig';
 import { simulateBattle, heroToCombatant } from './combat';
 import { aggregateBonus } from './bonds';

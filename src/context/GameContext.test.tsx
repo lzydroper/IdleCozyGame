@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { calculateOfflineProgress, calculateDetailedOfflineProgress } from '../state/offline';
 import { GameProvider, useGame } from './GameContext';
-import { CROPS_CONFIG } from '../data/crops';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
 import { createInitialHero, INITIAL_STATE } from '../data/initialState';
 import type { GreenhouseSlot, GameState } from '../types/game';
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
-import { CROPS_CONFIG } from '../../data/crops';
+import { CROPS_CONFIG } from '../../configs/loaders/gameplay.loader';
 import { ITEMS_CONFIG } from '../../data/items';
 import { HEROES_CONFIG } from '../../data/heroes';
 import { resolveWatererBonuses } from '../../state/greenhouse';

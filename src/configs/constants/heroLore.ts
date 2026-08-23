@@ -1,6 +1,6 @@
 // 英雄档案设定文案（10 号：档案详情页展示用）—— 职阶/阵营的设定说明与阵营标签配色。
 // 世界观参考 ADR-0002 与 heroes.ts 各英雄 backstory；文案为数据配置，UI 直接展示，可随时调整。
-import type { HeroClass, HeroFaction } from '../types/game';
+import type { HeroClass, HeroFaction } from '../../types/game';
 
 // 职阶设定说明
 export const HERO_CLASS_LORE: Record<HeroClass, string> = {

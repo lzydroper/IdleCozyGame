@@ -1,5 +1,5 @@
 import type { GameState } from '../types/game';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 
 /**
  * 获取玩家当前可用整型体力

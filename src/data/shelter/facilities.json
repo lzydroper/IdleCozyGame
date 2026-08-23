@@ -1,0 +1,138 @@
+{
+  "smelter": {
+    "id": "smelter",
+    "name": "魔导冶炼炉",
+    "shortName": "熔炉",
+    "description": "自动熔炼金属",
+    "effectLabel": "效率",
+    "levels": [
+      {
+        "level": 1,
+        "cost": {},
+        "effectValue": 0,
+        "effectText": "效率 100%",
+        "duration": 0
+      },
+      {
+        "level": 2,
+        "cost": {
+          "scrap_metal": 20
+        },
+        "effectValue": 0.1,
+        "effectText": "效率 110%",
+        "duration": 1800
+      },
+      {
+        "level": 3,
+        "cost": {
+          "scrap_metal": 40
+        },
+        "effectValue": 0.2,
+        "effectText": "效率 120%",
+        "duration": 7200
+      },
+      {
+        "level": 4,
+        "cost": {
+          "scrap_metal": 60
+        },
+        "effectValue": 0.3,
+        "effectText": "效率 130%",
+        "duration": 28800
+      },
+      {
+        "level": 5,
+        "cost": {
+          "scrap_metal": 80
+        },
+        "effectValue": 0.4,
+        "effectText": "效率 140%",
+        "duration": 86400
+      }
+    ],
+    "expansion": {
+      "maxUnits": 3,
+      "costs": [
+        {
+          "scrap_metal": 40
+        },
+        {
+          "scrap_metal": 120
+        }
+      ],
+      "durations": [
+        3600,
+        21600
+      ]
+    },
+    "iconKey": "flame"
+  },
+  "assembler": {
+    "id": "assembler",
+    "name": "微型芯片组装台",
+    "shortName": "组装台",
+    "description": "自动组装物品",
+    "effectLabel": "效率",
+    "levels": [
+      {
+        "level": 1,
+        "cost": {},
+        "effectValue": 0,
+        "effectText": "效率 100%",
+        "duration": 0
+      },
+      {
+        "level": 2,
+        "cost": {
+          "scrap_metal": 20
+        },
+        "effectValue": 0.1,
+        "effectText": "效率 110%",
+        "duration": 1800
+      },
+      {
+        "level": 3,
+        "cost": {
+          "scrap_metal": 40
+        },
+        "effectValue": 0.2,
+        "effectText": "效率 120%",
+        "duration": 7200
+      },
+      {
+        "level": 4,
+        "cost": {
+          "scrap_metal": 60
+        },
+        "effectValue": 0.3,
+        "effectText": "效率 130%",
+        "duration": 28800
+      },
+      {
+        "level": 5,
+        "cost": {
+          "scrap_metal": 80
+        },
+        "effectValue": 0.4,
+        "effectText": "效率 140%",
+        "duration": 86400
+      }
+    ],
+    "expansion": {
+      "maxUnits": 3,
+      "costs": [
+        {
+          "scrap_metal": 40
+        },
+        {
+          "scrap_metal": 120
+        }
+      ],
+      "durations": [
+        3600,
+        21600
+      ]
+    },
+    "iconKey": "cpu"
+  }
+}

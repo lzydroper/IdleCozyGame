@@ -3,7 +3,7 @@ import { REGION_CONFIGS } from './regions';
 import type { DropEntry, RegionConfig } from './regions';
 import { ENEMY_CONFIGS } from './enemies';
 import { REALITY_EVENTS } from './realityEvents';
-import { EXPLORATION_CONFIG } from './explorationConfig';
+import { EXPLORATION_CONFIG } from '../configs/constants/explorationConfig';
 import {
   getMainlineRegions,
   getRegion,

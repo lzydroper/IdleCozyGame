@@ -5,7 +5,7 @@ import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../data/facilities';
 import { ITEMS_CONFIG } from '../data/items';
 import type { UpgradeLevel, UnlockRequirement } from '../types/config';
-import { GAME_CONSTANTS } from '../data/gameConstants';
+import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';

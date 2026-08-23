@@ -15,7 +15,7 @@ const EMPTY_EQUIPMENT_INVENTORY: Record<string, unknown[]> = {};
 import { getEquippedItemStats } from '../state/equipment';
 import { formatModifiers } from '../state/statSystem';
 import { HEROES_CONFIG } from '../data/heroes';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, Shield, Sword, Sparkles, PackageOpen } from 'lucide-react';
 import GameIcon from './GameIcon';
 

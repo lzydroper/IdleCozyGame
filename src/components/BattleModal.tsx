@@ -8,7 +8,7 @@ import { ENEMY_CONFIGS } from '../data/enemies';
 import { HEROES_CONFIG } from '../data/heroes';
 import { ITEMS_CONFIG } from '../data/items';
 import { formatBattleEvent } from '../state/battleEventPresentation';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 
 export interface BattleModalProps {
   isOpen: boolean;

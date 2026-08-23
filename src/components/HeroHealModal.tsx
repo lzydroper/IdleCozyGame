@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import { HEROES_CONFIG } from '../data/heroes';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, Check, HeartCrack } from 'lucide-react';
 import GameIcon from './GameIcon';
 

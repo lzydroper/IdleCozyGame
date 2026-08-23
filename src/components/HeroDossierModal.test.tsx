@@ -6,7 +6,7 @@ import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import HeroDossierModal from './HeroDossierModal';
 import { INITIAL_STATE } from '../data/initialState';
-import { HERO_CLASS_LORE, HERO_FACTION_LORE } from '../data/heroLore';
+import { HERO_CLASS_LORE, HERO_FACTION_LORE } from '../configs/constants/heroLore';
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

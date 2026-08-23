@@ -1,6 +1,6 @@
 import type { GameState } from '../types/game';
 import { getRegion } from '../data/regionSelectors';
-import { EXPLORATION_CONFIG } from '../data/explorationConfig';
+import { EXPLORATION_CONFIG } from '../configs/constants/explorationConfig';
 
 export const getRegionProgress = (state: GameState, regionId: string): number =>
   state.exploration?.regionProgress?.[regionId] ?? 0;

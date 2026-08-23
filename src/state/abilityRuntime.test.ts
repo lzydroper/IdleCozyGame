@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { simulateBattle } from './combat';
 import { buildEntity, type BattleEntity } from './battleEntity';
-import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
+import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
 import { getAbilityConfig } from '../data/abilities';
 import { resolveAbilityConfig } from './abilityTypes';
 

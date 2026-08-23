@@ -16,7 +16,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { getEquippedStatParts, getSetEnhanceProgress } from '../state/equipment';
 import { formatModifiers, type StatKey } from '../state/statSystem';
 import EquipSelectorModal from './EquipSelectorModal';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import GameIcon from './GameIcon';
 import {
   X,

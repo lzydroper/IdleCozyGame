@@ -12,7 +12,7 @@ import { HEROES_CONFIG, type HeroConfig } from '../data/heroes';
 import type { EnemyConfig } from '../data/entityConfig';
 import { getAbilityConfig } from '../data/abilities';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
-import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
+import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
 import { buildEntity, type BattleEntity, type EntityRecipe } from './battleEntity';
 
 /** 召唤/动态创建参战实体时引用的配置（En#2：hero | enemy 判别联合；other 待内容落地）。 */

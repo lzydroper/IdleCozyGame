@@ -5,7 +5,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { getRegionProgressPercent } from './explorationProgress';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { HEROES_CONFIG } from '../data/heroes';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { heroToCombatant, simulateBattle, enemyConfigToEntity } from './combat';
 import { rollDropEntries } from './dropEngine';
 import { aggregateBonus } from './bonds';

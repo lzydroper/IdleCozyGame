@@ -37,24 +37,18 @@ export interface EquipmentSetConfig {
   mythicAffix: StatModifier[];   // 系列共有词条：穿戴任意神话装备即生效（百分比；文案由 formatModifiers 导出）
 }
 
-// === 数值常量 ===
+// === 数值常量（已归位 configs/constants/equipmentConstants，config-json-migration 批次①；此处转发兼容存量引用） ===
 
-export const ENHANCE_MAX = 30;                    // 强化上限
-export const MYTHIC_STAT_MULTIPLIER = 1.5;        // 神话锻造：基础属性 ×1.5（强化等级保留）
-export const FACTION_EQUIPMENT_BONUS_MULTIPLIER = 1.3; // 英雄穿戴阵营装备加成倍率 (+30%)
-export const FACTION_EQUIPMENT_BONUS_PERCENT = 30;     // 阵营穿戴加成展示百分比
-// 强化消耗：从 level 强化到 level+1 所需强化魔晶数量（随等级递增，可配置）
-export const enhanceCost = (level: number): number => 1 + Math.floor(level / 5);
-// 神话锻造消耗
-export const FORGE_COST: Record<string, number> = { enhance_stone: 20, alloy_plate: 5 };
-
-export const EQUIPMENT_SLOTS: EquipmentSlot[] = ['weapon', 'armor', 'trinket'];
-
-export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {
-  weapon: '武器',
-  armor: '防具',
-  trinket: '饰品'
-};
+export {
+  ENHANCE_MAX,
+  MYTHIC_STAT_MULTIPLIER,
+  FACTION_EQUIPMENT_BONUS_MULTIPLIER,
+  FACTION_EQUIPMENT_BONUS_PERCENT,
+  enhanceCost,
+  FORGE_COST,
+  EQUIPMENT_SLOTS,
+  EQUIPMENT_SLOT_LABELS
+} from '../configs/constants/equipmentConstants';
 
 // === 系列套装 ===
 

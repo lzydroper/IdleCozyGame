@@ -1,9 +1,10 @@
+// 羁绊配置（config-json-migration 批次② 归位）：数据本体 data/progression/bonds.json。
+// 接口沿用原 data/bonds.ts 定义（类型仅引用，批次④随 configs/types/progression.types 收口）。
 import type { HeroFaction } from '../types/game';
 import type { StatModifier } from '../state/statSystem';
 
 // 羁绊配置（ticket 09）：队伍构筑策略层 —— 特定英雄组合 / 阵营条件上阵触发数值加成，
 // 生效于战斗数值，由 state/bonds.ts 计算，combat.ts 应用。
-// 新增内容只需在此追加配置，无需改动战斗逻辑。
 
 export interface BondConfig {
   id: string;
@@ -14,29 +15,4 @@ export interface BondConfig {
   bonus: StatModifier[];                      // 触发后给予的加成数值（修饰符）
 }
 
-export const BONDS: BondConfig[] = [
-  {
-    id: 'mechanical_partners',
-    name: '机械搭档',
-    description: '诺娃与罗伊同为机械阵营，配合让魔导设施过载运转，攻势更凌厉。',
-    heroes: ['nova', 'roy'],
-    factions: {},
-    bonus: [{ stat: 'attack', kind: 'percent', value: 0.10 }]
-  },
-  {
-    id: 'arcane_resonance',
-    name: '奥术共鸣',
-    description: '两名奥术阵营英雄的魔力同频共振，生命上限提升。',
-    heroes: [],
-    factions: { arcane: 2 },
-    bonus: [{ stat: 'maxHp', kind: 'percent', value: 0.10 }]
-  },
-  {
-    id: 'wasteland_guardians',
-    name: '废土守护',
-    description: '星界清道夫与英灵铁卫并肩而立，构筑坚实的防线。',
-    heroes: ['buster', 'soldier'],
-    factions: {},
-    bonus: [{ stat: 'defense', kind: 'percent', value: 0.10 }]
-  }
-];
+export { BONDS } from '../configs/loaders/progression.loader';

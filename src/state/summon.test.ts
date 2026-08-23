@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { HEROES_CONFIG } from '../data/heroes';
-import { SUMMON_CONFIG } from '../data/summonConfig';
+import { SUMMON_CONFIG } from '../configs/constants/summonConfig';
 import { STAR_MAX } from '../data/awakening';
 import { computeHeroChance, rollHeroId, summonUpdate, summonTenUpdate, summonBatchUpdate } from './summon';
 

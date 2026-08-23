@@ -1,0 +1,52 @@
+[
+  {
+    "id": "mechanical_partners",
+    "name": "机械搭档",
+    "description": "诺娃与罗伊同为机械阵营，配合让魔导设施过载运转，攻势更凌厉。",
+    "heroes": [
+      "nova",
+      "roy"
+    ],
+    "factions": {},
+    "bonus": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.1
+      }
+    ]
+  },
+  {
+    "id": "arcane_resonance",
+    "name": "奥术共鸣",
+    "description": "两名奥术阵营英雄的魔力同频共振，生命上限提升。",
+    "heroes": [],
+    "factions": {
+      "arcane": 2
+    },
+    "bonus": [
+      {
+        "stat": "maxHp",
+        "kind": "percent",
+        "value": 0.1
+      }
+    ]
+  },
+  {
+    "id": "wasteland_guardians",
+    "name": "废土守护",
+    "description": "星界清道夫与英灵铁卫并肩而立，构筑坚实的防线。",
+    "heroes": [
+      "buster",
+      "soldier"
+    ],
+    "factions": {},
+    "bonus": [
+      {
+        "stat": "defense",
+        "kind": "percent",
+        "value": 0.1
+      }
+    ]
+  }
+]

@@ -6,7 +6,7 @@ import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
 import { isRegionUnlocked, isLevelUnlocked, getClearedLevels } from '../state/levelCombat';
 import { getRegion } from '../data/regionSelectors';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, AlertTriangle } from 'lucide-react';
 
 export interface LevelDetailModalProps {

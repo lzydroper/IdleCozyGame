@@ -8,10 +8,10 @@
  */
 
 import type { HeroFaction } from '../types/game';
-import type { BaseStatsSeed } from './statConfig';
+import type { BaseStatsSeed } from '../configs/constants/statConfig';
 import type { PrimaryAttributes, SpecialAttributes, StatModifier } from '../state/statSystem';
 import type { AbilityConfig } from '../state/abilityTypes';
-import type { ItemSprite } from './items/types';
+import type { ItemSprite } from '../configs/types/item.types';
 import type { LucideIcon } from 'lucide-react';
 
 export type EntityKind = 'hero' | 'enemy' | 'other';

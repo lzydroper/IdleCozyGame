@@ -1,0 +1,72 @@
+{
+  "smelt_alloy": {
+    "id": "smelt_alloy",
+    "cost": {
+      "scrap_metal": 2
+    },
+    "reward": {
+      "alloy_plate": 1
+    },
+    "duration": 30,
+    "facilityId": "smelter"
+  },
+  "smelt_sunflower": {
+    "id": "smelt_sunflower",
+    "cost": {
+      "steel_petal": 3,
+      "scrap_metal": 1
+    },
+    "reward": {
+      "alloy_plate": 2
+    },
+    "duration": 45,
+    "facilityId": "smelter"
+  },
+  "assemble_ration": {
+    "id": "assemble_ration",
+    "cost": {
+      "glow_fiber": 3
+    },
+    "reward": {
+      "ration": 1
+    },
+    "duration": 20,
+    "facilityId": "assembler"
+  },
+  "assemble_turret": {
+    "id": "assemble_turret",
+    "cost": {
+      "scrap_metal": 3,
+      "glow_fiber": 3
+    },
+    "reward": {
+      "defensive_turret": 1
+    },
+    "duration": 90,
+    "facilityId": "assembler"
+  },
+  "craft_crystal_silicon": {
+    "id": "craft_crystal_silicon",
+    "cost": {
+      "steel_petal": 3,
+      "mana_dust": 1
+    },
+    "reward": {
+      "crystal_silicon": 1
+    },
+    "duration": 40,
+    "facilityId": "smelter"
+  },
+  "craft_aether_ingot": {
+    "id": "craft_aether_ingot",
+    "cost": {
+      "aether_pulp": 4,
+      "scrap_metal": 2
+    },
+    "reward": {
+      "aether_ingot": 1
+    },
+    "duration": 50,
+    "facilityId": "smelter"
+  }
+}

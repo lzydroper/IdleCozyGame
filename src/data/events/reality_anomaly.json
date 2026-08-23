@@ -1,0 +1,168 @@
+{
+  "acid_rain_storm": {
+    "id": "acid_rain_storm",
+    "title": "突发魔能酸雨",
+    "description": "天空突然变成了诡异的暗紫色，带电的雨滴开始淅淅沥沥地砸落，并在地表腐蚀出刺鼻的白烟。这是致命的魔能酸雨风暴，你需要立刻决定对策。",
+    "type": "anomaly",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "找废墟躲避 (饱食-8)",
+        "results": {
+          "stats": {
+            "food": -8
+          },
+          "items": {
+            "scrap_metal": 2
+          },
+          "logText": "你躲进大楼中等待雨停。饱食度流逝，闲着无聊你在杂物堆里翻出了两件废铁。"
+        }
+      },
+      "B": {
+        "text": "护盾硬顶前进 (魔能-12, 获碎片x1)",
+        "results": {
+          "stats": {
+            "energy": -12
+          },
+          "items": {
+            "dream_shard": 1
+          },
+          "logText": "你将魔能注入护盾硬顶酸雨。你在地表凹槽中发现了一枚晶莹的梦境碎片。"
+        }
+      }
+    }
+  },
+  "radiation_leak": {
+    "id": "radiation_leak",
+    "title": "高浓度魔能辐射带",
+    "description": "前方的谷地中飘浮着幽绿的雾气，这是灾变时魔能管道碎裂残留的高能辐射气团。直接穿过去可能会受重伤，但这是通往废墟深处的捷径。",
+    "type": "anomaly",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "激发过滤盾 (魔能-10, 获碎片x1)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "dream_shard": 1,
+            "scrap_metal": 2
+          },
+          "logText": "你成功穿过了绿雾，顺手在废墟残骸中撬下几块金属板，并捡到了一枚梦境碎片。"
+        }
+      },
+      "B": {
+        "text": "绕道而行 (饱食-10)",
+        "results": {
+          "stats": {
+            "food": -10
+          },
+          "logText": "你选择翻山绕过这片毒雾。寒冷的地表风沙消耗了大量体力。"
+        }
+      }
+    }
+  },
+  "sandstorm": {
+    "id": "sandstorm",
+    "title": "遮天蔽日沙尘暴",
+    "description": "天边涌现出一道接天连地的暗黄色沙墙，以摧枯拉朽之势朝你席卷而来。狂风裹挟着沙砾和碎石，能见度以肉眼可见的速度急剧下降。你必须立刻找地方躲避！",
+    "type": "anomaly",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "寻找岩洞躲避风暴 (饱食-10)",
+        "results": {
+          "stats": {
+            "food": -10
+          },
+          "items": {
+            "scrap_metal": 2
+          },
+          "logText": "你在风暴吞没前滚进了一处岩缝。外面风声如雷，你在洞里百无聊赖地翻出了前人遗留的两块废金属。"
+        }
+      },
+      "B": {
+        "text": "展开能量护盾继续赶路 (魔能-14)",
+        "results": {
+          "stats": {
+            "energy": -14
+          },
+          "items": {
+            "dream_shard": 1,
+            "mana_dust": 2,
+            "geiger_counter": 1
+          },
+          "logText": "你咬牙将护盾功率开到最大，在漫天黄沙中艰难前行。风暴中紊乱的魔能环境意外地在你周围凝结出了梦境碎片和魔能之尘，还从沙堆里踢出一个被掩埋的盖革探测仪。"
+        }
+      }
+    }
+  },
+  "magnetic_storm": {
+    "id": "magnetic_storm",
+    "title": "魔能地磁紊乱场",
+    "description": "踏入这片区域后，你发现指南针开始疯狂旋转，头发因静电根根竖起，空气中弥漫着嗡嗡的低频震动。地面上的金属碎片像是有了生命般在轻轻颤动。",
+    "type": "anomaly",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "忍受干扰强行穿越 (魔能-10)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "void_essence": 1,
+            "scrap_metal": 2
+          },
+          "logText": "你强忍着头晕恶心和肌肉刺痛穿过紊乱场，剧烈的魔能波动在你的防护服上凝结出了一些虚空精华。顺手吸了几块地上的废金属。"
+        }
+      },
+      "B": {
+        "text": "扎营等待磁场平息 (饱食-10, 理智+8)",
+        "results": {
+          "stats": {
+            "food": -10,
+            "sanity": 8
+          },
+          "logText": "你找了个相对安全的洼地扎营休息。几个小时后磁场逐渐平息，这段时间的静坐反而让你的思绪变得前所未有的清晰。"
+        }
+      }
+    }
+  },
+  "hail_storm": {
+    "id": "hail_storm",
+    "title": "冰雹风暴",
+    "description": "气温骤降，天空迅速被铅灰色的云层覆盖。豆大的冰雹开始砸落，迅速变得如拳头般大小，砸在地面上发出沉闷的巨响。你必须立刻寻找遮蔽物！",
+    "type": "anomaly",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "躲入废弃建筑物内等待 (饱食-8)",
+        "results": {
+          "stats": {
+            "food": -8
+          },
+          "items": {
+            "frost_crystal": 1,
+            "scrap_metal": 1
+          },
+          "logText": "你撞开一栋废弃民居的门躲了进去。冰雹砸在屋顶上轰鸣如鼓，你在冷冻室角落捡到一块自然凝结的冰晶结晶和一块废铁。"
+        }
+      },
+      "B": {
+        "text": "撑起能量护盾继续前进 (魔能-10)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "dream_shard": 1,
+            "alloy_plate": 1
+          },
+          "logText": "护盾在冰雹的冲击下荡起阵阵涟漪，每一次撞击都消耗着你的魔能。但在被砸翻的一个生锈邮箱里，你意外发现了一块梦境碎片和一块合金板。"
+        }
+      }
+    }
+  }
+}

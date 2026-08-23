@@ -4,7 +4,7 @@ import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
 import { AUTO_RECIPES } from '../../data/autoRecipes';
 import { ITEMS_CONFIG } from '../../data/items';
-import { UI_TOKENS } from '../../data/uiConstants';
+import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { resolveDutyBonus, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeDisplayName } from '../../state/workshop';

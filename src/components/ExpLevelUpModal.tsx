@@ -5,7 +5,7 @@ import { useToast } from './ToastSystem';
 import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
 import { applyHeroExp } from '../state/combat';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import GameIcon from './GameIcon';
 import { X, Zap } from 'lucide-react';
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
 import { INITIAL_STATE } from '../data/initialState';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import {
   getStamina,
   getMaxStamina,

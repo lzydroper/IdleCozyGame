@@ -13,7 +13,7 @@ import {
   DEFAULT_SPECIAL_ATTRIBUTES,
   PRIMARY_STAT_SCALING_CONFIG,
   BUFF_LIMIT_CONFIG
-} from '../data/statConfig';
+} from '../configs/constants/statConfig';
 
 export {
   DEFAULT_PRIMARY_ATTRIBUTES,

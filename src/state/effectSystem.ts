@@ -7,7 +7,7 @@
 import type { BattleUnitStats } from './battleTypes';
 import type { BattleContext, BuffInstance } from './battleContext';
 import { applyEffectModifiers, type Modifier } from './modifier';
-import { COMBAT_DAMAGE_CONFIG } from '../data/statConfig';
+import { COMBAT_DAMAGE_CONFIG } from '../configs/constants/statConfig';
 import { toTurnUnit } from './battleEntity';
 import { resolveEntity, type EntityConfigRef } from './entityFactory';
 

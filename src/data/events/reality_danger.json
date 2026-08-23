@@ -1,0 +1,170 @@
+{
+  "toxic_swamp": {
+    "id": "toxic_swamp",
+    "title": "酸雨腐蚀沼泽",
+    "description": "前方是一片被酸雨长年累月腐蚀的毒素沼泽，泥浆中泛着刺鼻的黄绿色气泡。强行蹚过可能会受伤，但能节省时间并可能发现遗留在底部的奇异植物种子。",
+    "type": "danger",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "强行蹚过沼泽",
+        "results": {
+          "items": {
+            "seed_plasma_pumpkin": 1,
+            "alloy_plate": 1
+          },
+          "logText": "你咬紧牙关从小腿深的腐蚀泥浆中穿过，防护服被酸液灼烧得咝咝作响。但在废墟里捞到了一个密封盒，里面有一颗种子和金属板。"
+        }
+      },
+      "B": {
+        "text": "安全绕行毒沼 (饱食-10)",
+        "results": {
+          "stats": {
+            "food": -10
+          },
+          "logText": "你选择花费更多时间从沼泽边缘绕过去。饱食度下降，但好在没有受伤。"
+        }
+      }
+    }
+  },
+  "military_caches": {
+    "id": "military_caches",
+    "title": "报废的自动机炮",
+    "description": "一尊古老的自动防卫机炮歪倒在地上。它的识别模块已彻底损毁，但其弹药箱和电池仓似乎还保存完好，并且有辐射泄露。",
+    "type": "danger",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "暴力拆卸电池仓 (饱食-6)",
+        "results": {
+          "stats": {
+            "food": -6
+          },
+          "items": {
+            "plasma_cell": 1,
+            "scrap_metal": 2
+          },
+          "logText": "你用撬棍砸开电池仓。耀眼的电火花让你轻微电击，但也成功拿到了一个等离子电芯和两块废金属。"
+        }
+      },
+      "B": {
+        "text": "魔能溶解安全锁 (魔能-10)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "plasma_cell": 2
+          },
+          "logText": "你小心引导魔能烧毁了电子锁。外壳弹开，你安全地拿到了两个等离子电芯。"
+        }
+      }
+    }
+  },
+  "fungus_nest": {
+    "id": "fungus_nest",
+    "title": "变异真菌巢穴",
+    "description": "一处废弃地下室的入口处长满了奇异的发光菌类，紫色的菌丝如血管般蔓延到墙壁上，空气中弥漫着甜腻而令人头晕的孢子味。菌群深处似乎有什么物资箱的影子。",
+    "type": "danger",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "用防护服隔离采集 (饱食-8)",
+        "results": {
+          "stats": {
+            "food": -8
+          },
+          "items": {
+            "aether_pulp": 2,
+            "void_essence": 1
+          },
+          "logText": "你拉紧兜帽和面罩，屏住呼吸冲入菌群深处。皮肤暴露处传来刺痛，但你在废料堆中成功采集到了两团以太果肉和一瓶虚空精华。"
+        }
+      },
+      "B": {
+        "text": "远距离魔能焚烧 (魔能-10)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "mana_dust": 3,
+            "scrap_metal": 1,
+            "nanite_slurry": 1
+          },
+          "logText": "你引导魔能火焰喷向菌丝巢穴，荧光的菌群在高温中卷曲焦化。火焰过后除了满地灰烬，你发现一支未被完全烧毁的纳米修复泥试剂管，小心地拾了起来。"
+        }
+      }
+    }
+  },
+  "waste_pool": {
+    "id": "waste_pool",
+    "title": "腐蚀性化工废料池",
+    "description": "前方洼地里积着一潭散发着刺鼻酸味的化工废液，池面浮着七彩的油膜，不断冒着白色的腐蚀性烟雾。废液底部隐约可见一些耐腐蚀的金属容器。",
+    "type": "danger",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "用长杆绑工具打捞 (饱食-8)",
+        "results": {
+          "stats": {
+            "food": -8
+          },
+          "items": {
+            "plasma_cell": 1,
+            "alloy_plate": 1
+          },
+          "logText": "你找了根长杆绑上钩爪，小心地探入废液中钩捞。飞溅的液滴烧穿了你的袖口，但你成功捞上来一个密封的合金容器，里面装着一枚等离子电芯。"
+        }
+      },
+      "B": {
+        "text": "投放碱性中和剂后搜取 (魔能-8)",
+        "results": {
+          "stats": {
+            "energy": -8
+          },
+          "items": {
+            "scrap_metal": 3,
+            "steel_petal": 1
+          },
+          "logText": "你运用魔能在池边合成碱性物质投入废液，随着刺鼻的白烟散去，你从池底捡起了几块被腐蚀得坑坑洼洼的废金属和一瓣完好的钢纹花瓣。"
+        }
+      }
+    }
+  },
+  "thorn_thicket": {
+    "id": "thorn_thicket",
+    "title": "剧毒荆棘丛",
+    "description": "前方的道路被一丛丛暗红色的变异荆棘封锁，荆棘上长满了淬毒般的倒刺，缝隙间隐约可见散落的骸骨。但透过荆棘缝隙，似乎能看到另一侧有一些遗落的旧世箱柜。",
+    "type": "danger",
+    "weight": 80,
+    "choices": {
+      "A": {
+        "text": "挥刀斩出一条路 (饱食-4)",
+        "results": {
+          "stats": {
+            "food": -4
+          },
+          "items": {
+            "aether_pulp": 2,
+            "frost_crystal": 1
+          },
+          "logText": "你挥舞砍刀硬生生劈开一条通道，荆棘倒刺划破了你的手臂。但箱子里的收获还算值得——以太果肉和一块冰晶结晶。"
+        }
+      },
+      "B": {
+        "text": "用魔能火焰焚烧开道 (魔能-8)",
+        "results": {
+          "stats": {
+            "energy": -8
+          },
+          "items": {
+            "scrap_metal": 2,
+            "mana_dust": 1
+          },
+          "logText": "你催动魔能释放出一道高温火弧，荆棘在烈焰中噼啪作响化为灰烬。你在灰烬堆旁捡到了废铁和残余的魔能之尘。"
+        }
+      }
+    }
+  }
+}

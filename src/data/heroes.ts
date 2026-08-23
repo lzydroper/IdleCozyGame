@@ -1,4 +1,4 @@
-import type { HeroClass, HeroFaction } from '../types/game';
+import type { HeroClass } from '../types/game';
 import type { FacilityType } from './facilities';
 import { FlaskConical, Footprints, Hammer, HandMetal, HeartPulse, Rocket, Shield, Wheat, Wrench } from 'lucide-react';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
@@ -38,26 +38,9 @@ export interface HeroConfig extends EntityConfigBase {
   dutyMeta?: HeroDutyMeta; // 后勤驻守 Meta 属性
 }
 
-export const HERO_CLASS_LABELS: Record<HeroClass, string> = {
-  guardian: '守护者',
-  attacker: '进攻者',
-  conductor: '协奏者'
-};
-
-export const HERO_FACTION_LABELS: Record<HeroFaction, string> = {
-  arcane: '奥术',
-  mechanical: '机械',
-  nightmare: '梦魇',
-  spirit: '英灵',
-  astral: '星界',
-  soulseal: '魂印'
-};
-
-export const HERO_CLASS_COLORS: Record<HeroClass, string> = {
-  guardian: 'text-sky-400 border-sky-500/40 bg-sky-950/40',
-  attacker: 'text-rose-400 border-rose-500/40 bg-rose-950/40',
-  conductor: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/40'
-};
+// 职阶/阵营展示常量已归位 configs/constants/heroDisplay（config-json-migration 批次①）；
+// 此处转发兼容存量引用。
+export { HERO_CLASS_LABELS, HERO_CLASS_COLORS, HERO_FACTION_LABELS } from '../configs/constants/heroDisplay';
 
 /**
  * 英雄配置表：9 位英雄并赋予各不相同的设施后勤 Meta 属性加成。

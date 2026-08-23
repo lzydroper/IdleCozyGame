@@ -1,0 +1,99 @@
+{
+  "encounter_wasteland_pack": {
+    "id": "encounter_wasteland_pack",
+    "title": "废土掠食者群",
+    "description": "前方的瓦砾堆中突然窜出几条瘦骨嶙峋的废土鬣狗，身后跟着密密麻麻的变异鼠群。它们围成半圆，低吼着朝你的小队步步逼近——上阵小队，迎战！",
+    "type": "encounter",
+    "weight": 70,
+    "battle": {
+      "enemies": [
+        "wasteland_hound",
+        "mutant_rat"
+      ],
+      "expReward": 15,
+      "drops": [
+        {
+          "kind": "chance",
+          "itemId": "scrap_metal",
+          "count": 2,
+          "chancePercent": 70
+        },
+        {
+          "kind": "chance",
+          "itemId": "glow_fiber",
+          "count": 2,
+          "chancePercent": 40
+        }
+      ]
+    }
+  },
+  "encounter_ruin_raiders": {
+    "id": "encounter_ruin_raiders",
+    "title": "废墟劫掠者伏击",
+    "description": "两名手持铁管的废墟劫掠者带着一头驯养的变异巨鼠拦住了去路，为首者狞笑着敲打铁管：'把值钱的东西留下，否则别怪我们不客气！'",
+    "type": "encounter",
+    "weight": 55,
+    "battle": {
+      "enemies": [
+        "ruin_scavenger",
+        "mutant_rat_elite"
+      ],
+      "expReward": 25,
+      "drops": [
+        {
+          "kind": "chance",
+          "itemId": "scrap_metal",
+          "count": 2,
+          "chancePercent": 70
+        },
+        {
+          "kind": "chance",
+          "itemId": "alloy_plate",
+          "count": 1,
+          "chancePercent": 35
+        },
+        {
+          "kind": "chance",
+          "itemId": "mana_dust",
+          "count": 2,
+          "chancePercent": 30
+        }
+      ]
+    }
+  },
+  "encounter_workshop_horror": {
+    "id": "encounter_workshop_horror",
+    "title": "车间畸变体群",
+    "description": "废弃车间深处，一个巨大的辐射变异体拖着一条失控的机器仆从与畸变实验体缓缓走出。它们的嘶吼声在厂房里回荡——这是探索中最危险的遭遇！",
+    "type": "encounter",
+    "weight": 40,
+    "battle": {
+      "enemies": [
+        "radiation_mutant",
+        "rogue_machine",
+        "aberrant_subject"
+      ],
+      "expReward": 40,
+      "drops": [
+        {
+          "kind": "chance",
+          "itemId": "alloy_plate",
+          "count": 2,
+          "chancePercent": 60
+        },
+        {
+          "kind": "chance",
+          "itemId": "nanite_slurry",
+          "count": 1,
+          "chancePercent": 30
+        },
+        {
+          "kind": "chance",
+          "itemId": "plasma_cell",
+          "count": 1,
+          "chancePercent": 25
+        }
+      ]
+    }
+  }
+}

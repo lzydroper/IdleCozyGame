@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
 import { FACILITIES_CONFIG } from '../../data/facilities';
 import type { HeroState } from '../../types/game';
-import { UI_TOKENS } from '../../data/uiConstants';
+import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import { User, X } from 'lucide-react';
 import GameIcon from '../GameIcon';
 

@@ -1,6 +1,6 @@
 import type { GameState, HeroState, PlayerStats, AutomationFacility } from '../types/game';
 import { HEROES_CONFIG, STARTER_HERO_ID } from './heroes';
-import { COMBAT_CONFIG } from './combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { FACILITIES_CONFIG, type FacilityType } from './facilities';
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {

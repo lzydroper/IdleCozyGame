@@ -4,7 +4,7 @@ import { INITIAL_STATE, createInitialHero } from '../data/initialState';
 import { REALITY_EVENTS } from '../data/realityEvents';
 import { ENEMY_CONFIGS } from '../data/enemies';
 import { ITEMS_CONFIG } from '../data/items';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { resolveEncounterBattleUpdate, fleeEncounterUpdate } from './combat';
 import { EMPTY_IDLE_STATE } from './levelCombat';
 

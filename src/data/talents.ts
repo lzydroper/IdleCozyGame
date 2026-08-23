@@ -11,9 +11,11 @@
 // - `requires?: string[]` —— 父节点（阻塞来源）：父节点已投入点数 ≥1 时子节点才可升级；查看信息不受限。
 // - `gate?: TalentGate[]` —— 通用解锁门控（07 号）：一组条件全部满足（AND）才可升级；只阻塞、不画线
 //   （与 requires 的画线语义解耦——独立竖线节点可写 gate 而不写 requires）。
-import type { HeroClass } from '../types/game';
+
+// 职阶公共主干已迁 data/progression/talentTrunks.json（config-json-migration 批次②）。
+export { TALENT_TRUNKS } from '../configs/loaders/progression.loader';
+
 import type { StatModifier } from '../state/statSystem';
-import { HEROES_CONFIG } from './heroes';
 
 // 天赋门控条件（07 号）：各条件均为布尔判定，全部满足才解锁节点。
 // talent 条件用 operator 直观表达投入关系（含互斥）：
@@ -38,92 +40,6 @@ export interface TalentNodeConfig {
 }
 
 // 职阶公共主干：同职阶所有英雄共享，节点按顺序递进（后置节点依赖前置）
-export const TALENT_TRUNKS: Record<HeroClass, TalentNodeConfig[]> = {
-  guardian: [
-    {
-      id: 'trunk_guardian_bulwark',
-      name: '钢铁壁垒',
-      maxLevel: 3,
-      effect: [{ stat: 'maxHp', kind: 'percent', value: 0.03 }],
-      pos: { row: 0, col: 0 },
-      children: ['trunk_guardian_bedrock']
-    },
-    {
-      id: 'trunk_guardian_bedrock',
-      name: '磐石身躯',
-      maxLevel: 3,
-      effect: [{ stat: 'defense', kind: 'percent', value: 0.02 }],
-      pos: { row: 1, col: 0 },
-      requires: ['trunk_guardian_bulwark'],
-      children: ['trunk_guardian_commander']
-    },
-    {
-      id: 'trunk_guardian_commander',
-      name: '战场统帅',
-      maxLevel: 2,
-      effect: [
-        { stat: 'maxHp', kind: 'percent', value: 0.02 },
-        { stat: 'defense', kind: 'percent', value: 0.01 }
-      ],
-      pos: { row: 2, col: 0 },
-      requires: ['trunk_guardian_bedrock']
-    }
-  ],
-  attacker: [
-    {
-      id: 'trunk_attacker_edge',
-      name: '锋芒毕露',
-      maxLevel: 3,
-      effect: [{ stat: 'attack', kind: 'percent', value: 0.03 }],
-      pos: { row: 0, col: 0 },
-      children: ['trunk_attacker_flurry']
-    },
-    {
-      id: 'trunk_attacker_flurry',
-      name: '连环攻势',
-      maxLevel: 3,
-      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
-      pos: { row: 1, col: 0 },
-      requires: ['trunk_attacker_edge'],
-      children: ['trunk_attacker_armor_break']
-    },
-    {
-      id: 'trunk_attacker_armor_break',
-      name: '破甲重击',
-      maxLevel: 2,
-      effect: [{ stat: 'attack', kind: 'percent', value: 0.03 }],
-      pos: { row: 2, col: 0 },
-      requires: ['trunk_attacker_flurry']
-    }
-  ],
-  conductor: [
-    {
-      id: 'trunk_conductor_resonance',
-      name: '心灵共鸣',
-      maxLevel: 3,
-      effect: [{ stat: 'maxHp', kind: 'percent', value: 0.02 }],
-      pos: { row: 0, col: 0 },
-      children: ['trunk_conductor_inspire']
-    },
-    {
-      id: 'trunk_conductor_inspire',
-      name: '鼓舞士气',
-      maxLevel: 3,
-      effect: [{ stat: 'attack', kind: 'percent', value: 0.02 }],
-      pos: { row: 1, col: 0 },
-      requires: ['trunk_conductor_resonance'],
-      children: ['trunk_conductor_chord']
-    },
-    {
-      id: 'trunk_conductor_chord',
-      name: '守护和弦',
-      maxLevel: 2,
-      effect: [{ stat: 'defense', kind: 'percent', value: 0.02 }],
-      pos: { row: 2, col: 0 },
-      requires: ['trunk_conductor_inspire']
-    }
-  ]
-};
 
 // 每英雄专属节点：各英雄天赋树独立，专属分支挂载在对应职阶主干入口之后（buildTalentTree 组装 children）
 export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
@@ -241,45 +157,6 @@ export const HERO_TALENTS: Record<string, TalentNodeConfig[]> = {
   ]
 };
 
-// 门控可读文案（07 号，UI 选中节点展示）：nameOf 解析节点 id → 名称
-// talent 的 equal 0 渲染为「未投入」（互斥语义友好化）
-export const formatTalentGate = (gate: TalentGate[] | undefined, nameOf: (id: string) => string): string[] =>
-  (gate || []).map(g => {
-    switch (g.type) {
-      case 'talent': {
-        const node = `「${nameOf(g.nodeId)}」`;
-        if (g.operator === 'equal' && g.value === 0) return `${node}未投入`;
-        if (g.operator === 'equal') return `投入${node}=${g.value} 点`;
-        return `投入${node}${g.operator === 'greater' ? '>' : '<'}${g.value} 点`;
-      }
-      case 'awakened': return '英雄已觉醒';
-      case 'heroLevel': return `角色等级 ≥${g.minLevel}`;
-      case 'star': return `星级 ≥${g.minLevel}`;
-      default: {
-        // 穷尽性：新增条件类型时 TS 在此报错
-        const exhaustive: never = g;
-        return exhaustive;
-      }
-    }
-  });
 
-// 组装某英雄的完整天赋树：职阶主干 + 英雄专属，并把专属节点挂到其 requires 父节点的 children 末尾
-// （children 顺序 = 槽位顺序：主干链子在前、专属分支在后，布局引擎据此自动定 1/2/3 槽位方向）
-export const buildTalentTree = (heroId: string): TalentNodeConfig[] => {
-  const config = HEROES_CONFIG[heroId];
-  if (!config) return [];
-  const trunkNodes = TALENT_TRUNKS[config.heroClass] || [];
-
-  const nodes: TalentNodeConfig[] = [...trunkNodes];
-  const childrenById: Record<string, string[]> = {};
-  nodes.forEach(n => { childrenById[n.id] = [...(n.children || [])]; });
-
-  (HERO_TALENTS[heroId] || []).forEach(o => {
-    nodes.push(o);
-    (o.requires || []).forEach(pid => {
-      if (childrenById[pid] && !childrenById[pid].includes(o.id)) childrenById[pid].push(o.id);
-    });
-  });
-
-  return nodes.map(n => ({ ...n, children: childrenById[n.id] }));
-};
+// 组装与文案格式化属运行时逻辑，已归位 src/state/talentsTree.ts（config-json-migration 批次②）。
+export { formatTalentGate, buildTalentTree } from '../state/talentsTree';

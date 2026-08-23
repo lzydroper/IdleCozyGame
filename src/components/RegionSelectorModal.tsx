@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { isRegionUnlocked, getVisibleRegionsForSelector } from '../state/levelCombat';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, MapPin } from 'lucide-react';
 import RegionDetailModal from './RegionDetailModal';
 

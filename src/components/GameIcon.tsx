@@ -6,7 +6,7 @@ import { ITEMS_CONFIG } from '../data/items';
 import { HEROES_CONFIG } from '../data/heroes';
 import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 import { FACILITIES_CONFIG, isFacilityType } from '../data/facilities';
-import type { ItemSheet, ItemSprite } from '../data/items/types';
+import type { ItemSheet, ItemSprite } from '../configs/types/item.types';
 
 export type GameIconType = 'item' | 'hero' | 'enemy' | 'zone' | 'upgrade';
 

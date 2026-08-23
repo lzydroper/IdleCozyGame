@@ -5,7 +5,7 @@ import { useToast } from '../ToastSystem';
 import type { Recipe } from '../../types/config';
 import { getRecipeDisplayName, getRecipeMainReward, computeMaxBatch } from '../../state/workshop';
 import { ITEMS_CONFIG } from '../../data/items';
-import { UI_TOKENS } from '../../data/uiConstants';
+import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { WORKSHOP_TOASTS } from './constants';
 import { X, Zap } from 'lucide-react';

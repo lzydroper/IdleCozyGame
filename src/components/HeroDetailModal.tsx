@@ -17,8 +17,8 @@ import { getTalentBonus } from '../state/talents';
 import { describeDutyBonuses } from '../state/duty';
 import { aggregateBonus } from '../state/bonds';
 import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
-import { DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats, type StatModifier } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
@@ -30,7 +30,7 @@ import ExpLevelUpModal from './ExpLevelUpModal';
 
 // 空装备默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，13 号 R2）
 const EMPTY_EQUIP = { weapon: null, armor: null, trinket: null } as const;
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import GameIcon from './GameIcon';
 import {
   X,

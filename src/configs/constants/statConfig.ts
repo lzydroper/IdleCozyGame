@@ -3,7 +3,7 @@
  * 允许在不修改业务逻辑代码的前提下调参与配置扩展。
  */
 
-import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../state/statSystem';
+import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../../state/statSystem';
 
 // === 1. 默认属性基准配置 ===
 export const DEFAULT_PRIMARY_ATTRIBUTES: Readonly<PrimaryAttributes> = {
