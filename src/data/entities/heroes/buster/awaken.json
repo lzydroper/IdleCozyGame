@@ -7,5 +7,24 @@
       "value": 0.12
     }
   ],
-  "abilityId": "awaken_buster"
+  "ability":   {
+    "id": "awaken_buster",
+    "name": "拆解重击",
+    "description": "对单个敌人造成 {attackPct} 攻击的重击。",
+    "activation": "active",
+    "targeting": "enemy:first",
+    "cooldown": 3,
+    "priority": 1,
+    "effects": [
+      {
+        "kind": "damage",
+        "params": {
+          "amount": {
+            "kind": "attack",
+            "multiplier": 2.2
+          }
+        }
+      }
+    ]
+  }
 }

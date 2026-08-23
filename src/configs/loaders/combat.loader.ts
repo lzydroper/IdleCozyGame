@@ -9,11 +9,23 @@ const abilityModules = import.meta.glob('../../data/combat/abilities/*.json', {
   eager: true
 }) as Record<string, { default: AbilityConfig }>;
 
+// 觉醒专属能力：仅英雄本人可用，无复用——能力本体内联在各英雄 awaken.json
+// （创作 locality，新增英雄零跨目录引用），装配时并入统一注册表（运行时单一真相不变）。
+const awakenAbilityModules = import.meta.glob('../../data/entities/heroes/*/awaken.json', {
+  eager: true
+}) as Record<string, { default: { ability?: AbilityConfig } }>;
+
+const abilityRegistry: Record<string, AbilityConfig> = Object.fromEntries(
+  Object.entries(abilityModules).map(([, mod]) => [mod.default.id, mod.default])
+);
+for (const mod of Object.values(awakenAbilityModules)) {
+  const ab = mod.default.ability;
+  if (ab?.id) abilityRegistry[ab.id] = ab;
+}
+
 export const ABILITY_CONFIGS: Record<string, AbilityConfig> = devGuardTable(
   'combat/abilities',
-  Object.fromEntries(
-    Object.entries(abilityModules).map(([, mod]) => [mod.default.id, mod.default])
-  ),
+  abilityRegistry,
   { required: ['name', 'activation'] }
 );
 

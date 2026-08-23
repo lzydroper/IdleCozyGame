@@ -3,7 +3,6 @@
     "id": "ration",
     "name": "压缩口粮",
     "description": "高热量压缩食物",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 0
@@ -19,7 +18,6 @@
     "id": "hot_stew",
     "name": "魔能熔岩热烩",
     "description": "大范围恢复饱食度的魔力食物。",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 6
@@ -35,7 +33,6 @@
     "id": "ration_deluxe",
     "name": "高级生存罐头",
     "description": "印有红色爱心徽标和铁皮密封扣的废土罐头",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 10
@@ -51,7 +48,6 @@
     "id": "energy_refill",
     "name": "能量补充剂",
     "description": "恢复魔能的补充剂",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 1
@@ -67,7 +63,6 @@
     "id": "stimpack",
     "name": "废土肾上腺素",
     "description": "橙色瞬时急救药剂针管，激发魔能的极限求生药剂",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 11
@@ -83,7 +78,6 @@
     "id": "canteen",
     "name": "军用水壶",
     "description": "带迷彩保温护套和电子屏显示的科技感军用大水壶",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 13
@@ -99,7 +93,6 @@
     "id": "sanity_capsule",
     "name": "稳定胶囊",
     "description": "维持精神稳定的胶囊药物",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 3
@@ -115,7 +108,6 @@
     "id": "warp_capsule",
     "name": "跃迁胶囊",
     "description": "梦境中的传送工具",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 4
@@ -131,7 +123,6 @@
     "id": "nanite_injector",
     "name": "纳米修复注射针",
     "description": "治愈战斗中重伤的英雄，使其恢复至满状态。",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 7
@@ -142,7 +133,6 @@
     "id": "purifying_serum",
     "name": "心灵净化血清",
     "description": "清除大量心灵污染度，稳定理智的净化血清。",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 8
@@ -159,7 +149,6 @@
     "id": "dream_lantern",
     "name": "引梦魔灯",
     "description": "散发深蓝色星光光晕、带有魔导浮雕的复古手提挂灯",
-    "category": "item",
     "sprite": {
       "sheet": "supplies",
       "index": 15
@@ -175,7 +164,6 @@
     "id": "exp_tome",
     "name": "经验手册",
     "description": "记载战斗心得的战术手册，使用后为英雄提供 100 点经验。",
-    "category": "item",
     "useEffect": {
       "heroExp": 100
     },

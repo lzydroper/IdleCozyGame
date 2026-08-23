@@ -16,6 +16,8 @@ export interface EquipmentConfig {
   source: 'workshop' | 'blueprint' | 'dreamscape' | 'boss'; // 主要获取途径（分层标注）
   blueprintId?: string;       // source === 'blueprint' 时：解锁合成所需图纸物品 id
   description: string;
+  /** json 侧图标键：背包物品条目（ITEMS_CONFIG 派生）与装备详情共用（items.loader 注入 icon 组件） */
+  iconKey?: string;
 }
 
 // 套装特效档位：同系列穿戴装备强化总和达到阈值即触发（可叠加）

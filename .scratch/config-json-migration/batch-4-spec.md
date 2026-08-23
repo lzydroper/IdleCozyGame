@@ -36,3 +36,19 @@
 - [x] configs 七类职责目录就位（types/constants/loaders/mappings/seed）
 - [x] 消费方只经 loaders/constants/types 取配置，绝不直读 json
 - [x] 全量三绿 + AGENTS.md 同步
+
+## 后续收敛（批次④ 追加工单，用户裁决全项实施）
+
+| # | 内容 | 状态 |
+|---|---|---|
+| F1 | 觉醒技能内联：awaken_*.json ×9 删除，ability 本体并入各英雄 awaken.json；combat.loader 双 glob 合并注册（运行时单一注册表不变），AWAKEN_CONFIG.abilityId 由 ability.id 派生回填——消除「引用缺失→觉醒无声无大招」静降级故障模式 | ✅ |
+| F2a | category 冗余清除：四张物品分表 76 个显式 category 字段删除（assembleSheet 分表默认本就注入） | ✅ |
+| F2b | 装备条目派生：iconKey 入 equipment.json 装备行（EquipmentConfig 新增字段）；items.loader 从 EQUIPMENT_CONFIG 派生背包条目；equipmentItems.json 缩至 enhance_stone + blueprint 两独立物品 | ✅ |
+| F2c | 英雄碎片派生：shard_<id> 全套 ItemMeta 按英雄名册生成（sprite/iconKey 与英雄本体同源——实测 9/9 完全一致，零额外定义）；shards.json 缩至奥术星体 + 共鸣碎片 | ✅ |
+
+> 实施记录（F 组）：派生在前、显式在后（显式行可覆盖派生，语义留作扩展口）；
+> RawItemMeta 的 category/iconKey 转可选；abilities.test 的 awakenIds=9 断言自动成为
+> 合并注册表回归验证；items.registry.test 逐字相等断言升级为结构性保证。
+> 验证：tsc ✓ · build ✓ · vitest **741/741** ✓ · oxlint **0 errors**；
+> data = **98 文件全 json**。survivors.json 经裁决保持独立（ADR-0013 叙事域分离：
+> backstory/dreamTrigger/realityLocationId 服务梦境共鸣→现实救援链）。

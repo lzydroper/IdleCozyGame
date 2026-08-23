@@ -95,10 +95,11 @@ export interface SurvivorConfig {
   realityLocationId: string;
 }
 
-// === 升星与觉醒（ticket 12；awaken.json 段） ===
-
+// === 升星与觉醒（ticket 12） ===
+// awaken.json 内联觉醒专属能力本体（无复用，创作 locality）；combat.loader 并入统一注册表，
+// 本类型为运行时暴露形状：abilityId 由装配层从 ability.id 派生回填。
 export type AwakenConfig = {
   awakenedName: string;   // 觉醒后的名字（外观变化）
   passive: StatModifier[]; // 觉醒强化被动（百分比，战斗内生效）
-  abilityId: string;      // 觉醒专属技能引用（combat/abilities/<id>.json）
+  abilityId: string;      // 觉醒专属技能引用（已并入 combat/abilities 统一注册表）
 };

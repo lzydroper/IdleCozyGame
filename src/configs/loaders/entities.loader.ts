@@ -36,6 +36,12 @@ const awakenMods = import.meta.glob('../../data/entities/heroes/*/awaken.json', 
   string,
   { default: Json }
 >;
+// awaken.json 原始形状：ability 本体内联（觉醒专属，无复用）；装配后以 abilityId 暴露给运行时。
+type RawAwakenJson = {
+  awakenedName: string;
+  passive: AwakenConfig['passive'];
+  ability?: { id: string };
+};
 const talentMods = import.meta.glob('../../data/entities/heroes/*/talent.json', { eager: true }) as Record<
   string,
   { default: unknown[] }
@@ -57,7 +63,7 @@ const heroEntries: Array<{
   id: string;
   info: Json;
   duty?: { bonuses?: unknown[] };
-  awaken?: AwakenConfig;
+  awaken?: RawAwakenJson;
   talent?: TalentNodeConfig[];
   growth?: { levelMilestones?: HeroConfig['levelMilestones'] };
 }> = [];
@@ -71,7 +77,7 @@ for (const [path, mod] of Object.entries(heroInfoMods)) {
     | { bonuses?: HeroConfig['dutyMeta'] extends undefined ? never[] : NonNullable<HeroConfig['dutyMeta']>['bonuses'] }
     | undefined;
   const awaken = awakenMods[`../../data/entities/heroes/${folder}/awaken.json`]?.default as
-    | unknown as AwakenConfig
+    | unknown as RawAwakenJson
     | undefined;
   const talent = talentMods[`../../data/entities/heroes/${folder}/talent.json`]?.default as
     | TalentNodeConfig[]
@@ -103,7 +109,13 @@ for (const { id, duty, awaken, talent, growth, info } of heroEntries) {
     icon: iconFor(iconKey)
   };
 
-  if (awaken && awaken.abilityId) AWAKEN_CONFIG[id] = awaken;
+  if (awaken?.ability?.id) {
+    AWAKEN_CONFIG[id] = {
+      awakenedName: awaken.awakenedName,
+      passive: awaken.passive,
+      abilityId: awaken.ability.id
+    };
+  }
   if (Array.isArray(talent)) HERO_TALENTS[id] = talent;
 }
 

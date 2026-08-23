@@ -12,5 +12,24 @@
       "value": 0.05
     }
   ],
-  "abilityId": "awaken_roy"
+  "ability":   {
+    "id": "awaken_roy",
+    "name": "磁轨炮击",
+    "description": "对单个敌人造成 {attackPct} 攻击的炮击。",
+    "activation": "active",
+    "targeting": "enemy:first",
+    "cooldown": 3,
+    "priority": 1,
+    "effects": [
+      {
+        "kind": "damage",
+        "params": {
+          "amount": {
+            "kind": "attack",
+            "multiplier": 2
+          }
+        }
+      }
+    ]
+  }
 }
