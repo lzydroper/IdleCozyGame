@@ -108,7 +108,7 @@ const dutyFields = (): Field[] => [
 const awakenFields = (): Field[] => [
   f.string('awakenedName', '觉醒后名称 awakenedName', { required: true }),
   f.statModList('passive', '觉醒被动 passive（百分比，战斗内生效）', { required: true }),
-  f.object('ability', '觉醒专属能力 ability（内联本体，并入全局能力注册表）', abilityObjectFields(), { required: true })
+  f.object('ability', '觉醒专属能力 ability（v1.2：可迁至 skills.json 槽3 内联；两处都缺 = 不可觉醒）', abilityObjectFields({ idRequired: false }))
 ];
 
 const growthMilestoneValue = (): Field =>
@@ -151,8 +151,7 @@ const skillMilestoneFields = (): Field[] => [
 const skillRowFields = (): Field[] => [
   f.string('id', '行 id', { required: true }),
   f.number('slot', '槽位 slot（1|2|3，恒三行各一次）', { required: true, int: true }),
-  f.ref('abilityId', '能力 abilityId（全局注册表；槽3 引用 awaken 能力）', 'ability', { required: true }),
-  f.json('overrides', '参数覆盖 overrides（浅合并，v1 一般不用）'),
+  f.object('ability', '能力本体 ability（内联直配，英雄专属不复用；id 全局唯一）', abilityObjectFields(), { required: true }),
   f.object('unlock', '解锁条件 unlock（缺省 = 出生即解锁）', skillConditionFields()),
   f.object('growth', '数值成长 growth（只乘公式叶）', skillGrowthFields()),
   f.array('milestones', '里程碑 milestones', f.object('', '里程碑', skillMilestoneFields(), {}), { addLabel: '+ 里程碑' })
@@ -193,7 +192,7 @@ export const heroSheets = (): SheetDef[] => [
         ? [{ level: 'warn', path, loc: 'ability.id', message: `觉醒能力 id 惯例为 awaken_<heroId>（当前「${id}」，期望 awaken_${folder(path)}）` }]
         : [];
     },
-    notes: ['无 ability 即视为不可觉醒。']
+    notes: ['v1.2：觉醒技本体内联于 skills.json 槽3 行（abilityId 从该行派生）；本文件只留觉醒名与被动。无 ability 且无 skills.json 槽3 = 不可觉醒。']
   },
   {
     pattern: /^src\/data\/entities\/heroes\/[^/]+\/talent\.json$/,
@@ -206,7 +205,7 @@ export const heroSheets = (): SheetDef[] => [
     domain: '英雄',
     title: (p) => `${folder(p)} · 技能槽位`,
     mode: { form: 'rows', rowFields: skillRowFields(), newRow: () => ({ id: '', slot: 1, abilityId: '' }) },
-    notes: ['恒三行：槽1/槽2 引用全局能力，槽3 引用本英雄 awaken 能力；unlock/growth/milestones 统一住本表。']
+    notes: ['恒三行，能力本体逐行内联（英雄专属，不复用；id 全局唯一）；unlock/growth/milestones 统一住本表；槽3 惯例放觉醒技（unlock: awakened）。']
   },
   {
     pattern: /^src\/data\/entities\/heroes\/[^/]+\/growth\.json$/,

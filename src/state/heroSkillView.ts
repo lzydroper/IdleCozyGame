@@ -6,7 +6,6 @@ import type { SkillRow } from '../configs/types/entity.types';
 import type { TalentRewrite } from '../configs/types/progression.types';
 import type { HeroState } from '../types/game';
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
-import { getAbilityConfig } from '../configs/loaders/combat.loader';
 import { HERO_SKILLS } from '../configs/loaders/entities.loader';
 import {
   isSkillConditionMet,
@@ -38,16 +37,15 @@ export const buildHeroSkillViews = (heroId: string, hero: HeroState): HeroSkillV
   const rewrites = collectInvestedRewrites(heroId, hero);
   return rows.map(row => {
     const unlocked = isSkillConditionMet(row.unlock, hero);
-    const base = getAbilityConfig(row.abilityId);
     // 基准实例：未烘焙养成的原始解析（锁定态弹窗展示基准数值）
-    const baseAbility = base ? resolveAbilityConfig(base) : null;
+    const baseAbility = resolveAbilityConfig(row.ability);
     return {
       row,
       slotLabel: HERO_SKILL_SLOT_LABELS[row.slot],
       unlocked,
-      ability: unlocked && base ? resolveSkillRow(base, row, hero, rewrites) : null,
+      ability: unlocked ? resolveSkillRow(row, hero, rewrites) : null,
       baseAbility,
-      rewrites: rewrites.filter(rw => rw.targetAbilityId === row.abilityId)
+      rewrites: rewrites.filter(rw => rw.targetAbilityId === row.ability.id)
     };
   });
 };

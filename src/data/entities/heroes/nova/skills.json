@@ -2,14 +2,37 @@
   {
     "id": "nova_skill_1",
     "slot": 1,
-    "abilityId": "nova_arc_bolt",
+    "ability": {
+      "id": "nova_arc_bolt",
+      "name": "电弧矢",
+      "description": "对单个敌人造成 {attackPct} 攻击伤害。",
+      "activation": "active",
+      "targeting": "enemy:first",
+      "cooldown": 2,
+      "priority": 2,
+      "effects": [
+        { "kind": "damage", "params": { "amount": { "kind": "attack", "multiplier": 0.9 } } }
+      ]
+    },
     "unlock": {},
     "growth": { "perStar": 0.05 }
   },
   {
     "id": "nova_skill_2",
     "slot": 2,
-    "abilityId": "nova_overcharge",
+    "ability": {
+      "id": "nova_overcharge",
+      "name": "过载贯穿",
+      "description": "释放过载电流，对生命最低的敌人造成 {value} 点固定伤害（不吃面板，随技能等级成长）。",
+      "activation": "active",
+      "targeting": "enemy:lowestHp",
+      "cost": { "resource": "mp", "amount": 30 },
+      "cooldown": 4,
+      "priority": 3,
+      "effects": [
+        { "kind": "damage", "params": { "amount": { "kind": "flat", "value": 40 } } }
+      ]
+    },
     "unlock": { "level": 10 },
     "growth": { "perLevel": 0.02 },
     "milestones": [
@@ -21,7 +44,18 @@
   {
     "id": "nova_skill_awaken",
     "slot": 3,
-    "abilityId": "awaken_nova",
+    "ability": {
+      "id": "awaken_nova",
+      "name": "电涌过载",
+      "description": "对全部敌人造成 {attackPct} 攻击的群体电击伤害。",
+      "activation": "active",
+      "targeting": "enemy:all",
+      "cooldown": 3,
+      "priority": 1,
+      "effects": [
+        { "kind": "damage", "params": { "amount": { "kind": "attack", "multiplier": 0.8 } } }
+      ]
+    },
     "unlock": { "awakened": true }
   }
 ]

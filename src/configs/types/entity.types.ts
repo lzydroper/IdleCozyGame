@@ -6,7 +6,7 @@ import type { HeroClass, HeroFaction } from '../../types/game';
 import type { FacilityType } from './gameplay.types';
 import type { BaseAttributes, PrimaryAttributes, SpecialAttributes, StatModifier } from '../../state/statSystem';
 import type { GameArt } from './art.types';
-import type { TargetingStrategy, AbilityCost } from '../../state/abilityTypes';
+import type { TargetingStrategy, AbilityCost, AbilityConfig } from '../../state/abilityTypes';
 
 export type EntityKind = 'hero' | 'enemy' | 'other';
 
@@ -127,13 +127,12 @@ export interface SkillMilestone {
 
 export type HeroSkillSlot = 1 | 2 | 3;
 
-/** skills.json 行：每英雄恒三行（槽位 1/2 引用全局能力，槽位 3 引用 awaken 内联能力）。 */
+/** skills.json 行：每英雄恒三行（v1.2 内联直配——英雄主动技是英雄专属内容，不进全局创作目录）。 */
 export interface SkillRow {
   id: string;
   slot: HeroSkillSlot;
-  abilityId: string;
-  /** 同敌人 AbilityRef 的浅合并语义（v1 英雄侧一般不用）。 */
-  overrides?: Record<string, unknown>;
+  /** 内联能力本体；id 全局唯一（combat.loader 并入派生注册表时 devGuard 查重）。 */
+  ability: AbilityConfig;
   unlock?: SkillCondition;
   /** 数值成长（只乘公式叶）：效果数值 = 基准 × (1+perLevel×(等级−1)) × (1+perStar×星数)。 */
   growth?: { perLevel?: number; perStar?: number };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateFormula, compileAbilityEffects } from './abilityCompiler';
-import { resolveAbilityConfig, type EffectTemplate, type FormulaTemplate } from './abilityTypes';
+import { resolveAbilityConfig, type EffectTemplate } from './abilityTypes';
 import type { BattleUnitRuntime } from './turnEngine';
 import type { BattleUnitStats } from './battleTypes';
 
@@ -25,14 +25,13 @@ const unit = (id: string, side: 'hero' | 'enemy' = 'enemy'): BattleUnitRuntime =
   entryOrder: Number(id.replace(/\D/g, '')) || 1
 });
 
-const ability = (effects: EffectTemplate[], formula?: FormulaTemplate) =>
+const ability = (effects: EffectTemplate[]) =>
   resolveAbilityConfig({
     id: 'test_ability',
     name: '测试能力',
     description: '',
     activation: 'active',
     targeting: 'enemy:first',
-    formula,
     effects
   });
 

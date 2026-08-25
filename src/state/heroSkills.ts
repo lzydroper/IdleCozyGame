@@ -13,11 +13,9 @@ import type { TalentRewrite } from '../configs/types/progression.types';
 import type { HeroState } from '../types/game';
 import {
   resolveAbilityConfig,
-  type AbilityConfig,
   type FormulaTemplate,
   type ResolvedAbility
 } from './abilityTypes';
-import { getAbilityConfig } from '../configs/loaders/combat.loader';
 import { HERO_SKILLS } from '../configs/loaders/entities.loader';
 import { getTalentNodes } from './talents';
 
@@ -152,17 +150,13 @@ export const applyRewritesToAbility = (
 
 // === 单行全流程 ===
 
-/** 一行 skills.json 的完整解析：浅合并 overrides → resolve → growth → milestones → rewrites。 */
+/** 一行 skills.json 的完整解析：resolve → growth → milestones → rewrites（本体已内联在行中）。 */
 export const resolveSkillRow = (
-  base: AbilityConfig,
   row: SkillRow,
   hero: Pick<HeroState, 'level' | 'star' | 'awakened'> & { talents?: Record<string, number> },
   rewrites: readonly TalentRewrite[] = []
 ): ResolvedAbility => {
-  const merged: AbilityConfig = row.overrides
-    ? { ...base, ...(row.overrides as object), id: base.id }
-    : base;
-  const resolved = resolveAbilityConfig(merged);
+  const resolved = resolveAbilityConfig(row.ability);
   const grown = applyGrowthToAbility(resolved, row.growth, hero);
   const patched = applyMilestonesToAbility(grown, row.milestones, hero);
   return applyRewritesToAbility(patched, rewrites);
@@ -181,9 +175,7 @@ export const resolveHeroSkills = (heroId: string, hero: HeroState): ResolvedAbil
   const out: ResolvedAbility[] = [];
   for (const row of rows) {
     if (!isSkillConditionMet(row.unlock, hero)) continue;
-    const base = getAbilityConfig(row.abilityId);
-    if (!base) continue; // devGuard 已在加载期拦截；运行时防御性跳过
-    out.push(resolveSkillRow(base, row, hero, rewrites));
+    out.push(resolveSkillRow(row, hero, rewrites));
   }
   return out;
 };

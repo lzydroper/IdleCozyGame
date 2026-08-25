@@ -1,7 +1,10 @@
 # 英雄技能系统设计 spec（heroes-skills）
 
-状态：定稿 v1。本文汇编工单 01–08 的全部决议，实现照此执行，不再有待决事项。
+状态：定稿 v1.2。本文汇编工单 01–08 的全部决议，实现照此执行，不再有待决事项。
 决议出处见同目录 `map.md` → Decisions so far；词汇以根目录 `CONTEXT.md`「### 技能」为准。
+
+> **v1.2 修订（实现期商榷裁定）——数据模型改为「内联直配」**：
+> skills.json 三行的能力本体逐行内联（`ability` 字段），`abilityId` 引用与 `overrides` 字段移除——英雄主动技是英雄专属内容，不复用（商榷时查明：全局注册表无任何真实复用方，敌人零引用）。全局注册表降级为**派生运行时索引**：combat.loader 照 awaken 先例把内联体并入（跨英雄重复 id DEV 抛错），战斗日志查名等消费方不变；`basic_attack` 因代码硬引用（英雄/敌人共用默认普攻）留守全局目录。觉醒技本体迁入槽 3 行，awaken.json 只留觉醒名与被动；`AWAKEN_CONFIG.abilityId` 从槽 3 行派生，旧英雄 awaken.json 带 ability 块的双轨兼容至铺量完成。`TalentRewrite.targetAbilityId` 指向行内 `ability.id`。落地：仅诺娃已迁移，其余英雄双轨。
 
 ---
 

@@ -38,7 +38,8 @@ const HERO_FILE_LABEL: Record<string, string> = {
   'duty.json': '后勤驻守',
   'awaken.json': '觉醒',
   'talent.json': '专属天赋',
-  'growth.json': '成长里程碑'
+  'growth.json': '成长里程碑',
+  'skills.json': '技能槽位'
 };
 
 const REGION_FILE_LABEL: Record<string, string> = {

@@ -8,7 +8,6 @@ import type { TalentNodeConfig } from '../../configs/types/progression.types';
 import type { HeroConfig } from '../../configs/types/entity.types';
 import { resolveArtOrDefault } from '../mappings/artMap';
 import { devGuardTable } from './devGuard';
-import { ABILITY_CONFIGS } from './combat.loader';
 
 const enemyModules = import.meta.glob('../../data/entities/enemies/*.json', {
   eager: true
@@ -56,8 +55,9 @@ const skillsMods = import.meta.glob('../../data/entities/heroes/*/skills.json', 
   { default: unknown }
 >;
 
-// skills.json 守卫（heroes-skills spec §1.1）：恒三行、slot 恰好各一次、abilityId 必须在
-// 全局注册表（含 awaken 内联并入项）、unlock/growth/milestones 键与数值形状白名单校验。
+// skills.json 守卫（heroes-skills spec §1.1 / v1.2 内联直配）：恒三行、slot 恰好各一次、
+// 每行自带内联能力本体（id 非空、activation 合法；全局 id 查重在 combat.loader 合并时做）、
+// unlock/growth/milestones 键与数值形状白名单校验。
 const SKILL_CONDITION_KEYS = new Set(['level', 'star', 'awakened']);
 const SKILL_PATCH_KEYS = new Set(['cooldown', 'priority', 'targeting', 'cost']);
 const isPositiveInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 1;
@@ -97,11 +97,15 @@ export const guardSkillRows = (heroId: string, raw: unknown): SkillRow[] => {
     }
     if (seenSlots.has(row.slot)) throw new Error(`[configs:heroes/${heroId}/skills] 槽位 ${row.slot} 出现多行`);
     seenSlots.add(row.slot);
-    if (typeof row.abilityId !== 'string' || row.abilityId.length === 0) {
-      throw new Error(`[configs:heroes/${heroId}/skills] '${row.id}' 缺少 abilityId`);
+    const ability = row.ability;
+    if (!ability || typeof ability !== 'object' || Array.isArray(ability)) {
+      throw new Error(`[configs:heroes/${heroId}/skills] '${row.id}' 缺少内联能力本体 ability`);
     }
-    if (!ABILITY_CONFIGS[row.abilityId]) {
-      throw new Error(`[configs:heroes/${heroId}/skills] '${row.id}' 引用的能力 '${row.abilityId}' 不在全局注册表`);
+    if (typeof ability.id !== 'string' || ability.id.length === 0) {
+      throw new Error(`[configs:heroes/${heroId}/skills] '${row.id}'.ability 缺少非空字符串 id`);
+    }
+    if (ability.activation !== 'active' && ability.activation !== 'passive') {
+      throw new Error(`[configs:heroes/${heroId}/skills] '${row.id}'.ability.activation 必须是 active 或 passive`);
     }
     guardCondition(heroId, `'${row.id}'.unlock`, row.unlock);
     if (row.growth !== undefined) {
@@ -220,7 +224,27 @@ for (const { id, duty, awaken, talent, growth, skills, info } of heroEntries) {
     };
   }
   if (Array.isArray(talent)) HERO_TALENTS[id] = talent;
-  if (skills !== undefined) HERO_SKILLS[id] = guardSkillRows(id, skills);
+  const skillRows = skills !== undefined ? guardSkillRows(id, skills) : undefined;
+  if (skillRows) HERO_SKILLS[id] = skillRows;
+
+  // 觉醒配置（heroes-skills v1.2 双轨）：awaken.json 仍带 ability 的英雄走旧路径；
+  // 本体已迁入 skills.json 槽3 的英雄（awaken.json 只留名字与被动）从槽3 行派生 abilityId。
+  if (awaken?.ability?.id) {
+    AWAKEN_CONFIG[id] = {
+      awakenedName: awaken.awakenedName,
+      passive: awaken.passive,
+      abilityId: awaken.ability.id
+    };
+  } else if (awaken && skillRows) {
+    const slot3 = skillRows.find(r => r.slot === 3);
+    if (slot3) {
+      AWAKEN_CONFIG[id] = {
+        awakenedName: awaken.awakenedName,
+        passive: awaken.passive,
+        abilityId: slot3.ability.id
+      };
+    }
+  }
 }
 
 export const STARTER_HERO_ID: string =

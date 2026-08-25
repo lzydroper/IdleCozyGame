@@ -10,7 +10,7 @@ import { isFormulaLeaf, FORMULA_NUM_FIELD } from './heroSkills';
 
 const TOKEN_PATTERN = /\{([a-zA-Z][a-zA-Z0-9]*)\}/g;
 
-/** 在 effects 参数与顶层 formula 中找第一个指定种类的公式叶数值。 */
+/** 在 effects 参数中找第一个指定种类的公式叶数值。 */
 const firstFormulaValue = (ability: ResolvedAbility, kind: FormulaTemplate['kind']): number | null => {
   for (const effect of ability.effects) {
     for (const value of Object.values(effect.params)) {
@@ -18,10 +18,6 @@ const firstFormulaValue = (ability: ResolvedAbility, kind: FormulaTemplate['kind
         return Number((value as unknown as Record<string, number>)[FORMULA_NUM_FIELD[kind]]);
       }
     }
-  }
-  const formula = ability.formula;
-  if (formula && formula.kind === kind) {
-    return Number((formula as unknown as Record<string, number>)[FORMULA_NUM_FIELD[kind]]);
   }
   return null;
 };

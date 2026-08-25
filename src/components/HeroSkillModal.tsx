@@ -75,7 +75,8 @@ const HeroSkillModal: React.FC<HeroSkillModalProps> = ({ isOpen, heroId, skillIn
     <div onClick={onClose} className={UI_TOKENS.modalBackdropChild}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`${UI_TOKENS.modalContainerScroll} [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
+        // 固定高度：锁定/解锁/重写各状态分区一致，杜绝弹窗高度跳动
+        className={`${UI_TOKENS.modalContainerScroll} h-[320px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
       >
         <header className={UI_TOKENS.modalHeader}>
           <h3 className={`${UI_TOKENS.modalHeaderTitle} text-purple-300`}>

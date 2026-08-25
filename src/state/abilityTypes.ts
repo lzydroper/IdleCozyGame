@@ -52,7 +52,6 @@ export interface AbilityConfig {
   cost?: AbilityCost;
   cooldown?: number;
   priority?: number;
-  formula?: FormulaTemplate;
   effects?: EffectTemplate[];
   passive?: PassiveAbilityConfig;
 }
@@ -68,7 +67,6 @@ export interface ResolvedAbility {
   cost?: AbilityCost;
   cooldown: number;
   priority: number;
-  formula?: FormulaTemplate;
   effects: EffectTemplate[];
   passive?: PassiveAbilityConfig;
 }
@@ -83,7 +81,6 @@ export const resolveAbilityConfig = (config: AbilityConfig): ResolvedAbility => 
   cost: config.cost,
   cooldown: config.cooldown ?? 0,
   priority: config.priority ?? 0,
-  formula: config.formula,
   effects: config.effects ?? [],
   passive: config.passive
 });

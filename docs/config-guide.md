@@ -53,7 +53,7 @@
 
 ---
 
-## 1. 英雄 `entities/heroes/<heroId>/`（五文件）
+## 1. 英雄 `entities/heroes/<heroId>/`（六文件）
 
 > **新增一个英雄 = 只建这一个文件夹**：碎片条目、碎片视觉、背包侧零额外配置（items.loader 派生）。
 
@@ -85,24 +85,20 @@
 ```
 scope 四种：`{"kind":"all"}`｜`{"kind":"facility","facilityType":"smelter"|"assembler"}`｜`{"kind":"greenhouse","cropIds?":[...]}`｜`{"kind":"expedition"}`；五个加成系数全部 *可省*(0)。
 
-### 1.3 awaken.json（*可省*：觉醒段；**能力本体直接内联**）
+### 1.3 awaken.json（*可省*：觉醒段）
+
+**v1.2 起觉醒技本体的家在 skills.json 槽3 行**（见 §1.6），本文件只留觉醒名与被动：
 
 ```jsonc
 {
   "awakenedName": "觉醒·诺娃",
-  "passive": [ { "stat": "attack", "kind": "percent", "value": 0.1 } ],
-  "ability": {
-    "id": "awaken_nova",            // 约定 awaken_<heroId>
-    "name": "...", "description": "对全部敌人造成 {attackPct} 攻击的群体电击伤害。",
-    "activation": "active", "targeting": "enemy:all", "cooldown": 3, "priority": 1,
-    "effects": [ { "kind": "damage", "params": { "amount": { "kind": "attack", "multiplier": 0.8 } } } ]
-  }
+  "passive": [ { "stat": "attack", "kind": "percent", "value": 0.1 } ]
 }
 ```
-装配后 combat.loader 将 ability 并入全局能力注册表、AWAKEN_CONFIG.abilityId 自动回填——运行时与公共能力同一套管线。无 ability 即视为不可觉醒。
+
+双轨兼容：旧英雄的 awaken.json 仍可带 `ability` 块（内联本体，combat.loader 并入注册表、AWAKEN_CONFIG.abilityId 自动回填）——铺量迁移后该写法消亡。两处都没有 ability = 不可觉醒。
 
 ### 1.4 talent.json（*可省*：专属节点数组 TalentNodeConfig[]）
-
 ```jsonc
 [{ "id": "hero_nova_overdrive", "name": "过载引擎", "maxLevel": 3,
    "effect": [{ "stat": "attack", "kind": "percent", "value": 0.02 }],
@@ -122,6 +118,46 @@ gate=AND 门控（只阻塞不画线）；operator 三值 greater/equal/less 表
 ```
 键=等级字符串，值=StatModifier 式面板加成段落（base/primary/special 属性名直写）。
 
+### 1.6 skills.json（*可省*：技能槽位；heroes-skills v1.2 内联直配）
+
+恒三行（槽 1/2/3 各一次），**能力本体逐行内联**——英雄主动技是英雄专属内容，不进 `combat/abilities/` 全局目录；combat.loader 会把各行本体并入派生注册表（id 全局唯一，重复即 DEV 报错）。
+
+```jsonc
+[
+  { "id": "nova_skill_1", "slot": 1,
+    "ability": { "id": "nova_arc_bolt", "name": "电弧矢",
+      "description": "对单个敌人造成 {attackPct} 攻击伤害。",   // 占位符渲染见下
+      "activation": "active", "targeting": "enemy:first",
+      "cooldown": 2, "priority": 2,
+      "effects": [ { "kind": "damage", "params": { "amount": { "kind": "attack", "multiplier": 0.9 } } } ] },
+    "unlock": {},                          // 缺省 = 出生即解锁
+    "growth": { "perStar": 0.05 } },       // 效果数值 ×(1+0.05×星数)
+  { "id": "nova_skill_2", "slot": 2,
+    "ability": { "...": "本体同上，flat 公式＝技能系英雄" },
+    "unlock": { "level": 10 },
+    "growth": { "perLevel": 0.02 },
+    "milestones": [                        // 结构字段离散改段（绝对值替换）
+      { "at": { "level": 20 }, "patch": { "cooldown": 3 } },
+      { "at": { "star": 3 }, "patch": { "priority": 4 } },
+      { "at": { "awakened": true }, "patch": { "cost": { "resource": "mp", "amount": 25 } } } ] },
+  { "id": "nova_skill_awaken", "slot": 3,
+    "ability": { "id": "awaken_nova", "...": "觉醒技本体（awaken.json 不再写 ability）" },
+    "unlock": { "awakened": true } }
+]
+```
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| id / slot | ✓ | 行身份；slot 1\|2\|3 恰好各一次（devGuard 强校验恒三行） |
+| ability | ✓ | 内联本体，形状同 §3（id 全局唯一；active 建议 targeting） |
+| unlock | ✘ | `{level?, star?, awakened?}` AND 组合；默认约定槽2 Lv.10、槽3 awakened |
+| growth | ✘ | `{perLevel?, perStar?}` **只乘公式叶**（attack/maxHp/flat 的数值）；持续回合等常量不吃 growth |
+| milestones | ✘ | `at` 同 unlock 词汇；`patch` 白名单四字段 `cooldown/priority/targeting/cost`，绝对值替换、后者覆盖 |
+
+**英雄区分配方**：面板系英雄 = attack 公式 + 低成长；技能系英雄 = flat 公式 + 高 `perLevel`。
+**描述占位符**：`{attackPct}`/`{maxHpPct}`/`{value}` 由渲染器按（烘焙后的）公式叶出实际值；未登记占位符 DEV 告警。
+**天赋重写**：talent 节点 `rewrites[].targetAbilityId` 指向本表 ability.id，可部分替换效果、覆盖优先级与主描述（压轴应用）。
+
 ## 2. 敌人 `entities/enemies/<enemyId>.json`（一敌一文件）
 
 ```jsonc
@@ -136,14 +172,15 @@ gate=AND 门控（只阻塞不画线）；operator 三值 greater/equal/less 表
 ```
 战斗图标不走 json（组件 ENEMY_ICON_MAP 注册，新敌记得去 `components/iconMaps.ts` 补一行）。
 
-## 3. 战斗能力 `combat/abilities/<abilityId>.json`
+## 3. 战斗能力 `combat/abilities/<abilityId>.json`（仅跨实体共享能力；英雄专属技走 §1.6）
+
+> **v1.2 起英雄主动技/觉醒技不在这里**——它们内联在各英雄 skills.json。本目录只放真正跨实体共享的能力（现存仅 `basic_attack`：英雄与敌人的代码级默认普攻）。字段表对 §1.6 的内联本体同样适用：
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | id / name / description / activation | ✓ | activation: `"active"` 或 `"passive"` |
 | targeting | active 必配 | `enemy:first\|enemy:all\|enemy:lowestHp\|ally:self\|ally:lowestHpPercent\|ally:all` |
 | cooldown / priority / cost{resource,amount} | *可省*(0/0/无) | cooldown 受超越冷却缩减；priority＝多个可用能力间的**选用优先级**（高者先被 AI 选中，非出手顺序） |
-| formula | *可省* | 面板基准量：`{kind:'attack',multiplier}` 等（供无 effects 的纯倍率场景） |
 | effects[] | active 通常必配 | EffectTemplate：`{kind, params, fireCount?}`；fireCount(≥1) = 该条效果重复发次数，整组能力 fireCount 取最大值 |
 | passive | passive 必配 | `{triggers:[{timing,unitRef}], effects:[EffectTemplate]}` —— 被动=自带触发的隐形 Buff 语义 |
 

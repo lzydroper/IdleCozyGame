@@ -88,7 +88,8 @@ export const buildCatalogs = (docs: Record<string, JsonValue>): Catalogs => {
         const id = str(doc[key]);
         return id ? [opt(id, str(doc.name) ?? str(doc.title))] : [];
       });
-  // 能力目录 = 全局 abilities 文件 + 各英雄 awaken.json 内联能力（对齐 combat.loader 注册表口径）
+  // 能力目录 = 全局 abilities 文件 + 各英雄 awaken.json 内联能力 + skills.json 内联本体
+  // （v1.2 内联直配后 skills.json 是英雄主动技的唯一创作面；目录对齐 combat.loader 注册表口径）
   const abilityOpts: CatalogOption[] = fileIds(/^src\/data\/combat\/abilities\/[^/]+\.json$/, 'id');
   for (const [p, doc] of Object.entries(docs)) {
     if (!/^src\/data\/entities\/heroes\/[^/]+\/awaken\.json$/.test(p) || !isObj(doc)) continue;
@@ -96,6 +97,15 @@ export const buildCatalogs = (docs: Record<string, JsonValue>): Catalogs => {
     if (!isObj(ab)) continue;
     const id = str(ab.id);
     if (id && !abilityOpts.some((o) => o.id === id)) abilityOpts.push(opt(id, str(ab.name)));
+  }
+  for (const [p, doc] of Object.entries(docs)) {
+    if (!/^src\/data\/entities\/heroes\/[^/]+\/skills\.json$/.test(p)) continue;
+    for (const row of docRows(doc)) {
+      const ab = row.ability;
+      if (!isObj(ab)) continue;
+      const id = str(ab.id);
+      if (id && !abilityOpts.some((o) => o.id === id)) abilityOpts.push(opt(id, str(ab.name)));
+    }
   }
   put('ability', { label: '能力', options: abilityOpts });
   put('buff', { label: 'Buff', options: fileIds(/^src\/data\/combat\/buffs\/[^/]+\.json$/, 'buffId') });

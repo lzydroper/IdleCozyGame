@@ -99,7 +99,22 @@ describe('英雄详情弹窗 ↔ 技能弹窗联动', () => {
       </ToastProvider>
     );
     fireEvent.click(screen.getByTitle('查看【电弧矢】'));
-    expect(screen.getAllByText('技能 1').length).toBeGreaterThanOrEqual(2); // 槽位标签 + 弹窗标签
+    // 已解锁槽位显示技能名：槽位标签「电弧矢」+ 弹窗标题「【电弧矢】」
+    expect(screen.getAllByText(/电弧矢/).length).toBeGreaterThanOrEqual(2);
     expect(bodyText()).toContain('攻击伤害');
+  });
+
+  it('锁定槽位显示槽位名而非技能名', () => {
+    seedSave();
+    render(
+      <ToastProvider>
+        <GameProvider>
+          <HeroDetailModal isOpen heroId="nova" onClose={vi.fn()} />
+        </GameProvider>
+      </ToastProvider>
+    );
+    // 槽 2 未解锁（Lv.10 门槛）→ 标签为「技能 2」，不显示「过载贯穿」
+    expect(screen.getByText('技能 2')).toBeDefined();
+    expect(screen.queryByText('过载贯穿')).toBeNull();
   });
 });

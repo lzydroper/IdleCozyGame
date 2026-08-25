@@ -138,11 +138,11 @@ describe('天赋重写（索引定位部分替换、树序合成、压轴）', (
     const row = {
       id: 'row',
       slot: 1 as const,
-      abilityId: 't_strike',
+      ability: cfg,
       growth: { perStar: 5 },
       milestones: [{ at: {}, patch: { priority: 2 } }]
     };
-    const out = resolveSkillRow(cfg, row, makeHero({ star: 3 }), [rwB]);
+    const out = resolveSkillRow(row, makeHero({ star: 3 }), [rwB]);
     expect(out.priority).toBe(7); // 天赋压轴覆盖 milestone 的 2
     // 公式叶经 perStar=5 × 星3 = ×16 缩放
     expect((out.effects[0].params.amount as { multiplier: number }).multiplier).toBeCloseTo(12.8);

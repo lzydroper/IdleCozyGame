@@ -16,7 +16,6 @@ describe('Ability 配置解析', () => {
       cost: undefined,
       cooldown: 0,
       priority: 0,
-      formula: undefined,
       effects: [],
       passive: undefined
     });
@@ -24,7 +23,7 @@ describe('Ability 配置解析', () => {
 
   it('resolveAbilityConfig 保留显式字段', () => {
     const cost = { resource: 'mp', amount: 12 };
-    const formula = { kind: 'attack' as const, multiplier: 1.5 };
+    const amount = { kind: 'attack' as const, multiplier: 1.5 };
     expect(
       resolveAbilityConfig({
         id: 'y',
@@ -35,8 +34,7 @@ describe('Ability 配置解析', () => {
         cost,
         cooldown: 3,
         priority: 2,
-        formula,
-        effects: [{ kind: 'damage', params: { amount: formula } }]
+        effects: [{ kind: 'damage', params: { amount } }]
       })
     ).toMatchObject({
       id: 'y',
@@ -45,8 +43,7 @@ describe('Ability 配置解析', () => {
       cost,
       cooldown: 3,
       priority: 2,
-      formula,
-      effects: [{ kind: 'damage', params: { amount: formula } }]
+      effects: [{ kind: 'damage', params: { amount } }]
     });
   });
 });

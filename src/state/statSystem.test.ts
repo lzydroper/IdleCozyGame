@@ -404,7 +404,7 @@ describe('statSystem - Derived Stat Contributions (detailed-stats-panel-rework 0
     const contributions = getDerivedStatContributions(stats);
 
     expect(contributions.damageReduction).toHaveLength(1);
-    expect(contributions.damageReduction[0].source).toBe('防御公式');
+    expect(contributions.damageReduction[0].source).toBe('防御');
     expect(contributions.damageReduction[0].sourceValue).toBe(100);
     expect(contributions.damageReduction[0].contribution).toBeCloseTo(0.5); // 100/(100+100)
   });

@@ -206,7 +206,6 @@ export const abilityObjectFields = (opts?: { idRequired?: boolean }): Field[] =>
   f.number('cooldown', '冷却（回合）', { int: true, min: 0 }),
   f.number('priority', '选用优先级（高者先被 AI 选中）', { int: true }),
   f.object('cost', '消耗 cost', [f.string('resource', '资源 id'), f.number('amount', '数量', { int: true, min: 1 })]),
-  f.json('formula', '面板基准公式 formula', { templates: FORMULA_TEMPLATES.slice(0, 3) }),
   f.array('effects', '效果列表 effects', effectTemplateItem(), { addLabel: '+ 效果' }),
   f.object(
     'passive',

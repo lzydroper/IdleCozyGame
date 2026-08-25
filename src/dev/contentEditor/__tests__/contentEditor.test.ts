@@ -198,6 +198,7 @@ describe('侧栏分组 sideTree', () => {
     'src/data/entities/heroes/nova/awaken.json': {},
     'src/data/entities/heroes/nova/talent.json': [],
     'src/data/entities/heroes/nova/growth.json': {},
+    'src/data/entities/heroes/nova/skills.json': [],
     'src/data/regions/01_x/regionInfo.json': { id: 'x', name: '废土边缘' },
     'src/data/regions/01_x/levels.json': [],
     'src/data/entities/enemies/rat.json': { id: 'rat' },
@@ -208,14 +209,21 @@ describe('侧栏分组 sideTree', () => {
   };
   const paths = Object.keys(docs);
 
-  it('英雄五件收纳为一组、以档案名命名、默认折叠、带新建动作', () => {
+  it('英雄六件收纳为一组、以档案名命名、默认折叠、带新建动作', () => {
     const tree = buildSideTree(paths, docs);
     const hero = tree.find((d) => d.domain === '英雄');
     expect(hero?.groups).toHaveLength(1);
     expect(hero?.groups[0]?.label).toBe('诺娃');
-    expect(hero?.groups[0]?.children).toHaveLength(5);
+    expect(hero?.groups[0]?.children).toHaveLength(6);
     expect(hero?.groups[0]?.defaultCollapsed).toBe(true);
     expect(hero?.action).toBe('newHero');
+  });
+
+  it('英雄各文件使用中文标签（skills.json → 技能槽位）', () => {
+    const tree = buildSideTree(paths, docs);
+    const titles = tree.find((d) => d.domain === '英雄')?.groups[0]?.children.map((c) => c.title);
+    expect(titles).toContain('技能槽位');
+    expect(titles).not.toContain('skills.json');
   });
 
   it('区域三件收纳为一组；敌人平铺；战斗拆能力/Buff 子组，各带新建', () => {

@@ -26,6 +26,24 @@ for (const mod of Object.values(awakenAbilityModules)) {
   if (ab?.id) abilityRegistry[ab.id] = ab;
 }
 
+// heroes-skills v1.2：英雄技能内联直配——skills.json 各行自带能力本体，英雄专属不复用。
+// 注册表降级为「派生运行时索引」：此处并入内联体（战斗日志按 id 查名等消费方不变），
+// 跨英雄重复 id 在 DEV 直接抛错（创作目录已不存在，id 冲突即内容事故）。
+const heroSkillsAbilityModules = import.meta.glob('../../data/entities/heroes/*/skills.json', {
+  eager: true
+}) as Record<string, { default: unknown }>;
+for (const [path, mod] of Object.entries(heroSkillsAbilityModules)) {
+  const rows = Array.isArray(mod.default) ? (mod.default as Array<{ ability?: AbilityConfig }>) : [];
+  for (const row of rows) {
+    const ab = row?.ability;
+    if (!ab?.id) continue;
+    if (import.meta.env.DEV && abilityRegistry[ab.id]) {
+      throw new Error(`[configs:combat/abilities] 能力 id '${ab.id}' 重复（${path} 内联体与现有注册冲突）`);
+    }
+    abilityRegistry[ab.id] = ab;
+  }
+}
+
 export const ABILITY_CONFIGS: Record<string, AbilityConfig> = devGuardTable(
   'combat/abilities',
   abilityRegistry,
