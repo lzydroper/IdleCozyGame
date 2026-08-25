@@ -5,6 +5,7 @@
 | Command | Action |
 |---|---|
 | `npm run dev` | Start Vite dev server (port 5173) |
+| `npm run dev` → open `/​#editor` | 配置内容工作台（dev-only）：表单化编辑 `src/data` 全部 json，引用下拉/图标选择/实时校验，保存经 vite 中间件直写源文件；生产构建剔除 |
 | `npm run build` | `tsc -b && vite build` — run both, order matters |
 | `npm run lint` | `oxlint` (no ESLint in this repo) |
 | `npx vitest run` | Run all tests |
@@ -36,7 +37,7 @@
 - **`src/configs/`** — config layer: `types/` (domain interfaces), `constants/` (numeric/UI constants), `loaders/` (json import + assertion + DEV guard, per-domain), `mappings/iconMap.ts` (iconKey → Lucide) + `mappings/artMap.ts` (icon string → GameArt), `seed/initialState.ts`. Consumers import ONLY from loaders/constants/types — never from json directly
 - **Visuals（icon 单字段）** — json rows carry ONE `icon` string: a `.png` path relative to `src/assets/sprites/` (build-pipeline, hashed URLs, missing file fails the build) or a Lucide iconKey. Loaders resolve to `GameArt` (`{kind:'image'|'glyph'}`); render via `GameIcon`. No `sprite {sheet,index}` / `iconKey` fields remain
 - **`public/`** — root-level static files served verbatim (currently only `favicon.svg`). Runtime-string-addressed assets belong here ONLY if they cannot go through the import pipeline
-- **`src/data/`** — pure `.json` content data organized by gameplay domain (`regions/<NN_id>/`, `entities/{heroes,enemies}/`, `equipment/`, `items/`, `workshop/`, `shelter/`, `farming/`, `events/`, `combat/`, `progression/`). **JSON only — no .ts files**; identity comes from json content fields (e.g. `id`), folder naming is convention not contract
+- **`src/data/`** — pure `.json` content data organized by gameplay domain (`regions/<NN_id>/`, `entities/{heroes,enemies}/`, `equipment/`, `items/`, `workshop/`, `shelter/`, `farming/`, `events/`, `combat/`, `progression/`). **JSON only — no .ts files**; identity comes from json content fields (e.g. `id`), folder naming is convention not contract. Keyed sheets accept two forms: map (`key === row.id`, devGuard-checked) or **row array** (preferred for new content — row `id` is the single identity, required & unique; see `items/resources.json`)
 - **`src/types/config.ts`** — pure configuration interfaces (`PassiveEffect`, `CostFormula`, `UpgradePath`)
 - **`src/types/game.ts`** — all TypeScript interfaces (`GameState`, `PlayerStats`, `GreenhouseSlot`, etc.)
 - **`src/components/`** — 7 tab components + `SwipeCard.tsx` + `ToastSystem.tsx` + `CloudSyncWidget.tsx`

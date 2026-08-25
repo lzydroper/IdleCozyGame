@@ -7,16 +7,20 @@
 import equipmentJson from '../../data/equipment/equipment.json';
 import equipmentSetsJson from '../../data/equipment/equipmentSets.json';
 import type { EquipmentConfig, EquipmentSetConfig } from '../types/equipment.types';
-import { devGuardTable } from './devGuard';
+import { devGuardKeyed } from './devGuard';
 
-export const EQUIPMENT_SETS = devGuardTable(
-  'equipment/equipmentSets',
-  equipmentSetsJson as unknown as Record<string, EquipmentSetConfig>
+export const EQUIPMENT_SETS: Record<string, EquipmentSetConfig> = Object.fromEntries(
+  devGuardKeyed(
+    'equipment/equipmentSets',
+    equipmentSetsJson as unknown as Record<string, EquipmentSetConfig> | EquipmentSetConfig[]
+  )
 );
 
-export const EQUIPMENT_CONFIG = devGuardTable(
-  'equipment/equipment',
-  equipmentJson as unknown as Record<string, EquipmentConfig>
+export const EQUIPMENT_CONFIG: Record<string, EquipmentConfig> = Object.fromEntries(
+  devGuardKeyed(
+    'equipment/equipment',
+    equipmentJson as unknown as Record<string, EquipmentConfig> | EquipmentConfig[]
+  )
 );
 
 /** 装备列表（UI 遍历用） */

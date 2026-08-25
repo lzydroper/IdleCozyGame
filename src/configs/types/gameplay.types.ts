@@ -1,11 +1,16 @@
 /**
  * gameplay 域类型（config-json-migration 批次②）：后勤设施与种植/工坊共享的形状声明。
- * FacilityType 为显式 union——新增设备种类时在此追加（json key 与之保持一致）。
  */
 import type { GameArt } from './art.types';
 import type { UpgradeLevel, UnlockRequirement } from '../../types/config';
+import type { FACILITIES_CONFIG } from '../loaders/shelter.loader';
 
-export type FacilityType = 'smelter' | 'assembler';
+/**
+ * 设备种类单一真相源 = facilities.json 的键集合（新增设备零代码改动）。
+ * ⚠️ 该表必须保持键控 map 形态、不得改为行数组——TS 无法从 json 数组提取字面量 id，
+ * 误翻数组时此类型退化为 never 并在编译期大面积报错（有意为之的 tripwire）。
+ */
+export type FacilityType = Extract<keyof typeof FACILITIES_CONFIG, string>;
 
 export interface FacilityExpansionConfig {
   maxUnits: number;

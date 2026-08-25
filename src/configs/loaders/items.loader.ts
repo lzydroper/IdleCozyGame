@@ -9,34 +9,40 @@
  *      装备域 icon 保持原始字符串，此处经 artMap 解析）；
  *      equipmentItems.json 仅保留独立物品（强化魔晶/图纸）。
  * 分表默认 category 由 assembleSheet 注入；icon 字符串统一经 artMap.resolveArt 解析为 GameArt。
+ * 分表形态：键控表（key=id 对账）或行数组（行内 id 即身份、必填，resources.json 已迁移）；
+ * 新内容一律用数组形态，id 只写一次。
  */
 import consumablesJson from '../../data/items/consumables.json';
 import resourcesJson from '../../data/items/resources.json';
 import shardsJson from '../../data/items/shards.json';
 import equipmentItemsJson from '../../data/items/equipmentItems.json';
-import { devGuardTable } from './devGuard';
+import { devGuardKeyed } from './devGuard';
 import { resolveArtOrDefault } from '../mappings/artMap';
 import { HEROES_CONFIG } from './entities.loader';
 import { EQUIPMENT_CONFIG } from './equipment.loader';
 import type { ItemCategory, ItemMeta } from '../types/item.types';
 
 // json 侧行形状：icon 为字符串（.png 切图路径或 iconKey），category 可省（分表默认注入）。
-type RawItemMeta = Omit<ItemMeta, 'icon' | 'category'> & {
+// 数组形态（推荐，新内容用此）：行内 id 即身份、必填——id 只写一次；
+// 键控表形态（过渡兼容）：key 为身份，行内 id 可省（回退 key），写了则 devGuard 对账。
+type RawItemRow = Omit<ItemMeta, 'icon' | 'category'> & {
   category?: ItemCategory;
   icon?: string;
 };
+type RawItemMeta = Omit<RawItemRow, 'id'> & { id?: string };
 
 const assembleSheet = (
   domain: string,
-  raw: Record<string, RawItemMeta>,
+  raw: Record<string, RawItemMeta> | RawItemRow[],
   category: ItemCategory
 ): Record<string, ItemMeta> => {
-  const guarded = devGuardTable(domain, raw, { required: ['name', 'description'] });
   const out: Record<string, ItemMeta> = {};
-  for (const [key, row] of Object.entries(guarded)) {
+  for (const [key, row] of devGuardKeyed<RawItemMeta>(domain, raw, {
+    required: ['name', 'description']
+  })) {
     out[key] = {
       ...row,
-      id: row.id ?? key,
+      id: key,
       category: row.category ?? category,
       icon: resolveArtOrDefault(row.icon)
     };
@@ -82,7 +88,7 @@ export const ITEMS_CONFIG: Record<string, ItemMeta> = {
   ...assembleSheet('items/shards', shardsJson as Record<string, RawItemMeta>, 'shard'),
   ...deriveEquipmentItems(),
   ...assembleSheet('items/consumables', consumablesJson as Record<string, RawItemMeta>, 'item'),
-  ...assembleSheet('items/resources', resourcesJson as Record<string, RawItemMeta>, 'resource'),
+  ...assembleSheet('items/resources', resourcesJson as RawItemRow[], 'resource'),
   ...assembleSheet(
     'items/equipmentItems',
     equipmentItemsJson as Record<string, RawItemMeta>,

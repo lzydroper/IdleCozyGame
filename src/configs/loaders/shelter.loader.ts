@@ -7,14 +7,21 @@ import facilitiesJson from '../../data/shelter/facilities.json';
 import shelterUpgradesJson from '../../data/shelter/shelterUpgrades.json';
 import type { UpgradePath } from '../../types/config';
 import { resolveArtOrDefault } from '../mappings/artMap';
-import { devGuardTable } from './devGuard';
+import { devGuardKeyed } from './devGuard';
 import type { FacilityConfig, FacilityType } from '../types/gameplay.types';
 
 type RawRow = Record<string, unknown>;
 
-const injectIcons = <T extends object>(domain: string, raw: Record<string, T>): Record<string, T> => {
+/** 设备键集：从 facilities.json 字面量键提取（FacilityType 的单一真相源，见 gameplay.types）。 */
+type FacilityKey = Extract<keyof typeof facilitiesJson, string>;
+
+/** 分表双形态（键控 map | 行数组）→ icon 解析注入 → 守卫 → Record。 */
+const injectIcons = <T extends object>(
+  domain: string,
+  raw: Record<string, T> | T[]
+): Record<string, T> => {
   const out: Record<string, T> = {};
-  for (const [key, row] of Object.entries(raw)) {
+  for (const [key, row] of devGuardKeyed(domain, raw)) {
     const rowAny = row as RawRow;
     const rawIcon = typeof rowAny.icon === 'string' ? rowAny.icon : undefined;
     if (rawIcon) {
@@ -23,17 +30,19 @@ const injectIcons = <T extends object>(domain: string, raw: Record<string, T>): 
       out[key] = row;
     }
   }
-  return devGuardTable(domain, out);
+  return out;
 };
 
 export const FACILITIES_CONFIG = injectIcons(
   'shelter/facilities',
-  facilitiesJson as unknown as Record<FacilityType, FacilityConfig>
-) as Record<FacilityType, FacilityConfig>;
+  facilitiesJson as unknown as Record<string, FacilityConfig> | FacilityConfig[]
+) as Record<FacilityKey, FacilityConfig>;
 
-export const SHELTER_UPGRADES = devGuardTable(
-  'shelter/shelterUpgrades',
-  shelterUpgradesJson as unknown as Record<string, UpgradePath>
+export const SHELTER_UPGRADES: Record<string, UpgradePath> = Object.fromEntries(
+  devGuardKeyed(
+    'shelter/shelterUpgrades',
+    shelterUpgradesJson as unknown as Record<string, UpgradePath> | UpgradePath[]
+  )
 );
 
 /** 设施类型守卫：字符串 → FacilityType 判定（装配域内断言，供 UI 与后勤流程共用）。 */

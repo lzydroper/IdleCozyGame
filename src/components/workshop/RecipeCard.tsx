@@ -7,7 +7,7 @@ import { getRecipeDisplayName, getRecipeDescription } from '../../state/workshop
 import GameIcon from '../GameIcon';
 import CraftBatchModal from './CraftBatchModal';
 import { WORKSHOP_TOASTS } from './constants';
-import { Zap } from 'lucide-react';
+import { Battery, Zap } from 'lucide-react';
 
 // 配方显示图标：取 reward 主产物；充能配方取 capsuleTarget
 const getRecipeIconId = (recipe: Recipe): string => {
@@ -24,8 +24,10 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
   const [batchOpen, setBatchOpen] = useState(false);
   const inventory = state.inventory;
 
-  // 可见性过滤（ticket 03）保证进入本组件的配方已解锁；此处仅判断材料是否充足
-  const canCraft = Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty);
+  // 可见性过滤（ticket 03）保证进入本组件的配方已解锁；此处仅判断材料/魔能是否充足
+  const canCraft =
+    Object.entries(recipe.cost).every(([item, qty]) => (inventory[item] || 0) >= qty) &&
+    (recipe.energyCost === undefined || state.player.energy >= recipe.energyCost);
 
   const handleCraft = () => {
     const success = craftItem(recipe.id);
@@ -89,6 +91,18 @@ const RecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
         <h5 className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider mb-1">所需消耗:</h5>
         <div className="flex flex-wrap gap-1">
           {renderCostText(recipe.cost)}
+          {recipe.energyCost ? (
+            <span
+              className={`mr-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${
+                state.player.energy >= recipe.energyCost
+                  ? 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                  : 'bg-red-950/40 text-red-400 border border-red-500/20'
+              }`}
+            >
+              <Battery className="w-3 h-3" />
+              魔能: {Math.floor(state.player.energy)}/{recipe.energyCost}
+            </span>
+          ) : null}
         </div>
       </div>
       {(Object.keys(recipe.reward).length > 0 || recipe.special === 'capsule_charge') && (

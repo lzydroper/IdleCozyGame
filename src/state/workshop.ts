@@ -49,12 +49,17 @@ export const getRecipeCategory = (recipe: Recipe): ItemCategory => {
   return (main ? ITEMS_CONFIG[main[0]]?.category : undefined) ?? 'resource';
 };
 
-// 批量上限（ticket 04）：每种 cost 材料可支撑的份数取最小；
+// 批量上限（ticket 04）：每种 cost 材料可支撑的份数取最小；energyCost 存在时纳入魔能上限；
 // 配方是否可见由 isRecipeVisible 负责，此函数仅计算批量滑条上限
 export const computeMaxBatch = (state: GameState, recipe: Recipe): number => {
-  const costEntries = Object.entries(recipe.cost);
-  if (costEntries.length === 0) return 1;
-  return Math.min(...costEntries.map(([item, qty]) => Math.floor((state.inventory[item] || 0) / qty)));
+  const limits = Object.entries(recipe.cost).map(([item, qty]) =>
+    Math.floor((state.inventory[item] || 0) / qty)
+  );
+  if (recipe.energyCost && recipe.energyCost > 0) {
+    limits.push(Math.floor(state.player.energy / recipe.energyCost));
+  }
+  if (limits.length === 0) return 1;
+  return Math.min(...limits);
 };
 
 // 配方可见性（ticket 03）：配方可见 ⟺ 存在合成可能性——
@@ -79,10 +84,17 @@ export const craftItemUpdate = (state: GameState, recipeId: string, count = 1): 
   const hasEnough = Object.entries(recipe.cost).every(([item, qty]) => (state.inventory[item] || 0) >= qty * count);
   if (!hasEnough) return NO_OP(state);
 
+  // 校验魔能（energyCost × count，与材料同规则：不足整批拒绝）
+  const energyNeeded = (recipe.energyCost ?? 0) * count;
+  if (state.player.energy < energyNeeded) return NO_OP(state);
+
   // 执行更新
   const newInventory = { ...state.inventory };
   const newEquipmentInventory = { ...state.equipmentInventory };
   Object.entries(recipe.cost).forEach(([item, qty]) => { newInventory[item] = (newInventory[item] || 0) - qty * count; });
+  const newPlayer = energyNeeded
+    ? { ...state.player, energy: state.player.energy - energyNeeded }
+    : state.player;
 
   const newExploration = { ...state.exploration };
   if (recipe.special === 'capsule_charge' && recipe.capsuleTarget) {
@@ -97,13 +109,13 @@ export const craftItemUpdate = (state: GameState, recipeId: string, count = 1): 
     );
     const rewards = addItemRewards(newInventory, newEquipmentInventory, scaledReward);
     return {
-      state: { ...state, inventory: rewards.inventory, equipmentInventory: rewards.equipmentInventory, exploration: newExploration },
+      state: { ...state, inventory: rewards.inventory, equipmentInventory: rewards.equipmentInventory, exploration: newExploration, player: newPlayer },
       result: true
     };
   }
 
   return {
-    state: { ...state, inventory: newInventory, equipmentInventory: newEquipmentInventory, exploration: newExploration },
+    state: { ...state, inventory: newInventory, equipmentInventory: newEquipmentInventory, exploration: newExploration, player: newPlayer },
     result: true
   };
 };

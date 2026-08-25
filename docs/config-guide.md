@@ -3,7 +3,9 @@
 > 本文是内容/策划配置的完整参考：每个 json 文件的字段、类型、必填性、缺省值、交叉引用与校验方式。
 > 配套：[dev-guide.md](dev-guide.md)（开发侧）。所有数据路径相对 `src/data/`，切图相对 `src/assets/sprites/`。
 > 标记：**必填**＝缺失会破坏功能或触发 DEV 守卫；*可省*＝有明确缺省值（注明）。
-> 通用校验：键控表的 key 必须等于行内 `id`（devGuard 开发期强检）；开放集合身份取 json 内容字段，文件夹命名仅是约定。
+> 通用校验：键控表支持两种形态——**键控 map**（key 必须等于行内 `id`，devGuard 开发期强检；行内 id *可省*，回退 key）与**行数组**（推荐：行内 `id` 即身份、必填、全域唯一，devGuard 查重）；开放集合身份取 json 内容字段，文件夹命名仅是约定。新内容一律用数组形态，id 只写一次。
+
+> 🧰 **可视化填写**：`npm run dev` 后访问 `/​#editor` 打开「配置内容工作台」（仅 dev 构建包含）——本文档的全部字段口径已建模为表单：引用字段（itemId/enemyId/eventId…）下拉搜索选择、icon 可视化挑选（切图网格 + Lucide）、必填/类型/引用存在性/id 唯一/跨文件交叉约束实时校验，保存直接写回 `src/data` 源文件。本文件仍是字段口径的单一真相；新增字段时同步扩展编辑器 schema（`src/dev/contentEditor/`）。
 
 ---
 
@@ -176,16 +178,17 @@ effects[].kind 十种与 params 详见 dev-guide §4.4 表；params 数值可写
 
 ## 6. 物品 `items/` 四表
 
-| 文件 | category 分表默认 | 放什么 |
-|---|---|---|
-| consumables.json | item | 可主动使用的道具 |
-| resources.json | resource | 材料/种子/货币/场景装置 |
-| shards.json | shard | **仅两通用碎片** arcane_orb/resonance_shard；英雄灵魂碎片自动派生，勿手写 |
-| equipmentItems.json | equipment | 仅独立物品（enhance_stone/blueprint_*）；12 件系列装备条目自动派生，勿手写 |
+| 文件 | category 分表默认 | 形态 | 放什么 |
+|---|---|---|---|
+| consumables.json | item | 双形态均可 | 可主动使用的道具 |
+| resources.json | resource | **行数组**（样板） | 材料/种子/货币/场景装置 |
+| shards.json | shard | 双形态均可 | **仅两通用碎片** arcane_orb/resonance_shard；英雄灵魂碎片自动派生，勿手写 |
+| equipmentItems.json | equipment | 双形态均可 | 仅独立物品（enhance_stone/blueprint_*）；12 件系列装备条目自动派生，勿手写 |
 
 行字段：`id/name/description/icon` 实际全填；`category` 不要显式写（等于分表默认）；`useEffect?`：
 `{ stats?:{food?,energy?,sanity?}, pollution?, capsuleCharge?:{"sanity_capsule"|"warp_capsule":n}, heroExp?:n }`。
-守卫：items.registry.test 断言分类计数（12/39/14/2+英雄数）、派生一致性、icon 完整性——增删物品先跑它。
+数组形态行内 `id` 必填且唯一（loader 装配后仍输出 Record，运行时查找不变）。**全部键控分表的 loader 均已支持双形态**（断言为联合类型），任意 json 在两形态间迁移零代码改动；新内容一律数组。
+守卫：items.registry.test 断言分类计数（12/42/14/2+英雄数）、派生一致性、icon 完整性——增删物品先跑它。
 
 ## 7. 区域 `regions/<NN_name>/`（一区一夹三文件）
 
@@ -216,10 +219,10 @@ unlock 词表：`{type:'regionExplored',regionId,percent}`｜`{type:'levelCleare
 | 文件 | 行字段 |
 |---|---|
 | farming/crops.json | CropConfig：`id/name/growthTime(秒)/yields{item:n}/seedCost{seed:n}/description` |
-| workshop/recipes.json | Recipe：`id/cost{}/reward{}` 必填；`blueprintId/special:'capsule_charge'/capsuleTarget/capsuleAmount/facilityId/category/displayName` *可省*（displayName 仅无 reward 建筑类兜底） |
-| workshop/autoRecipes.json | 手动字段 + `duration`(秒) + `facilityId` 必填 |
-| shelter/facilities.json | FacilityConfig：`id/name/shortName?/description/icon/effectLabel/levels[UpgradeLevel]/expansion{maxUnits,costs[],durations[]}` |
-| shelter/shelterUpgrades.json | UpgradePath：`id/name/description/category('base'\|'facility')/effectLabel/icon/levels[UpgradeLevel]`；`unlockRequirements?[{type:'upgrade_level'\|'item_count', id, minValue}]` |
+| workshop/recipes.json | Recipe：`id/cost{}/reward{}` 必填；`energyCost?`（每批魔能消耗：玩家属性非材料，不吃驻守原料折扣，手动 ×数量、自动按批扣/取消同价退还）；`blueprintId/special:'capsule_charge'/capsuleTarget/capsuleAmount/facilityId/category/displayName` *可省*（displayName 仅无 reward 建筑类兜底） |
+| workshop/autoRecipes.json | 手动字段 + `duration`(秒) + `facilityId` 必填；`energyCost?` 同上 |
+| shelter/facilities.json | FacilityConfig：`id/name/shortName?/description/icon/effectLabel/levels[UpgradeLevel]/expansion{maxUnits,costs[],durations[]}`；**必须保持键控 map 形态**（`FacilityType` 由键集自动派生，转数组会编译报错）；新设备零代码改动 |
+| shelter/shelterUpgrades.json | UpgradePath：`id/name/description/category('base'\|'facility')/effectLabel/icon/levels[UpgradeLevel]`；`unlockRequirements?[{type:'upgrade_level'\|'item_count', id, minValue}]`。⚠️ 仅数值可改：battery/generator/recycler/greenhouse_dock 四类的状态字段与效果应用为硬编码，新增全局升级种类需改代码 |
 
 ## 11. survivors.json（幸存者档案，ADR-0013）
 
@@ -232,6 +235,7 @@ unlock 词表：`{type:'regionExplored',regionId,percent}`｜`{type:'levelCleare
 
 | 任务 | 步骤 |
 |---|---|
+| 新设备种类 | ① `facilities.json` 加一行（FacilityType 由键自动派生，零代码）；② `autoRecipes.json` 加该设备配方（facilityId=新 id）；③ 需要驻守加成时在英雄 duty.json 写 `{kind:'facility', facilityType:'新id'}`；④ 切图放 sprites/ 对应路径。跑 `npx vitest run src/state/facility.test.ts` 兜底 |
 | 新英雄 | ① 建 `entities/heroes/<id>/`：heroInfo(+duty/talent/growth/awaken 按需)；② survivors.json 补一行；③ 立绘放 `sprites/entities/heroes/<id>.png` 并在 heroInfo 写 icon 路径；④ 跑 items.registry.test（碎片计数自动含新英雄）。零代码改动。 |
 | 新敌人 | ① `entities/enemies/<id>.json`；② `components/iconMaps.ts` ENEMY_ICON_MAP 补 Lucide；③ 引入 regionInfo.enemyPool / levels.enemies / 事件 battle.enemies |
 | 新主动能力 | `combat/abilities/<id>.json`（targeting+effects）→ 实体 abilities[].abilityId 或 awaken.json 引用；description 数值只经 token |

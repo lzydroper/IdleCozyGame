@@ -45,6 +45,7 @@ export interface Recipe {
   id: string;
   cost: Record<string, number>;    // 材料消耗（原自动侧 input 统一为此字段）
   reward: Record<string, number>;  // 产出物品（原自动侧 output 统一为此字段）
+  energyCost?: number;             // 魔能消耗/批（玩家属性，非材料）：不参与驻守原料折扣；手动 ×count、自动按批扣/退同价
   special?: 'capsule_charge'; // 特殊效果标记（温室扩展坞已迁移至后勤基建，不再作为合成配方）
   capsuleTarget?: string;          // 充能的胶囊 ID
   capsuleAmount?: number;          // 充能数量

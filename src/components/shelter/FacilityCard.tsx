@@ -16,7 +16,7 @@ import StartTaskModal from './StartTaskModal';
 import CancelTaskModal from './CancelTaskModal';
 import type { AutomationFacility } from '../../types/game';
 
-import { TrendingUp, UserCog, Plus, XCircle } from 'lucide-react';
+import { TrendingUp, UserCog, Plus, XCircle, Battery } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // 共用子组件：配方消耗/产出展示行
@@ -299,6 +299,17 @@ function FacilityUnitCard({
                   getInvQty={(id) => getInvQty(state.inventory, id)}
                   accent="rose"
                 />
+                {/* 魔能消耗不吃驻守原料折扣，按原价显示 */}
+                {task.energyCost ? (
+                  <div className="flex items-center gap-1 text-[9px] text-zinc-300">
+                    <Battery className="w-2.5 h-2.5" />
+                    <span>魔能</span>
+                    <span className="font-bold">×{task.energyCost}</span>
+                    <span className={state.player.energy >= task.energyCost ? 'text-zinc-500' : 'text-rose-500'}>
+                      /{Math.floor(state.player.energy)}
+                    </span>
+                  </div>
+                ) : null}
                 <RecipeRow label="每批产出" items={task.reward} getInvQty={(id) => getInvQty(state.inventory, id)} accent="emerald" />
                 <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
                   <TrendingUp className="w-2.5 h-2.5" />
