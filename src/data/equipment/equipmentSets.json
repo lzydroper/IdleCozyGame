@@ -9,7 +9,34 @@
       { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.08 }] },
       { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.10 }] }
     ],
-    "mythicAffix": [{ "stat": "attack", "kind": "percent", "value": 0.03 }]
+    "mythicAffix": [{ "stat": "attack", "kind": "percent", "value": 0.03 }],
+    "passiveSkills": [
+      {
+        "id": "wasteland_set_passive",
+        "enhanceGrowth": 0.01,
+        "ability": {
+          "id": "set_wasteland_bulwark",
+          "name": "废土壁垒",
+          "description": "废土系列共鸣：每回合开始时获得攻击强化，数值随套装最低强化件成长。",
+          "activation": "passive",
+          "passive": {
+            "triggers": [{ "unitRef": "target", "timing": "turnStart" }],
+            "effects": [
+              {
+                "kind": "statModify",
+                "params": {
+                  "modifier": {
+                    "value": { "kind": "flat", "value": 5 },
+                    "target": "stat.attack",
+                    "op": "add"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
   },
   "ember": {
     "id": "ember",

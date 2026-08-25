@@ -9,6 +9,7 @@ import { EQUIPMENT_CONFIG } from '../configs/loaders/equipment.loader';
 import { heroBaseAttributes, getMilestoneModifiers } from '../state/heroGrowth';
 
 import { getAwakenedName, getAwakenBonus } from '../state/awakening';
+import { buildHeroSkillViews } from '../state/heroSkillView';
 
 
 import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
@@ -27,6 +28,7 @@ import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
 import HeroDossierModal from './HeroDossierModal';
 import ExpLevelUpModal from './ExpLevelUpModal';
+import HeroSkillModal from './HeroSkillModal';
 
 // 空装备默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，13 号 R2）
 const EMPTY_EQUIP = { weapon: null, armor: null, trinket: null } as const;
@@ -74,6 +76,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const [showEquipSelectorModal, setShowEquipSelectorModal] = useState(false);
   const [showDossierModal, setShowDossierModal] = useState(false);
   const [showExpLevelUpModal, setShowExpLevelUpModal] = useState(false);
+  // 技能预览弹窗（heroes-skills B5）：1|2|3 = 槽位，null = 关闭
+  const [skillModalSlot, setSkillModalSlot] = useState<number | null>(null);
 
   // hooks 前置（13 号 R2：useMemo 必须无条件调用，修复 rules-of-hooks；EMPTY_EQUIP 常量稳定依赖）
   const hero = state.heroes[heroId ?? ''];
@@ -276,20 +280,36 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     );
   };
 
-  // 渲染技能槽位占位 (放大为 w-15 h-15 框，Icon 放大为 w-6 h-6)
+  // 渲染技能槽位（heroes-skills B5）：可点击打开预览弹窗；锁定槽显示锁角标
+  const skillViews = buildHeroSkillViews(heroId, hero);
   const renderSkillSlot = (skillIndex: number) => {
+    const view = skillViews.find(v => v.row.slot === skillIndex);
+    const label = view?.slotLabel ?? `技能 ${skillIndex}`;
+    const locked = view ? !view.unlocked : true;
     return (
-      <div className="flex flex-col items-center gap-0.5">
+      <button
+        onClick={() => setSkillModalSlot(skillIndex)}
+        className="flex flex-col items-center gap-0.5 cursor-pointer group active:scale-95 transition-transform"
+        title={view?.ability ? `查看【${view.ability.name}】` : `查看【${label}】`}
+      >
         <div
-          className="w-15 h-15 aspect-square rounded-xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center relative overflow-hidden"
-          title={`技能 ${skillIndex}`}
+          className={`w-15 h-15 aspect-square rounded-xl border flex items-center justify-center relative overflow-hidden transition-[border-color,transform] ${
+            locked
+              ? 'border-zinc-800 bg-zinc-950/60 border-dashed'
+              : 'border-purple-500/40 bg-purple-950/20 group-hover:border-purple-400/70'
+          }`}
         >
-          <Flame className="w-7 h-7 text-purple-400/70" />
+          <Flame className={`w-7 h-7 ${locked ? 'text-zinc-600' : 'text-purple-400/80'}`} />
+          {locked && (
+            <span className="absolute top-0.5 right-0.5 text-[8px] font-black text-zinc-400 bg-black/80 px-1 rounded border border-zinc-700">
+              锁
+            </span>
+          )}
         </div>
-        <span className="text-[8.5px] font-bold text-zinc-400 max-w-[58px] truncate text-center leading-tight mt-0.5">
-          技能 {skillIndex}
+        <span className="text-[8.5px] font-bold text-zinc-400 max-w-[58px] truncate text-center leading-tight mt-0.5 group-hover:text-purple-300">
+          {label}
         </span>
-      </div>
+      </button>
     );
   };
 
@@ -636,6 +656,16 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         heroId={heroId}
         onClose={() => setShowExpLevelUpModal(false)}
       />
+
+      {/* 技能预览弹窗（heroes-skills B5） */}
+      {skillModalSlot !== null && (
+        <HeroSkillModal
+          isOpen
+          heroId={heroId}
+          skillIndex={skillModalSlot}
+          onClose={() => setSkillModalSlot(null)}
+        />
+      )}
     </div>
   );
 

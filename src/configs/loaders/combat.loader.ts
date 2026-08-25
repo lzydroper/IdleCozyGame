@@ -1,6 +1,9 @@
 /**
  * combat 域装配（config-json-migration 批次③ 3.1）：
- * abilities 开放集合域 glob 归并 + description 模板插值（04 号票 B1：数值唯一真相在 effects）。
+ * abilities 开放集合域 glob 归并（04 号票 B1）。
+ * heroes-skills B5：description 保留原始模板（{attackPct} 等），插值全部移至渲染时
+ * （state/abilityDescription.renderAbilityDescription）——加载期按基准值烘焙会顶掉
+ * growth/milestones/重写后的实际数值，预览与战斗的同源口径以 ResolvedAbility 为准。
  */
 import type { AbilityConfig } from '../../state/abilityTypes';
 import { devGuardTable } from './devGuard';
@@ -28,24 +31,6 @@ export const ABILITY_CONFIGS: Record<string, AbilityConfig> = devGuardTable(
   abilityRegistry,
   { required: ['name', 'activation'] }
 );
-
-// description 模板插值：{attackPct} / {maxHpPct} / {flat} ← 同源 effects 参数。
-const pct = (n: number): string => `${Math.round(n * 100)}%`;
-for (const cfg of Object.values(ABILITY_CONFIGS)) {
-  let desc = cfg.description ?? '';
-  for (const eff of cfg.effects ?? []) {
-    const amt = (
-      eff.params as {
-        amount?: { kind?: string; multiplier?: number; percent?: number; value?: number };
-      }
-    ).amount;
-    if (!amt) continue;
-    if (amt.kind === 'attack') desc = desc.replace('{attackPct}', pct(amt.multiplier ?? 0));
-    if (amt.kind === 'maxHp') desc = desc.replace('{maxHpPct}', pct(amt.percent ?? 0));
-    if (amt.kind === 'flat') desc = desc.replace('{flat}', String(amt.value));
-  }
-  cfg.description = desc;
-}
 
 export const BASIC_ATTACK: AbilityConfig = ABILITY_CONFIGS['basic_attack'];
 

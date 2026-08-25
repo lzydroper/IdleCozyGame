@@ -116,6 +116,48 @@ const growthMilestoneValue = (): Field =>
 
 const growthFields = (): Field[] => [f.map('levelMilestones', '等级里程碑 levelMilestones', growthMilestoneValue(), { keyLabel: '等级（字符串键）' })];
 
+// === 英雄技能槽位 skills.json（heroes-skills spec §1.1：恒三行） ===
+
+const TARGETING_OPTIONS = [
+  'enemy:first',
+  'enemy:all',
+  'enemy:lowestHp',
+  'ally:self',
+  'ally:lowestHpPercent',
+  'ally:all'
+];
+
+const skillConditionFields = (): Field[] => [
+  f.number('level', '等级门槛 level（≥1 整数）', { int: true }),
+  f.number('star', '星级门槛 star（≥1 整数）', { int: true }),
+  f.boolean('awakened', '需觉醒 awakened')
+];
+
+const skillGrowthFields = (): Field[] => [
+  f.number('perLevel', '每级系数 perLevel（效果数值 ×(1+n×(等级−1))）'),
+  f.number('perStar', '每星系数 perStar（效果数值 ×(1+n×星数)）')
+];
+
+const skillMilestoneFields = (): Field[] => [
+  f.object('at', '达成条件 at（与 unlock 同款条件词汇）', skillConditionFields(), { required: true }),
+  f.object('patch', '结构补丁 patch（白名单四字段，绝对值替换）', [
+    f.number('cooldown', '冷却 cooldown（整数）', { int: true }),
+    f.number('priority', '发动优先级 priority（整数）', { int: true }),
+    f.enum('targeting', '目标策略 targeting', [...TARGETING_OPTIONS]),
+    f.json('cost', '费用 cost（整对象替换）')
+  ], { required: true })
+];
+
+const skillRowFields = (): Field[] => [
+  f.string('id', '行 id', { required: true }),
+  f.number('slot', '槽位 slot（1|2|3，恒三行各一次）', { required: true, int: true }),
+  f.ref('abilityId', '能力 abilityId（全局注册表；槽3 引用 awaken 能力）', 'ability', { required: true }),
+  f.json('overrides', '参数覆盖 overrides（浅合并，v1 一般不用）'),
+  f.object('unlock', '解锁条件 unlock（缺省 = 出生即解锁）', skillConditionFields()),
+  f.object('growth', '数值成长 growth（只乘公式叶）', skillGrowthFields()),
+  f.array('milestones', '里程碑 milestones', f.object('', '里程碑', skillMilestoneFields(), {}), { addLabel: '+ 里程碑' })
+];
+
 export const heroSheets = (): SheetDef[] => [
   {
     pattern: /^src\/data\/entities\/heroes\/[^/]+\/heroInfo\.json$/,
@@ -158,6 +200,13 @@ export const heroSheets = (): SheetDef[] => [
     domain: '英雄',
     title: (p) => `${folder(p)} · 专属天赋`,
     mode: { form: 'rows', rowFields: talentNodeFields(), newRow: () => ({ id: '', name: '', maxLevel: 1, effect: [], pos: { row: 0, col: 0 } }) }
+  },
+  {
+    pattern: /^src\/data\/entities\/heroes\/[^/]+\/skills\.json$/,
+    domain: '英雄',
+    title: (p) => `${folder(p)} · 技能槽位`,
+    mode: { form: 'rows', rowFields: skillRowFields(), newRow: () => ({ id: '', slot: 1, abilityId: '' }) },
+    notes: ['恒三行：槽1/槽2 引用全局能力，槽3 引用本英雄 awaken 能力；unlock/growth/milestones 统一住本表。']
   },
   {
     pattern: /^src\/data\/entities\/heroes\/[^/]+\/growth\.json$/,

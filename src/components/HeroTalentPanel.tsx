@@ -8,7 +8,8 @@ import type { TalentNodeConfig } from '../configs/types/progression.types';
 
 import { formatModifiers } from '../state/statSystem';
 import { getTalentLevel, getInvestedPoints, isTalentNodeUnlocked, firstUnmetTalentGate, evaluateTalentGate } from '../state/talents';
-import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move, Award } from 'lucide-react';
+import { getAbilityConfig } from '../configs/loaders/combat.loader';
+import { Lock, TreeDeciduous, Star, Shield, Sword, Sparkles, Move, Award, Wand2 } from 'lucide-react';
 
 const ROW_H = 75;    // 竖直步长 75px
 const COL_W = 75;    // 水平步长 75px（保证 dx == dy = 75px，构成 45° 完美交汇）
@@ -316,6 +317,25 @@ const HeroTalentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
               </div>
 
               <p className="text-[10px] text-zinc-400 font-medium leading-normal">{formatModifiers(selected.effect)} / 级</p>
+
+              {/* 重写标记（heroes-skills B3）：该节点投入后重写哪些主动技能 */}
+              {selected.rewrites && selected.rewrites.length > 0 && (
+                <div className="text-[10px] font-bold text-fuchsia-300/90 flex items-center gap-1 flex-wrap">
+                  <Wand2 className="w-3 h-3 shrink-0" />
+                  {selected.rewrites.map(rw => {
+                    const abilityName = getAbilityConfig(rw.targetAbilityId)?.name ?? rw.targetAbilityId;
+                    const aspects = [
+                      rw.priority !== undefined ? '发动优先级' : null,
+                      rw.effects ? '部分效果' : null
+                    ].filter(Boolean).join('·');
+                    return (
+                      <span key={`${rw.targetAbilityId}-${rw.priority ?? ''}`} className="bg-fuchsia-950/40 border border-fuchsia-500/30 rounded px-1 py-0.5">
+                        重写【{abilityName}】{aspects && `（${aspects}）`}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-[10px] pt-1 border-t border-zinc-800/60">
                 {selLocked && (

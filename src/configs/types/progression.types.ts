@@ -3,6 +3,7 @@
  */
 import type { HeroFaction } from '../../types/game';
 import type { StatModifier } from '../../state/statSystem';
+import type { EffectTemplate } from '../../state/abilityTypes';
 
 // 羁绊配置（ticket 09）：队伍构筑策略层 —— 特定英雄组合 / 阵营条件上阵触发数值加成，
 // 生效于战斗数值，由 state/bonds.ts 计算，combat.ts 应用。
@@ -28,6 +29,17 @@ export type TalentGate =
   | { type: 'heroLevel'; minLevel: number }                // 角色等级 ≥ minLevel
   | { type: 'star'; minLevel: number };                    // 星级 ≥ minLevel
 
+// 天赋重写（heroes-skills 工单 05）：部分替换既有主动技能——只重写不追加，三槽皆可（含觉醒技）。
+// effects 键 = 效果索引（如 "0"），未提及的效果原样保留；descriptions 同索引供预览展示。
+// description = 主描述模板整体替换（占位符照常渲染）——效果种类被改写时原模板可能失效。
+export interface TalentRewrite {
+  targetAbilityId: string;
+  priority?: number;
+  description?: string;
+  effects?: Record<string, EffectTemplate>;
+  descriptions?: Record<string, string>;
+}
+
 export interface TalentNodeConfig {
   id: string;             // 全局唯一节点 id
   name: string;
@@ -37,4 +49,5 @@ export interface TalentNodeConfig {
   requires?: string[];    // 父节点（阻塞来源 + 画线来源）：需父节点已投入 ≥1 点
   children?: string[];    // 子节点列表（09：布局画线来源；顺序 = 槽位顺序）
   gate?: TalentGate[];    // 额外解锁门控（07 号）：全部满足才可点；只阻塞不画线
+  rewrites?: TalentRewrite[]; // 投入 ≥1 点后生效的重写补丁（压轴应用，赢过 growth/milestones）
 }

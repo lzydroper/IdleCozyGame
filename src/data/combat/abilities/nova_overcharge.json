@@ -1,0 +1,18 @@
+{
+  "id": "nova_overcharge",
+  "name": "过载贯穿",
+  "description": "释放过载电流，对生命最低的敌人造成 {value} 点固定伤害（不吃面板，随技能等级成长）。",
+  "activation": "active",
+  "targeting": "enemy:lowestHp",
+  "cost": { "resource": "mp", "amount": 30 },
+  "cooldown": 4,
+  "priority": 3,
+  "effects": [
+    {
+      "kind": "damage",
+      "params": {
+        "amount": { "kind": "flat", "value": 40 }
+      }
+    }
+  ]
+}

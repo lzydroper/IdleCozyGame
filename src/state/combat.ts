@@ -26,6 +26,8 @@ import { createTurnRuntime } from './turnEngine';
 import type { BattleUnitSnapshot } from './turnEngine';
 
 import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
+import { resolveHeroSkills } from './heroSkills';
+import { resolveHeroSetPassive } from './setPassive';
 import { applyPassiveAbilities, collectPassiveBuffConfigs } from './abilityPassive';
 import { createAbilityRuntime } from './abilityRuntime';
 import { getStamina, tryConsumeStamina } from './stamina';
@@ -66,11 +68,16 @@ export const applyHeroExp = (hero: HeroState, config: HeroConfig, exp: number): 
   };
 };
 
-// 英雄能力装配：普通攻击 + 觉醒技能（若觉醒）。返回解析后的 ResolvedAbility[]。
+// 英雄能力装配（heroes-skills B2）：普攻 + skills.json 三槽解析（resolveHeroSkills 单出口）。
+// 兼容回退：无 skills.json 的英雄保持旧「普攻 + 觉醒技」行为；已觉醒但槽位表缺觉醒行时兜底补挂，
+// 保证九英雄在内容铺量完成前不回退。按 abilityId 去重（槽位表与兜底可能同源）。
 export const collectHeroAbilities = (heroId: string, hero: HeroState): ResolvedAbility[] => {
   const abilities: ResolvedAbility[] = [resolveAbilityConfig(getAbilityConfig('basic_attack')!)];
+  for (const ability of resolveHeroSkills(heroId, hero)) {
+    if (!abilities.some(a => a.abilityId === ability.abilityId)) abilities.push(ability);
+  }
   const awakenAbilityId = getAwakenAbilityId(heroId, hero);
-  if (awakenAbilityId) {
+  if (awakenAbilityId && !abilities.some(a => a.abilityId === awakenAbilityId)) {
     const config = getAbilityConfig(awakenAbilityId);
     if (config) abilities.push(resolveAbilityConfig(config));
   }
@@ -99,6 +106,12 @@ export const heroToCombatant = (
     ...getAwakenBonus(heroId, hero)
   ];
   const recipe: EntityRecipe = { baseAttributes, primaryAttributes, specialAttributes, permanentModifiers };
+  // 套装被动（heroes-skills B4）：三槽穿齐同系列时追加唯一被动（abilityPassive 管线自动注册）
+  const heroAbilities = collectHeroAbilities(heroId, hero);
+  const setPassive = resolveHeroSetPassive(gear);
+  if (setPassive && !heroAbilities.some(a => a.abilityId === setPassive.abilityId)) {
+    heroAbilities.push(setPassive);
+  }
   return buildEntity({
     id: heroId,
     name: config.name,
@@ -107,7 +120,7 @@ export const heroToCombatant = (
     faction: config.faction,
     recipe,
     hpRatio: hero.maxHp > 0 ? hero.hp / hero.maxHp : 1,
-    abilities: collectHeroAbilities(heroId, hero)
+    abilities: heroAbilities
   });
 };
 

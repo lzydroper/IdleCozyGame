@@ -4,9 +4,9 @@
  */
 import type { HeroClass, HeroFaction } from '../../types/game';
 import type { FacilityType } from './gameplay.types';
-import type { BaseAttributes, PrimaryAttributes, SpecialAttributes } from '../../state/statSystem';
-import type { StatModifier } from '../../state/statSystem';
+import type { BaseAttributes, PrimaryAttributes, SpecialAttributes, StatModifier } from '../../state/statSystem';
 import type { GameArt } from './art.types';
+import type { TargetingStrategy, AbilityCost } from '../../state/abilityTypes';
 
 export type EntityKind = 'hero' | 'enemy' | 'other';
 
@@ -102,3 +102,40 @@ export type AwakenConfig = {
   passive: StatModifier[]; // 觉醒强化被动（百分比，战斗内生效）
   abilityId: string;      // 觉醒专属技能引用（已并入 combat/abilities 统一注册表）
 };
+
+// === 英雄技能槽位（heroes-skills spec §1.1；决议见 .scratch/heroes-skills/issues） ===
+
+/** 解锁 / 里程碑共用条件词汇：全部键可选，AND 语义；键名对齐 HeroState。 */
+export interface SkillCondition {
+  level?: number;
+  star?: number;
+  awakened?: boolean;
+}
+
+/** 结构字段补丁（绝对值替换）：白名单四字段——发动节奏旋钮，效果数值请走 growth。 */
+export interface SkillMilestonePatch {
+  cooldown?: number;
+  priority?: number;
+  targeting?: TargetingStrategy;
+  cost?: AbilityCost;
+}
+
+export interface SkillMilestone {
+  at: SkillCondition;
+  patch: SkillMilestonePatch;
+}
+
+export type HeroSkillSlot = 1 | 2 | 3;
+
+/** skills.json 行：每英雄恒三行（槽位 1/2 引用全局能力，槽位 3 引用 awaken 内联能力）。 */
+export interface SkillRow {
+  id: string;
+  slot: HeroSkillSlot;
+  abilityId: string;
+  /** 同敌人 AbilityRef 的浅合并语义（v1 英雄侧一般不用）。 */
+  overrides?: Record<string, unknown>;
+  unlock?: SkillCondition;
+  /** 数值成长（只乘公式叶）：效果数值 = 基准 × (1+perLevel×(等级−1)) × (1+perStar×星数)。 */
+  growth?: { perLevel?: number; perStar?: number };
+  milestones?: SkillMilestone[];
+}

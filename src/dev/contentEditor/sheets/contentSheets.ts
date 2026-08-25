@@ -5,7 +5,7 @@
 import { EQUIPMENT_SLOTS, FACTIONS, ITEM_CATEGORIES } from '../enums';
 import { f } from '../builders';
 import type { Field, Issue, SheetDef } from '../types';
-import { numberMap, unlockRequirementField, upgradeLevelRow } from './shared';
+import { abilityObjectFields, numberMap, unlockRequirementField, upgradeLevelRow } from './shared';
 
 // === 物品行（§6） ===
 
@@ -197,6 +197,16 @@ const setTierItem = (): Field =>
     f.statModList('bonus', '加成 bonus（百分比，战斗内生效）', { required: true })
   ]);
 
+// 套装被动（heroes-skills 工单 06）：三槽穿齐同系列才出现，一套至多一条；
+// abilityId 与内联 ability 二选一（loader devGuard 强制互斥）；数值随最低强化线性成长。
+const setPassiveItem = (): Field =>
+  f.object('', '套装被动', [
+    f.string('id', '被动 id', { required: true }),
+    f.ref('abilityId', '引用全局能力 abilityId（与内联 ability 二选一）', 'ability'),
+    f.object('ability', '内联被动本体 ability（与 abilityId 二选一，activation 须为 passive）', abilityObjectFields({ idRequired: false })),
+    f.number('enhanceGrowth', '强度系数 enhanceGrowth：S = 1 + n × min(三件强化)')
+  ]);
+
 export const equipmentSheets: SheetDef[] = [
   {
     pattern: /^src\/data\/equipment\/equipmentSets\.json$/,
@@ -210,10 +220,12 @@ export const equipmentSheets: SheetDef[] = [
         f.enum('faction', '阵营 faction', [...FACTIONS], { required: true }),
         f.string('factionLabel', '阵营展示 Label factionLabel', { required: true }),
         f.array('tierEffects', '特效档位 tierEffects', setTierItem(), { required: true, addLabel: '+ 档位' }),
-        f.statModList('mythicAffix', '神话通用词条 mythicAffix')
+        f.statModList('mythicAffix', '神话通用词条 mythicAffix'),
+        f.array('passiveSkills', '套装被动 passiveSkills（至多一条，穿齐三件生效）', setPassiveItem(), { addLabel: '+ 套装被动' })
       ],
       newRow: () => ({ id: '', name: '', faction: '', factionLabel: '', tierEffects: [], mythicAffix: [] })
-    }
+    },
+    notes: ['套装被动走 abilityPassive 触发管线；纯数值加成请继续走 tierEffects/mythicAffix。']
   },
   {
     pattern: /^src\/data\/equipment\/equipment\.json$/,

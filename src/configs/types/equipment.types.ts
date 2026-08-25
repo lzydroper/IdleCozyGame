@@ -3,6 +3,7 @@
  */
 import type { EquipmentSlot, HeroFaction } from '../../types/game';
 import type { StatModifier } from '../../state/statSystem';
+import type { AbilityConfig } from '../../state/abilityTypes';
 
 export interface EquipmentConfig {
   id: string;
@@ -26,6 +27,18 @@ export interface SetTierEffect {
   bonus: StatModifier[];      // 百分比加成（战斗内生效；文案由 formatModifiers 自动导出）
 }
 
+// 套装被动（heroes-skills 工单 06）：一套最多一条；三槽穿齐同系列才出现；
+// 数值随强化线性（短板定值）：S = 1 + enhanceGrowth × min(三件 enhance)，装配期烘焙进公式叶。
+export interface SetPassiveDef {
+  id: string;
+  /** 引用全局能力注册表（与 ability 二选一，guard 强制互斥）。 */
+  abilityId?: string;
+  /** 内联 passive 能力本体（activation 必须为 passive）。 */
+  ability?: AbilityConfig;
+  /** 每点最低强化的强度系数增量（缺省 = 不随强化成长）。 */
+  enhanceGrowth?: number;
+}
+
 export interface EquipmentSetConfig {
   id: string;
   name: string;
@@ -33,4 +46,5 @@ export interface EquipmentSetConfig {
   factionLabel: string;       // 阵营展示 Label
   tierEffects: SetTierEffect[];
   mythicAffix: StatModifier[];   // 系列共有词条：穿戴任意神话装备即生效（百分比；文案由 formatModifiers 导出）
+  passiveSkills?: SetPassiveDef[]; // 套装被动定义（v1 至多一条）
 }

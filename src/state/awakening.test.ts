@@ -191,15 +191,17 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
+    // heroes-skills 样板内容后：1 技电弧矢（priority 2）先于觉醒技（priority 1）出手，
+    // 觉醒技最迟第 2 轮发动——断言改为「任意轮次命中 AOE」并按其所在轮次校验双目标伤害。
     const cast = result.events.find(
-      e => e.round === 1 && e.key === 'abilityUsed' && e.data.abilityId === 'awaken_nova'
+      e => e.key === 'abilityUsed' && e.data.abilityId === 'awaken_nova'
     );
     expect(cast).toBeDefined();
     expect((cast!.data as { targetIds: string[] }).targetIds).toEqual(['e1', 'e2']); // 两个敌人都吃到
-    const round1Damages = result.events.filter(
-      e => e.round === 1 && e.key === 'attackAfter' && (e.targetId === 'e1' || e.targetId === 'e2')
+    const aoeDamages = result.events.filter(
+      e => e.round === cast!.round && e.key === 'attackAfter' && (e.targetId === 'e1' || e.targetId === 'e2')
     );
-    expect(round1Damages.map(e => e.data.damage)).toEqual([
+    expect(aoeDamages.map(e => e.data.damage)).toEqual([
       Math.round(58 * 0.8),
       Math.round(58 * 0.8)
     ]);
@@ -234,9 +236,10 @@ describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
     expect((healEvent!.data as { values: { heal: number } }).values.heal).toBe(2); // 只补缺的 2 点
   });
 
-  it('未觉醒英雄战斗行为与之前一致（普通攻击，无技能）', () => {
-    const nova: HeroState = createInitialHero('nova');
-    const heroes = [heroToCombatant('nova', nova)];
+  it('无技能内容英雄战斗行为与之前一致（仅普通攻击）', () => {
+    // heroes-skills 后诺娃已配样板技能，改用无 skills.json 的士兵守护回归引擎旧行为
+    const soldier: HeroState = createInitialHero('soldier');
+    const heroes = [heroToCombatant('soldier', soldier)];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
     const skillCasts = result.events.filter(
       e => e.key === 'abilityUsed' && e.data.abilityId !== 'basic_attack'

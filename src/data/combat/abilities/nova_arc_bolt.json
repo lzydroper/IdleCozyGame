@@ -1,0 +1,17 @@
+{
+  "id": "nova_arc_bolt",
+  "name": "电弧矢",
+  "description": "对单个敌人造成 {attackPct} 攻击伤害。",
+  "activation": "active",
+  "targeting": "enemy:first",
+  "cooldown": 2,
+  "priority": 2,
+  "effects": [
+    {
+      "kind": "damage",
+      "params": {
+        "amount": { "kind": "attack", "multiplier": 0.9 }
+      }
+    }
+  ]
+}

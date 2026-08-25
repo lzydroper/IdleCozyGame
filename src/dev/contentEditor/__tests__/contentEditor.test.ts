@@ -168,6 +168,27 @@ describe('真实数据全量校验', () => {
     const errs = all.filter((x) => x.level === 'error');
     expect(errs, errs.map((e) => `${e.path} · ${e.loc}: ${e.message}`).join('\n')).toEqual([]);
   });
+
+  it('当前仓库数据 0「字段不在表单模型中」提醒（新增 json 字段必须同步扩展编辑器模型）', async () => {
+    const { docs } = await loadAllDocs();
+    const env = {
+      catalogs: buildCatalogs(docs),
+      sprites: new Set(SPRITE_PATHS),
+      lucideKeys: new Set(LUCIDE_KEYS)
+    };
+    const unknownKeyWarns = [];
+    for (const [p, doc] of Object.entries(docs)) {
+      unknownKeyWarns.push(
+        ...validateDoc(p, doc, resolveSheet(p).def, env).filter(
+          (x) => x.level === 'warn' && x.message.includes('字段不在表单模型中')
+        )
+      );
+    }
+    expect(
+      unknownKeyWarns,
+      unknownKeyWarns.map((w) => `${w.path} · ${w.loc}`).join('\n')
+    ).toEqual([]);
+  });
 });
 
 describe('侧栏分组 sideTree', () => {

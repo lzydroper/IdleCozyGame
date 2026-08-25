@@ -81,7 +81,7 @@ describe('天赋树配置完整性（ticket 11）', () => {
       allIds.add(n.id);
     });
     const nova = getTalentNodes('nova');
-    expect(nova.map(n => n.id)).toEqual([EDGE, FLURRY, 'trunk_attacker_armor_break', OVERDRIVE, BOOSTER]);
+    expect(nova.map(n => n.id)).toEqual([EDGE, FLURRY, 'trunk_attacker_armor_break', OVERDRIVE, BOOSTER, 'hero_nova_rewire']);
   });
 });
 

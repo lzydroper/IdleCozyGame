@@ -161,7 +161,8 @@ export const talentNodeFields = (): Field[] => [
   }),
   f.refList('requires', '前置节点', 'talentNode', { help: '父节点已投入 ≥1 点；同时是画线来源' }),
   f.refList('children', '子节点列表', 'talentNode', { help: '布局画线来源；顺序 = 槽位顺序' }),
-  f.array('gate', '门控条件（AND，只阻塞不画线）', talentGateField(), { addLabel: '+ 门控' })
+  f.array('gate', '门控条件（AND，只阻塞不画线）', talentGateField(), { addLabel: '+ 门控' }),
+  f.array('rewrites', '技能重写（heroes-skills：投入 ≥1 点后压轴应用，只重写不追加）', talentRewriteItem(), { addLabel: '+ 重写' })
 ];
 
 // === 能力 AbilityConfig（abilities/<id>.json 与 awaken 内联共用） ===
@@ -183,6 +184,18 @@ export const abilityTriggerItem = (): Field =>
     f.enum('timing', '时机', TIMING_KEYS, { allowFree: true, required: true }),
     f.enum('unitRef', '单位参照', ['target', 'source'], { required: true })
   ]);
+
+// === 天赋重写 TalentRewrite（heroes-skills 工单 05） ===
+// effects/descriptions 键 = 效果索引（"0"/"1"…）；未提及的效果原样保留；重写压轴应用。
+
+export const talentRewriteItem = (): Field =>
+  f.object('', '重写补丁', [
+    f.ref('targetAbilityId', '被重写技能 targetAbilityId', 'ability', { required: true }),
+    f.number('priority', '发动优先级覆盖 priority', { int: true }),
+    f.string('description', '主描述模板整体替换 description（占位符照常渲染）', { multiline: true }),
+    f.map('effects', '效果替换 effects（键 = 效果索引，未提及的原样保留）', effectTemplateItem(), { keyLabel: '效果索引（字符串，如 "0"）' }),
+    f.map('descriptions', '效果描述覆盖 descriptions（键 = 效果索引，预览展示用）', f.string('', '描述文本', { multiline: true }), { keyLabel: '效果索引（字符串，如 "0"）' })
+  ], {});
 
 export const abilityObjectFields = (opts?: { idRequired?: boolean }): Field[] => [
   f.string('id', '能力 id', { required: opts?.idRequired ?? true }),

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "nova_skill_1",
+    "slot": 1,
+    "abilityId": "nova_arc_bolt",
+    "unlock": {},
+    "growth": { "perStar": 0.05 }
+  },
+  {
+    "id": "nova_skill_2",
+    "slot": 2,
+    "abilityId": "nova_overcharge",
+    "unlock": { "level": 10 },
+    "growth": { "perLevel": 0.02 },
+    "milestones": [
+      { "at": { "level": 20 }, "patch": { "cooldown": 3 } },
+      { "at": { "star": 3 }, "patch": { "priority": 4 } },
+      { "at": { "awakened": true }, "patch": { "cost": { "resource": "mp", "amount": 25 } } }
+    ]
+  },
+  {
+    "id": "nova_skill_awaken",
+    "slot": 3,
+    "abilityId": "awaken_nova",
+    "unlock": { "awakened": true }
+  }
+]
