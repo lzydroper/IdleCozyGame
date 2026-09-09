@@ -1,20 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState, HeroState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG } from '../data/heroes';
-import { AWAKEN_CONFIG, STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR } from '../data/awakening';
-import { ITEMS_CONFIG } from '../data/items';
-import { COMBAT_ZONES } from '../data/combatZones';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG, AWAKEN_CONFIG } from '../configs/loaders/entities.loader';
+import { STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR } from '../configs/constants/awakeningConstants';
+import { getAbilityConfig } from '../configs/loaders/combat.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { getLevel } from './regionSelectors';
+
 import {
   starUpUpdate,
   awakenUpdate,
   getStarBonus,
   getAwakenedPassive,
-  getAwakenSkill,
+  getAwakenAbilityId,
   getAwakenedName,
   getAwakenBonus
 } from './awakening';
-import { simulateBattle, heroToCombatant } from './combat';
+import { simulateBattle, heroToCombatant, enemyConfigToEntity } from './combat';
+import { entityStats } from './battleEntity';
 import { mergeSavedState } from './persistence';
 
 const makeState = (overrides: Partial<GameState> = {}): GameState => {
@@ -26,6 +29,16 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => {
 const novaAt = (star: number, awakened = false): GameState =>
   makeState({ heroes: { nova: { ...createInitialHero('nova'), star, awakened } } });
 
+const dummyEntity = (id: string, name: string, hp = 500, attack = 1) =>
+  enemyConfigToEntity({
+    id,
+    name,
+    kind: 'enemy',
+    role: 'normal',
+    faction: 'nightmare',
+    baseAttributes: { attack, defense: 0, maxHp: hp }
+  });
+
 describe('升星/觉醒配置完整性（ticket 12）', () => {
   it('每位英雄都有觉醒配置：更名、强化被动、专属技能', () => {
     Object.keys(HEROES_CONFIG).forEach(heroId => {
@@ -33,23 +46,21 @@ describe('升星/觉醒配置完整性（ticket 12）', () => {
       expect(cfg, heroId).toBeDefined();
       expect(cfg.awakenedName).toContain('觉醒');
       expect(Object.keys(cfg.passive).length).toBeGreaterThan(0);
-      expect(['strike', 'aoe', 'heal']).toContain(cfg.skill.type);
-      expect(cfg.skill.cooldown).toBeGreaterThan(0);
-      if (cfg.skill.type === 'heal') {
-        expect(cfg.skill.healPercent).toBeGreaterThan(0);
-      } else {
-        expect(cfg.skill.multiplier).toBeGreaterThan(0);
-      }
+      expect(cfg.abilityId).toBeTruthy();
+      const ability = getAbilityConfig(cfg.abilityId);
+      expect(ability, cfg.abilityId).toBeDefined();
+      expect(ability?.activation).toBe('active');
+      expect(ability?.cooldown).toBeGreaterThan(0);
     });
   });
 
   it('奥术星体有物品定义，且由辐射车间 BOSS 掉落（终局素材）', () => {
     expect(ITEMS_CONFIG.arcane_orb).toBeDefined();
-    const bossDrops = COMBAT_ZONES.radiated_workshop.boss.drops;
-    expect(bossDrops.some(d => d.itemId === 'arcane_orb')).toBe(true);
+    const bossDrops = getLevel('radiated_workshop', 'radiated_workshop_2')!.drops;
+    expect(bossDrops.some(d => d.kind !== 'weighted' && d.itemId === 'arcane_orb')).toBe(true);
     // 前两区 BOSS 不掉落（终局分层）
-    expect(COMBAT_ZONES.wasteland_entrance.boss.drops.some(d => d.itemId === 'arcane_orb')).toBe(false);
-    expect(COMBAT_ZONES.old_town_ruins.boss.drops.some(d => d.itemId === 'arcane_orb')).toBe(false);
+    expect(getLevel('wasteland_entrance', 'wasteland_entrance_2')!.drops.some(d => d.kind !== 'weighted' && d.itemId === 'arcane_orb')).toBe(false);
+    expect(getLevel('old_town_ruins', 'old_town_ruins_2')!.drops.some(d => d.kind !== 'weighted' && d.itemId === 'arcane_orb')).toBe(false);
   });
 });
 
@@ -123,12 +134,13 @@ describe('觉醒', () => {
   it('觉醒强化被动与专属技能仅在觉醒后生效', () => {
     const before = createInitialHero('nova');
     expect(getAwakenedPassive('nova', before)).toEqual([]);
-    expect(getAwakenSkill('nova', before)).toBeUndefined();
+    expect(getAwakenAbilityId('nova', before)).toBeUndefined();
 
     const after: HeroState = { ...before, star: STAR_MAX, awakened: true };
     const expectedPassive = AWAKEN_CONFIG.nova.passive.map(m => ({ ...m, source: '觉醒被动' }));
     expect(getAwakenedPassive('nova', after)).toEqual(expectedPassive);
-    expect(getAwakenSkill('nova', after)?.name).toBe('电涌过载');
+    expect(getAwakenAbilityId('nova', after)).toBe('awaken_nova');
+    expect(getAbilityConfig('awaken_nova')?.name).toBe('电涌过载');
   });
 
   it('总加成 = 星级加成 + 觉醒被动', () => {
@@ -144,71 +156,95 @@ describe('觉醒', () => {
   });
 });
 
-describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => {
+describe('觉醒技能纳入先机回合制战斗（combat-turn）', () => {
   // 简单敌人：低防御便于验证伤害公式
   const dummyEnemies = () => [
-    { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
-    { id: 'e2', name: '靶子乙', hp: 500, maxHp: 500, attack: 1, defense: 0 }
+    dummyEntity('e1', '靶子甲'),
+    dummyEntity('e2', '靶子乙')
   ];
 
   it('strike 技能：单体重击 + 冷却节奏（用后 3 回合普通攻击再发动）', () => {
     const buster: HeroState = { ...createInitialHero('buster'), star: STAR_MAX, awakened: true }; // 拆解重击 ×2.2
     const combatant = heroToCombatant('buster', buster);
     // 攻击 = round((32 + 力量 8×2) × (1 + 星级 8% + 觉醒被动 12%)) = round(57.6) = 58
-    expect(combatant.attack).toBe(58);
+    expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 8);
-    const skills = result.actions.filter(a => a.kind === 'skill');
+    // 技能识别走 abilityUsed（combat-assembly 02 / M2：attackAfter 已瘦身为纯内部触发通道）
+    const casts = result.events.filter(
+      e => e.key === 'abilityUsed' && e.data.abilityId === 'awaken_buster'
+    );
     // 回合 1 发动；冷却 3 → 回合 5 再发动（自身行动轮）
-    expect(skills.map(a => a.round)).toEqual([1, 5]);
-    expect(skills[0].skillName).toBe('拆解重击');
-    // 伤害 = 攻击 ×2.2（防御 0）：round(58 × 2.2) = 128
-    expect(skills[0].damage).toBe(Math.round(58 * 2.2));
+    expect(casts.map(e => e.round)).toEqual([1, 5]);
+    // 伤害 = 攻击 ×2.2（防御 0）：round(58 × 2.2) = 128，经 effectApplied 验证
+    const strikeDamage = result.events.find(
+      e => e.key === 'effectApplied' && e.round === 1 && e.data.kind === 'damage' &&
+        ((casts[0].data as { targetIds: string[] }).targetIds as string[]).includes(e.targetId ?? '')
+    );
+    expect((strikeDamage!.data as { values: { damage: number } }).values.damage).toBe(Math.round(58 * 2.2));
   });
 
   it('aoe 技能：一次行动对全部存活敌人造成伤害', () => {
     const nova: HeroState = { ...createInitialHero('nova'), star: STAR_MAX, awakened: true }; // 电涌过载 ×0.8
     const combatant = heroToCombatant('nova', nova);
     // 攻击 = round(49 × (1 + 星级 8% + 觉醒被动 10%)) = round(57.82) = 58
-    expect(combatant.attack).toBe(58);
+    expect(entityStats(combatant).attack).toBe(58);
     const heroes = [combatant];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
-    const round1Skills = result.actions.filter(a => a.round === 1 && a.kind === 'skill');
-    expect(round1Skills).toHaveLength(2); // 两个敌人都吃到
-    expect(round1Skills.every(a => a.skillName === '电涌过载')).toBe(true);
-    expect(round1Skills[0].damage).toBe(Math.round(58 * 0.8));
+    // heroes-skills 样板内容后：1 技电弧矢（priority 2）先于觉醒技（priority 1）出手，
+    // 觉醒技最迟第 2 轮发动——断言改为「任意轮次命中 AOE」并按其所在轮次校验双目标伤害。
+    const cast = result.events.find(
+      e => e.key === 'abilityUsed' && e.data.abilityId === 'awaken_nova'
+    );
+    expect(cast).toBeDefined();
+    expect((cast!.data as { targetIds: string[] }).targetIds).toEqual(['e1', 'e2']); // 两个敌人都吃到
+    const aoeDamages = result.events.filter(
+      e => e.round === cast!.round && e.key === 'attackAfter' && (e.targetId === 'e1' || e.targetId === 'e2')
+    );
+    expect(aoeDamages.map(e => e.data.damage)).toEqual([
+      Math.round(58 * 0.8),
+      Math.round(58 * 0.8)
+    ]);
   });
 
   it('heal 技能：恢复自身生命且不超过上限', () => {
     const healer: HeroState = { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 }; // 净化之泉 50%
     const combatant = heroToCombatant('healer', healer);
     // maxHp = round((115 + 体质 4×10) × (1 + 星级 16% + 觉醒被动 15%)) = round(203.05) = 203
-    expect(combatant.maxHp).toBe(203);
+    expect(entityStats(combatant).maxHp).toBe(203);
     const heroes = [combatant];
-    const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const enemies = [dummyEntity('e1', '靶子')];
     const result = simulateBattle(heroes, enemies, 2);
-    const healAction = result.actions.find(a => a.kind === 'heal');
-    expect(healAction).toBeDefined();
+    const healEvent = result.events.find(
+      e => e.key === 'effectApplied' && e.data.kind === 'heal'
+    );
+    expect(healEvent).toBeDefined();
     // 治疗量 = maxHp 的 50% = round(203 × 0.5) = 102，上限内全额
-    expect(healAction!.damage).toBe(Math.round(203 * 0.5));
-    expect(healAction!.targetName).toBe('艾拉');
+    expect((healEvent!.data as { values: { heal: number } }).values.heal).toBe(Math.round(203 * 0.5));
+    expect(healEvent!.targetId).toBe('healer');
   });
 
   it('heal 治疗量受生命上限约束', () => {
     const catherine: HeroState = { ...createInitialHero('catherine'), star: STAR_MAX, awakened: true, hp: 149 }; // 战斗 maxHp 265，缺 2
     const heroes = [heroToCombatant('catherine', catherine)];
-    const enemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
+    const enemies = [dummyEntity('e1', '靶子')];
     const result = simulateBattle(heroes, enemies, 2);
-    const healAction = result.actions.find(a => a.kind === 'heal');
-    expect(healAction!.damage).toBe(2); // 只补缺的 2 点
+    const healEvent = result.events.find(
+      e => e.key === 'effectApplied' && e.data.kind === 'heal'
+    );
+    expect(healEvent).toBeDefined();
+    expect((healEvent!.data as { values: { heal: number } }).values.heal).toBe(2); // 只补缺的 2 点
   });
 
-  it('未觉醒英雄战斗行为与之前一致（普通攻击，无技能）', () => {
-    const nova: HeroState = createInitialHero('nova');
-    const heroes = [heroToCombatant('nova', nova)];
+  it('无技能内容英雄战斗行为与之前一致（仅普通攻击）', () => {
+    // heroes-skills 后诺娃已配样板技能，改用无 skills.json 的士兵守护回归引擎旧行为
+    const soldier: HeroState = createInitialHero('soldier');
+    const heroes = [heroToCombatant('soldier', soldier)];
     const result = simulateBattle(heroes, dummyEnemies(), 3);
-    expect(result.actions.some(a => a.kind === 'skill')).toBe(false);
-    expect(result.actions.every(a => a.kind === 'attack')).toBe(true);
+    const skillCasts = result.events.filter(
+      e => e.key === 'abilityUsed' && e.data.abilityId !== 'basic_attack'
+    );
+    expect(skillCasts).toHaveLength(0);
   });
 
   it('升星/觉醒百分比加成计入战斗数值（与天赋叠加）', () => {
@@ -216,8 +252,8 @@ describe('觉醒技能纳入轮询回合制战斗（ticket 12 → 05）', () => 
     const c = heroToCombatant('nova', hero);
     // 攻击 = round(49 × (1 + (4 + 10 + 6)/100)) = round(58.8) = 59
     //   star 3: attack +2%×2=4%；觉醒被动 +10%；天赋锋芒 ×2 = +6%
-    expect(c.attack).toBe(59);
-    expect(c.skill?.name).toBe('电涌过载');
+    expect(entityStats(c).attack).toBe(59);
+    expect(c.abilities.some(a => a.abilityId === 'awaken_nova')).toBe(true);
   });
 });
 

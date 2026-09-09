@@ -1,0 +1,35 @@
+{
+  "awakenedName": "觉醒·凯瑟琳",
+  "passive": [
+    {
+      "stat": "maxHp",
+      "kind": "percent",
+      "value": 0.12
+    },
+    {
+      "stat": "defense",
+      "kind": "percent",
+      "value": 0.05
+    }
+  ],
+  "ability":   {
+    "id": "awaken_catherine",
+    "name": "应急治疗",
+    "description": "恢复自身 {maxHpPct} 最大生命。",
+    "activation": "active",
+    "targeting": "ally:self",
+    "cooldown": 4,
+    "priority": 1,
+    "effects": [
+      {
+        "kind": "heal",
+        "params": {
+          "amount": {
+            "kind": "maxHp",
+            "percent": 0.4
+          }
+        }
+      }
+    ]
+  }
+}

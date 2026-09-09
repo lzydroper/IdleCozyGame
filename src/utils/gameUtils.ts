@@ -1,4 +1,4 @@
-import { HEROES_CONFIG } from '../data/heroes';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 
 // 英雄显示名（heroes 状态无 name，从配置读取）
 export const getHeroName = (heroId: string): string =>

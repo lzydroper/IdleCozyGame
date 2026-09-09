@@ -1,38 +1,70 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addItemRewards, isWearableEquipment } from '../state/equipment';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
-import { REALITY_EVENTS } from '../data/realityEvents';
-import type { RealityEvent, EventChoice } from '../data/realityEvents';
-import { CATEGORY_WEIGHTS } from '../data/realityEvents';
-import { RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../data/rescueEvents';
+import { RESCUE_LOCATION_NAMES, REALITY_EVENTS, RESCUE_EVENTS, RESCUE_LOCATION_MAP } from '../configs/loaders/event.loader';
+import type { RealityEvent, EventChoice } from '../configs/types/event.types';
+import { CATEGORY_WEIGHTS } from '../configs/constants/eventWeights';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { ENEMY_CONFIGS, HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { createInitialHero } from '../configs/seed/initialState';
+import { getMainlineRegions, getRegion, getLevel } from '../state/regionSelectors';
+
+
+
+
 import { useToast } from './ToastSystem';
 import SwipeCard from './SwipeCard';
-import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Timer, Flag, Handshake, Check, Lock, Square, Crown } from 'lucide-react';
+import { Compass, ChevronRight, Swords, Map, Backpack, Radio, Flag } from 'lucide-react';
 import GameIcon from './GameIcon';
 import wildernessCard from '../assets/wilderness_card.jpg';
-import { ITEMS_CONFIG } from '../data/items';
-import { GAME_CONSTANTS } from '../data/gameConstants';
-import { ALL_COMBAT_ZONES, COMBAT_ZONES } from '../data/combatZones';
-import { COMBAT_CONFIG } from '../data/combatConfig';
-import { HEROES_CONFIG } from '../data/heroes';
-import { SURVIVORS_CONFIG } from '../data/survivors';
-import { createInitialHero } from '../data/initialState';
-import { isZoneUnlocked } from '../state/combat';
-import { getActiveBonds } from '../state/bonds';
-import { formatModifiers } from '../state/statSystem';
-import type { CombatSettlement } from '../types/game';
-import CombatPlaybackView from './CombatPlaybackView';
 
-const WildernessTab: React.FC = () => {
+import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
+
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
+
+import { SURVIVORS_CONFIG } from '../configs/loaders/entities.loader';
+
+
+import { isRegionUnlocked } from '../state/levelCombat';
+import { advanceRegionProgress, completePendingMilestone, getPendingMilestone, canTriggerPendingMilestone, getRegionProgressPercent } from '../state/explorationProgress';
+import type { GameState, CombatSettlement } from '../types/game';
+import type { LevelConfig } from '../configs/types/region.types';
+import RegionSelectorModal from './RegionSelectorModal';
+import LevelBrowser from './LevelBrowser';
+import LevelDetailModal from './LevelDetailModal';
+import { BattleModal } from './BattleModal';
+import IdleCombatWidget from './IdleCombatWidget';
+import IdleSummaryModal from './IdleSummaryModal';
+import type { IdleSummaryData } from '../state/levelCombat';
+
+export const WildernessTab: React.FC = () => {
   const { state, setState, addLog } = useGame();
   const { showToast } = useToast();
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [exploreSubTab, setExploreSubTab] = useState<'bag' | 'logs'>('bag');
   const [mode, setMode] = useState<'explore' | 'combat'>('explore');
-  // 遭遇战结算：state 中 realityEncounterId 清空后仍需继续播放动画
-  const [encounterSettlement, setEncounterSettlement] = useState<CombatSettlement | null>(null);
-  const [encounterEventTitle, setEncounterEventTitle] = useState<string>('遭遇战');
+  const [selectedExplorationRegionId, setSelectedExplorationRegionId] = useState<string>(
+    () => state.exploration.realityRegionId || getMainlineRegions()[0]?.id || 'wasteland_entrance'
+  );
+  const [selectedCombatRegionId, setSelectedCombatRegionId] = useState<string>(
+    () => getMainlineRegions()[0]?.id || 'wasteland_entrance'
+  );
+  const [isRegionSelectorOpen, setIsRegionSelectorOpen] = useState<boolean>(false);
+  const [regionSelectorMode, setRegionSelectorMode] = useState<'exploration' | 'combat'>('exploration');
+
+  const [activeBattle, setActiveBattle] = useState<{
+    regionId: string | null;
+    levelId: string | null;
+    level: LevelConfig | null;
+    settlement: CombatSettlement;
+    isEncounter?: boolean;
+    encounterTitle?: string;
+  } | null>(null);
+
+  const openRegionSelector = (targetMode: 'exploration' | 'combat') => {
+    setRegionSelectorMode(targetMode);
+    setIsRegionSelectorOpen(true);
+  };
 
   const exploration = state.exploration;
   const player = state.player;
@@ -54,15 +86,18 @@ const WildernessTab: React.FC = () => {
       selectedEvent = RESCUE_EVENTS[rescueEventId];
       if (!selectedEvent) return;
     } else {
-      // 正常抽随机事件
-      const keys = Object.keys(REALITY_EVENTS);
-      const events = keys.map(key => REALITY_EVENTS[key]);
-      
-      // 1. 根据分类大权重筛选事件类型
-      
+      // 正常抽随机事件：只在当前区域事件池内抽取
+      const region = exploration.realityRegionId ? getRegion(exploration.realityRegionId) : undefined;
+      const poolIds = region?.explorationEvents ?? Object.keys(REALITY_EVENTS);
+      const events = poolIds
+        .map(id => REALITY_EVENTS[id])
+        .filter((event): event is RealityEvent => Boolean(event));
+      if (events.length === 0) return;
+
+      // 1. 根据分类大权重筛选事件类型（保持池内 authored 顺序，combat-experience 05）
       const availableCategories = Array.from(new Set(events.map(e => e.type)));
       const totalCatWeight = availableCategories.reduce((sum, cat) => sum + (CATEGORY_WEIGHTS[cat] ?? 100), 0);
-      
+
       let randomCatNum = Math.random() * totalCatWeight;
       let selectedCat = availableCategories[0];
       for (const cat of availableCategories) {
@@ -73,11 +108,11 @@ const WildernessTab: React.FC = () => {
         }
         randomCatNum -= catWeight;
       }
-      
-      // 2. 筛选对应类别下的具体事件，根据具体事件权重进行二次筛选
+
+      // 2. 筛选对应类别下的具体事件（保持池内 authored 顺序），根据具体事件权重进行二次筛选
       const catEvents = events.filter(e => e.type === selectedCat);
       const totalEventWeight = catEvents.reduce((sum, evt) => sum + (evt.weight ?? 100), 0);
-      
+
       let randomEvtNum = Math.random() * totalEventWeight;
       selectedEvent = catEvents[0];
       for (const evt of catEvents) {
@@ -101,10 +136,18 @@ const WildernessTab: React.FC = () => {
     }));
   };
 
-  const handleStartExploration = (locationId: string | null) => {
-    const isRescue = locationId !== null;
-    const foodCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST : GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST;
-    const energyCost = isRescue ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST : GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST;
+  const handleStartExploration = (locationId: string | null, isRescue = false) => {
+    const region = !isRescue && locationId ? getRegion(locationId) : undefined;
+    if (!isRescue && region && region.explorationEvents.length === 0) {
+      showToast('该区域暂无探索事件，无法开始探索。', 'error');
+      return;
+    }
+    const foodCost = isRescue
+      ? GAME_CONSTANTS.EXPLORATION_RESCUE_FOOD_COST
+      : (region?.initialCost?.food ?? GAME_CONSTANTS.EXPLORATION_BASE_FOOD_COST);
+    const energyCost = isRescue
+      ? GAME_CONSTANTS.EXPLORATION_RESCUE_ENERGY_COST
+      : (region?.initialCost?.energy ?? GAME_CONSTANTS.EXPLORATION_BASE_ENERGY_COST);
 
     if (player.food < foodCost || player.energy < energyCost) {
       showToast(`生存指标过低（饱食度需 >= ${foodCost}，魔能需 >= ${energyCost}），请先补充！`, "error");
@@ -122,7 +165,8 @@ const WildernessTab: React.FC = () => {
         ...prev.exploration,
         inRealityExploration: true,
         realitySteps: 0,
-        realityLocationId: locationId,
+        realityLocationId: isRescue ? locationId : null,
+        realityRegionId: isRescue ? null : locationId,
         realityBag: {},
         realityEventId: null,
         realityEncounterId: null
@@ -139,7 +183,7 @@ const WildernessTab: React.FC = () => {
     if (exploration.inRealityExploration && !exploration.realityEventId && !exploration.realityEncounterId) {
       drawEvent();
     }
-  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId]);
+  }, [exploration.inRealityExploration, exploration.realityEventId, exploration.realityEncounterId, exploration.realityRegionId]);
 
   const handleMakeChoice = (choice: EventChoice) => {
     // 检查前提条件
@@ -256,17 +300,43 @@ const WildernessTab: React.FC = () => {
       }
 
       // 未完成救援：探索继续（无 HP 死亡惩罚，临时背囊永不清空）
+      const regionId = prev.exploration.realityRegionId;
+      let nextExploration: GameState['exploration'] = {
+        ...prev.exploration,
+        realitySteps: prev.exploration.realitySteps + 1,
+        realityBag: newRealityBag,
+        inRealityExploration: true,
+        realityEventId: null,
+        realityEncounterId: null
+      };
+
+      if (regionId) {
+        // 选择型里程碑：本次事件即里程碑事件时，任意选择即完成待办
+        if (getPendingMilestone(prev, regionId) === prev.exploration.realityEventId) {
+          nextExploration = completePendingMilestone({ ...prev, exploration: nextExploration }, regionId).exploration;
+        }
+        // 推进区域进度（存在待办时自动暂停）
+        const advanced = advanceRegionProgress({ ...prev, exploration: nextExploration }, regionId);
+        nextExploration = advanced.exploration;
+        // 满足触发条件时，把里程碑事件设为下一张卡（encounter 走战斗）
+        const pending = getPendingMilestone(advanced, regionId);
+        if (pending && canTriggerPendingMilestone(advanced, regionId)) {
+          const milestoneEvent = REALITY_EVENTS[pending];
+          if (milestoneEvent) {
+            nextExploration = {
+              ...nextExploration,
+              realityEventId: milestoneEvent.battle ? null : milestoneEvent.id,
+              realityEncounterId: milestoneEvent.battle ? milestoneEvent.id : null
+            };
+          }
+        }
+      }
+
       return {
         ...prev,
         player: newPlayer,
         inventory: newInventory,
-        exploration: {
-          ...prev.exploration,
-          realitySteps: prev.exploration.realitySteps + 1,
-          realityBag: newRealityBag,
-          inRealityExploration: true,
-          realityEventId: null
-        }
+        exploration: nextExploration
       };
     });
 
@@ -289,23 +359,8 @@ const WildernessTab: React.FC = () => {
 
   return (
     <div className="w-full pb-20">
-      {/* 遭遇战结算动画（探索状态清空后仍需继续播放；播完停留，由用户点击按钮才离开，ticket 21 用户反馈 4） */}
-      {encounterSettlement && (
-        <CombatPlaybackView
-          settlement={encounterSettlement}
-          zoneName={encounterEventTitle}
-          autoPlay
-          onComplete={() => {
-            if (encounterSettlement.battle.victory) showToast('遭遇战胜利！战利品与经验已入账。', 'success');
-            else if (encounterSettlement.battle.partyWiped) showToast('遭遇战失败！探索终止，战利品已入库，小队全员重伤。', 'error');
-            else showToast('遭遇战平局，未分胜负。', 'info');
-          }}
-          onExit={() => setEncounterSettlement(null)}
-          exitLabel={encounterSettlement.battle.victory ? '继续探索' : '返回荒野'}
-        />
-      )}
-      {/* 探索 / 战斗 模式切换（探索中锁定，遭遇战播放期间也锁定） */}
-      {!encounterSettlement && !exploration.inRealityExploration && (
+      {/* 荒野 / 战斗 子 Tab 切换（探索中锁定） */}
+      {!exploration.inRealityExploration && (
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setMode('explore')}
@@ -315,7 +370,7 @@ const WildernessTab: React.FC = () => {
                 : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <Map className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />探索荒野
+            <Map className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />荒野
           </button>
           <button
             onClick={() => setMode('combat')}
@@ -325,13 +380,17 @@ const WildernessTab: React.FC = () => {
                 : 'bg-zinc-900/70 border-zinc-800 text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />战斗挂机
+            <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />战斗
           </button>
         </div>
       )}
-      {!encounterSettlement && (!exploration.inRealityExploration ? (
+      {!exploration.inRealityExploration ? (
         mode === 'combat' ? (
-          <CombatPanel />
+          <CombatPanel
+            selectedRegionId={selectedCombatRegionId}
+            onOpenRegionSelector={() => openRegionSelector('combat')}
+            onStartBattle={(battle) => setActiveBattle(battle)}
+          />
         ) : (
         <div className="space-y-4">
           {/* 未在探索中：显示探索选项 */}
@@ -343,63 +402,124 @@ const WildernessTab: React.FC = () => {
             </p>
           </div>
 
-          <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">请选择探索目的地:</h3>
-          
-          {/* Destination options */}
-          <div className="flex flex-col gap-3">
-            {/* Standard exploration */}
-            <div
-              onClick={() => handleStartExploration(null)}
-              className="p-4 rounded-3xl bg-zinc-950/70 border border-cyan-500/20 hover:border-cyan-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group"
-            >
-              <div>
-                <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                  常规探索 (开始探索)
-                </h4>
-                <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
-                  搜寻基础种子、废金属，消耗小 (饱食 -10, 魔能 -10)
-                </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-cyan-400 transition-colors" />
-            </div>
+          {/* 荒野当前区域选择卡片（全卡片可点击） */}
+          {(() => {
+            const selectedRegion = getRegion(selectedExplorationRegionId) || getMainlineRegions()[0];
+            const isUnlocked = isRegionUnlocked(state, selectedRegion.id, 'exploration');
+            const progressPct = getRegionProgressPercent(state, selectedRegion.id);
 
-            {/* Rescue explorations */}
-            {rescueTargets.map(target => {
-              const loc = EXPEDITION_LOCATIONS[target.locationId];
-              const locationName = loc?.displayName || '未知废墟';
-              const targetName = SURVIVORS_CONFIG.find(s => s.id === target.heroId)?.name || target.heroId;
-
-              return (
+            return (
+              <div className="space-y-3">
                 <div
-                  key={target.heroId}
-                  onClick={() => handleStartExploration(target.locationId)}
-                  className="p-4 rounded-3xl bg-zinc-950/70 border border-amber-500/20 hover:border-amber-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group animate-pulse"
+                  data-testid="wilderness-region-card"
+                  onClick={() => openRegionSelector('exploration')}
+                  className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all shadow group"
                 >
-                  <div>
-                    <h4 className="text-sm font-black text-amber-400 flex items-center gap-1.5">
-                      救援任务：寻找 {targetName}
-                    </h4>
-                    <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
-                      目的地：{locationName}。深处极其凶险，需做好战斗准备！(饱食 -15, 魔能 -15)
-                    </p>
+                  <div className="text-left">
+                    <div className="text-[10px] text-zinc-500 font-bold">当前探索区域</div>
+                    <div className="text-sm font-black text-zinc-100 flex items-center gap-1.5">
+                      <GameIcon type="zone" id={selectedRegion.id} className="w-4 h-4" />
+                      {selectedRegion.name}
+                      {!isUnlocked && (
+                        <span className="text-[9px] bg-red-950/60 text-red-400 border border-red-800/40 px-1.5 py-0.5 rounded font-bold">
+                          待解锁
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-zinc-500 mt-0.5">
+                      {isUnlocked ? `探索度 ${progressPct}%` : '待解锁'}
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-amber-500 transition-colors" />
+                  <span className="text-xs text-cyan-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                    更换 <ChevronRight className="w-3.5 h-3.5 inline-block" />
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* 快速进入当前区域探索 */}
+                <button
+                  onClick={() => handleStartExploration(selectedRegion.id, false)}
+                  disabled={!isUnlocked}
+                  className={`w-full py-3 text-xs font-black rounded-2xl shadow-lg flex items-center justify-center gap-1.5 transition-all ${
+                    isUnlocked
+                      ? 'bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 border border-cyan-400/30 text-white shadow-cyan-950/30 cursor-pointer active:scale-98'
+                      : 'bg-zinc-900 border border-zinc-800 text-zinc-600 cursor-not-allowed'
+                  }`}
+                >
+                  <Compass className="w-4 h-4" />
+                  {isUnlocked
+                    ? `探索【${selectedRegion.name}】（饱食 -${selectedRegion.initialCost?.food ?? 10}，魔能 -${selectedRegion.initialCost?.energy ?? 10}）`
+                    : `【${selectedRegion.name}】尚未解锁，无法探索`}
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* Rescue explorations */}
+          {rescueTargets.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">救援信号:</h3>
+              <div className="flex flex-col gap-2.5">
+                {rescueTargets.map(target => {
+                  const loc = RESCUE_LOCATION_NAMES[target.locationId];
+                  const locationName = loc?.displayName || '未知废墟';
+                  const targetName = SURVIVORS_CONFIG.find(s => s.id === target.heroId)?.name || target.heroId;
+
+                  return (
+                    <div
+                      key={target.heroId}
+                      onClick={() => handleStartExploration(target.locationId, true)}
+                      className="p-4 rounded-3xl bg-zinc-950/70 border border-amber-500/20 hover:border-amber-500/50 hover:bg-zinc-900/30 transition-all cursor-pointer flex justify-between items-center group animate-pulse"
+                    >
+                      <div>
+                        <h4 className="text-sm font-black text-amber-400 flex items-center gap-1.5">
+                          救援任务：寻找 {targetName}
+                        </h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 leading-normal">
+                          目的地：{locationName}。深处极其凶险，需做好战斗准备！(饱食 -15, 魔能 -15)
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-amber-500 transition-colors" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         )
       ) : (
         /* In exploration display */
         <div className="space-y-2.5 pt-0.5">
+          {/* 区域探索进度（combat-level 05） */}
+          {exploration.realityRegionId && (() => {
+            const region = getRegion(exploration.realityRegionId!);
+            const pct = getRegionProgressPercent(state, exploration.realityRegionId!);
+            const pending = getPendingMilestone(state, exploration.realityRegionId!);
+            return (
+              <div className="rounded-2xl border border-cyan-500/20 bg-zinc-900/40 p-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-cyan-300">探索进度：{region?.name ?? '未知区域'} {pct}%</span>
+                  {pending && <span className="text-[9px] font-bold text-amber-400">里程碑待办</span>}
+                </div>
+                <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-900">
+                  <div className="h-full bg-cyan-500 transition-all duration-300" style={{ width: pct + '%' }} />
+                </div>
+              </div>
+            );
+          })()}
           {/* 战斗遭遇面板 */}
           {exploration.realityEncounterId && (
             <EncounterPanel
               encounterId={exploration.realityEncounterId}
-              onFight={(s, title) => {
-                setEncounterEventTitle(title);
-                setEncounterSettlement(s);
+              onFight={(settlement, eventTitle, encounterLevel) => {
+                setActiveBattle({
+                  regionId: state.exploration.realityRegionId ?? null,
+                  levelId: null,
+                  level: encounterLevel,
+                  settlement,
+                  isEncounter: true,
+                  encounterTitle: eventTitle
+                });
               }}
             />
           )}
@@ -475,7 +595,34 @@ const WildernessTab: React.FC = () => {
             </div>
           </div>
         </div>
-      ))}
+      )}
+
+      {/* 通用区域选择器弹窗 */}
+      <RegionSelectorModal
+        isOpen={isRegionSelectorOpen}
+        mode={regionSelectorMode}
+        selectedRegionId={regionSelectorMode === 'exploration' ? selectedExplorationRegionId : selectedCombatRegionId}
+        onClose={() => setIsRegionSelectorOpen(false)}
+        onConfirmSelect={(regionId) => {
+          if (regionSelectorMode === 'exploration') {
+            setSelectedExplorationRegionId(regionId);
+          } else {
+            setSelectedCombatRegionId(regionId);
+          }
+        }}
+      />
+
+      {/* 独立全屏战斗场景模态（支持常规关卡挑战与荒野遭遇战） */}
+      <BattleModal
+        isOpen={!!activeBattle}
+        regionId={activeBattle?.regionId ?? null}
+        levelId={activeBattle?.levelId ?? null}
+        level={activeBattle?.level ?? null}
+        settlement={activeBattle?.settlement ?? null}
+        isEncounter={activeBattle?.isEncounter ?? false}
+        encounterTitle={activeBattle?.encounterTitle}
+        onClose={() => setActiveBattle(null)}
+      />
     </div>
   );
 };
@@ -483,10 +630,13 @@ const WildernessTab: React.FC = () => {
 // === 战斗遭遇场景（ticket 06）：探索中遭遇战斗事件，进入与自动战斗同一战斗场景 ===
 const EncounterPanel: React.FC<{
   encounterId: string;
-  onFight: (settlement: CombatSettlement, eventTitle: string) => void;
+  onFight: (settlement: CombatSettlement, eventTitle: string, encounterLevel: LevelConfig) => void;
 }> = ({ encounterId, onFight }) => {
-  const { state, resolveEncounterBattle, fleeEncounter } = useGame();
+  const { state, setState, resolveEncounterBattle, fleeEncounter } = useGame();
   const { showToast } = useToast();
+
+  const milestoneRegionId = state.exploration.realityRegionId ?? null;
+  const isMilestoneEncounter = !!milestoneRegionId && getPendingMilestone(state, milestoneRegionId) === encounterId;
 
   const event = REALITY_EVENTS[encounterId];
   if (!event?.battle) return null;
@@ -503,9 +653,20 @@ const EncounterPanel: React.FC<{
     if (outcome.failure === 'no_stamina') { showToast(`体力不足（需要 ${staminaCost}），等待恢复或撤离。`, 'error'); return; }
     if (outcome.failure === 'no_party') { showToast('小队为空，请先在英雄页编队上阵！', 'warning'); return; }
     if (outcome.failure === 'wounded') { showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error'); return; }
-    // 战斗开始：将结算结果传给父组件，由父组件负责播放动画（避免 EncounterPanel 卸载时丢失状态）
+    // 战斗开始：将结算结果与关卡模型传给父组件，由全屏 BattleModal 负责展示
     if (outcome.settlement) {
-      onFight(outcome.settlement, event.title);
+      // 战斗型里程碑：胜利完成待办
+      if (outcome.settlement.battle.victory && isMilestoneEncounter && milestoneRegionId) {
+        setState(prev => completePendingMilestone(prev, milestoneRegionId));
+      }
+      const encounterLevel: LevelConfig = {
+        id: encounterId,
+        name: event.title,
+        staminaCost,
+        enemies: battleConfig.enemies,
+        drops: []
+      };
+      onFight(outcome.settlement, event.title, encounterLevel);
     }
   };
 
@@ -520,10 +681,10 @@ const EncounterPanel: React.FC<{
       <p className="text-[9px] text-zinc-400 leading-relaxed">{event.description}</p>
       <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-          敌人：{battleConfig.enemies.map(e => e.name).join('、')}
+          敌人：{battleConfig.enemies.map(id => ENEMY_CONFIGS[id]?.name || id).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-          掉落：{battleConfig.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')}
+          掉落：{battleConfig.drops.flatMap(d => d.kind === 'weighted' ? d.pool.map(p => ITEMS_CONFIG[p.itemId]?.name || p.itemId) : [ITEMS_CONFIG[d.itemId]?.name || d.itemId]).join('、')}
         </span>
         <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{battleConfig.expReward}/英雄</span>
       </div>
@@ -563,354 +724,207 @@ const EncounterPanel: React.FC<{
         >
           <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />迎战！（体力 -{staminaCost}）
         </button>
-        <button
-          onClick={handleFlee}
-          className="px-3 py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 cursor-pointer active:scale-98"
-        >
-          <Flag className="w-3 h-3 inline-block mr-1 -mt-0.5" />撤离
-        </button>
+        {!isMilestoneEncounter && (
+          <button
+            onClick={handleFlee}
+            className="px-3 py-2 rounded-xl text-[11px] font-black transition-all border border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 cursor-pointer active:scale-98"
+          >
+            <Flag className="w-3 h-3 inline-block mr-1 -mt-0.5" />撤离
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-// === 战斗挂机面板（ticket 05）：选区 → 三人小队轮询回合制自动战斗 ===
-const CombatPanel: React.FC = () => {
-  const { state, startCombat, startBossBattle, startIdle, stopIdle } = useGame();
+// === 战斗面板（combat-ui ticket 02/05）：关卡方块网格 + 关卡详情弹窗 + 挂机监控看板 ===
+const CombatPanel: React.FC<{
+  selectedRegionId: string;
+  onOpenRegionSelector: () => void;
+  onStartBattle: (battle: { regionId: string; levelId: string; level: LevelConfig; settlement: CombatSettlement }) => void;
+}> = ({ selectedRegionId, onOpenRegionSelector, onStartBattle }) => {
+  const { state, startLevelCombat, startLevelIdle } = useGame();
   const { showToast } = useToast();
+
+  const [combatMode, setCombatMode] = useState<'active' | 'idle'>('active');
+  const [selectedLevel, setSelectedLevel] = useState<LevelConfig | null>(null);
+  const [idleSummary, setIdleSummary] = useState<IdleSummaryData | null>(null);
 
   const stamina = Math.floor(state.stamina || 0);
   const maxStamina = state.maxStamina || COMBAT_CONFIG.maxStamina;
   const staminaPct = Math.min(100, Math.round((stamina / (maxStamina || 1)) * 100));
-  const party = (state.party || []).filter(id => !!state.heroes[id]);
-  const anyWounded = party.some(id => state.heroes[id].wounded);
-  const settlement = state.combat?.lastSettlement || null;
-  const clearedZones = state.combat?.zonesCleared || [];
-  // 羁绊加成（ticket 09）：当前上阵队伍命中的羁绊
-  const activeBonds = getActiveBonds(state.party || []);
-  // 挂机（ticket 08 + 修复 09）：在线也持续自动战斗
   const idle = state.combat?.idle || null;
-  const idleZone = idle?.zoneId ? COMBAT_ZONES[idle.zoneId] : null;
+  const idleRegionId = idle?.regionId ?? null;
+  const idleLevelId = idle?.levelId ?? null;
+  const isIdling = !!(idleRegionId && idleLevelId);
 
-  // 本次点击开战/BOSS 产生的新结算（ticket 21 用户反馈 1/2）：
-  // 历史 lastSettlement 静态展示不自动播放；只有新战斗才播放动画，播完后再提示奖励
-  // source：'manual'（手动开战，播完弹 toast）/ 'idle'（挂机结算自动播放，不弹 toast 避免打扰）
-  const [pendingSettlement, setPendingSettlement] = useState<{
-    settlement: CombatSettlement;
-    isBoss: boolean;
-    wasCleared: boolean;
-    seq: number;
-    source: 'manual' | 'idle';
-    zoneName: string;
-  } | null>(null);
-  const pendingSeqRef = useRef(0);
+  const selectedRegion = getRegion(selectedRegionId) || getMainlineRegions()[0];
+  const regionUnlocked = isRegionUnlocked(state, selectedRegion.id, 'combat');
 
-  // 挂机自动播放回放（修复 09：挂机每场结算自动播放动画，战斗过程实时可见，与手动开战一致）
-  const lastSettlementRef = useRef<CombatSettlement | null>(state.combat?.lastSettlement || null);
-  useEffect(() => {
-    const s = state.combat?.lastSettlement || null;
-    const idleZoneId = state.combat?.idle?.zoneId;
-    if (idleZoneId && s && s !== lastSettlementRef.current) {
-      // 挂机新结算（引用变化）→ 自动播放该场回放
-      setPendingSettlement({
-        settlement: s,
-        isBoss: false,
-        wasCleared: true,
-        seq: ++pendingSeqRef.current,
-        source: 'idle',
-        zoneName: COMBAT_ZONES[idleZoneId]?.name || '战斗区域'
-      });
-    }
-    lastSettlementRef.current = s;
-  }, [state.combat?.lastSettlement, state.combat?.idle?.zoneId]);
-
-  const handleStart = (zoneId: string) => {
-    const outcome = startCombat(zoneId);
-    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
+  const handleStart = (regionId: string, levelId: string) => {
+    const outcome = startLevelCombat(regionId, levelId);
+    if (outcome.failure === 'locked') showToast('关卡尚未解锁，先通关上一关卡或区域！', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
+    else if (outcome.failure === 'unknown_level') showToast('未知战斗关卡。', 'error');
     else if (outcome.settlement) {
-      // 奖励提示延迟到动画播完（onComplete）再弹，避免"先提示后播放"
-      setPendingSettlement({ settlement: outcome.settlement, isBoss: false, wasCleared: false, seq: ++pendingSeqRef.current, source: 'manual', zoneName: COMBAT_ZONES[zoneId]?.name || '战斗区域' });
-      // 手动结算已由手动流程消费：同步引用，挂机监听 effect 不会误判为挂机结算
-      lastSettlementRef.current = outcome.settlement;
+      const lvl = getLevel(regionId, levelId);
+      if (lvl) {
+        onStartBattle({
+          regionId,
+          levelId,
+          level: lvl,
+          settlement: outcome.settlement
+        });
+      }
     }
   };
 
-  const handleStartIdle = (zoneId: string) => {
-    const outcome = startIdle(zoneId);
-    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
+  const handleStartIdle = (regionId: string, levelId: string) => {
+    const outcome = startLevelIdle(regionId, levelId);
+    if (outcome.failure === 'locked') showToast('关卡尚未通关，无法开启挂机。', 'warning');
     else if (outcome.failure === 'no_stamina') showToast('体力不足，无法开启挂机（需 ≥ 一场战斗的体力）。', 'error');
     else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
     else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.failure === 'already_idling') showToast('已在其他区域挂机中，请先停止当前挂机。', 'warning');
-    else if (outcome.failure === 'unknown_zone') showToast('未知战斗区域。', 'error');
-    else showToast('挂机已开启：将自动持续战斗，体力耗尽自动停止。', 'success');
-  };
-
-  const handleStopIdle = () => {
-    if (stopIdle()) showToast('⏹ 挂机已停止，剩余体力保留。', 'info');
-  };
-
-  const handleBoss = (zoneId: string) => {
-    const outcome = startBossBattle(zoneId);
-    if (outcome.failure === 'locked') showToast('区域尚未解锁，先通关上一区域！', 'warning');
-    else if (outcome.failure === 'no_stamina') showToast('体力不足，请等待体力随时间恢复后再战。', 'error');
-    else if (outcome.failure === 'no_party') showToast('小队为空，请先在英雄页编队上阵！', 'warning');
-    else if (outcome.failure === 'wounded') showToast('小队有重伤英雄，请先用纳米修复剂治愈！', 'error');
-    else if (outcome.settlement) {
-      const wasCleared = clearedZones.includes(zoneId);
-      setPendingSettlement({ settlement: outcome.settlement, isBoss: true, wasCleared, seq: ++pendingSeqRef.current, source: 'manual', zoneName: COMBAT_ZONES[zoneId]?.name || '战斗区域' });
-      // 手动结算已由手动流程消费：同步引用，挂机监听 effect 不会误判为挂机结算
-      lastSettlementRef.current = outcome.settlement;
+    else if (outcome.failure === 'already_idling') showToast('已在其他关卡挂机中，请先停止当前挂机。', 'warning');
+    else if (outcome.failure === 'unknown_level') showToast('未知战斗关卡。', 'error');
+    else if (outcome.ok) {
+      showToast('挂机已开启：将自动持续战斗，体力耗尽自动停止。', 'success');
     }
-  };
-
-  // 播放完成后再弹奖励/结果提示（ticket 21 用户反馈 2：先播放动画，播完再提示）
-  const handlePlaybackComplete = () => {
-    if (!pendingSettlement) return;
-    const { settlement: s, isBoss, wasCleared, source } = pendingSettlement;
-    // 挂机结算自动播放：不弹 toast（每 20 秒一场，弹窗会打扰），动画本身就是战斗过程反馈；
-    // 播完清空 pendingSettlement，回放区回落历史静态展示（避免停止挂机后永久卡在完成态）
-    if (source === 'idle') {
-      setPendingSettlement(null);
-      return;
-    }
-    if (s.battle.victory) {
-      if (isBoss) showToast(wasCleared ? 'BOSS 再战胜利！专属掉落已入账。' : '首通 BOSS！区域已通关，解锁下一区域。', 'success');
-      else showToast('战斗胜利！战利品与经验已入账。', 'success');
-    }
-    else if (s.battle.partyWiped) showToast(isBoss ? 'BOSS 战失败，小队全员重伤，需纳米修复剂治愈！' : '战斗失败，小队全员重伤，需纳米修复剂治愈！', 'error');
-    else showToast('战斗平局，未分胜负。', 'info');
   };
 
   return (
-    <div className="space-y-4">
-      {/* 体力条 */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1">
-            <Swords className="w-3.5 h-3.5 text-rose-400" /> 战斗体力
-          </span>
-          <span className="text-[10px] font-bold text-emerald-400">{stamina}/{maxStamina}</span>
+    <div className="space-y-3">
+      {/* 战斗体力监控栏（自适应拉伸进度条） */}
+      <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3.5 flex items-center justify-between gap-4 shadow">
+        <div className="shrink-0">
+          <div className="text-[11px] text-zinc-400 font-bold">战斗体力</div>
+          <div className="text-sm font-black text-emerald-400 font-mono">
+            {stamina} / {maxStamina}
+          </div>
         </div>
-        <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-900">
+        <div className="flex-1 bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-800">
           <div
             className={`h-full transition-all duration-300 ${staminaPct < 20 ? 'bg-red-500' : 'bg-emerald-500'}`}
             style={{ width: `${staminaPct}%` }}
           />
         </div>
-        <span className="text-[8px] text-zinc-600 font-bold">每 {COMBAT_CONFIG.staminaRegenSeconds} 秒恢复 1 点，战斗消耗后随时间自动回满。</span>
       </div>
 
-      {/* 挂机状态（ticket 08 + 修复 09）：开启后在线/离线均持续推进战斗 */}
-      {idleZone && (
-        <div className="bg-zinc-900/60 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black text-amber-300 flex items-center gap-1.5">
-            <Timer className="w-3.5 h-3.5 text-amber-300" /> 挂机中：<GameIcon type="zone" id={idleZone.id} className="w-3.5 h-3.5" />{idleZone.name}
-            {idle?.startTime && (
-              <span className="text-[8px] font-bold text-amber-500/80">
-                自 {new Date(idle.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 起
-              </span>
-            )}
-            <span className="text-[8px] font-bold text-amber-500/80">在线自动持续战斗；体力不足时等待恢复，耗尽后自动停止。</span>
-          </span>
-          <button
-            onClick={handleStopIdle}
-            className="shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98"
-          >
-            <Square className="w-3 h-3 inline-block mr-1 -mt-0.5" />停止挂机
-          </button>
-        </div>
-      )}
-
-      {/* 当前上阵小队 */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Swords className="w-3.5 h-3.5" /> 上阵小队（{party.length}/{COMBAT_CONFIG.partySize}）</span>
-        {party.length === 0 ? (
-          <span className="text-[9px] text-zinc-600 font-bold">小队为空 —— 请前往英雄页编队（至少上阵 1 名英雄）。</span>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {party.map(id => {
-              const cfg = HEROES_CONFIG[id];
-              const hero = state.heroes[id];
-              if (!cfg || !hero) return null;
-              return (
-                <span key={id} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-                  hero.wounded
-                    ? 'border-red-500/40 bg-red-950/40 text-red-400'
-                    : `border-zinc-700 bg-zinc-950/60 text-zinc-300`
-                }`}>
-                  <GameIcon type="hero" id={cfg.id} className="w-3.5 h-3.5 inline-block mr-0.5" />{cfg.name} Lv.{hero.level}
-                  {hero.wounded && '（重伤）'}
-                </span>
-              );
-            })}
-            {anyWounded && (
-              <span className="text-[8px] text-red-400 font-bold w-full">小队有重伤英雄，战斗被禁止，请先在英雄页治愈。</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 羁绊加成（ticket 09）：队伍满足组合/阵营条件即触发，战斗中数值生效 */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1.5">
-        <span className="text-[10px] font-black text-zinc-200 flex items-center gap-1.5"><Handshake className="w-3.5 h-3.5" /> 羁绊加成</span>
-        {party.length === 0 ? (
-          <span className="text-[9px] text-zinc-600 font-bold">上阵英雄后查看羁绊触发状态。</span>
-        ) : activeBonds.length === 0 ? (
-          <span className="text-[9px] text-zinc-600 font-bold">当前队伍未触发羁绊——凑齐特定英雄组合或同阵营英雄可激活加成。</span>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {activeBonds.map(bond => (
-              <span
-                key={bond.id}
-                title={bond.description}
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-300"
-              >
-                <Handshake className="w-3 h-3 inline-block mr-1 -mt-0.5" />{bond.name}：{formatModifiers(bond.bonus)}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 最近一次战斗结算：新战斗播放动画；历史结算静态展示不自动播放（ticket 21 用户反馈 1） */}
-      {pendingSettlement ? (
-        <CombatPlaybackView
-          key={`pending-${pendingSettlement.seq}`}
-          settlement={pendingSettlement.settlement}
-          zoneName={pendingSettlement.zoneName}
-          autoPlay
-          onComplete={handlePlaybackComplete}
+      {isIdling && idleRegionId && idleLevelId ? (
+        /* 挂机中监控看板视图（IdleCombatWidget） */
+        <IdleCombatWidget
+          regionId={idleRegionId}
+          levelId={idleLevelId}
+          onStop={(summary) => {
+            if (summary) {
+              setIdleSummary(summary);
+            }
+            setCombatMode('idle');
+          }}
         />
       ) : (
-        settlement && (
-          <CombatPlaybackView
-            key={`history-${settlement.battle.rounds}|${settlement.battle.actions.length}|${settlement.battle.victory}|${settlement.battle.partyWiped}`}
-            settlement={settlement}
-            zoneName={COMBAT_ZONES[state.combat?.zoneId || '']?.name || '战斗区域'}
-            autoPlay={false}
-          />
-        )
-      )}
-
-      {/* 战斗区域列表 */}
-      <h3 className="text-[10px] uppercase font-bold tracking-widest text-zinc-550 px-1">选择战斗区域（线性递进，通关当前区解锁下一区）:</h3>
-      <div className="flex flex-col gap-3">
-        {ALL_COMBAT_ZONES.map(zone => {
-          const unlocked = isZoneUnlocked(state, zone.id);
-          const cleared = clearedZones.includes(zone.id);
-          const zoneIdx = ALL_COMBAT_ZONES.findIndex(z => z.id === zone.id);
-          const prevZone = zoneIdx > 0 ? ALL_COMBAT_ZONES[zoneIdx - 1] : null;
-          const insufficient = !unlocked || stamina < zone.staminaCost || party.length === 0 || anyWounded;
-          const bossReady = unlocked && party.length > 0 && !anyWounded && stamina >= zone.boss.staminaCost;
-          // 挂机（ticket 08 + 修复 09）：在线也持续自动战斗；仅已通关区域可挂机（线性递进刷材料）
-          const idleActiveHere = idle?.zoneId === zone.id;
-          const idlingElsewhere = !!idle?.zoneId && idle.zoneId !== zone.id;
-          const idleDisabled = !cleared || party.length === 0 || anyWounded || stamina < zone.staminaCost || idlingElsewhere;
-          return (
-            <div
-              key={zone.id}
-              className={`p-4 rounded-3xl border transition-all flex flex-col gap-2 ${
-                !unlocked
-                  ? 'bg-zinc-950/30 border-zinc-800/50 opacity-60'
-                  : insufficient || idleActiveHere
-                    ? 'bg-zinc-950/40 border-zinc-800/60 opacity-70'
-                    : 'bg-zinc-950/70 border-rose-500/20 hover:border-rose-500/50 hover:bg-zinc-900/30 cursor-pointer active:scale-[0.99]'
-              }`}
-              onClick={() => !insufficient && !idleActiveHere && handleStart(zone.id)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                    <GameIcon type="zone" id={zone.id} className="w-4 h-4" />{zone.name}
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-400">
-                      推荐 Lv.{zone.recommendedLevel}
-                    </span>
-                    {cleared && (
-                      <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-emerald-500/40 bg-emerald-950/40 text-emerald-400">
-                        <Check className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />已通关
-                      </span>
-                    )}
-                    {!unlocked && (
-                      <span className="text-[8px] font-bold px-1 py-0.5 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-500">
-                        <Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />未解锁
-                      </span>
-                    )}
-                  </h4>
-                  <p className="text-[10px] text-zinc-500 mt-1 leading-normal">{zone.description}</p>
-                </div>
-                <div className="flex flex-col gap-1.5 shrink-0">
-                  <button
-                    disabled={insufficient || idleActiveHere}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                      insufficient || idleActiveHere
-                        ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 border-rose-400/30 text-white cursor-pointer'
-                    }`}
-                  >
-                    {idleActiveHere ? '挂机中…' : `开战（体力 -${zone.staminaCost}）`}
-                  </button>
-                  <button
-                    disabled={!idleActiveHere && idleDisabled}
-                    onClick={(e) => { e.stopPropagation(); if (idleActiveHere) handleStopIdle(); else handleStartIdle(zone.id); }}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                      idleActiveHere
-                        ? 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40 cursor-pointer active:scale-98'
-                        : idleDisabled
-                          ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400/30 text-white cursor-pointer active:scale-98'
-                    }`}
-                  >
-                    {idleActiveHere ? '停止挂机' : '开始挂机'}
-                  </button>
-                </div>
-              </div>
-              {!unlocked && prevZone && (
-                <span className="text-[8px] text-zinc-600 font-bold"><Lock className="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5" />通关【{prevZone.name}】后解锁</span>
-              )}
-              <div className="flex flex-wrap gap-1 text-[8px] font-bold text-zinc-500">
-                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  敌人：{zone.enemies.map(e => e.name).join('、')}
-                </span>
-                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">
-                  掉落：{zone.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.soulEchoMin}-{zone.soulEchoMax}
-                </span>
-                <span className="px-1 py-0.5 rounded border border-zinc-800 bg-zinc-950/60">经验 ×{zone.expReward}/英雄</span>
-              </div>
-
-              {/* 关底 BOSS（ticket 07：击败 = 通关本区，复用同一战斗场景） */}
-              <div className={`flex items-center justify-between gap-2 rounded-xl border p-2 ${
-                !unlocked ? 'border-zinc-800/60 bg-zinc-950/40' : 'border-purple-500/25 bg-purple-950/25'
-              }`}>
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-[9px] font-black text-purple-300 truncate">
-                    <Crown className="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-amber-300" />关底 BOSS：<GameIcon type="enemy" id={zone.boss.enemies[0].id} className="w-3 h-3 inline-block" />{zone.boss.name}
+        /* 常规战斗选关面板 */
+        <>
+          {/* 当前战斗区域卡片（全卡片可点击，对齐原型简洁呈现） */}
+          <div
+            data-testid="combat-region-card"
+            onClick={onOpenRegionSelector}
+            className="p-3.5 bg-zinc-950/80 border border-zinc-700/60 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-500/50 transition-all shadow group"
+          >
+            <div className="text-left">
+              <div className="text-[10px] text-zinc-500 font-bold">当前战斗区域</div>
+              <div className="text-sm font-black text-zinc-100 flex items-center gap-1.5">
+                <GameIcon type="zone" id={selectedRegion.id} className="w-4 h-4" />
+                {selectedRegion.name}
+                {!regionUnlocked && (
+                  <span className="text-[9px] bg-red-950/60 text-red-400 border border-red-800/40 px-1.5 py-0.5 rounded font-bold">
+                    待解锁
                   </span>
-                  <span className="text-[8px] text-zinc-500 font-bold truncate">
-                    专属掉落：{zone.boss.drops.map(d => `${ITEMS_CONFIG[d.itemId]?.name || d.itemId}`).join('、')} · 灵魂残响 {zone.boss.soulEchoMin}-{zone.boss.soulEchoMax} · 经验 ×{zone.boss.expReward}
-                  </span>
-                </div>
-                <button
-                  // 挂机中禁用挑战 BOSS（避免手动/挂机结算竞争，且挂机时不应手动开战）
-                  disabled={!bossReady || idleActiveHere || idlingElsewhere}
-                  onClick={(e) => { e.stopPropagation(); handleBoss(zone.id); }}
-                  className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                    bossReady
-                      ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 border-purple-400/30 text-white cursor-pointer'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                  }`}
-                >
-                  <Swords className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />挑战 BOSS（体力 -{zone.boss.staminaCost}）
-                </button>
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
+            <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              更换 ❯
+            </span>
+          </div>
+
+          {/* 模式切换开关：挑战 vs 挂机 */}
+          <div className="flex gap-2 text-xs font-bold">
+            <button
+              data-testid="combat-mode-active-btn"
+              onClick={() => setCombatMode('active')}
+              className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
+                combatMode === 'active'
+                  ? 'bg-rose-600/30 border-rose-500/50 text-rose-300'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              挑战
+            </button>
+            <button
+              data-testid="combat-mode-idle-btn"
+              onClick={() => setCombatMode('idle')}
+              className={`flex-1 h-8.5 rounded-xl flex items-center justify-center font-bold transition-all border cursor-pointer ${
+                combatMode === 'idle'
+                  ? 'bg-amber-600/30 border-amber-500/50 text-amber-300'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              挂机
+            </button>
+          </div>
+
+          {/* 关卡列表网格 */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-bold text-zinc-400 px-1 flex justify-between items-center">
+              <span>
+                {combatMode === 'active'
+                  ? '关卡列表（点击关卡查看详情）'
+                  : '关卡列表（点击已通关关卡开启挂机）'}
+              </span>
+              {!regionUnlocked && (
+                <span className="text-red-400 font-normal text-[10px]">
+                  区域待解锁 · 关卡封锁中
+                </span>
+              )}
+            </div>
+
+            <LevelBrowser
+              regionId={selectedRegionId}
+              mode={combatMode}
+              onSelectLevel={(lvl) => setSelectedLevel(lvl)}
+            />
+          </div>
+
+          {/* 关卡详情弹窗 */}
+          <LevelDetailModal
+            isOpen={!!selectedLevel}
+            regionId={selectedRegionId}
+            level={selectedLevel}
+            mode={combatMode}
+            onClose={() => setSelectedLevel(null)}
+            onConfirm={(regionId, levelId) => {
+              if (combatMode === 'active') {
+                handleStart(regionId, levelId);
+              } else {
+                handleStartIdle(regionId, levelId);
+              }
+            }}
+          />
+        </>
+      )}
+
+      {/* 挂机停止汇总结算弹窗 */}
+      <IdleSummaryModal
+        isOpen={!!idleSummary}
+        summary={idleSummary}
+        onClose={() => {
+          setIdleSummary(null);
+          setCombatMode('idle');
+        }}
+      />
     </div>
   );
 };

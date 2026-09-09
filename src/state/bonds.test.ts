@@ -1,23 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, BattleResult } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG, HERO_FACTION_LABELS } from '../data/heroes';
-import { BONDS } from '../data/bonds';
+import type { BattleResult } from '../types/game';
+import { createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_FACTION_LABELS } from '../configs/constants/heroDisplay';
+import { BONDS } from '../configs/loaders/progression.loader';
+
+
 import { formatModifiers } from './statSystem';
 import type { HeroFaction } from '../types/game';
 import { getActiveBonds, aggregateBonus } from './bonds';
-import { heroToCombatant, simulateBattle, startBossBattleUpdate, startCombatUpdate } from './combat';
-import { COMBAT_ZONES } from '../data/combatZones';
+import { heroToCombatant, enemyConfigToEntity, simulateBattle } from './combat';
+import { entityStats } from './battleEntity';
 
-const makeState = (overrides?: Partial<GameState>): GameState => ({
-  ...INITIAL_STATE,
-  ...overrides
-});
-
-const owned = (ids: string[], party: string[]): Partial<GameState> => ({
-  heroes: Object.fromEntries(ids.map(id => [id, createInitialHero(id)])),
-  party
-});
+const makeEnemy = (id: string, name: string, hp: number, attack: number) =>
+  enemyConfigToEntity({
+    id,
+    name,
+    kind: 'enemy',
+    role: 'normal',
+    faction: 'nightmare',
+    baseAttributes: { attack, defense: 0, maxHp: hp }
+  });
 
 describe('Bond data (羁绊表数据驱动配置)', () => {
   it('has at least 2 example bonds, each with id/name/description and a numeric bonus', () => {
@@ -105,39 +108,23 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
       { stat: 'defense', kind: 'percent', value: 0.10 },
       { stat: 'maxHp', kind: 'percent', value: 0.10 }
     ]);
-    expect(boosted.attack).toBe(Math.round((HEROES_CONFIG.nova.baseAttributes.attack + HEROES_CONFIG.nova.primaryAttributes.strength * 2) * 1.1)); // 54（含元属性折算）
-    expect(boosted.defense).toBe(12); // round((8 + 体质 3) × 1.1)
-    expect(boosted.maxHp).toBe(143); // round((100 + 体质 3×10) × 1.1)
+    expect(entityStats(boosted).attack).toBe(Math.round((HEROES_CONFIG.nova.baseAttributes.attack + HEROES_CONFIG.nova.primaryAttributes.strength * 2) * 1.1)); // 54（含元属性折算）
+    expect(entityStats(boosted).defense).toBe(12); // round((8 + 体质 3) × 1.1)
+    expect(entityStats(boosted).maxHp).toBe(143); // round((100 + 体质 3×10) × 1.1)
     expect(boosted.hp).toBe(143); // 当前血量同比例缩放
     // 无加成时保持元属性折算后的值（回归）
     const plain = heroToCombatant('nova', nova);
-    expect(plain.attack).toBe(49); // 35 + 力量 7×2
-    expect(plain.maxHp).toBe(130); // 100 + 体质 3×10
-  });
-
-  it('startCombatUpdate: hero-combo bond boosts damage in the actual battle', () => {
-    const zone = COMBAT_ZONES.wasteland_entrance;
-    const state = makeState({
-      ...owned(['nova', 'roy'], ['nova', 'roy']),
-      stamina: 100
-    });
-    const { result } = startCombatUpdate(state, zone.id);
-    // 机械搭档：诺娃攻击 54（含元属性），首击伤害 54 - 敌防 3 = 51
-    expect(result.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 51 });
-
-    // 对照组：单诺娃无羁绊 → 49 - 3 = 46
-    const solo = makeState({ ...owned(['nova'], ['nova']), stamina: 100 });
-    const { result: soloOutcome } = startCombatUpdate(solo, zone.id);
-    expect(soloOutcome.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 46 });
+    expect(entityStats(plain).attack).toBe(49); // 35 + 力量 7×2
+    expect(entityStats(plain).maxHp).toBe(130); // 100 + 体质 3×10
   });
 
   it('faction bond (奥术共鸣) maxHp bonus is effective in battle simulation', () => {
     // 敌方每回合造成 5 点伤害（攻击 20 - 艾拉防御 15，含体质折算）：
     // 155hp 无加成 → 第 31 回合阵亡；+10% 生命（171hp）→ 第 35 回合阵亡（撑得更久）
     const healer = createInitialHero('healer');
-    const enemy = { id: 'e', name: '强敌', hp: 9999, maxHp: 9999, attack: 20, defense: 0 };
+    const enemy = makeEnemy('e', '强敌', 9999, 20);
     const lastEnemyHit = (r: BattleResult) =>
-      Math.max(...r.actions.filter(a => a.actorSide === 'enemy' && a.kind === 'attack').map(a => a.round));
+      Math.max(...r.events.filter(e => e.key === 'attackAfter' && e.sourceId === 'e').map(e => e.round));
     const without = simulateBattle([heroToCombatant('healer', healer)], [enemy]);
     const withBond = simulateBattle([heroToCombatant('healer', healer, [{ stat: 'maxHp', kind: 'percent', value: 0.10 }])], [enemy]);
     expect(without.partyWiped).toBe(true);
@@ -152,23 +139,8 @@ describe('Bond combat application (羁绊在战斗中生效)', () => {
     const bonus = aggregateBonus(party);
     expect(bonus).toEqual([{ stat: 'maxHp', kind: 'percent', value: 0.10, source: '奥术共鸣' }]);
     const combatant = heroToCombatant('mei', createInitialHero('mei'), bonus);
-    expect(combatant.maxHp).toBe(176); // (120 + 体质 4×10) × 1.1
+    expect(entityStats(combatant).maxHp).toBe(176); // (120 + 体质 4×10) × 1.1
     expect(combatant.hp).toBe(176);
   });
-
-  it('startBossBattleUpdate: bond bonus applies on the boss battle path too', () => {
-    const zone = COMBAT_ZONES.wasteland_entrance;
-    const state = makeState({
-      ...owned(['nova', 'roy'], ['nova', 'roy']),
-      stamina: 100
-    });
-    const { result } = startBossBattleUpdate(state, zone.id);
-    // 机械搭档：诺娃 54 - BOSS 防 5 = 49
-    expect(result.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 49 });
-
-    // 对照组：单诺娃无羁绊 → 49 - 5 = 44
-    const solo = makeState({ ...owned(['nova'], ['nova']), stamina: 100 });
-    const { result: soloOutcome } = startBossBattleUpdate(solo, zone.id);
-    expect(soloOutcome.settlement?.battle.actions[0]).toMatchObject({ actorId: 'nova', damage: 44 });
-  });
 });
+

@@ -1,8 +1,8 @@
 // 统一配方定义（ticket 01：手动/自动共享同一类型，字段统一 cost/reward；
 // name/description 已删除，显示文案从产出物完全推导，见 state/workshop.ts 辅助函数）
-import type { ItemCategory } from '../data/items';
-import type { FacilityType } from '../data/facilities';
-import type { LucideIcon } from 'lucide-react';
+import type { ItemCategory } from '../configs/types/item.types';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import type { GameArt } from '../configs/types/art.types';
 
 export interface CropConfig {
   id: string;
@@ -36,7 +36,7 @@ export interface UpgradePath {
   description: string;
   category: 'base' | 'facility';
   effectLabel: string;          // Label describing the effect (e.g. "离线最大挂机续航时间")
-  icon?: LucideIcon;                  // 图标组件引用（同 HEROES_CONFIG.icon，经 GameIcon 注册表渲染）
+  icon?: GameArt;                     // 装配后解析（json icon 字符串 → artMap），经 GameIcon 渲染
   unlockRequirements?: UnlockRequirement[];  // 解锁条件（满足后才在列表中显示）
   levels: UpgradeLevel[];       // 等级表（单一真相源）；最高等级由 levels 推导（getMaxUpgradeLevel）
 }
@@ -45,6 +45,7 @@ export interface Recipe {
   id: string;
   cost: Record<string, number>;    // 材料消耗（原自动侧 input 统一为此字段）
   reward: Record<string, number>;  // 产出物品（原自动侧 output 统一为此字段）
+  energyCost?: number;             // 魔能消耗/批（玩家属性，非材料）：不参与驻守原料折扣；手动 ×count、自动按批扣/退同价
   special?: 'capsule_charge'; // 特殊效果标记（温室扩展坞已迁移至后勤基建，不再作为合成配方）
   capsuleTarget?: string;          // 充能的胶囊 ID
   capsuleAmount?: number;          // 充能数量

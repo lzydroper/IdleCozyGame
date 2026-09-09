@@ -1,0 +1,24 @@
+{
+  "id": "catherine",
+  "name": "凯瑟琳",
+  "description": "前辐射防治所主任，常年镇守边陲、熟悉梦魇的侵蚀手段。",
+  "icon": "entities/heroes/catherine.png",
+  "kind": "hero",
+  "heroClass": "guardian",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 150,
+    "attack": 15,
+    "defense": 15
+  },
+  "primaryAttributes": {
+    "strength": 2,
+    "constitution": 6,
+    "agility": 3,
+    "intelligence": 5,
+    "willpower": 6,
+    "transcendence": 1
+  },
+  "starter": false,
+  "order": 3
+}

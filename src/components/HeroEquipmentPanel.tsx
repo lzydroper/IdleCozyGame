@@ -2,20 +2,15 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import type { EquipmentSlot } from '../types/game';
-import {
-  EQUIPMENT_CONFIG,
-  EQUIPMENT_SETS,
-  EQUIPMENT_SLOTS,
-  EQUIPMENT_SLOT_LABELS,
-  ENHANCE_MAX,
-  enhanceCost,
-  FORGE_COST
-} from '../data/equipment';
-import { ITEMS_CONFIG } from '../data/items';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS } from '../configs/loaders/equipment.loader';
+import { EQUIPMENT_SLOTS, EQUIPMENT_SLOT_LABELS, ENHANCE_MAX, enhanceCost, FORGE_COST } from '../configs/constants/equipmentConstants';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
 import GameIcon from './GameIcon';
 import { SLOT_ICON_MAP } from './iconMaps';
 import { Backpack, Hammer } from 'lucide-react';
 import { getEquippedItemStats, getSetEnhanceProgress } from '../state/equipment';
+import { detectCompleteSet, resolveHeroSetPassive } from '../state/setPassive';
 import { formatModifiers } from '../state/statSystem';
 
 // 英雄装备面板（ticket 10）：3 槽穿戴 / 强化（上限 +30）/ 神话锻造 / 套装特效进度
@@ -248,6 +243,30 @@ const HeroEquipmentPanel: React.FC<{ heroId: string }> = ({ heroId }) => {
               </div>
             );
           })}
+          {/* 套装被动（heroes-skills B4）：穿齐同系列且该系列有定义时展示 */}
+          {(() => {
+            const complete = detectCompleteSet(equip);
+            if (!complete) {
+              const setDef = EQUIPMENT_SLOTS.map(s => equip[s]).find(Boolean);
+              const setId = setDef ? EQUIPMENT_CONFIG[setDef.itemId]?.set : null;
+              if (!setId || !EQUIPMENT_SETS[setId]?.passiveSkills?.length) return null;
+              return (
+                <p className="text-[8px] text-fuchsia-400/60 font-bold">
+                  集齐【{EQUIPMENT_SETS[setId].name}】三件可激活套装被动。
+                </p>
+              );
+            }
+            const passive = resolveHeroSetPassive(equip);
+            const def = (EQUIPMENT_SETS[complete.setId].passiveSkills ?? [])[0];
+            if (!def || !passive) return null;
+            const strengthPct = Math.round(((def.enhanceGrowth ?? 0) * complete.minEnhance) * 100);
+            return (
+              <p className="text-[8px] text-fuchsia-300 font-bold leading-relaxed">
+                套装被动【{passive.name}】已激活 —— 强度按最低强化件 +{complete.minEnhance} 计
+                {strengthPct > 0 ? `（数值 +${strengthPct}%）` : ''}。
+              </p>
+            );
+          })()}
         </div>
       )}
       {!hasAnyGear && (

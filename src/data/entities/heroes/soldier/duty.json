@@ -1,0 +1,10 @@
+{
+  "bonuses": [
+    {
+      "scope": {
+        "kind": "all"
+      },
+      "costReduction": 0.15
+    }
+  ]
+}

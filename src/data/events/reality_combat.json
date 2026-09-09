@@ -1,0 +1,139 @@
+{
+  "mutant_beast": {
+    "id": "mutant_beast",
+    "title": "荒野变异犬",
+    "description": "一只皮毛脱落、双眼赤红的变异野狗突然从断墙后窜了出来，呲着钢针般的獠牙对你低吼。它看起来极度饥饿，正准备把你当成美餐。",
+    "type": "combat",
+    "weight": 60,
+    "choices": {
+      "A": {
+        "text": "用魔能震荡击退 (魔能-8)",
+        "results": {
+          "stats": {
+            "energy": -8
+          },
+          "items": {
+            "ration": 2
+          },
+          "logText": "你激发魔导枪发出一记震荡波。怪兽哀鸣着被击飞，垂死挣扎撕破了防化服。你割下了两份尚能食用的异兽肉。"
+        }
+      },
+      "B": {
+        "text": "丢出诱饵强制逃跑 (需口粮x1)",
+        "requirements": {
+          "ration": 1
+        },
+        "results": {
+          "items": {
+            "ration": -1
+          },
+          "logText": "你迅速从怀里掏出一包口粮扔了过去。野狗扑向食物，你趁机飞快地逃离了现场。"
+        }
+      }
+    }
+  },
+  "bat_swarm": {
+    "id": "bat_swarm",
+    "title": "变异蝠群袭击",
+    "description": "头顶突然传来刺耳的尖啸声，一大群双眼泛着红光的变异蝙蝠从废弃高楼的窗口倾巢而出，如同一片乌云般向你俯冲袭来，尖锐的利爪和獠牙在昏暗中闪烁寒光。",
+    "type": "combat",
+    "weight": 60,
+    "choices": {
+      "A": {
+        "text": "释放魔能冲击波驱散 (魔能-10)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "aether_pulp": 2,
+            "mana_dust": 1
+          },
+          "logText": "你大喝一声释放出环形的魔能冲击波，蝠群被震得七零八落在地上抽搐。你在蝙蝠巢穴下发现了它们囤积的以太果肉和魔能之尘。"
+        }
+      },
+      "B": {
+        "text": "匍匐隐蔽等待离开 (需口粮x1)",
+        "requirements": {
+          "ration": 1
+        },
+        "results": {
+          "items": {
+            "ration": -1,
+            "dream_shard": 1
+          },
+          "logText": "你迅速趴进一处浅沟，用口粮的包装袋盖住头部。蝠群在头顶呼啸而过，你侥幸躲过一劫。惊吓之余，你的精神力意外凝结出一块梦境碎片。"
+        }
+      }
+    }
+  },
+  "wasteland_bandits": {
+    "id": "wasteland_bandits",
+    "title": "废土劫匪埋伏",
+    "description": "三个衣衫褴褛但装备精良的劫匪从废墟后跳了出来，手中的电磁步枪已经充能完毕。其中为首者咧嘴露出黄牙：'过路费，小子。留下物资，饶你一命！'",
+    "type": "combat",
+    "weight": 60,
+    "choices": {
+      "A": {
+        "text": "先发制人反击 (魔能-8)",
+        "results": {
+          "stats": {
+            "energy": -8
+          },
+          "items": {
+            "scrap_metal": 3,
+            "ration": 1,
+            "mana_dust": 1,
+            "stimpack": 1
+          },
+          "logText": "你以迅雷之势轰出一记魔能震荡，三个劫匪被打了个措手不及。虽然你挂了彩，但他们的破烂物资和战利品中的一支废土肾上腺素现在都是你的了。"
+        }
+      },
+      "B": {
+        "text": "交出买路钱求和 (需废金属x3)",
+        "requirements": {
+          "scrap_metal": 3
+        },
+        "results": {
+          "items": {
+            "scrap_metal": -3
+          },
+          "logText": "你咬咬牙把三块废铁扔了过去。劫匪满意地捡起物资，吹着口哨散去。虽然安全了，但丢了三块好铁还是让你心痛不已。"
+        }
+      }
+    }
+  },
+  "giant_worm": {
+    "id": "giant_worm",
+    "title": "地下巨蠕虫",
+    "description": "脚下地面突然剧烈震动，你前方的地表轰然炸裂——一条卡车般粗壮的沙灰色巨蠕虫破土而出，张开布满螺旋利齿的巨口朝你扑来！它的体表流淌着诡异的岩浆纹路。",
+    "type": "combat",
+    "weight": 60,
+    "choices": {
+      "A": {
+        "text": "全速逃离现场 (饱食-10, 理智-6)",
+        "results": {
+          "stats": {
+            "food": -10,
+            "sanity": -6
+          },
+          "logText": "你头也不回地狂奔，身后巨蠕虫的嘶吼声震耳欲聋。跑出半公里后动静终于平息，你瘫坐在地上大口喘气，心理留下了不小的阴影。"
+        }
+      },
+      "B": {
+        "text": "部署炮塔诱捕击杀 (需防御炮塔x1)",
+        "requirements": {
+          "defensive_turret": 1
+        },
+        "results": {
+          "items": {
+            "defensive_turret": -1,
+            "magma_core": 1,
+            "aether_pulp": 3
+          },
+          "logText": "你迅速部署便携防御炮塔并后撤。炮塔开火的轰鸣和巨蠕虫的哀嚎交织在一起。战斗结束，你从虫尸残骸中挖出了一块熔岩核心碎片和多团以太果肉——一场豪赌般的收获！"
+        }
+      }
+    }
+  }
+}

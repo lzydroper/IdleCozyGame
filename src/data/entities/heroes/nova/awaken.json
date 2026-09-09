@@ -1,0 +1,10 @@
+{
+  "awakenedName": "觉醒·诺娃",
+  "passive": [
+    {
+      "stat": "attack",
+      "kind": "percent",
+      "value": 0.1
+    }
+  ]
+}

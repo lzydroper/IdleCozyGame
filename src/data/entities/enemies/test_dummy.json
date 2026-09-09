@@ -1,0 +1,13 @@
+{
+  "id": "test_dummy",
+  "name": "测试靶机",
+  "description": "军备测试场中的靶机。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "mechanical",
+  "baseAttributes": {
+    "maxHp": 10,
+    "attack": 1,
+    "defense": 0
+  }
+}

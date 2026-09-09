@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { INITIAL_STATE } from '../data/initialState';
-import { CROPS_CONFIG } from '../data/crops';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
 import {
   resolveWatererBonuses,
   autoHarvestAndReplantUpdate,

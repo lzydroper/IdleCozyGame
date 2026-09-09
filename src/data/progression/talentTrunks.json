@@ -1,0 +1,193 @@
+{
+  "guardian": [
+    {
+      "id": "trunk_guardian_bulwark",
+      "name": "钢铁壁垒",
+      "maxLevel": 3,
+      "effect": [
+        {
+          "stat": "maxHp",
+          "kind": "percent",
+          "value": 0.03
+        }
+      ],
+      "pos": {
+        "row": 0,
+        "col": 0
+      },
+      "children": [
+        "trunk_guardian_bedrock"
+      ]
+    },
+    {
+      "id": "trunk_guardian_bedrock",
+      "name": "磐石身躯",
+      "maxLevel": 3,
+      "effect": [
+        {
+          "stat": "defense",
+          "kind": "percent",
+          "value": 0.02
+        }
+      ],
+      "pos": {
+        "row": 1,
+        "col": 0
+      },
+      "requires": [
+        "trunk_guardian_bulwark"
+      ],
+      "children": [
+        "trunk_guardian_commander"
+      ]
+    },
+    {
+      "id": "trunk_guardian_commander",
+      "name": "战场统帅",
+      "maxLevel": 2,
+      "effect": [
+        {
+          "stat": "maxHp",
+          "kind": "percent",
+          "value": 0.02
+        },
+        {
+          "stat": "defense",
+          "kind": "percent",
+          "value": 0.01
+        }
+      ],
+      "pos": {
+        "row": 2,
+        "col": 0
+      },
+      "requires": [
+        "trunk_guardian_bedrock"
+      ]
+    }
+  ],
+  "attacker": [
+    {
+      "id": "trunk_attacker_edge",
+      "name": "锋芒毕露",
+      "maxLevel": 3,
+      "effect": [
+        {
+          "stat": "attack",
+          "kind": "percent",
+          "value": 0.03
+        }
+      ],
+      "pos": {
+        "row": 0,
+        "col": 0
+      },
+      "children": [
+        "trunk_attacker_flurry"
+      ]
+    },
+    {
+      "id": "trunk_attacker_flurry",
+      "name": "连环攻势",
+      "maxLevel": 3,
+      "effect": [
+        {
+          "stat": "attack",
+          "kind": "percent",
+          "value": 0.02
+        }
+      ],
+      "pos": {
+        "row": 1,
+        "col": 0
+      },
+      "requires": [
+        "trunk_attacker_edge"
+      ],
+      "children": [
+        "trunk_attacker_armor_break"
+      ]
+    },
+    {
+      "id": "trunk_attacker_armor_break",
+      "name": "破甲重击",
+      "maxLevel": 2,
+      "effect": [
+        {
+          "stat": "attack",
+          "kind": "percent",
+          "value": 0.03
+        }
+      ],
+      "pos": {
+        "row": 2,
+        "col": 0
+      },
+      "requires": [
+        "trunk_attacker_flurry"
+      ]
+    }
+  ],
+  "conductor": [
+    {
+      "id": "trunk_conductor_resonance",
+      "name": "心灵共鸣",
+      "maxLevel": 3,
+      "effect": [
+        {
+          "stat": "maxHp",
+          "kind": "percent",
+          "value": 0.02
+        }
+      ],
+      "pos": {
+        "row": 0,
+        "col": 0
+      },
+      "children": [
+        "trunk_conductor_inspire"
+      ]
+    },
+    {
+      "id": "trunk_conductor_inspire",
+      "name": "鼓舞士气",
+      "maxLevel": 3,
+      "effect": [
+        {
+          "stat": "attack",
+          "kind": "percent",
+          "value": 0.02
+        }
+      ],
+      "pos": {
+        "row": 1,
+        "col": 0
+      },
+      "requires": [
+        "trunk_conductor_resonance"
+      ],
+      "children": [
+        "trunk_conductor_chord"
+      ]
+    },
+    {
+      "id": "trunk_conductor_chord",
+      "name": "守护和弦",
+      "maxLevel": 2,
+      "effect": [
+        {
+          "stat": "defense",
+          "kind": "percent",
+          "value": 0.02
+        }
+      ],
+      "pos": {
+        "row": 2,
+        "col": 0
+      },
+      "requires": [
+        "trunk_conductor_inspire"
+      ]
+    }
+  ]
+}

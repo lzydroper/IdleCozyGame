@@ -1,0 +1,122 @@
+[
+  {
+    "id": "equipment_test_zone_1",
+    "name": "靶机",
+    "enemies": [
+      "test_dummy"
+    ],
+    "staminaCost": 0,
+    "drops": [
+      {
+        "kind": "fixed",
+        "itemId": "wasteland_weapon",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "wasteland_armor",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "wasteland_trinket",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "dreamveil_weapon",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "dreamveil_armor",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "dreamveil_trinket",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "enhance_stone",
+        "count": 40
+      },
+      {
+        "kind": "fixed",
+        "itemId": "blueprint_ember_armory",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 2
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 35
+      }
+    ]
+  },
+  {
+    "id": "equipment_test_zone_2",
+    "name": "测试领主",
+    "enemies": [
+      "test_boss"
+    ],
+    "staminaCost": 10,
+    "drops": [
+      {
+        "kind": "fixed",
+        "itemId": "ember_weapon",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "ember_armor",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "ember_trinket",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "starcore_weapon",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "starcore_armor",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "starcore_trinket",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "arcane_orb",
+        "count": 1
+      },
+      {
+        "kind": "fixed",
+        "itemId": "enhance_stone",
+        "count": 100
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 3
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 75
+      }
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "id": "equipment_test_zone",
+  "name": "军备测试场 (测试专用)",
+  "description": "【测试专享区域】战斗胜利后 100% 掉落废土、余烬、幽梦、星核全套装备及大量强化魔晶，方便全方位测试装备系统。",
+  "order": 99,
+  "recommendedLevel": 99,
+  "isTestZone": true,
+  "enemyPool": [
+    "test_dummy",
+    "test_boss"
+  ],
+  "explorationEvents": [],
+  "explorationStepsToClear": 0,
+  "explorationMilestones": []
+}

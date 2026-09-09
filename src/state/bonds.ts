@@ -1,5 +1,6 @@
-import { BONDS } from '../data/bonds';
-import { HEROES_CONFIG } from '../data/heroes';
+import { BONDS } from '../configs/loaders/progression.loader';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+
 import type { HeroFaction } from '../types/game';
 import type { StatModifier } from './statSystem';
 

@@ -6,7 +6,7 @@ import { GameProvider, useGame } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import SummonTab from './SummonTab';
 import HeroTab from './HeroTab';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

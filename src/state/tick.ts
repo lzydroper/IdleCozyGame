@@ -1,24 +1,30 @@
 import type { GameState, LogEntry } from '../types/game';
-import type { FacilityType } from '../data/facilities';
-import { AUTO_RECIPES } from '../data/autoRecipes';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+import { findRegionExpedition } from './regionSelectors';
+import { SHELTER_UPGRADES } from '../configs/loaders/shelter.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+
 import { processFacility, resolveDutyBonus, resolveShelterUpgrades } from './facility';
 import { autoHarvestAndReplantUpdate, maybeStopAutoFarmOnSeedDepletion, resolveWatererBonuses } from './greenhouse';
 import type { ReplantStrategy } from './greenhouse';
 import { resolveDutyBonuses } from './duty';
 import { getRecipeName } from './workshop';
-import { EXPEDITION_LOCATIONS } from '../data/expeditionLocations';
-import { CROPS_CONFIG } from '../data/crops';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { ITEMS_CONFIG } from '../data/items';
-import { HEROES_CONFIG } from '../data/heroes';
-import { GAME_CONSTANTS } from '../data/gameConstants';
-import { COMBAT_CONFIG } from '../data/combatConfig';
-import { COMBAT_ZONES } from '../data/combatZones';
-import { recoverStamina, settleIdleUpdate } from './combat';
+
+import { rollDropEntries } from './dropEngine';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
+
+
+
+import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
+import { recoverStaminaByTime } from './stamina';
+import { settleLevelIdleUpdate } from './levelCombat';
+import { pushIdleFeed, pushIdleFeedLines, setLastIdleStop } from './idleFeed';
 
 interface TickLogEntry {
   text: string;
-  type: 'event' | 'logistics' | 'system';
+  type: 'event' | 'logistics' | 'system' | 'combat';
 }
 
 // 游戏全局 Tick：推进发电机/回收站/温室/流水线/挂机探索/天数
@@ -26,7 +32,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   // 13 号 R3 + 04 号 04b：无活跃系统且无需推进时返回原引用（React setState bailout，消除每秒整树重渲染）。
   // 活跃系统 = 发电机/回收站/温室作物/流水线设施/挂机探索/梦魇冻结；另需推进天数。
   // 体力每 staminaRegenSeconds 秒恢复 1 点：仅当体力**跨整点**（floor 进位）时才需推进，
-  // 未跨整点的亚秒级恢复不触发渲染（recoverStamina 按 elapsedSeconds 累计，跳过不丢进度）。
+  // 未跨整点的亚秒级恢复不触发渲染（recoverStaminaByTime 按 elapsedSeconds 累计，跳过不丢进度）。
   const hasActiveSystems =
     prev.shelter.generatorLevel > 0 ||
     prev.shelter.recyclerLevel > 0 ||
@@ -34,18 +40,14 @@ export const applyTick = (prev: GameState, now: number): GameState => {
     Object.values(prev.shelter.facilities).some(units => units.some(u => u.recipeId != null)) || // 产线单任务进行中
     Object.keys(prev.shelter.upgrades || {}).length > 0 || // 基建升级施工中：保证进度条每秒刷新
     (prev.shelter.expedition.locationId != null && prev.shelter.assignedExplorerId != null) ||
-    (prev.combat?.idle?.zoneId != null) ||
+    (prev.combat?.idle?.regionId != null) ||
     prev.activeAlert.type === 'dream_leak';
-  const staminaNotFull = (prev.stamina ?? 0) < (prev.maxStamina || COMBAT_CONFIG.maxStamina);
   const elapsedSeconds = Math.max(0, Math.floor((now - prev.lastTick) / 1000));
-  const nextStamina = recoverStamina(
-    prev.stamina ?? 0,
-    prev.maxStamina || COMBAT_CONFIG.maxStamina,
-    elapsedSeconds
-  );
-  const staminaCrossedInteger = Math.floor(nextStamina) > Math.floor(prev.stamina ?? 0);
+  const staminaRecovery = recoverStaminaByTime(prev, elapsedSeconds);
+  const staminaCrossedInteger = staminaRecovery.recoveredInt > 0;
+  const nextStamina = staminaRecovery.state.stamina ?? 0;
   const needsDayTick = now - prev.dayStartTime >= GAME_CONSTANTS.GAME_DAY_SECONDS * 1000;
-  if (!hasActiveSystems && !(staminaNotFull && staminaCrossedInteger) && !needsDayTick) {
+  if (!hasActiveSystems && !staminaCrossedInteger && !needsDayTick) {
     return prev;
   }
 
@@ -183,7 +185,7 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   let nextLastScavengeTime = exp.lastScavengeTime;
   let autoRecallExplorer = false;
   if (exp.locationId && prev.shelter.assignedExplorerId) {
-    const loc = EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = findRegionExpedition(exp.locationId);
     if (loc) {
       // 远征探索员加成（作用域化）：intervalReduction 缩短拾荒间隔，lootChanceBonus 提高掉落几率
       const explorerBonuses = resolveDutyBonuses(
@@ -197,11 +199,9 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       if (ticks > 0) {
         let scavengedCount: Record<string, number> = {};
         for (let t = 0; t < ticks; t++) {
-          loc.lootTable.forEach(loot => {
-            if (Math.random() <= Math.min(1, loot.chance + explorerBonuses.lootChanceBonus)) {
-              const qty = Math.floor(Math.random() * (loot.maxQty - loot.minQty + 1)) + loot.minQty;
-              scavengedCount[loot.itemId] = (scavengedCount[loot.itemId] || 0) + qty;
-            }
+          const rolled = rollDropEntries(loc.lootTable, Math.random, explorerBonuses.lootChanceBonus);
+          Object.entries(rolled).forEach(([itemId, qty]) => {
+            scavengedCount[itemId] = (scavengedCount[itemId] || 0) + qty;
           });
         }
 
@@ -286,14 +286,15 @@ export const applyTick = (prev: GameState, now: number): GameState => {
   }
 
   // 4.5. 挂机战斗在线推进（修复 09：在线也持续自动战斗，不再只在离线重连时结算）
-  const idleZoneId = prev.combat?.idle?.zoneId;
+  const idleRegionId = prev.combat?.idle?.regionId ?? null;
+  const idleLevelId = prev.combat?.idle?.levelId ?? null;
   const logsBeforeIdle = logsToAdd.length; // newLogs 已在挂机段之前构造，挂机日志需单独补入
   let finalCombat = prev.combat;
   let finalStamina = nextStamina;
   let finalInventory = currentInventory;
   let finalHeroes = updatedHeroes;
-  if (idleZoneId) {
-    const { state: afterIdle, result } = settleIdleUpdate(
+  if (idleRegionId && idleLevelId) {
+    const { state: afterIdle, result } = settleLevelIdleUpdate(
       { ...prev, stamina: finalStamina, inventory: finalInventory, heroes: finalHeroes, combat: prev.combat },
       elapsedSeconds,
       Math.random,
@@ -303,11 +304,36 @@ export const applyTick = (prev: GameState, now: number): GameState => {
       finalStamina = afterIdle.stamina;
       finalInventory = afterIdle.inventory;
       finalHeroes = afterIdle.heroes;
-      const zoneName = COMBAT_ZONES[idleZoneId]?.name || idleZoneId;
-      const stopText = result.autoStopped && result.stopReason === 'defeat'
-        ? '，小队战败全员重伤，挂机自动停止'
-        : '';
-      logsToAdd.push({ text: `挂机战斗：在【${zoneName}】战斗 ${result.battlesFought} 场（胜 ${result.victories}），掉落与经验已入账${stopText}。`, type: 'logistics' as const });
+
+      const logText = result.victories > 0
+        ? '战斗胜利！'
+        : result.defeats > 0
+        ? '战斗失败！小队全员重伤。'
+        : '战斗平局。';
+
+      logsToAdd.push({ text: logText, type: 'combat' as const });
+
+      // 单一生产者（combat-experience 01 / X1）：真实事件流展示行推入挂机 feed。
+      pushIdleFeedLines(result.feedLines);
+    }
+    if (result.autoStopped) {
+      // 战败/体力中断回顾数据（combat-experience 04 / O#5）：在 idle 被重置前捕获累计信息。
+      const stoppedIdle = prev.combat?.idle;
+      if (stoppedIdle) {
+        setLastIdleStop({
+          reason: result.stopReason === 'defeat' ? 'defeat' : 'stamina',
+          regionId: stoppedIdle.regionId ?? '',
+          levelId: stoppedIdle.levelId ?? '',
+          totalBattles: stoppedIdle.totalBattles || 0,
+          totalVictories: stoppedIdle.totalVictories || 0,
+          totalDrops: { ...(stoppedIdle.totalDrops || {}) },
+          totalSoulEchoes: stoppedIdle.totalSoulEchoes || 0
+        });
+      }
+      pushIdleFeed(
+        result.stopReason === 'defeat' ? '⏹ 挂机停止：小队战败重伤。' : '⏹ 挂机停止：体力不足。',
+        'system'
+      );
     }
     // 无论是否结算，都要保留最新 combat（idle.accumulatedSeconds 逐秒累计）
     finalCombat = afterIdle.combat;

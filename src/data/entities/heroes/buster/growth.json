@@ -1,0 +1,10 @@
+{
+  "levelMilestones": {
+    "10": {
+      "attack": 4
+    },
+    "25": {
+      "maxHp": 20
+    }
+  }
+}

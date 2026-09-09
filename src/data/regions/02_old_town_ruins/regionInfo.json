@@ -1,0 +1,32 @@
+{
+  "id": "old_town_ruins",
+  "name": "旧城废墟",
+  "description": "残破的旧城街区盘踞着拾荒匪徒与变异生物，废墟深处埋藏着可用的合金与魔能材料。",
+  "order": 2,
+  "recommendedLevel": 3,
+  "enemyPool": [
+    "ruin_scavenger",
+    "mutant_rat_elite",
+    "ruin_overlord"
+  ],
+  "explorationEvents": [
+    "abandoned_train",
+    "abandoned_cart",
+    "waste_pool",
+    "thorn_thicket",
+    "wasteland_bandits",
+    "bat_swarm",
+    "hydrological_station",
+    "wild_fruit",
+    "ancient_library",
+    "sandstorm",
+    "magnetic_storm",
+    "encounter_ruin_raiders"
+  ],
+  "explorationStepsToClear": 15,
+  "explorationMilestones": [],
+  "initialCost": {
+    "food": 10,
+    "energy": 10
+  }
+}

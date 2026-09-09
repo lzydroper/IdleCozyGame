@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
-import { ITEMS_CONFIG } from '../data/items';
-import { HEROES_CONFIG } from '../data/heroes';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+
 import { applyHeroExp } from '../state/combat';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import GameIcon from './GameIcon';
 import { X, Zap } from 'lucide-react';
 

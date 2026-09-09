@@ -3,19 +3,17 @@ import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
 import type { EquipmentSlot } from '../types/game';
-import {
-  EQUIPMENT_CONFIG,
-  EQUIPMENT_SETS,
-  EQUIPMENT_SLOT_LABELS
-} from '../data/equipment';
-import { ITEMS_CONFIG } from '../data/items';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS } from '../configs/loaders/equipment.loader';
+import { EQUIPMENT_SLOT_LABELS } from '../configs/constants/equipmentConstants';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 
 // 空背包默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，12 号收尾）
 const EMPTY_EQUIPMENT_INVENTORY: Record<string, unknown[]> = {};
 import { getEquippedItemStats } from '../state/equipment';
 import { formatModifiers } from '../state/statSystem';
-import { HEROES_CONFIG } from '../data/heroes';
-import { UI_TOKENS } from '../data/uiConstants';
+
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, Shield, Sword, Sparkles, PackageOpen } from 'lucide-react';
 import GameIcon from './GameIcon';
 

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { GameState, EquipmentSlot, DutyAssignment } from '../types/game';
-import type { FacilityType } from '../data/facilities';
-import { INITIAL_STATE } from '../data/initialState';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+
 import { supabase } from '../lib/supabase';
 import { isTestEnv } from '../state/env';
 import { getAccountsList, saveState, loadOrCreateState, createFreshState, createNewAccountState, createSaveThrottle, AUTO_SAVE_INTERVAL_MS } from '../state/persistence';
@@ -31,6 +32,14 @@ import { applyTick } from '../state/tick';
 import { summonUpdate, summonBatchUpdate, type SummonOutcome, type MultiSummonResult } from '../state/summon';
 import { consumeExpTomesUpdate } from '../state/combat';
 import {
+  startLevelCombatUpdate,
+  startLevelIdleUpdate,
+  stopLevelIdleUpdate,
+  type LevelCombatOutcome,
+  type LevelIdleStartOutcome,
+  type StopLevelIdleOutcome
+} from '../state/levelCombat';
+import {
   equipItemUpdate,
   unequipItemUpdate,
   enhanceItemUpdate,
@@ -52,19 +61,12 @@ import {
   type AwakenFailure
 } from '../state/awakening';
 import {
-  startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
   healWoundedHeroesUpdate,
   resolveEncounterBattleUpdate,
   fleeEncounterUpdate,
-  startBossBattleUpdate,
-  startIdleUpdate,
-  stopIdleUpdate,
-  type CombatOutcome,
-  type EncounterBattleOutcome,
-  type BossBattleOutcome,
-  type IdleStartOutcome
+  type EncounterBattleOutcome
 } from '../state/combat';
 import {
   defendDreamLeakUpdate,
@@ -118,16 +120,15 @@ interface GameContextType {
   starUpHero: (heroId: string) => StarUpFailure | true;
   awakenHero: (heroId: string) => AwakenFailure | true;
   levelUpWithTome: (heroId: string, count: number) => boolean;
-  startCombat: (zoneId: string) => CombatOutcome;
   setParty: (heroIds: string[]) => boolean;
   healWoundedHero: (heroId: string) => boolean;
   healWoundedHeroes: (heroIds: string[]) => boolean;
   resolveEncounterBattle: (encounterId: string) => EncounterBattleOutcome;
   fleeEncounter: () => boolean;
-  startBossBattle: (zoneId: string) => BossBattleOutcome;
   defendDreamLeak: (method: DreamLeakDefenseMethod) => DreamLeakDefenseOutcome;
-  startIdle: (zoneId: string) => IdleStartOutcome;
-  stopIdle: () => boolean;
+  startLevelCombat: (regionId: string, levelId: string) => LevelCombatOutcome;
+  startLevelIdle: (regionId: string, levelId: string) => LevelIdleStartOutcome;
+  stopLevelIdle: () => StopLevelIdleOutcome;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -659,15 +660,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  // === 战斗核心（ticket 05） ===
-  const startCombat = (zoneId: string): CombatOutcome => {
-    const r = startCombatUpdate(stateRef.current, zoneId);
-    if (r.state !== stateRef.current) {
-      setState(r.state);
-    }
-    return r.result;
-  };
-
+  // === 战斗核心（combat-level：区域/关卡由 startLevelCombat 驱动） ===
   const setParty = (heroIds: string[]): boolean => {
     const r = setPartyUpdate(stateRef.current, heroIds);
     if (r.state !== stateRef.current) {
@@ -708,14 +701,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  const startBossBattle = (zoneId: string): BossBattleOutcome => {
-    const r = startBossBattleUpdate(stateRef.current, zoneId);
-    if (r.state !== stateRef.current) {
-      setState(r.state);
-    }
-    return r.result;
-  };
-
   // === 梦魇泄露防御（ticket 14）：出战小队，炮塔可选辅助输出一轮 ===
   const defendDreamLeak = (method: DreamLeakDefenseMethod): DreamLeakDefenseOutcome => {
     const r = defendDreamLeakUpdate(stateRef.current, method);
@@ -725,17 +710,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return r.result;
   };
 
-  // === 确认式离线挂机（ticket 08） ===
-  const startIdle = (zoneId: string): IdleStartOutcome => {
-    const r = startIdleUpdate(stateRef.current, zoneId);
+  const startLevelCombat = (regionId: string, levelId: string): LevelCombatOutcome => {
+    const r = startLevelCombatUpdate(stateRef.current, regionId, levelId);
     if (r.state !== stateRef.current) {
       setState(r.state);
     }
     return r.result;
   };
 
-  const stopIdle = (): boolean => {
-    const r = stopIdleUpdate(stateRef.current);
+  const startLevelIdle = (regionId: string, levelId: string): LevelIdleStartOutcome => {
+    const r = startLevelIdleUpdate(stateRef.current, regionId, levelId);
+    if (r.state !== stateRef.current) {
+      setState(r.state);
+    }
+    return r.result;
+  };
+
+  const stopLevelIdle = (): StopLevelIdleOutcome => {
+    const r = stopLevelIdleUpdate(stateRef.current);
     if (r.state !== stateRef.current) {
       setState(r.state);
     }
@@ -813,16 +805,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetTalents,
       starUpHero,
       awakenHero,
-      startCombat,
       setParty,
       healWoundedHero,
       healWoundedHeroes,
       resolveEncounterBattle,
       fleeEncounter,
-      startBossBattle,
       defendDreamLeak,
-      startIdle,
-      stopIdle
+      startLevelCombat,
+      startLevelIdle,
+      stopLevelIdle
     }}>
 
       {children}

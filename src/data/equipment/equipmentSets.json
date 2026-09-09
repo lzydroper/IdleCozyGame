@@ -1,0 +1,80 @@
+{
+  "wasteland": {
+    "id": "wasteland",
+    "name": "废土系列",
+    "faction": "mechanical",
+    "factionLabel": "【机械】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.05 }] },
+      { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.08 }] },
+      { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.10 }] }
+    ],
+    "mythicAffix": [{ "stat": "attack", "kind": "percent", "value": 0.03 }],
+    "passiveSkills": [
+      {
+        "id": "wasteland_set_passive",
+        "enhanceGrowth": 0.01,
+        "ability": {
+          "id": "set_wasteland_bulwark",
+          "name": "废土壁垒",
+          "description": "废土系列共鸣：每回合开始时获得攻击强化，数值随套装最低强化件成长。",
+          "activation": "passive",
+          "passive": {
+            "triggers": [{ "unitRef": "target", "timing": "turnStart" }],
+            "effects": [
+              {
+                "kind": "statModify",
+                "params": {
+                  "modifier": {
+                    "value": { "kind": "flat", "value": 5 },
+                    "target": "stat.attack",
+                    "op": "add"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "ember": {
+    "id": "ember",
+    "name": "余烬系列",
+    "faction": "spirit",
+    "factionLabel": "【英灵】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.08 }] },
+      { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.10 }] },
+      { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.15 }] }
+    ],
+    "mythicAffix": [{ "stat": "maxHp", "kind": "percent", "value": 0.05 }]
+  },
+  "dreamveil": {
+    "id": "dreamveil",
+    "name": "幽梦系列",
+    "faction": "arcane",
+    "factionLabel": "【奥术】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.08 }] },
+      { "threshold": 20, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.10 }] },
+      { "threshold": 30, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.12 }] }
+    ],
+    "mythicAffix": [{ "stat": "defense", "kind": "percent", "value": 0.05 }]
+  },
+  "starcore": {
+    "id": "starcore",
+    "name": "星核系列",
+    "faction": "astral",
+    "factionLabel": "【星界】",
+    "tierEffects": [
+      { "threshold": 10, "bonus": [{ "stat": "attack", "kind": "percent", "value": 0.10 }] },
+      { "threshold": 20, "bonus": [{ "stat": "defense", "kind": "percent", "value": 0.12 }] },
+      { "threshold": 30, "bonus": [{ "stat": "maxHp", "kind": "percent", "value": 0.18 }] }
+    ],
+    "mythicAffix": [
+      { "stat": "attack", "kind": "percent", "value": 0.05 },
+      { "stat": "defense", "kind": "percent", "value": 0.05 }
+    ]
+  }
+}

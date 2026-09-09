@@ -1,0 +1,28 @@
+{
+  "durationKind": "temporary",
+  "stackIncrement": 1,
+  "removable": true,
+  "triggers": [
+    {
+      "unitRef": "target",
+      "timing": "turnStart"
+    }
+  ],
+  "effects": [
+    {
+      "params": {
+        "amount": {
+          "base": 30,
+          "baseOverrideValueKey": "amount",
+          "kind": "perStack"
+        }
+      },
+      "label": "burn_tick",
+      "targetRef": "holder",
+      "kind": "damage"
+    }
+  ],
+  "stack": true,
+  "renew": true,
+  "buffId": "burn"
+}

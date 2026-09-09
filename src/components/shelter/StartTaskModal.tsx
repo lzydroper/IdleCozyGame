@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { AUTO_RECIPES } from '../../data/autoRecipes';
-import { ITEMS_CONFIG } from '../../data/items';
-import { UI_TOKENS } from '../../data/uiConstants';
+import { AUTO_RECIPES } from '../../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import type { FacilityType } from '../../configs/types/gameplay.types';
+
+import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { getActualDuration, resolveDutyBonus, getMaxAffordableBatches, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeName, getRecipeDisplayName } from '../../state/workshop';
 import { formatDuration } from '../../utils/gameUtils';
-import type { FacilityType } from '../../data/facilities';
-import { X, Zap, Hammer } from 'lucide-react';
+
+import { X, Zap, Hammer, Battery } from 'lucide-react';
 
 // 生产弹窗（issue 08 变体 B）：配方选择 + 批次滑条（上限 = floor(材料 / 每批折扣成本)）
 // + 消耗 ×N / 产出 ×N 预览（每批产出含驻守产量加成）+「开始生产（扣除全部材料）」。
@@ -40,7 +42,9 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
   const yieldMult = bonuses.yieldMultiplier;
   const speedMult = bonuses.speedMultiplier;
 
-  const maxBatch = recipe ? getMaxAffordableBatches(recipe.id, state.inventory, costReduction) : 0;
+  const maxBatch = recipe
+    ? getMaxAffordableBatches(recipe.id, state.inventory, costReduction, state.player.energy)
+    : 0;
   const safeCount = Math.max(0, Math.min(count, maxBatch));
   const cycleTime = recipe ? getActualDuration(recipe.id, level, speedMult) : 0;
 
@@ -111,15 +115,24 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
               <div>
                 <h5 className="text-[9px] text-rose-500 font-bold uppercase tracking-wider mb-1">每批消耗（含驻守减免）:</h5>
                 <div className="flex flex-wrap gap-1">
-                  {Object.keys(perBatchCost).length === 0 ? (
+                  {Object.keys(perBatchCost).length === 0 && !recipe.energyCost ? (
                     <span className="text-[10px] text-zinc-600">无</span>
                   ) : (
-                    Object.entries(perBatchCost).map(([item, qty]) => (
-                      <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">
-                        <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
-                        {ITEMS_CONFIG[item]?.name || item} ×{qty * safeCount}
-                      </span>
-                    ))
+                    <>
+                      {Object.entries(perBatchCost).map(([item, qty]) => (
+                        <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">
+                          <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
+                          {ITEMS_CONFIG[item]?.name || item} ×{qty * safeCount}
+                        </span>
+                      ))}
+                      {/* 魔能消耗不吃驻守原料折扣，按原价 ×N 显示 */}
+                      {recipe.energyCost ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">
+                          <Battery className="w-3 h-3" />
+                          魔能 ×{recipe.energyCost * safeCount}
+                        </span>
+                      ) : null}
+                    </>
                   )}
                 </div>
               </div>
@@ -175,7 +188,7 @@ const StartTaskModal: React.FC<StartTaskModalProps> = ({ type, unitIndex, onClos
             disabled={maxBatch <= 0 || safeCount <= 0}
             className="w-full py-2.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-extrabold text-sm rounded-xl disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 cursor-pointer"
           >
-            开始生产（扣除全部材料）
+            开始生产（扣除全部材料{recipe?.energyCost ? '与魔能' : ''}）
           </button>
         </div>
       </div>

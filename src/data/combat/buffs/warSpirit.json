@@ -1,0 +1,30 @@
+{
+  "durationKind": "forever",
+  "stackIncrement": 0,
+  "triggers": [
+    {
+      "unitRef": "target",
+      "timing": "turnStart"
+    }
+  ],
+  "effects": [
+    {
+      "params": {
+        "modifier": {
+          "value": {
+            "kind": "livingEnemies",
+            "per": 1.5
+          },
+          "target": "stat.strength",
+          "op": "add"
+        }
+      },
+      "label": "war_spirit_recalc",
+      "targetRef": "holder",
+      "kind": "statModify"
+    }
+  ],
+  "stack": false,
+  "renew": false,
+  "buffId": "warSpirit"
+}

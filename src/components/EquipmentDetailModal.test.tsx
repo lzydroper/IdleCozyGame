@@ -6,7 +6,7 @@ import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
 
 const HERO_SAVE_KEY = 'aether_garden_save_Guest';
 

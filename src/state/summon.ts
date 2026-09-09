@@ -1,8 +1,10 @@
 import type { GameState } from '../types/game';
-import { HEROES_CONFIG } from '../data/heroes';
-import { createInitialHero } from '../data/initialState';
-import { SUMMON_CONFIG } from '../data/summonConfig';
-import { STAR_MAX } from '../data/awakening';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { createInitialHero } from '../configs/seed/initialState';
+import { STAR_MAX } from '../configs/constants/awakeningConstants';
+
+import { SUMMON_CONFIG } from '../configs/constants/summonConfig';
+
 import type { UpdateResult } from './types';
 
 export interface SummonOutcome {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE } from '../data/initialState';
-import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+import { NIGHTMARE_CONFIG } from '../configs/constants/nightmareConfig';
 import {
   defendDreamLeakUpdate,
   isDreamLockdownActive,

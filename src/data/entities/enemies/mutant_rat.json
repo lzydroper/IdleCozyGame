@@ -1,0 +1,13 @@
+{
+  "id": "mutant_rat",
+  "name": "变异鼠群",
+  "description": "成群的变异鼠。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 30,
+    "attack": 7,
+    "defense": 1
+  }
+}

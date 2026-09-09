@@ -10,7 +10,7 @@ import {
   getDerivedStatContributions,
   type DerivedStatKey
 } from '../state/statSystem';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 
 export interface DetailedStatsModalProps {
   isOpen: boolean;

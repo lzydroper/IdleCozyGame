@@ -1,0 +1,24 @@
+{
+  "id": "mei",
+  "name": "阿梅",
+  "description": "对变异植物了如指掌的农学家，以魔法作物滋养队伍。",
+  "icon": "entities/heroes/mei.png",
+  "kind": "hero",
+  "heroClass": "conductor",
+  "faction": "arcane",
+  "baseAttributes": {
+    "maxHp": 120,
+    "attack": 18,
+    "defense": 10
+  },
+  "primaryAttributes": {
+    "strength": 2,
+    "constitution": 4,
+    "agility": 3,
+    "intelligence": 8,
+    "willpower": 3,
+    "transcendence": 3
+  },
+  "starter": false,
+  "order": 5
+}

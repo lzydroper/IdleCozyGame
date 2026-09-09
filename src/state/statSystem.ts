@@ -13,7 +13,7 @@ import {
   DEFAULT_SPECIAL_ATTRIBUTES,
   PRIMARY_STAT_SCALING_CONFIG,
   BUFF_LIMIT_CONFIG
-} from '../data/statConfig';
+} from '../configs/constants/statConfig';
 
 export {
   DEFAULT_PRIMARY_ATTRIBUTES,
@@ -237,19 +237,24 @@ export function calculateEntityStats(params: CalculateStatsParams, modifiers: St
   const flatOf = (k: StatKey) => flatMods[k] ?? 0;
   const pctOf = (k: StatKey) => 1 + (percentMods[k] ?? 0);
 
-  const finalAttack = Math.max(0, (base.attack + extraAttack + flatOf('attack')) * pctOf('attack'));
-  const finalDefense = Math.max(0, (base.defense + extraDefense + flatOf('defense')) * pctOf('defense'));
-  const finalMaxHp = Math.max(1, (base.maxHp + extraMaxHp + flatOf('maxHp')) * pctOf('maxHp'));
-  const finalMaxMp = Math.max(0, (base.maxMp + extraMaxMp + flatOf('maxMp')) * pctOf('maxMp'));
-  const finalCritRate = Math.min(
+  // 浮点噪音清理：内容数值最多两三位小数，聚合乘加会累积 1e-13 级尾巴
+  // （如防御 14.280000000000001）。6 位精度足以清掉噪音且不触碰任何真实内容值；
+  // 战斗与全部 UI 共用本出口，显示与结算口径一致。
+  const tidy = (n: number): number => Number(n.toFixed(6));
+
+  const finalAttack = tidy(Math.max(0, (base.attack + extraAttack + flatOf('attack')) * pctOf('attack')));
+  const finalDefense = tidy(Math.max(0, (base.defense + extraDefense + flatOf('defense')) * pctOf('defense')));
+  const finalMaxHp = tidy(Math.max(1, (base.maxHp + extraMaxHp + flatOf('maxHp')) * pctOf('maxHp')));
+  const finalMaxMp = tidy(Math.max(0, (base.maxMp + extraMaxMp + flatOf('maxMp')) * pctOf('maxMp')));
+  const finalCritRate = tidy(Math.min(
     BUFF_LIMIT_CONFIG.MAX_CRIT_RATE,
     Math.max(BUFF_LIMIT_CONFIG.MIN_CRIT_RATE, (base.critRate + extraCritRate + flatOf('critRate')) * pctOf('critRate'))
-  );
-  const finalCritDmg = Math.max(BUFF_LIMIT_CONFIG.MIN_CRIT_DMG, (base.critDmg + extraCritDmg + flatOf('critDmg')) * pctOf('critDmg'));
+  ));
+  const finalCritDmg = tidy(Math.max(BUFF_LIMIT_CONFIG.MIN_CRIT_DMG, (base.critDmg + extraCritDmg + flatOf('critDmg')) * pctOf('critDmg')));
 
   // 特殊属性：同样应用 flat/percent（percent 加算、最终级 clamp ≥ 0）
   const calcSpecial = (key: keyof SpecialAttributes, extra = 0): number =>
-    Math.max(0, (special[key] + extra + flatOf(key)) * pctOf(key));
+    tidy(Math.max(0, (special[key] + extra + flatOf(key)) * pctOf(key)));
 
   // 百分比减伤公式: DamageReduction = DEF / (100 + DEF)
   const damageReduction = finalDefense / (100 + finalDefense);
@@ -261,11 +266,11 @@ export function calculateEntityStats(params: CalculateStatsParams, modifiers: St
     maxMp: finalMaxMp,
     critRate: finalCritRate,
     critDmg: finalCritDmg,
-    critResist,
-    damageReduction,
-    durationReduction,
-    effectReduction,
-    cooldownReduction,
+    critResist: tidy(critResist),
+    damageReduction: tidy(damageReduction),
+    durationReduction: tidy(durationReduction),
+    effectReduction: tidy(effectReduction),
+    cooldownReduction: tidy(cooldownReduction),
     primaryAttributes: effPrimary,
     specialAttributes: {
       arcaneBoost: calcSpecial('arcaneBoost', extraArcaneBoost),
@@ -344,7 +349,7 @@ export function getDerivedStatContributions(stats: CalculatedEntityStats): Deriv
   // coefficient 不设：非线性公式，无固定系数
   const damageReductionContributions: DerivedStatContribution[] = stats.defense > 0
     ? [{
-        source: '防御公式',
+        source: '防御',
         sourceValue: stats.defense,
         contribution: stats.damageReduction
       }]

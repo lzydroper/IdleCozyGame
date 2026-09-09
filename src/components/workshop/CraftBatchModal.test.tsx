@@ -4,8 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../../context/GameContext';
 import { ToastProvider } from '../ToastSystem';
 import CraftBatchModal from './CraftBatchModal';
-import { RECIPES_CONFIG } from '../../data/recipes';
-import { INITIAL_STATE } from '../../data/initialState';
+import { RECIPES_CONFIG } from '../../configs/loaders/workshop.loader';
+import { INITIAL_STATE } from '../../configs/seed/initialState';
 
 // 水合存档：材料充足（ticket 04 批量弹窗）
 const hydrate = (inventory: Record<string, number>) => {

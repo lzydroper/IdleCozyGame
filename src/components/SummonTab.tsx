@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { HEROES_CONFIG } from '../data/heroes';
-import { SUMMON_CONFIG } from '../data/summonConfig';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { SUMMON_CONFIG } from '../configs/constants/summonConfig';
 import type { SummonOutcome } from '../state/summon';
 import { useToast } from './ToastSystem';
 import {
@@ -264,9 +264,9 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
       {/* 召唤结果展示 Modal (Result Outcome) */}
       {resultOutcomes && resultOutcomes.length > 0 && (
-        <div className="absolute inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] max-h-[85vh] p-4 flex flex-col gap-3 shadow-2xl animate-in zoom-in-95 duration-200">
-            <header className="text-center">
+        <div className="absolute inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 select-none">
+          <div className="bg-zinc-900 border border-zinc-750 rounded-2xl w-[92%] max-w-[380px] h-[460px] max-h-[68vh] p-4 flex flex-col justify-between shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <header className="text-center shrink-0">
               <h3 className="text-sm font-black text-zinc-100 flex items-center justify-center gap-1.5">
                 <Sparkles className="w-4.5 h-4.5 text-amber-400" />
                 {resultOutcomes.length === 1 ? '招募获得' : `${resultOutcomes.length} 连招募获得`}
@@ -275,7 +275,13 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
             </header>
 
             {/* 结果列表网格 */}
-            <div className="w-full grid grid-cols-2 gap-2 max-h-72 overflow-y-auto p-1">
+            <div
+              className={`w-full flex-1 grid ${
+                resultOutcomes.length === 1
+                ? 'grid-cols-1 max-w-[140px] mx-auto'
+                : 'grid-cols-4'
+              } gap-2 overflow-y-auto content-start p-1 min-h-0 overscroll-contain`}
+            >
               {resultOutcomes.map((outcome, idx) => {
                 const config = outcome.heroId ? HEROES_CONFIG[outcome.heroId] : null;
 
@@ -283,11 +289,13 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                   return (
                     <div
                       key={idx}
-                      className="flex flex-col items-center p-2.5 rounded-xl bg-zinc-950/80 border border-amber-400/80 text-center"
+                      className="w-full aspect-square p-1.5 rounded-xl bg-zinc-950/80 border border-amber-400/80 text-center flex flex-col items-center justify-between select-none"
                     >
-                      <GameIcon type="item" id="arcane_orb" className="w-8 h-8 mb-1" />
-                      <span className="text-[11px] font-black text-amber-200">奥术星体 x1</span>
-                      <span className="text-[8px] font-bold text-purple-300">100抽全满星保底</span>
+                      <span className="text-[8px] font-bold text-purple-300">保底</span>
+                      <GameIcon type="item" id="arcane_orb" className="w-9 h-9 shrink-0" />
+                      <div className="w-full flex flex-col items-center leading-none">
+                        <span className="text-[10px] font-black text-amber-200 truncate max-w-full">奥术星体</span>
+                      </div>
                     </div>
                   );
                 }
@@ -296,48 +304,46 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
                   return (
                     <div
                       key={idx}
-                      className="flex flex-col items-center p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center"
+                      className="w-full aspect-square p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-center flex flex-col items-center justify-between select-none"
                     >
-                      <GameIcon type="item" id="resonance_shard" className="w-8 h-8 mb-1" />
-                      <span className="text-[11px] font-bold text-zinc-300">共鸣碎片 x{outcome.shardsGained}</span>
-                      <span className="text-[8px] text-zinc-500">通用碎片</span>
+                      {/* <span className="text-[8px] text-zinc-500">通用碎片</span> */}
+                      <GameIcon type="item" id="resonance_shard" className="w-9 h-9 shrink-0" />
+                      <div className="w-full flex flex-col items-center leading-none">
+                        <span className="text-[10px] font-bold text-zinc-300 truncate max-w-full">共鸣碎片 x{outcome.shardsGained}</span>
+                      </div>
                     </div>
                   );
                 }
 
-                // 重复英雄：碎片图标与背包一致（soul=专属碎片 shard_<hero>，resonance=通用共鸣碎片）
-                const shardIconId =
-                  outcome.shardType === 'soul' && outcome.heroId ? `shard_${outcome.heroId}` : 'resonance_shard';
-
                 return (
                   <div
                     key={idx}
-                    className={`flex flex-col items-center p-2.5 rounded-xl border relative overflow-hidden text-center ${
+                    className={`w-full aspect-square p-1.5 rounded-xl border relative flex flex-col items-center justify-between text-center select-none ${
                       outcome.isNew
-                        ? 'bg-zinc-950/80 border-amber-400'
+                        ? 'bg-zinc-950/90 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.25)]'
                         : 'bg-zinc-950/80 border-zinc-800'
                     }`}
                   >
                     {outcome.isNew && (
-                      <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-amber-950 text-[7px] font-black uppercase shadow">
+                      <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-amber-500 text-amber-950 text-[7px] font-black uppercase shadow z-10">
                         NEW!
                       </span>
                     )}
 
-                    <GameIcon type="hero" id={config.id} className="w-10 h-10 mb-1 rounded-xl" />
+                    <GameIcon type="hero" id={config.id} className="w-9 h-9 rounded-lg mt-0.5 shadow shrink-0" />
 
-                    <span className="text-[11px] font-black text-zinc-100 max-w-full truncate">
-                      {config.name}
-                    </span>
-
-                    {outcome.isNew ? (
-                      <span className="text-[8px] font-bold text-amber-400">解锁新英雄</span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[8px] font-bold text-purple-300 mt-0.5">
-                        <GameIcon type="item" id={shardIconId} className="w-3.5 h-3.5" />
-                        {outcome.shardType === 'soul' ? '碎片' : '共鸣'} x{outcome.shardsGained}
+                    <div className="w-full flex flex-col items-center leading-tight">
+                      <span className="text-[10px] font-black text-zinc-100 max-w-full truncate">
+                        {config.name}
                       </span>
-                    )}
+                      {outcome.isNew ? (
+                        <span className="text-[8px] font-bold text-amber-400 mt-0.5">解锁新英雄</span>
+                      ) : (
+                        <span className="text-[8px] font-bold text-purple-300 mt-0.5 truncate max-w-full">
+                          英雄碎片 x{outcome.shardsGained}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -345,7 +351,7 @@ const SummonTab: React.FC<SummonTabProps> = ({ isOpen, onClose }) => {
 
             <button
               onClick={() => setResultOutcomes(null)}
-              className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 font-black text-amber-950 text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 font-black text-amber-950 text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 mt-2"
             >
               <CheckCircle2 className="w-4 h-4 text-amber-950" />
               收下

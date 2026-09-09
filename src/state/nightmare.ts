@@ -1,7 +1,7 @@
 import type { BattleResult, GameState } from '../types/game';
-import { combatantFromSnapshot } from './combat';
-import { DEFAULT_BASE_ATTRIBUTES, DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
-import { NIGHTMARE_CONFIG } from '../data/nightmareConfig';
+import { enemyConfigToEntity } from './combat';
+import { NIGHTMARE_CONFIG } from '../configs/constants/nightmareConfig';
+import type { EnemyConfig } from '../configs/types/entity.types';
 import { simulateBattle, heroToCombatant } from './combat';
 import { aggregateBonus } from './bonds';
 import { addLogUpdate } from './logs';
@@ -66,18 +66,22 @@ export const defendDreamLeakUpdate = (
   let battle: BattleResult | null = null;
 
   if (nightmareHp > 0) {
-    // 梦魇也是战斗实体：与英雄/敌人同走统一实体原语（baseAttributes 缺省 = DEFAULT_BASE_ATTRIBUTES）
-    const nightmare = combatantFromSnapshot('dream_leak_nightmare', NIGHTMARE_CONFIG.leakName, {
+    // 梦魇也是战斗实体：与英雄/敌人同走统一实体配置（kind='enemy', role='nightmare'）。
+    // 泄露体的 maxHp 动态覆盖为当前警报血量，其余属性读 NIGHTMARE_CONFIG。
+    const nightmareEnemy: EnemyConfig = {
+      id: 'dream_leak_nightmare',
+      name: NIGHTMARE_CONFIG.leakName,
+      description: '梦境污染达到 100% 时逸出的梦魇实体。',
+      kind: 'enemy',
+      role: 'nightmare',
+      faction: 'nightmare',
       baseAttributes: {
-        ...DEFAULT_BASE_ATTRIBUTES,
         attack: NIGHTMARE_CONFIG.leakAttack,
         defense: NIGHTMARE_CONFIG.leakDefense,
         maxHp: nightmareHp
-      },
-      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
-      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
-      permanentModifiers: []
-    });
+      }
+    };
+    const nightmare = enemyConfigToEntity(nightmareEnemy);
     battle = simulateBattle(
       party.map(id => heroToCombatant(id, state.heroes[id], aggregateBonus(party), state.equipment?.[id] || null)),
       [nightmare]

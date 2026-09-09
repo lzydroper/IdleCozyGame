@@ -1,0 +1,21 @@
+[
+  {
+    "id": "hero_soldier_fortress",
+    "name": "阵地防御",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "defense",
+        "kind": "percent",
+        "value": 0.03
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "requires": [
+      "trunk_guardian_bulwark"
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "enhance_stone": {
+    "id": "enhance_stone",
+    "name": "强化魔晶",
+    "description": "蕴含精纯魔力的晶石，用于强化装备（工坊可合成，战斗掉落）。",
+    "icon": "diamond"
+  },
+  "blueprint_ember_armory": {
+    "id": "blueprint_ember_armory",
+    "name": "余烬军械图纸",
+    "description": "记载余烬系列装备锻造工艺的泛黄图纸，解锁后可于工坊合成。",
+    "icon": "scroll-text"
+  }
+}

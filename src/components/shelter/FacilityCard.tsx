@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { AUTO_RECIPES } from '../../data/autoRecipes';
-import { ITEMS_CONFIG } from '../../data/items';
-import { HEROES_CONFIG } from '../../data/heroes';
+import { AUTO_RECIPES } from '../../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import { HEROES_CONFIG } from '../../configs/loaders/entities.loader';
+import type { FacilityType } from '../../configs/types/gameplay.types';
+import { FACILITIES_CONFIG } from '../../configs/loaders/shelter.loader';
+
 import { getInvQty } from '../../utils/gameUtils';
 import { getActualDuration, resolveDutyBonus, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeDisplayName } from '../../state/workshop';
@@ -12,9 +15,8 @@ import DutyAssignModal from './DutyAssignModal';
 import StartTaskModal from './StartTaskModal';
 import CancelTaskModal from './CancelTaskModal';
 import type { AutomationFacility } from '../../types/game';
-import type { FacilityType } from '../../data/facilities';
-import { FACILITIES_CONFIG } from '../../data/facilities';
-import { TrendingUp, UserCog, Plus, XCircle } from 'lucide-react';
+
+import { TrendingUp, UserCog, Plus, XCircle, Battery } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // 共用子组件：配方消耗/产出展示行
@@ -297,6 +299,17 @@ function FacilityUnitCard({
                   getInvQty={(id) => getInvQty(state.inventory, id)}
                   accent="rose"
                 />
+                {/* 魔能消耗不吃驻守原料折扣，按原价显示 */}
+                {task.energyCost ? (
+                  <div className="flex items-center gap-1 text-[9px] text-zinc-300">
+                    <Battery className="w-2.5 h-2.5" />
+                    <span>魔能</span>
+                    <span className="font-bold">×{task.energyCost}</span>
+                    <span className={state.player.energy >= task.energyCost ? 'text-zinc-500' : 'text-rose-500'}>
+                      /{Math.floor(state.player.energy)}
+                    </span>
+                  </div>
+                ) : null}
                 <RecipeRow label="每批产出" items={task.reward} getInvQty={(id) => getInvQty(state.inventory, id)} accent="emerald" />
                 <div className="flex items-center gap-1 text-[8px] text-zinc-600 pt-0.5">
                   <TrendingUp className="w-2.5 h-2.5" />
@@ -334,12 +347,18 @@ export const FacilitySection: React.FC<{ type: FacilityType }> = ({ type }) => {
   const cfg = FACILITIES_CONFIG[type];
   if (!cfg) return null;
   const theme = FACILITY_THEMES[type] ?? DEFAULT_THEME;
-  const Icon = cfg.icon;
+  const art = cfg.icon; // GameArt：切图 URL 或 Lucide 组件（icon 单字段统一）
   return (
     <FacilityTypeSection
       type={type}
       theme={theme}
-      icon={<Icon className={`w-4 h-4 ${theme.accent}`} />}
+      icon={
+        art.kind === 'image' ? (
+          <img src={art.url} alt={cfg.name} draggable={false} className={`w-4 h-4 object-contain ${theme.accent}`} />
+        ) : (
+          <art.Icon className={`w-4 h-4 ${theme.accent}`} />
+        )
+      }
     />
   );
 };

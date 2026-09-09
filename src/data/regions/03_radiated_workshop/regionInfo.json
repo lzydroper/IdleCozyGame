@@ -1,0 +1,29 @@
+{
+  "id": "radiated_workshop",
+  "name": "辐射车间",
+  "description": "被辐射侵蚀的自动化车间，失控机器与畸变实验体在浓雾中游荡，产出高价值合金与等离子材料。",
+  "order": 3,
+  "recommendedLevel": 6,
+  "enemyPool": [
+    "radiation_mutant",
+    "rogue_machine",
+    "aberrant_subject",
+    "workshop_abomination"
+  ],
+  "explorationEvents": [
+    "broken_greenhouse",
+    "supply_crate",
+    "fungus_nest",
+    "giant_worm",
+    "abandoned_lab",
+    "old_bunker",
+    "hail_storm",
+    "encounter_workshop_horror"
+  ],
+  "explorationStepsToClear": 20,
+  "explorationMilestones": [],
+  "initialCost": {
+    "food": 10,
+    "energy": 10
+  }
+}

@@ -1,18 +1,81 @@
-import type { GameState, HeroEquipment, EquippedItem, AutomationFacility } from '../types/game';
-import type { FacilityType } from '../data/facilities';
-import { FACILITIES_CONFIG } from '../data/facilities';
+import type { GameState, HeroEquipment, EquippedItem, AutomationFacility, CombatSettlement, CombatIdleState } from '../types/game';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { FACILITIES_CONFIG } from '../configs/loaders/shelter.loader';
+import { AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+
 import { calculateDetailedOfflineProgress } from './offline';
 import { isTestEnv } from './env';
 import { getTalentNodes } from './talents';
 import { getActualDuration, getMaxUpgradeLevel } from './facility';
 import { isWearableEquipment } from './equipment';
-import { AUTO_RECIPES } from '../data/autoRecipes';
+
+import { EMPTY_IDLE_STATE } from './levelCombat';
 
 // 装备槽位归一化（ticket 10）：钳制强化等级 0-30、神话标记布尔化，防御损坏存档写入 NaN/非法值
 const normalizeSlot = (item: EquippedItem | null | undefined): EquippedItem | null => {
   if (!item || typeof item !== 'object') return null;
   const enhance = Number.isFinite(item.enhance) ? Math.min(Math.max(item.enhance, 0), 30) : 0;
   return { itemId: item.itemId, enhance, mythic: !!item.mythic };
+};
+
+// 挂机状态归一化（combat-offline ticket 04）：防损坏存档与坏数据，校验字段有效性
+const normalizeIdleState = (idle: unknown, fallback: CombatIdleState): CombatIdleState => {
+  if (!idle || typeof idle !== 'object') {
+    return fallback;
+  }
+  const i = idle as Record<string, unknown>;
+  const regionId = typeof i.regionId === 'string' && i.regionId ? i.regionId : null;
+  const levelId = typeof i.levelId === 'string' && i.levelId ? i.levelId : null;
+  if (!regionId || !levelId) {
+    return EMPTY_IDLE_STATE;
+  }
+
+  const startTime = typeof i.startTime === 'number' && Number.isFinite(i.startTime) ? i.startTime : null;
+  const accumulatedSeconds =
+    typeof i.accumulatedSeconds === 'number' && Number.isFinite(i.accumulatedSeconds)
+      ? Math.max(0, i.accumulatedSeconds)
+      : 0;
+  const totalBattles = typeof i.totalBattles === 'number' && Number.isFinite(i.totalBattles) ? Math.max(0, i.totalBattles) : 0;
+  const totalVictories = typeof i.totalVictories === 'number' && Number.isFinite(i.totalVictories) ? Math.max(0, i.totalVictories) : 0;
+  const totalDefeats = typeof i.totalDefeats === 'number' && Number.isFinite(i.totalDefeats) ? Math.max(0, i.totalDefeats) : 0;
+  const totalDraws = typeof i.totalDraws === 'number' && Number.isFinite(i.totalDraws) ? Math.max(0, i.totalDraws) : 0;
+  const totalSoulEchoes = typeof i.totalSoulEchoes === 'number' && Number.isFinite(i.totalSoulEchoes) ? Math.max(0, i.totalSoulEchoes) : 0;
+
+  const totalDrops: Record<string, number> = {};
+  if (i.totalDrops && typeof i.totalDrops === 'object') {
+    Object.entries(i.totalDrops as Record<string, unknown>).forEach(([k, v]) => {
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+        totalDrops[k] = Math.floor(v);
+      }
+    });
+  }
+
+  return {
+    regionId,
+    levelId,
+    startTime,
+    accumulatedSeconds,
+    totalBattles,
+    totalVictories,
+    totalDefeats,
+    totalDraws,
+    totalDrops,
+    totalSoulEchoes
+  };
+};
+
+/**
+ * 云端存档过滤（ADR-0020）：上传至 Supabase 前清空挂机运行时 combat.idle，
+ * 保证云端仅保留静态进度，挂机仅存在于本地运行时。
+ */
+export const sanitizeStateForCloud = (state: GameState): GameState => {
+  return {
+    ...state,
+    combat: {
+      ...state.combat,
+      idle: EMPTY_IDLE_STATE
+    }
+  };
 };
 
 // 天赋投入归一化（ticket 11）：仅保留该英雄树中的已知节点，等级钳制 0..maxLevel，防损坏存档
@@ -27,6 +90,14 @@ const normalizeTalents = (heroId: string, talents: Record<string, number> | unde
     }
   });
   return out;
+};
+
+// combat-turn：旧回放形状（actions/hpTrack）已删除；旧存档 lastSettlement 无法被事件流 UI 消费，直接丢弃。
+const normalizeLastSettlement = (settlement: CombatSettlement | null | undefined): CombatSettlement | null => {
+  if (!settlement || typeof settlement !== 'object') return null;
+  const battle = (settlement as { battle?: { events?: unknown } }).battle;
+  if (!battle || typeof battle !== 'object' || !Array.isArray(battle.events)) return null;
+  return settlement;
 };
 
 const isUuid = (str: string) => {
@@ -110,7 +181,12 @@ export const createSaveThrottle = (intervalMs: number): ((now: number) => boolea
 };
 
 export const saveState = (username: string, state: GameState): void => {
-  localStorage.setItem(getSaveKey(username), JSON.stringify(state));
+  // 体力浮点平滑自回（如 99.3333…），存档出口规范化两位小数保持整洁可读（combat-hygiene 01 / Offline #7）。
+  const payload: GameState =
+    typeof state.stamina === 'number' && Number.isFinite(state.stamina)
+      ? { ...state, stamina: Math.round(state.stamina * 100) / 100 }
+      : state;
+  localStorage.setItem(getSaveKey(username), JSON.stringify(payload));
 };
 
 // 新开局 / 无存档时的全新状态
@@ -308,6 +384,10 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   exploration: {
     ...initialState.exploration,
     ...(parsed.exploration || {}),
+    // combat-level 04/05：区域探索字段补默认值
+    realityRegionId: parsed.exploration && typeof parsed.exploration.realityRegionId === 'string' ? parsed.exploration.realityRegionId : null,
+    regionProgress: (parsed.exploration && parsed.exploration.regionProgress) || initialState.exploration.regionProgress,
+    pendingMilestones: (parsed.exploration && parsed.exploration.pendingMilestones) || initialState.exploration.pendingMilestones,
     // 梦境封锁（ticket 14）：旧存档缺失时回退未封锁
     dreamLockdownUntil:
       parsed.exploration && typeof parsed.exploration.dreamLockdownUntil === 'number'
@@ -363,13 +443,14 @@ export const mergeSavedState = (parsed: GameState, initialState: GameState): Gam
   combat: {
     ...initialState.combat,
     ...(parsed.combat || {}),
-    // 区域链通关记录：旧存档缺失时回退空列表
-    zonesCleared: (parsed.combat && parsed.combat.zonesCleared) || initialState.combat.zonesCleared,
-    // 离线挂机开关（ticket 08）：旧存档缺失时回退未挂机
-    idle: {
-      ...initialState.combat.idle,
-      ...((parsed.combat && parsed.combat.idle) || {})
-    }
+    // combat-level：新字段补默认值，不迁移旧 zone 字段
+    regionId: (parsed.combat && typeof parsed.combat.regionId === 'string') ? parsed.combat.regionId : null,
+    levelId: (parsed.combat && typeof parsed.combat.levelId === 'string') ? parsed.combat.levelId : null,
+    clearedLevels: (parsed.combat && parsed.combat.clearedLevels) || initialState.combat.clearedLevels,
+    // 旧回放（actions/hpTrack）已被事件流取代：无法消费的旧结算直接丢弃，防止战斗区黑屏
+    lastSettlement: normalizeLastSettlement(parsed.combat && parsed.combat.lastSettlement),
+    // 挂机状态归一化（combat-offline ticket 04）：旧存档或坏数据安全回退
+    idle: normalizeIdleState(parsed.combat?.idle, initialState.combat?.idle || EMPTY_IDLE_STATE)
   }
   };
 };

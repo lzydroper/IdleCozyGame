@@ -1,0 +1,84 @@
+[
+  {
+    "id": "hero_nova_overdrive",
+    "name": "过载引擎",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.02
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "gate": [
+      {
+        "type": "awakened"
+      },
+      {
+        "type": "talent",
+        "nodeId": "hero_nova_booster",
+        "operator": "equal",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "id": "hero_nova_booster",
+    "name": "澎湃激发",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "attack",
+        "kind": "percent",
+        "value": 0.02
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 2
+    },
+    "gate": [
+      {
+        "type": "awakened"
+      },
+      {
+        "type": "talent",
+        "nodeId": "hero_nova_overdrive",
+        "operator": "equal",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "id": "hero_nova_rewire",
+    "name": "电弧重构",
+    "maxLevel": 1,
+    "effect": [],
+    "pos": {
+      "row": 1,
+      "col": 3
+    },
+    "gate": [
+      { "type": "awakened" },
+      { "type": "talent", "nodeId": "hero_nova_overdrive", "operator": "equal", "value": 0 },
+      { "type": "talent", "nodeId": "hero_nova_booster", "operator": "equal", "value": 0 }
+    ],
+    "rewrites": [
+      {
+        "targetAbilityId": "nova_overcharge",
+        "priority": 6,
+        "description": "电弧重构：对生命最低的敌人造成 {attackPct} 攻击伤害。",
+        "effects": {
+          "0": { "kind": "damage", "params": { "amount": { "kind": "attack", "multiplier": 1.1 } } }
+        },
+        "descriptions": {
+          "0": "电弧重构后：对生命最低的敌人造成 110% 攻击伤害。"
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "id": "mutant_rat_elite",
+  "name": "变异鼠群",
+  "description": "旧城废墟中更凶悍的变异鼠群。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 35,
+    "attack": 8,
+    "defense": 1
+  }
+}

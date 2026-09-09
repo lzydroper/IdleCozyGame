@@ -1,0 +1,20 @@
+{
+  "bonuses": [
+    {
+      "scope": {
+        "kind": "greenhouse"
+      },
+      "yieldMultiplier": 0.25
+    },
+    {
+      "scope": {
+        "kind": "greenhouse",
+        "cropIds": [
+          "aether_berry"
+        ]
+      },
+      "yieldMultiplier": 0.1,
+      "speedMultiplier": 0.15
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import ExpLevelUpModal from './ExpLevelUpModal';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

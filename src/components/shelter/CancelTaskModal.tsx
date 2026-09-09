@@ -2,14 +2,16 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
-import { AUTO_RECIPES } from '../../data/autoRecipes';
-import { ITEMS_CONFIG } from '../../data/items';
-import { UI_TOKENS } from '../../data/uiConstants';
+import { AUTO_RECIPES } from '../../configs/loaders/workshop.loader';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import type { FacilityType } from '../../configs/types/gameplay.types';
+
+import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { resolveDutyBonus, getBatchDiscountedCost } from '../../state/facility';
 import { getRecipeDisplayName } from '../../state/workshop';
-import type { FacilityType } from '../../data/facilities';
-import { X, AlertTriangle } from 'lucide-react';
+
+import { X, AlertTriangle, Battery } from 'lucide-react';
 
 // 取消任务确认弹窗（issue 08 变体 B）：展示"已产出的 X 批将保留，将退还：材料 ×Y"。
 // 退款 = (目标批数 − 已完成批数) × 每批折扣成本（按任务开始时刻快照，扣/退同价）。
@@ -96,17 +98,26 @@ const CancelTaskModal: React.FC<CancelTaskModalProps> = ({ type, unitIndex, onCl
             <p className="text-[11px] text-amber-200 font-bold">已产出的 {fac.completedCount} 批将保留</p>
             <p className="text-[10px] text-zinc-400">将退还：</p>
             <div className="flex flex-wrap gap-1">
-              {Object.keys(refund).length === 0 ? (
+              {Object.keys(refund).length === 0 && !(task && task.energyCost && remainingBatches > 0) ? (
                 <span className="text-[10px] text-zinc-600">
                   {task ? '无（无剩余批次）' : '配方已失效，无法退还'}
                 </span>
               ) : (
-                Object.entries(refund).map(([item, qty]) => (
-                  <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-950/40 text-amber-300 border border-amber-600/30">
-                    <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
-                    {ITEMS_CONFIG[item]?.name || item} ×{qty}
-                  </span>
-                ))
+                <>
+                  {Object.entries(refund).map(([item, qty]) => (
+                    <span key={item} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-950/40 text-amber-300 border border-amber-600/30">
+                      <GameIcon type="item" id={item} className="w-3.5 h-3.5" />
+                      {ITEMS_CONFIG[item]?.name || item} ×{qty}
+                    </span>
+                  ))}
+                  {/* 魔能同价退还（封顶 maxEnergy），不吃折扣 */}
+                  {task && task.energyCost && remainingBatches > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-950/40 text-amber-300 border border-amber-600/30">
+                      <Battery className="w-3 h-3" />
+                      魔能 ×{task.energyCost * remainingBatches}
+                    </span>
+                  ) : null}
+                </>
               )}
             </div>
           </div>

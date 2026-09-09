@@ -1,131 +1,57 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG } from '../data/heroes';
-import { COMBAT_ZONES } from '../data/combatZones';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG, ENEMY_CONFIGS } from '../configs/loaders/entities.loader';
+import { heroBaseAttributes } from './heroGrowth';
+
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { applyTick } from './tick';
-import { heroBaseAttributes } from '../data/heroGrowth';
+
 import {
   applyHeroExp,
   consumeExpTomesUpdate,
-  simulateBattle,
-  startCombatUpdate,
   setPartyUpdate,
   healWoundedHeroUpdate,
   healWoundedHeroesUpdate,
   heroToCombatant,
-  recomputeCombatant,
-  combatantFromSnapshot,
-  type CombatantState,
-  type CombatantSnapshot
+  enemyConfigToEntity,
+  simulateBattle,
+  createBattle,
+  canActWithBuffs
 } from './combat';
-import { DEFAULT_PRIMARY_ATTRIBUTES, DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
-import type { ActiveBuff } from './buffSystem';
-import { STAR_MAX } from '../data/awakening';
 
-describe('recomputeCombatant (B 方案：可重算快照)', () => {
-  it('无 buff 时重算 = 入场值（幂等）', () => {
-    const c = heroToCombatant('nova', createInitialHero('nova'));
-    const r = recomputeCombatant(c, []);
-    expect(r.attack).toBe(c.attack);
-    expect(r.defense).toBe(c.defense);
-    expect(r.maxHp).toBe(c.maxHp);
-    expect(r.hp).toBe(c.hp);
+import { createBattleContext, type BattleContext } from './battleContext';
+import { BUFF_CONFIGS } from './buffTypes';
+import { createBuffTriggerHooks } from './buffRuntime';
+import { resolveAbilityConfig, type ResolvedAbility } from './abilityTypes';
+import { createAbilityRuntime } from './abilityRuntime';
+import { createTurnRuntime, type BattleEvent, type BattleUnitRuntime, type BattleUnitSnapshot, type TurnRuntime } from './turnEngine';
+
+describe('BattleEntity 装配（统一实体）', () => {
+  it('heroToCombatant 产出 BattleEntity，英雄专属字段已结算进配方', () => {
+    const e = heroToCombatant('nova', createInitialHero('nova'));
+    expect(e.kind).toBe('hero');
+    expect(e.side).toBe('hero');
+    expect(e.abilities.length).toBeGreaterThan(0);
+    expect(e.recipe.baseAttributes.maxHp).toBeGreaterThan(0);
   });
 
-  it('buff 变化 → 面板重算（percent 加算 + 元属性折算 + hp 比例缩放）', () => {
-    const c = heroToCombatant('nova', createInitialHero('nova'));
-    const buffs: ActiveBuff[] = [
-      {
-        id: 'b1',
-        name: '狂暴',
-        type: 'buff',
-        duration: 3,
-        maxDuration: 3,
-        statModifiers: [
-          { stat: 'attack', kind: 'percent', value: 0.20 },
-          { stat: 'maxHp', kind: 'percent', value: 0.10 },
-          { stat: 'strength', kind: 'flat', value: 5 }
-        ]
-      }
-    ];
-    const r = recomputeCombatant(c, buffs);
-    // 力量 7 + 5 = 12 → 攻击 35 + 24 = 59；×1.2 = 70.8 → 71
-    expect(r.attack).toBe(71);
-    // maxHp = 130 × 1.1 = 143
-    expect(r.maxHp).toBe(143);
-    // 满血比例不变
-    expect(r.hp).toBe(143);
+  it('enemyConfigToEntity 与英雄同走实体工厂，role/faction/普通攻击兜底正确', () => {
+    const e = enemyConfigToEntity(ENEMY_CONFIGS.wasteland_hound);
+    expect(e.kind).toBe('enemy');
+    expect(e.role).toBe('normal');
+    expect(e.side).toBe('enemy');
+    expect(e.faction).toBe('nightmare');
+    expect(e.abilities.length).toBeGreaterThan(0);
   });
 
-  it('debuff 经意志减免后生效（力量越强减免越多）', () => {
-    const c = heroToCombatant('nova', createInitialHero('nova')); // nova 意志 1 → effectReduction 0.5%
-    const debuffs: ActiveBuff[] = [
-      {
-        id: 'd1',
-        name: '虚弱',
-        type: 'debuff',
-        duration: 3,
-        maxDuration: 3,
-        statModifiers: [{ stat: 'attack', kind: 'flat', value: -40 }]
-      }
-    ];
-    const r = recomputeCombatant(c, debuffs);
-    // 减免 40 × (1 - 0.005) = 39.8 → attack = (49 - 39.8) = 9.2 → round 9
-    expect(r.attack).toBe(9);
-  });
-
-  it('无快照的单位（敌人/手动构造）原样返回', () => {
-    const enemy: CombatantState = { id: 'e', name: '敌', hp: 50, maxHp: 50, attack: 5, defense: 2 };
-    expect(recomputeCombatant(enemy, [])).toBe(enemy);
-  });
-});
-
-describe('统一实体：敌人与英雄同走 statSystem 配方（stat-bonus-unification）', () => {
-  it('敌人式配方（元属性全 0）→ 面板 = 配置值，快照可重算且幂等', () => {
-    const snapshot: CombatantSnapshot = {
-      baseAttributes: { attack: 20, defense: 8, maxHp: 150, maxMp: 0, critRate: 0, critDmg: 1.5 },
-      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES },
-      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
-      permanentModifiers: []
-    };
-    const e = combatantFromSnapshot('mutant', '畸变体', snapshot);
-    expect(e.attack).toBe(20);
-    expect(e.defense).toBe(8);
-    expect(e.maxHp).toBe(150);
-    expect(e.hp).toBe(150); // 满血进场
-    expect(e.snapshot).toBeDefined(); // 敌人也带快照（统一实体）
-    // 无 buff 重算 = 入场值（幂等）
-    const r = recomputeCombatant(e, []);
-    expect(r.attack).toBe(e.attack);
-    expect(r.defense).toBe(e.defense);
-    expect(r.maxHp).toBe(e.maxHp);
-    expect(r.hp).toBe(e.hp);
-  });
-
-  it('敌人配置扩展属性走同一管道：元属性折算/修饰符/debuff 全部生效', () => {
-    const snapshot: CombatantSnapshot = {
-      baseAttributes: { attack: 20, defense: 8, maxHp: 150, maxMp: 0, critRate: 0, critDmg: 1.5 },
-      primaryAttributes: { ...DEFAULT_PRIMARY_ATTRIBUTES, strength: 5 }, // 力量 5 → 攻击 +10
-      specialAttributes: { ...DEFAULT_SPECIAL_ATTRIBUTES },
-      permanentModifiers: [{ stat: 'maxHp', kind: 'percent', value: 0.2 }]
-    };
-    const e = combatantFromSnapshot('mutant', '畸变体', snapshot);
-    expect(e.attack).toBe(30); // 20 + 5×2（元属性折算对敌人同样生效）
-    expect(e.maxHp).toBe(180); // 150 × 1.2
-    // 敌人也会被 debuff：意志 0 → 无减免，-10 全额生效
-    const debuffed = recomputeCombatant(e, [
-      {
-        id: 'd1',
-        name: '虚弱',
-        type: 'debuff',
-        duration: 2,
-        maxDuration: 2,
-        statModifiers: [{ stat: 'attack', kind: 'flat', value: -10 }]
-      }
-    ]);
-    expect(debuffed.attack).toBe(20);
+  it('createBattle 装配工厂可直接 run 并暴露战斗上下文', () => {
+    const hero = heroToCombatant('nova', createInitialHero('nova'));
+    const enemy = enemyConfigToEntity(ENEMY_CONFIGS.test_dummy);
+    const battle = createBattle([hero, enemy]);
+    const result = battle.run();
+    expect(result.victory).toBe(true);
+    expect(battle.context).toBeDefined();
   });
 });
 
@@ -134,15 +60,108 @@ const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...overrides
 });
 
-// 可编程 RNG：按序列依次返回
-const sequenceRng = (values: number[]): (() => number) => {
-  let i = 0;
-  return () => values[Math.min(i++, values.length - 1)];
-};
+const fakeTurnRuntime = (): TurnRuntime => ({
+  round: 0,
+  rng: () => 0.5,
+  register: () => () => {},
+  unregister: () => () => {},
+  dispatchEvent: (): BattleEvent => ({ seq: 0, round: 0, key: '', unitId: null, sourceId: null, targetId: null, unitName: null, sourceName: null, targetName: null, data: {} }),
+  dealDamage: () => 0,
+  applyHeal: () => 0,
+  applyHpDelta: () => 0,
+  generateUnitId: (base) => base,
+  updateInitiative: () => {},
+  summonUnit: (): BattleUnitRuntime => ({ id: '', name: '', side: 'hero', hp: 0, maxHp: 0, initiative: 0, abilities: [], stats: { attack: 0, defense: 0, maxHp: 0, maxMp: 0, critRate: 0, critDmg: 1.5 }, entryOrder: 0 }),
+  requestEnd: () => {},
+  getUnit: () => undefined,
+  getLivingUnits: () => []
+});
 
-// 构造一个纯战斗单位
-const unit = (id: string, hp: number, attack: number, defense: number, name = id): CombatantState => ({
-  id, name, hp, maxHp: hp, attack, defense
+describe('canActWithBuffs', () => {
+  it('眩晕 duration 大于 0 时不可行动，归零后恢复', () => {
+    const ctx = createBattleContext(fakeTurnRuntime());
+    expect(canActWithBuffs(ctx, 'b')).toBe(true);
+    ctx.applyBuff('b', { id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b', stacks: 1, duration: 1, values: {} });
+    expect(canActWithBuffs(ctx, 'b')).toBe(false);
+    ctx.getBuff('b', 'stun')!.duration = 0;
+    expect(canActWithBuffs(ctx, 'b')).toBe(true);
+  });
+
+  it('真实回合引擎：眩晕 duration=N 严格跳过 N 个自身回合（快照制判定）', () => {
+    const hero: BattleUnitSnapshot = {
+      id: 'a', name: 'a', side: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
+    };
+    const enemy: BattleUnitSnapshot = {
+      id: 'b', name: 'b', side: 'enemy', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5, willpower: 0, durationReduction: 0, effectReduction: 0 }
+    };
+    const actions: string[] = [];
+    let ctx!: BattleContext;
+
+    // 装配前移（combat-assembly 01）：context 与眩晕 Buff 在 run 前就绪。
+    const engine = createTurnRuntime([hero, enemy], {
+      maxRounds: 3,
+      rng: () => 0.5,
+      canAct: (unit) => canActWithBuffs(ctx, unit.id),
+      performAction: (unit) => { actions.push(unit.id); }
+    });
+    ctx = createBattleContext(engine, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+    ctx.applyBuff('b', {
+      id: 'stun-1', buffId: 'stun', sourceId: 'a', targetId: 'b',
+      stacks: 1, duration: 2, values: {}
+    });
+    engine.run();
+
+    // 快照制（combat-aftermath 02 D1）：先判定后递减。
+    // r1: a 行动，b 快照见 dur=2 跳过 → 递减为 1；r2: a 行动，b 见 1 跳过 → 归零移除；r3: b 恢复行动。
+    expect(actions).toEqual(['a', 'a', 'a', 'b']);
+    expect(ctx.getBuff('b', 'stun')).toBeUndefined();
+  });
+});
+
+describe('召唤落地 seam（combat-summon-closure 03 / A#6）', () => {
+  it('战斗中召唤的单位自动挂载自带被动（含运行时配置注册）', () => {
+    const passive = resolveAbilityConfig({
+      id: 'lifesteal_test',
+      name: '吸血',
+      description: '',
+      activation: 'passive',
+      passive: {
+        triggers: [{ timing: 'attackAfter', unitRef: 'source' }],
+        effects: [{ kind: 'heal', params: { amount: { kind: 'flat', value: 5 } } }]
+      }
+    }) as ResolvedAbility;
+
+    const hero: BattleUnitSnapshot = {
+      id: 'a', name: 'a', side: 'hero', hp: 100, maxHp: 100, initiative: 100, abilities: [],
+      stats: { attack: 10, defense: 0, maxHp: 100, maxMp: 0, critRate: 0, critDmg: 1.5 }
+    };
+    const engine = createTurnRuntime([hero], { maxRounds: 1, performAction: () => {} });
+    let ctx!: BattleContext;
+    ctx = createBattleContext(engine, BUFF_CONFIGS, createBuffTriggerHooks(() => ctx));
+    const abilityRuntime = createAbilityRuntime(() => ctx);
+    abilityRuntime.setup(engine);
+
+    // 模拟战斗中召唤：summon 事件同步触发落地 seam。
+    engine.summonUnit({
+      id: 's1', name: 's1', side: 'hero', hp: 50, maxHp: 50, initiative: 10,
+      abilities: [passive],
+      stats: { attack: 5, defense: 0, maxHp: 50, maxMp: 0, critRate: 0, critDmg: 1.5 }
+    }, 'a');
+
+    expect(ctx.getBuff('s1', 'passive:lifesteal_test')).toBeDefined();
+  });
+});
+
+
+describe('simulateBattle 走 Effect 结算', () => {
+  it('事件流包含 effectApplied 伤害/治疗完成事件', () => {
+    const hero = heroToCombatant('nova', createInitialHero('nova'));
+    const enemy = enemyConfigToEntity(ENEMY_CONFIGS.test_dummy);
+    const battle = simulateBattle([hero], [enemy]);
+    expect(battle.events.some(e => e.key === 'effectApplied' && e.data.kind === 'damage')).toBe(true);
+  });
 });
 
 describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)', () => {
@@ -170,200 +189,6 @@ describe('Hero stat scaling (等级成长，16 号：职阶系数 + 里程碑)',
     expect(leveled.exp).toBe(100); // 200 - 100
     expect(leveled.maxHp).toBe(heroBaseAttributes(HEROES_CONFIG.nova, 2).maxHp);
     expect(leveled.hp).toBe(hero.hp + (leveled.maxHp - hero.maxHp)); // 保留当前血量差值
-  });
-});
-
-describe('simulateBattle (轮询回合制)', () => {
-  it('heroes and enemies act in fixed round-robin order each round', () => {
-    // 敌人血量极高，保证打满一整个回合
-    const heroes = [unit('nova', 200, 5, 0, '诺娃'), unit('buster', 200, 5, 0, '巴斯特')];
-    const enemies = [unit('e1', 999, 1, 0, '敌人1')];
-    const { victory, partyWiped, actions, rounds } = simulateBattle(heroes, enemies);
-    expect(victory).toBe(false);
-    expect(partyWiped).toBe(false); // 回合上限双方存活 → 平局（不触发重伤）
-    // 每回合固定顺序：诺娃 → 巴斯特 → 敌人1
-    const firstRound = actions.slice(0, 3);
-    expect(firstRound[0]).toMatchObject({ round: 1, actorSide: 'hero', actorId: 'nova' });
-    expect(firstRound[1]).toMatchObject({ round: 1, actorSide: 'hero', actorId: 'buster' });
-    expect(firstRound[2]).toMatchObject({ round: 1, actorSide: 'enemy', actorId: 'e1' });
-    expect(rounds).toBe(COMBAT_CONFIG.maxBattleRounds);
-  });
-
-  it('victory when all enemies are defeated', () => {
-    const heroes = [unit('nova', 100, 35, 8, '诺娃')];
-    const enemies = [unit('hound', 45, 9, 3, '废土鬣狗')];
-    const { victory, rounds } = simulateBattle(heroes, enemies);
-    expect(victory).toBe(true);
-    expect(rounds).toBe(2);
-  });
-
-  it('defeat when all heroes are defeated', () => {
-    const heroes = [unit('nova', 10, 5, 0, '诺娃')];
-    const enemies = [unit('boss', 200, 30, 0, '强敌')];
-    const { victory, partyWiped } = simulateBattle(heroes, enemies);
-    expect(victory).toBe(false);
-    expect(partyWiped).toBe(true);
-  });
-
-  it('records an hpTrack snapshot per action for HP bar playback (ticket 21)', () => {
-    const heroes = [unit('nova', 100, 35, 8, '诺娃')];
-    const enemies = [unit('hound', 45, 9, 3, '废土鬣狗')];
-    const { actions, hpTrack, victory } = simulateBattle(heroes, enemies);
-
-    expect(hpTrack).toBeDefined();
-    // 初始满血快照 + 每动作一帧
-    expect(hpTrack!.length).toBe(actions.length + 1);
-    // 首帧：双方满血
-    expect(hpTrack![0]).toMatchObject([
-      { id: 'nova', side: 'hero', hp: 100, maxHp: 100 },
-      { id: 'hound', side: 'enemy', hp: 45, maxHp: 45 }
-    ]);
-    // 逐帧与动作一一对应：第 i+1 帧 = 第 i 帧应用 actions[i] 后的状态
-    for (let i = 0; i < actions.length; i++) {
-      const before = hpTrack![i];
-      const after = hpTrack![i + 1];
-      const action = actions[i];
-      // 攻击/技能：目标血量减少恰好 damage；其余参战者不变
-      const targetBefore = before.find(x => x.name === action.targetName)!;
-      const targetAfter = after.find(x => x.name === action.targetName)!;
-      if (action.kind === 'heal') {
-        expect(targetAfter.hp).toBe(targetBefore.hp + action.damage);
-      } else {
-        expect(targetAfter.hp).toBe(Math.max(0, targetBefore.hp - action.damage));
-      }
-      for (const entry of before) {
-        if (entry.name === action.targetName) continue;
-        const afterEntry = after.find(x => x.name === entry.name)!;
-        expect(afterEntry.hp).toBe(entry.hp);
-      }
-    }
-    // 末帧与胜负一致：胜利 → 敌人 hp 归零
-    expect(victory).toBe(true);
-    const last = hpTrack![hpTrack!.length - 1];
-    expect(last.find(x => x.side === 'enemy')!.hp).toBe(0);
-    expect(last.find(x => x.side === 'hero')!.hp).toBeGreaterThan(0);
-  });
-
-  it('hpTrack stays in sync for aoe multi-target and heal actions (ticket 21)', () => {
-    // aoe 技能：一次行动对全部存活敌人造成伤害
-    const nova = heroToCombatant('nova', { ...createInitialHero('nova'), star: STAR_MAX, awakened: true });
-    const enemies = [
-      { id: 'e1', name: '靶子甲', hp: 500, maxHp: 500, attack: 1, defense: 0 },
-      { id: 'e2', name: '靶子乙', hp: 500, maxHp: 500, attack: 1, defense: 0 }
-    ];
-    const aoeResult = simulateBattle([nova], enemies, 1);
-    expect(aoeResult.hpTrack!.length).toBe(aoeResult.actions.length + 1);
-    // 第一回合的两个 aoe 动作：每个目标各扣一次，且两次扣血互不影响其他目标
-    const round1 = aoeResult.actions.filter(a => a.round === 1 && a.kind === 'skill');
-    expect(round1).toHaveLength(2);
-    const frame1 = aoeResult.hpTrack![1].find(x => x.id === 'e1')!;
-    const frame2 = aoeResult.hpTrack![2].find(x => x.id === 'e1')!;
-    const frame2e2 = aoeResult.hpTrack![2].find(x => x.id === 'e2')!;
-    expect(frame1.hp).toBe(500 - round1[0].damage);
-    expect(frame2.hp).toBe(frame1.hp); // 第二次 aoe 打 e2，e1 不再变化
-    expect(frame2e2.hp).toBe(500 - round1[1].damage);
-
-    // heal 技能：自身治疗 → 血量反弹，帧差为正
-    const healer = heroToCombatant('healer', { ...createInitialHero('healer'), star: STAR_MAX, awakened: true, hp: 50 });
-    const healEnemies = [{ id: 'e1', name: '靶子', hp: 500, maxHp: 500, attack: 1, defense: 0 }];
-    const healResult = simulateBattle([healer], healEnemies, 1);
-    const healAction = healResult.actions.find(a => a.kind === 'heal')!;
-    expect(healAction).toBeDefined();
-    const healIdx = healResult.actions.indexOf(healAction);
-    const heroBefore = healResult.hpTrack![healIdx].find(x => x.id === 'healer')!;
-    const heroAfter = healResult.hpTrack![healIdx + 1].find(x => x.id === 'healer')!;
-    expect(heroAfter.hp).toBe(heroBefore.hp + healAction.damage); // 治疗帧血量上升
-    expect(heroAfter.hp).toBeLessThanOrEqual(heroAfter.maxHp);
-  });
-});
-
-describe('startCombatUpdate (开战校验与结算)', () => {
-  it('rejects unknown zone without state change', () => {
-    const state = makeState();
-    const { state: next, result } = startCombatUpdate(state, 'unknown_zone');
-    expect(result.failure).toBe('unknown_zone');
-    expect(next).toBe(state);
-  });
-
-  it('rejects battle when stamina is insufficient', () => {
-    const state = makeState({ stamina: COMBAT_ZONES.wasteland_entrance.staminaCost - 1 });
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance');
-    expect(result.failure).toBe('no_stamina');
-    expect(next).toBe(state);
-  });
-
-  it('rejects battle when party is empty', () => {
-    const state = makeState({ party: [] });
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance');
-    expect(result.failure).toBe('no_party');
-    expect(next).toBe(state);
-  });
-
-  it('rejects battle when a party hero is wounded', () => {
-    const state = makeState({
-      heroes: { nova: { ...createInitialHero('nova'), wounded: true } }
-    });
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance');
-    expect(result.failure).toBe('wounded');
-    expect(next).toBe(state);
-  });
-
-  it('victory: grants drops, soul echoes, exp, consumes stamina and heals party to full', () => {
-    const state = makeState({
-      stamina: 50,
-      inventory: { scrap_metal: 0 },
-      party: ['nova', 'buster'],
-      heroes: {
-        nova: { ...createInitialHero('nova'), hp: 30 },
-        buster: { ...createInitialHero('buster'), hp: 40 }
-      }
-    });
-    // rng 序列：掉落判定命中 + 数量取 maxQty（每次调 2 次）+ 灵魂残响取 max
-    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99, 0.99]);
-    const { state: next, result } = startCombatUpdate(state, 'wasteland_entrance', rng);
-
-    expect(result.settlement).not.toBeNull();
-    expect(result.settlement!.battle.victory).toBe(true);
-    expect(result.failure).toBeUndefined();
-
-    const zone = COMBAT_ZONES.wasteland_entrance;
-    expect(next.stamina).toBe(50 - zone.staminaCost);
-    // 掉落入账
-    expect(next.inventory.scrap_metal).toBe(2);   // 命中 + maxQty
-    expect(next.inventory.glow_fiber).toBe(2);    // 命中 + maxQty
-    // 灵魂残响入账
-    expect(next.inventory.soul_echo).toBe(zone.soulEchoMax);
-    // 经验入账：两位上阵英雄都获得 expReward，战后再恢复满血
-    expect(next.heroes.nova.exp).toBe(zone.expReward);
-    expect(next.heroes.buster.exp).toBe(zone.expReward);
-    expect(next.heroes.nova.hp).toBe(next.heroes.nova.maxHp);
-    expect(next.heroes.buster.hp).toBe(next.heroes.buster.maxHp);
-    // 战斗状态记录
-    expect(next.combat.zoneId).toBe('wasteland_entrance');
-    expect(next.combat.lastSettlement?.drops.scrap_metal).toBe(2);
-    // 战斗日志入账
-    expect(next.logs[0].type).toBe('combat');
-  });
-
-  it('defeat: wounds the whole party, no drops or exp, stamina still consumed', () => {
-    const state = makeState({
-      stamina: 30,
-      inventory: { scrap_metal: 5, soul_echo: 5 },
-      party: ['nova'],
-      heroes: { nova: { ...createInitialHero('nova'), hp: 5 } }, // 残血进场（战斗 hp ≈ 7），三人敌人必败
-      combat: { ...INITIAL_STATE.combat, zonesCleared: ['wasteland_entrance', 'old_town_ruins'] }
-    });
-    // 让残血的诺娃打辐射车间（三人敌人）必然战败
-    const { state: next, result } = startCombatUpdate(state, 'radiated_workshop');
-
-    expect(result.settlement!.battle.victory).toBe(false);
-    expect(next.stamina).toBe(30 - COMBAT_ZONES.radiated_workshop.staminaCost);
-    expect(next.heroes.nova.wounded).toBe(true);
-    expect(next.heroes.nova.hp).toBe(0);
-    expect(next.inventory.scrap_metal).toBe(5); // 无掉落
-    expect(next.inventory.soul_echo).toBe(5);   // 无灵魂残响
-    expect(next.heroes.nova.exp).toBe(0);      // 无经验
-    expect(result.settlement!.woundedHeroIds).toEqual(['nova']);
   });
 });
 

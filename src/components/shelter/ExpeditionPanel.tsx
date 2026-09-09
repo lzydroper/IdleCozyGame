@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
-import { EXPEDITION_LOCATIONS } from '../../data/expeditionLocations';
-import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../data/heroes';
-import { ITEMS_CONFIG } from '../../data/items';
+import { findRegionExpedition, findRegionIdByExpedition, getRegion } from '../../state/regionSelectors';
+import { HEROES_CONFIG } from '../../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS } from '../../configs/constants/heroDisplay';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import type { DropEntry } from '../../configs/types/region.types';
+
 import { getHeroName, getInvQty } from '../../utils/gameUtils';
 import { resolveDutyBonuses } from '../../state/duty';
 import { useToast } from '../ToastSystem';
 import DutyAssignModal from './DutyAssignModal';
-import { Compass, Rocket, Clock, LogOut, Search, Info, Play, ShieldAlert } from 'lucide-react';
+import RegionSelectorModal from '../RegionSelectorModal';
+import { Compass, Rocket, Clock, LogOut, Search, Info, Play, ShieldAlert, MapPin } from 'lucide-react';
 
 // 挂机探索远征面板：派遣/召回探索员、地点选择、拾荒结算倒计时与战利品预览。
 // 从 ShelterTab 拆分（结构重构，无行为变化）；自足 useGame/useToast。
@@ -20,8 +24,9 @@ const ExpeditionPanel: React.FC = () => {
 
   // 状态绑定：挂机远征的选择
   const [selectedExpExplorerId, setSelectedExpExplorerId] = useState<string>('');
-  const [selectedLocationId, setSelectedLocationId] = useState<string>(Object.keys(EXPEDITION_LOCATIONS)[0] || 'radar_station');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('radar_station');
   const [showExplorerPicker, setShowExplorerPicker] = useState(false);
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -36,9 +41,19 @@ const ExpeditionPanel: React.FC = () => {
   const getHeroFactionLabel = (heroId: string): string =>
     HEROES_CONFIG[heroId] ? HERO_FACTION_LABELS[HEROES_CONFIG[heroId].faction] : '';
 
+  const getExpedition = (locationId: string) => findRegionExpedition(locationId);
+  const renderLootNames = (entries: DropEntry[]): string =>
+    entries.map(d => d.kind === 'weighted'
+      ? d.pool.map(p => ITEMS_CONFIG[p.itemId]?.name || p.itemId).join('/')
+      : ITEMS_CONFIG[d.itemId]?.name || d.itemId).join(', ');
+  const renderLootWithChance = (d: DropEntry): string =>
+    d.kind === 'chance'
+      ? `${ITEMS_CONFIG[d.itemId]?.name || d.itemId} (${d.chancePercent}%)`
+      : renderLootNames([d]);
+
   // 探索员与地点的职阶/阵营门槛匹配校验（ADR-0018）
   const checkRequirementUnmatch = (locationId: string): boolean => {
-    const loc = EXPEDITION_LOCATIONS[locationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = getExpedition(locationId);
     const heroCfg = selectedExpExplorerId ? HEROES_CONFIG[selectedExpExplorerId] : null;
     const classUnmatch = loc?.requiredHeroClass && heroCfg && heroCfg.heroClass !== loc.requiredHeroClass;
     const factionUnmatch = loc?.requiredFaction && heroCfg && heroCfg.faction !== loc.requiredFaction;
@@ -50,9 +65,7 @@ const ExpeditionPanel: React.FC = () => {
   const currentExplorer = exp.locationId && state.shelter.assignedExplorerId
     ? state.heroes[state.shelter.assignedExplorerId]
     : null;
-  const expLocation = exp.locationId
-    ? EXPEDITION_LOCATIONS[exp.locationId as keyof typeof EXPEDITION_LOCATIONS]
-    : null;
+  const expLocation = exp.locationId ? getExpedition(exp.locationId) ?? null : null;
 
   // 远征速度与间隔计算（角色效率加成已随被动系统退役，仅由地点配置决定）
   const expInterval = expLocation ? Math.max(30, Math.floor(expLocation.scavengeInterval)) : 300;
@@ -73,7 +86,7 @@ const ExpeditionPanel: React.FC = () => {
       showToast('请先指派一名英雄作为探索员！', 'warning');
       return;
     }
-    const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
+    const loc = getExpedition(selectedLocationId);
     if (!loc) return;
 
     // 检查英雄是否已获得（heroes 中仅含已获得的英雄，ADR-0013）
@@ -177,9 +190,9 @@ const ExpeditionPanel: React.FC = () => {
             <div className="mt-3.5 text-[9px] text-zinc-500 bg-zinc-950/40 p-2 rounded-xl border border-zinc-900/50">
               <span className="font-bold text-zinc-400 block mb-1 flex items-center gap-1"><Search className="w-3 h-3" /> 本地可能获取的废土战利品：</span>
               <div className="flex flex-wrap gap-x-2.5 gap-y-1">
-                {expLocation.lootTable.map(loot => (
-                  <span key={loot.itemId} className="text-zinc-400">
-                    • {ITEMS_CONFIG[loot.itemId]?.name} (几率:{Math.round(loot.chance * 100)}%)
+                {expLocation.lootTable.map((loot, idx) => (
+                  <span key={idx} className="text-zinc-400">
+                    • {renderLootWithChance(loot)}
                   </span>
                 ))}
               </div>
@@ -224,57 +237,40 @@ const ExpeditionPanel: React.FC = () => {
               )}
             </div>
 
-            {/* 地点选择 */}
+            {/* 地点选择：统一区域选择器（combat-experience 05 / U#7） */}
             <div className="space-y-2">
-              <div className="grid grid-cols-1 gap-2.5">
-              {Object.entries(EXPEDITION_LOCATIONS).map(([key, loc]) => {
-                const isSelected = selectedLocationId === key;
-
-                // 门槛校验（ADR-0018：heroClass/faction）
-                const requirementUnmatch = checkRequirementUnmatch(key);
-
-                return (
-                  <div
-                    key={key}
-                    onClick={() => {
-                      setSelectedLocationId(key);
-                    }}
-                    className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-cyan-950/15 border-cyan-500/50 shadow-[0_0_10px_rgba(0,240,255,0.1)]'
-                        : 'bg-zinc-950/40 border-zinc-900 hover:border-zinc-800'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-extrabold text-zinc-200 text-xs">{loc.name}</span>
-                      {(loc.requiredHeroClass || loc.requiredFaction) && (
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                          requirementUnmatch
-                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20'
-                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
-                        }`}>
-                          需【{loc.requiredHeroClass ? HERO_CLASS_LABELS[loc.requiredHeroClass] : ''}{loc.requiredFaction ? `/${HERO_FACTION_LABELS[loc.requiredFaction]}` : ''}】
-                        </span>
-                      )}
+                <div
+                  onClick={() => setShowLocationSelector(true)}
+                  data-testid="expedition-location-trigger"
+                  className="p-3 rounded-2xl border border-cyan-500/40 bg-cyan-950/15 cursor-pointer hover:border-cyan-500/60 transition-all flex justify-between items-center gap-3"
+                >
+                  {/* 添加 min-w-0 flex-1 防止子内容撑爆 flex 容器 */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-zinc-200">
+                      <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="truncate">{getExpedition(selectedLocationId)?.name || selectedLocationId}</span>
                     </div>
-
-                    {/* 地点拾荒详情 */}
-                    <div className="mt-1.5 text-[9px] text-zinc-500 space-y-0.5">
-                      <div>基础提炼时间: {loc.scavengeInterval} 秒/次</div>
-                      <div>可能拾得: {loc.lootTable.map(l => ITEMS_CONFIG[l.itemId]?.name).join(', ')}</div>
+                    <div className="mt-1 text-[9px] text-zinc-500 line-clamp-2">
+                      基础提炼时间: {getExpedition(selectedLocationId)?.scavengeInterval ?? '-'} 秒/次 ·
+                      {' '}可能拾得: {(() => {
+                        const loc = getExpedition(selectedLocationId);
+                        return loc ? renderLootNames(loc.lootTable) : '-';
+                      })()}
                     </div>
-
-                    {/* 警告信息 */}
-                    {requirementUnmatch && (
-                      <div className="mt-2 text-[9px] text-rose-500 font-semibold flex items-center gap-1">
-                        <ShieldAlert className="w-3 h-3 text-rose-500 animate-bounce" />
-                        指派探索员职阶/阵营不匹配，无法出发！
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-              </div>
+
+                  {/* 添加 whitespace-nowrap 和 shrink-0 防止文字折行和按钮被压缩 */}
+                  <span className="shrink-0 whitespace-nowrap text-[9px] px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">
+                    更换
+                  </span>
+                </div>
+
+              {checkRequirementUnmatch(selectedLocationId) && (
+                <div className="text-[9px] text-rose-500 font-semibold flex items-center gap-1">
+                  <ShieldAlert className="w-3 h-3 text-rose-500 animate-bounce" />
+                  指派探索员职阶/阵营与该地点不匹配，无法出发！
+                </div>
+              )}
             </div>
 
             {/* 口粮消耗提示 */}
@@ -284,9 +280,9 @@ const ExpeditionPanel: React.FC = () => {
                 <Info className="w-3.5 h-3.5 text-zinc-500" />
                 派遣口粮消耗给养：
               </span>
-              <span className={getInvQty(state.inventory, 'ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
-                {(EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) > 0
-                  ? `${getInvQty(state.inventory, 'ration') >= (EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty(state.inventory, 'ration')}/${EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS]?.rationCost ?? 0})`
+              <span className={getInvQty(state.inventory, 'ration') >= (getExpedition(selectedLocationId)?.rationCost ?? 0) ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
+                {(getExpedition(selectedLocationId)?.rationCost ?? 0) > 0
+                  ? `${getInvQty(state.inventory, 'ration') >= (getExpedition(selectedLocationId)?.rationCost ?? 0) ? '口粮充足' : '口粮不足'} (持有: ${getInvQty(state.inventory, 'ration')}/${getExpedition(selectedLocationId)?.rationCost ?? 0})`
                   : '该地点无需口粮'}
               </span>
             </div>
@@ -297,7 +293,7 @@ const ExpeditionPanel: React.FC = () => {
 
           {/* 开始派遣按钮 */}
           {(() => {
-            const loc = EXPEDITION_LOCATIONS[selectedLocationId as keyof typeof EXPEDITION_LOCATIONS];
+            const loc = getExpedition(selectedLocationId);
             const requirementUnmatch = checkRequirementUnmatch(selectedLocationId);
             const rationCost = loc?.rationCost ?? 0;
             const rationShortage = rationCost > 0 && getInvQty(state.inventory, 'ration') < rationCost;
@@ -333,6 +329,25 @@ const ExpeditionPanel: React.FC = () => {
           setShowExplorerPicker(false);
         }}
         onClose={() => setShowExplorerPicker(false)}
+      />
+
+      {/* 统一区域选择器（远征模式，combat-experience 05 / U#7） */}
+      <RegionSelectorModal
+        isOpen={showLocationSelector}
+        onClose={() => setShowLocationSelector(false)}
+        mode="expedition"
+        selectedRegionId={
+          findRegionIdByExpedition(selectedLocationId) ?? null
+        }
+        onConfirmSelect={(rid) => {
+          const expedition = getRegion(rid)?.expedition;
+          if (!expedition) {
+            showToast('该区域暂未开放挂机远征地点', 'warning');
+            return;
+          }
+          setSelectedLocationId(expedition.id);
+          setShowLocationSelector(false);
+        }}
       />
     </section>
   );

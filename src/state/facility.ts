@@ -1,11 +1,15 @@
 import type { AutomationFacility, GameState } from '../types/game';
-import { HEROES_CONFIG } from '../data/heroes';
-import { AUTO_RECIPES } from '../data/autoRecipes';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
-import { FACILITIES_CONFIG, isFacilityType, type FacilityType } from '../data/facilities';
-import { ITEMS_CONFIG } from '../data/items';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { AUTO_RECIPES } from '../configs/loaders/workshop.loader';
+import { SHELTER_UPGRADES, FACILITIES_CONFIG, isFacilityType } from '../configs/loaders/shelter.loader';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
+
+
+
 import type { UpgradeLevel, UnlockRequirement } from '../types/config';
-import { GAME_CONSTANTS } from '../data/gameConstants';
+import { GAME_CONSTANTS } from '../configs/constants/gameConstants';
 import { resolveDutyBonuses, EMPTY_DUTY_BONUS, type DutyResolvedBonus } from './duty';
 import type { UpdateResult } from './types';
 import { NO_OP } from './types';
@@ -48,16 +52,28 @@ export const getBatchDiscountedCost = (recipe: { cost: Record<string, number> },
   return out;
 };
 
-// 给定库存可支撑的批次数：floor(库存 / 每批折扣成本)，材料不足时上限为 0（UI 滑条用）
-export const getMaxAffordableBatches = (recipeId: string, inventory: Record<string, number>, costReduction = 0): number => {
+// 给定库存（与魔能）可支撑的批次数：floor(库存 / 每批折扣成本)，材料不足时上限为 0（UI 滑条用）。
+// energy 提供时纳入魔能约束（energyCost 不吃原料折扣）；未提供且有 energyCost 的配方保守返回 0。
+export const getMaxAffordableBatches = (
+  recipeId: string,
+  inventory: Record<string, number>,
+  costReduction = 0,
+  energy?: number
+): number => {
   const recipe = AUTO_RECIPES[recipeId];
   if (!recipe) return 0;
   const perBatch = getBatchDiscountedCost(recipe, costReduction);
-  const perBatchEntries = Object.entries(perBatch);
-  if (perBatchEntries.length === 0) return 0; // 无成本配方（防御 Infinity）
-  return Math.floor(
-    Math.min(...perBatchEntries.map(([itemId, qty]) => (inventory[itemId] || 0) / qty))
+  const limits = Object.entries(perBatch).map(([itemId, qty]) =>
+    Math.floor((inventory[itemId] || 0) / qty)
   );
+  const energyPerBatch = recipe.energyCost ?? 0;
+  if (typeof energy === 'number') {
+    if (energyPerBatch > 0) limits.push(Math.floor(energy / energyPerBatch));
+  } else if (energyPerBatch > 0 && limits.length === 0) {
+    return 0; // 纯魔能成本但无能量信息可判定 → 不放行（防御）
+  }
+  if (limits.length === 0) return 0; // 无成本配方（防御 Infinity）
+  return Math.floor(Math.min(...limits));
 };
 
 // 解析设施驻守英雄的加成（作用域化：bonuses 中匹配该设备的加成聚合生效）
@@ -210,12 +226,19 @@ export const startTaskUpdate = (
   const canAfford = Object.entries(perBatch).every(([itemId, qty]) => (state.inventory[itemId] || 0) >= qty * target);
   if (!canAfford) return NO_OP(state);
 
-  // 扣全部材料（折扣价）并置任务：当前批从首批耗时开始计时
+  // 魔能校验（energyCost 不吃原料折扣，× 批次；不足整单拒绝）
+  const energyTotal = (recipe.energyCost ?? 0) * target;
+  if (state.player.energy < energyTotal) return NO_OP(state);
+
+  // 扣全部材料（折扣价）与魔能并置任务：当前批从首批耗时开始计时
   // costReduction 快照：取消退款按任务开始时刻的减免单价（扣/退同价，换驻守不赚差价）
   const updatedInventory = { ...state.inventory };
   Object.entries(perBatch).forEach(([itemId, qty]) => {
     updatedInventory[itemId] = (updatedInventory[itemId] || 0) - qty * target;
   });
+  const updatedPlayer = energyTotal
+    ? { ...state.player, energy: state.player.energy - energyTotal }
+    : state.player;
   const updatedUnits = units.map((u, i) =>
     i === unitIndex
       ? {
@@ -230,13 +253,13 @@ export const startTaskUpdate = (
       : u
   );
   return {
-    state: { ...withUnits(state, type, updatedUnits), inventory: updatedInventory },
+    state: { ...withUnits(state, type, updatedUnits), inventory: updatedInventory, player: updatedPlayer },
     result: true
   };
 };
 
 // 取消任务：退款 = (目标批数 − 已完成批数) × 每批折扣成本（未开始 + 进行中批次全额退）。
-// 已产出批次保留；退款不赚差价（与扣款同折扣单价）。待机时拒绝。
+// 已产出批次保留；退款不赚差价（与扣款同折扣单价）；魔能同价退还（封顶 maxEnergy）。待机时拒绝。
 export const cancelTaskUpdate = (state: GameState, type: FacilityType, unitIndex: number): UpdateResult<boolean> => {
   const units = getUnits(state, type);
   if (!units || !units[unitIndex]) return NO_OP(state);
@@ -248,11 +271,19 @@ export const cancelTaskUpdate = (state: GameState, type: FacilityType, unitIndex
   const costReduction = fac.costReduction ?? resolveDutyBonus(state, type, unitIndex).bonuses.costReduction;
   const remainingBatches = Math.max(0, fac.targetCount - fac.completedCount);
   const updatedInventory = { ...state.inventory };
+  let updatedPlayer = state.player;
   if (recipe && remainingBatches > 0) {
     const perBatch = getBatchDiscountedCost(recipe, costReduction);
     Object.entries(perBatch).forEach(([itemId, qty]) => {
       updatedInventory[itemId] = (updatedInventory[itemId] || 0) + qty * remainingBatches;
     });
+    const energyRefund = (recipe.energyCost ?? 0) * remainingBatches;
+    if (energyRefund > 0) {
+      updatedPlayer = {
+        ...state.player,
+        energy: Math.min(state.player.maxEnergy, state.player.energy + energyRefund)
+      };
+    }
   }
 
   const updatedUnits = units.map((u, i) =>
@@ -261,7 +292,7 @@ export const cancelTaskUpdate = (state: GameState, type: FacilityType, unitIndex
       : u
   );
   return {
-    state: { ...withUnits(state, type, updatedUnits), inventory: updatedInventory },
+    state: { ...withUnits(state, type, updatedUnits), inventory: updatedInventory, player: updatedPlayer },
     result: true
   };
 };

@@ -1,0 +1,24 @@
+{
+  "id": "zero",
+  "name": "赛罗",
+  "description": "废土信使，沿途留下魂印标记，熟悉所有地形与危险区域。",
+  "icon": "entities/heroes/zero.png",
+  "kind": "hero",
+  "heroClass": "conductor",
+  "faction": "soulseal",
+  "baseAttributes": {
+    "maxHp": 110,
+    "attack": 22,
+    "defense": 9
+  },
+  "primaryAttributes": {
+    "strength": 3,
+    "constitution": 3,
+    "agility": 8,
+    "intelligence": 4,
+    "willpower": 2,
+    "transcendence": 3
+  },
+  "starter": false,
+  "order": 6
+}

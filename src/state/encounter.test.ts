@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { REALITY_EVENTS } from '../data/realityEvents';
-import { ITEMS_CONFIG } from '../data/items';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { REALITY_EVENTS } from '../configs/loaders/event.loader';
+import { ENEMY_CONFIGS } from '../configs/loaders/entities.loader';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { resolveEncounterBattleUpdate, fleeEncounterUpdate } from './combat';
+import { EMPTY_IDLE_STATE } from './levelCombat';
 
 const makeState = (overrides?: Partial<GameState>): GameState => ({
   ...INITIAL_STATE,
@@ -32,12 +35,14 @@ describe('Encounter events data (战斗遭遇事件池)', () => {
       expect(evt.battle, evt.id).toBeDefined();
       expect(evt.battle!.enemies.length, evt.id).toBeGreaterThan(0);
       expect(evt.battle!.expReward, evt.id).toBeGreaterThan(0);
-      evt.battle!.enemies.forEach(en => {
+      evt.battle!.enemies.forEach(enId => {
+        const en = ENEMY_CONFIGS[enId];
+        expect(en, evt.id).toBeDefined();
         expect(en.baseAttributes.maxHp).toBeGreaterThan(0);
         expect(en.baseAttributes.attack).toBeGreaterThan(0);
       });
-      evt.battle!.drops.forEach(d => {
-        expect(ITEMS_CONFIG[d.itemId], evt.id).toBeDefined();
+      evt.battle!.drops.flatMap(d => d.kind === 'weighted' ? d.pool.map(p => p.itemId) : [d.itemId]).forEach(itemId => {
+        expect(ITEMS_CONFIG[itemId], evt.id).toBeDefined();
       });
     });
   });
@@ -100,6 +105,21 @@ describe('resolveEncounterBattleUpdate (探索战斗汇合)', () => {
     expect(next).toBe(state);
   });
 
+  it('rejects battle while level idle combat is running (combat-hygiene 06 / O#8 状态层互斥)', () => {
+    const state = makeState({
+      party: ['nova'],
+      heroes: { nova: createInitialHero('nova') },
+      exploration: inExploration({ realityEncounterId: 'encounter_wasteland_pack' }),
+      combat: {
+        ...INITIAL_STATE.combat,
+        idle: { ...EMPTY_IDLE_STATE, regionId: 'wasteland_entrance', levelId: 'wasteland_entrance_1', startTime: 1000 }
+      }
+    });
+    const { state: next, result } = resolveEncounterBattleUpdate(state, 'encounter_wasteland_pack');
+    expect(result.failure).toBe('idle_active');
+    expect(next).toBe(state);
+  });
+
   it('victory: grants exp + full heal, drops into realityBag, exploration continues, stamina consumed', () => {
     const state = makeState({
       party: ['nova', 'soldier'],
@@ -113,8 +133,8 @@ describe('resolveEncounterBattleUpdate (探索战斗汇合)', () => {
         realityEncounterId: 'encounter_wasteland_pack'
       })
     });
-    // rng 序列：两件掉落都命中并取 maxQty
-    const rng = sequenceRng([0.1, 0.99, 0.1, 0.99]);
+    // DropEntry：两件 chance 掉落都命中（rng < 0.4）
+    const rng = sequenceRng([0.1, 0.1]);
     const { state: next, result } = resolveEncounterBattleUpdate(state, 'encounter_wasteland_pack', rng);
 
     expect(result.settlement?.battle.victory).toBe(true);

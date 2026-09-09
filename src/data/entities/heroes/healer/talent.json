@@ -1,0 +1,21 @@
+[
+  {
+    "id": "hero_healer_blessing",
+    "name": "净化祝福",
+    "maxLevel": 3,
+    "effect": [
+      {
+        "stat": "maxHp",
+        "kind": "percent",
+        "value": 0.03
+      }
+    ],
+    "pos": {
+      "row": 1,
+      "col": 1
+    },
+    "requires": [
+      "trunk_conductor_resonance"
+    ]
+  }
+]

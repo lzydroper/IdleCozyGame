@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
-import { RECIPES_CONFIG } from '../../data/recipes';
+import { RECIPES_CONFIG } from '../../configs/loaders/workshop.loader';
 import { getRecipeCategory, isRecipeVisible } from '../../state/workshop';
-import { WORKSHOP_CATEGORIES } from '../../data/workshopCategories';
-import type { WorkshopCategory } from '../../data/workshopCategories';
+import { WORKSHOP_CATEGORIES } from '../../configs/constants/workshopCategories';
+import type { WorkshopCategory } from '../../configs/constants/workshopCategories';
 import RecipeCard from './RecipeCard';
 import WorkshopCategoryBar from './WorkshopCategoryBar';
 import WorkshopEmptyState from './WorkshopEmptyState';

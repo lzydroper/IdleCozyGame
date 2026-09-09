@@ -1,0 +1,10 @@
+{
+  "levelMilestones": {
+    "10": {
+      "attack": 5
+    },
+    "20": {
+      "critRate": 0.02
+    }
+  }
+}

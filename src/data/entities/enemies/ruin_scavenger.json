@@ -1,0 +1,13 @@
+{
+  "id": "ruin_scavenger",
+  "name": "废墟拾荒者",
+  "description": "盘踞旧城街区的拾荒匪徒。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "mechanical",
+  "baseAttributes": {
+    "maxHp": 80,
+    "attack": 16,
+    "defense": 4
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "roy",
+  "name": "罗伊",
+  "description": "前废土矿山工程师，擅长修理各种机械设备。",
+  "icon": "entities/heroes/roy.png",
+  "kind": "hero",
+  "heroClass": "conductor",
+  "faction": "mechanical",
+  "baseAttributes": {
+    "maxHp": 115,
+    "attack": 20,
+    "defense": 12
+  },
+  "primaryAttributes": {
+    "strength": 4,
+    "constitution": 4,
+    "agility": 3,
+    "intelligence": 7,
+    "willpower": 2,
+    "transcendence": 3
+  },
+  "starter": false,
+  "order": 4
+}

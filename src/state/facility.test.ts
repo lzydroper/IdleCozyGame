@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE } from '../data/initialState';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+import { FACILITIES_CONFIG, isFacilityType, SHELTER_UPGRADES } from '../configs/loaders/shelter.loader';
 import {
   startTaskUpdate,
   cancelTaskUpdate,
@@ -19,8 +20,6 @@ import {
 import { calculateDetailedOfflineProgress } from './offline';
 import { EMPTY_DUTY_BONUS } from './duty';
 import { mergeSavedState } from './persistence';
-import { FACILITIES_CONFIG, isFacilityType } from '../data/facilities';
-import { SHELTER_UPGRADES } from '../data/shelterUpgrades';
 
 // 以初始存档为基底构造测试状态
 const baseState = (): GameState => structuredClone(INITIAL_STATE);

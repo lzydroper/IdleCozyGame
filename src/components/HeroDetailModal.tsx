@@ -1,24 +1,25 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
-import {
-  HEROES_CONFIG,
-  HERO_CLASS_LABELS,
-  HERO_FACTION_LABELS,
-  HERO_CLASS_COLORS
-} from '../data/heroes';
-import { STAR_MAX, starUpShardCost } from '../data/awakening';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../configs/constants/heroDisplay';
+import { STAR_MAX, starUpShardCost } from '../configs/constants/awakeningConstants';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { EQUIPMENT_CONFIG } from '../configs/loaders/equipment.loader';
+import { heroBaseAttributes, getMilestoneModifiers } from '../state/heroGrowth';
+
 import { getAwakenedName, getAwakenBonus } from '../state/awakening';
-import { ITEMS_CONFIG } from '../data/items';
-import { EQUIPMENT_CONFIG } from '../data/equipment';
+import { buildHeroSkillViews } from '../state/heroSkillView';
+
+
 import { getHeroEquipmentBonus, equipItemUpdate, unequipItemUpdate } from '../state/equipment';
 import { applyHeroExp } from '../state/combat';
 import { getTalentBonus } from '../state/talents';
 import { describeDutyBonuses } from '../state/duty';
 import { aggregateBonus } from '../state/bonds';
-import { heroBaseAttributes, getMilestoneModifiers } from '../data/heroGrowth';
-import { DEFAULT_SPECIAL_ATTRIBUTES } from '../data/statConfig';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+
+import { DEFAULT_SPECIAL_ATTRIBUTES } from '../configs/constants/statConfig';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { calculateEntityStats, type CalculatedEntityStats, type StatModifier } from '../state/statSystem';
 import { useToast } from './ToastSystem';
 import DetailedStatsModal from './DetailedStatsModal';
@@ -27,10 +28,11 @@ import EquipmentDetailModal from './EquipmentDetailModal';
 import EquipSelectorModal from './EquipSelectorModal';
 import HeroDossierModal from './HeroDossierModal';
 import ExpLevelUpModal from './ExpLevelUpModal';
+import HeroSkillModal from './HeroSkillModal';
 
 // 空装备默认值（模块级常量，避免每次渲染新建导致 useMemo 依赖变化，13 号 R2）
 const EMPTY_EQUIP = { weapon: null, armor: null, trinket: null } as const;
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import GameIcon from './GameIcon';
 import {
   X,
@@ -74,6 +76,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   const [showEquipSelectorModal, setShowEquipSelectorModal] = useState(false);
   const [showDossierModal, setShowDossierModal] = useState(false);
   const [showExpLevelUpModal, setShowExpLevelUpModal] = useState(false);
+  // 技能预览弹窗（heroes-skills B5）：1|2|3 = 槽位，null = 关闭
+  const [skillModalSlot, setSkillModalSlot] = useState<number | null>(null);
 
   // hooks 前置（13 号 R2：useMemo 必须无条件调用，修复 rules-of-hooks；EMPTY_EQUIP 常量稳定依赖）
   const hero = state.heroes[heroId ?? ''];
@@ -122,6 +126,8 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
   if (!isOpen || !heroId || !hero || !config) return null;
   // early return 已保证 config/hero 非空，calculatedStats 必非空
   const stats = calculatedStats as CalculatedEntityStats;
+  // 面板数值显示格式化：最多两位小数、去尾零（装备强化小数累积会产生 14.280000000000001 类浮点尾巴）
+  const fmtStat = (n: number): string => String(Number(n.toFixed(2)));
 
   const heroIds = Object.keys(state.heroes);
   const currentIndex = heroIds.indexOf(heroId);
@@ -276,20 +282,37 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
     );
   };
 
-  // 渲染技能槽位占位 (放大为 w-15 h-15 框，Icon 放大为 w-6 h-6)
+  // 渲染技能槽位（heroes-skills B5）：可点击打开预览弹窗；锁定槽显示锁角标；
+  // 已解锁槽位显示技能名（未解锁显示槽位名）
+  const skillViews = buildHeroSkillViews(heroId, hero);
   const renderSkillSlot = (skillIndex: number) => {
+    const view = skillViews.find(v => v.row.slot === skillIndex);
+    const locked = view ? !view.unlocked : true;
+    const label = view?.unlocked && view.ability ? view.ability.name : view?.slotLabel ?? `技能 ${skillIndex}`;
     return (
-      <div className="flex flex-col items-center gap-0.5">
+      <button
+        onClick={() => setSkillModalSlot(skillIndex)}
+        className="flex flex-col items-center gap-0.5 cursor-pointer group active:scale-95 transition-transform"
+        title={view?.ability ? `查看【${view.ability.name}】` : `查看【${label}】`}
+      >
         <div
-          className="w-15 h-15 aspect-square rounded-xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center relative overflow-hidden"
-          title={`技能 ${skillIndex}`}
+          className={`w-15 h-15 aspect-square rounded-xl border flex items-center justify-center relative overflow-hidden transition-[border-color,transform] ${
+            locked
+              ? 'border-zinc-800 bg-zinc-950/60 border-dashed'
+              : 'border-purple-500/40 bg-purple-950/20 group-hover:border-purple-400/70'
+          }`}
         >
-          <Flame className="w-7 h-7 text-purple-400/70" />
+          <Flame className={`w-7 h-7 ${locked ? 'text-zinc-600' : 'text-purple-400/80'}`} />
+          {locked && (
+            <span className="absolute top-0.5 right-0.5 text-[8px] font-black text-zinc-400 bg-black/80 px-1 rounded border border-zinc-700">
+              锁
+            </span>
+          )}
         </div>
-        <span className="text-[8.5px] font-bold text-zinc-400 max-w-[58px] truncate text-center leading-tight mt-0.5">
-          技能 {skillIndex}
+        <span className={`text-[8.5px] font-bold max-w-[58px] truncate text-center leading-tight mt-0.5 ${locked ? 'text-zinc-400' : 'text-purple-300 group-hover:text-purple-200'}`}>
+          {label}
         </span>
-      </div>
+      </button>
     );
   };
 
@@ -426,7 +449,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                         <ChevronRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-amber-400 ml-auto transition-colors" />
                       </div>
                       <p className="text-[7.5px] text-zinc-400 leading-tight italic line-clamp-2">
-                        "{config.backstory}"
+                        "{config.description}"
                       </p>
                     </>
                   )}
@@ -461,10 +484,14 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
               {/* 右列底部按钮: 升星 / 觉醒 */}
               {hero.star < STAR_MAX ? (
                 <div className="flex flex-col w-full">
+                  {/* 升星素材（ADR-0014 物品化）：专属与通用碎片均存于背包——置于按钮上方，与左列「一键卸下」底部对齐 */}
+                  <div className="w-full text-center text-[7.5px] text-zinc-500 leading-tight mb-0.5">
+                    专属碎片 {soulCount} · 共鸣碎片 {resonanceCount}
+                  </div>
                   <button
                     onClick={handleStarUp}
                     disabled={totalAvailableShards < shardCost}
-                    className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed mt-0.5 ${
+                    className={`w-full py-1 rounded-lg text-[11px] font-black transition-colors border cursor-pointer truncate disabled:cursor-not-allowed ${
                       totalAvailableShards >= shardCost
                         ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm active:scale-95'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-600'
@@ -472,10 +499,6 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   >
                     <Star className="w-4 h-4 inline-block mr-1 -mt-0.5" />升星({shardCost})
                   </button>
-                  {/* 升星素材（ADR-0014 物品化）：专属与通用碎片均存于背包 */}
-                  <div className="w-full text-center text-[7.5px] text-zinc-500 leading-tight">
-                    专属碎片 {soulCount} · 共鸣碎片 {resonanceCount}
-                  </div>
                 </div>
               ) : !hero.awakened ? (
                 <button
@@ -535,7 +558,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Heart className="w-4.5 h-4.5 text-rose-400" /> 生命
                   </span>
-                  <span className="font-black text-rose-300 text-[11px]">{stats.maxHp}</span>
+                  <span className="font-black text-rose-300 text-[11px]">{fmtStat(stats.maxHp)}</span>
                 </div>
 
                 {/* 2. 攻击 */}
@@ -543,7 +566,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Sword className="w-4.5 h-4.5 text-amber-400" /> 攻击
                   </span>
-                  <span className="font-black text-amber-300 text-[11px]">{stats.attack}</span>
+                  <span className="font-black text-amber-300 text-[11px]">{fmtStat(stats.attack)}</span>
                 </div>
 
                 {/* 3. 防御 */}
@@ -551,7 +574,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Shield className="w-4.5 h-4.5 text-sky-400" /> 防御
                   </span>
-                  <span className="font-black text-sky-300 text-[11px]">{stats.defense}</span>
+                  <span className="font-black text-sky-300 text-[11px]">{fmtStat(stats.defense)}</span>
                 </div>
 
                 {/* 4. 魔力 */}
@@ -559,7 +582,7 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
                   <span className="text-zinc-400 font-bold flex items-center gap-1 text-[9px]">
                     <Wand2 className="w-4.5 h-4.5 text-cyan-400" /> 魔力
                   </span>
-                  <span className="font-black text-cyan-300 text-[11px]">{stats.maxMp}</span>
+                  <span className="font-black text-cyan-300 text-[11px]">{fmtStat(stats.maxMp)}</span>
                 </div>
 
                 {/* 5. 暴击 */}
@@ -636,6 +659,16 @@ export const HeroDetailModal: React.FC<HeroDetailModalProps> = ({
         heroId={heroId}
         onClose={() => setShowExpLevelUpModal(false)}
       />
+
+      {/* 技能预览弹窗（heroes-skills B5） */}
+      {skillModalSlot !== null && (
+        <HeroSkillModal
+          isOpen
+          heroId={heroId}
+          skillIndex={skillModalSlot}
+          onClose={() => setSkillModalSlot(null)}
+        />
+      )}
     </div>
   );
 

@@ -1,4 +1,5 @@
-import type { FacilityType } from '../data/facilities';
+import type { FacilityType } from '../configs/types/gameplay.types';
+import type { BattleEvent, BattleOutcome } from '../state/turnEngine';
 
 export interface PlayerStats {
   food: number;       // 现实饱食度
@@ -101,39 +102,17 @@ export interface HeroEquipment {
   trinket: EquippedItem | null;
 }
 
-// === 战斗核心（ticket 05）：三人轮询回合制 ===
+// === 战斗核心（combat-turn）：先机回合制 + 事件流 ===
 
-// 单次攻击动作（战斗日志的一行）
-export interface BattleAction {
-  round: number;
-  actorSide: 'hero' | 'enemy';
-  actorId: string;
-  actorName: string;
-  targetName: string;
-  damage: number;
-  kind?: 'attack' | 'skill' | 'heal'; // 行动类型（ticket 12 觉醒专属技能：heal 的 damage 为治疗量）
-  skillName?: string;                  // kind === 'skill' | 'heal' 时的技能名
-}
-
-// 一场战斗的模拟结果（纯战斗，不含经济结算）
+// 一场战斗的引擎输出（纯战斗，不含经济结算）：
+// 结局 + 事件流；事件流是战斗信息轮播数据源 + 测试断言 seam。
 export interface BattleResult {
-  victory: boolean;      // 敌人全灭 → 胜利
-  partyWiped: boolean;   // 英雄全灭 → 战败（重伤触发条件）
-  rounds: number;
-  actions: BattleAction[];
-  // 逐动作 HP 快照（ticket 21 血条播放）：hpTrack[0] = 初始满血状态，
-  // hpTrack[k] = 第 k 个动作执行后的全员 HP（长度 = actions.length + 1）。
-  // 可选：旧存档/测试 mock 无此字段时 UI 回退为纯日志播报。
-  hpTrack?: BattleHpEntry[][];
-}
-
-// 单个参战者的 HP 快照（ticket 21 血条展示用）
-export interface BattleHpEntry {
-  id: string;
-  side: 'hero' | 'enemy';
-  name: string;
-  hp: number;
-  maxHp: number;
+  outcome: BattleOutcome; // victory / defeat / draw（超限平局）
+  victory: boolean;       // outcome === 'victory'
+  partyWiped: boolean;    // outcome === 'defeat'（英雄全灭 → 重伤触发条件）
+  rounds: number;         // 实际进行的轮次数
+  events: BattleEvent[];  // 事件流（含主时机与细粒度事件，按 seq 单调递增）
+  finalHp?: Record<string, number>; // 参战单位战后剩余生命值快照（unitId -> hp）
 }
 
 // 战斗结算：掉落/经验/重伤入账
@@ -145,19 +124,29 @@ export interface CombatSettlement {
   woundedHeroIds: string[];        // 战败后进入重伤的英雄
 }
 
-// 确认式离线挂机（ticket 08）：玩家在某战斗区域主动开启后，离线期间战斗才推进；
+// 确认式离线挂机（ticket 08）：玩家在某区域关卡主动开启后，在线/离线期间战斗才推进；
 // 可随时停止；体力耗尽或小队战败自动停止
+// combat-level：regionId + levelId（levelId 为区域内 local id）
 export interface CombatIdleState {
-  zoneId: string | null;       // 正在挂机的区域（null = 未挂机）
-  startTime: number | null;    // 开始挂机时间戳（UI 展示用）
+  regionId: string | null;    // 正在挂机的区域
+  levelId: string | null;     // 正在挂机的关卡（区域内 local id）
+  startTime: number | null;   // 开始挂机时间戳（UI 展示用）
   accumulatedSeconds?: number; // 已累计的战斗秒数（在线逐秒累计，够一场 battleDurationSeconds 结算一场；离线结算后未用满一战的秒数保留）
+  totalBattles?: number;       // 本次挂机累计战斗场数
+  totalVictories?: number;     // 累计胜利场数
+  totalDefeats?: number;       // 累计战败场数
+  totalDraws?: number;         // 累计平局场数
+  totalDrops?: Record<string, number>; // 本次挂机累计掉落物品
+  totalSoulEchoes?: number;    // 本次挂机累计灵魂残响
 }
 
 // 战斗状态：最近战斗区域与最近一次结算（供 UI 展示）
+// combat-level：regionId + levelId + clearedLevels
 export interface CombatState {
-  zoneId: string | null;
+  regionId: string | null;          // 当前/最近战斗区域
+  levelId: string | null;           // 当前/最近关卡（区域内 local id）
   lastSettlement: CombatSettlement | null;
-  zonesCleared: string[];  // 已通关区域（ticket 07 线性区域链：通关当前区解锁下一区）
+  clearedLevels: Record<string, string[]>; // regionId -> 已通关 local id 数组
   idle: CombatIdleState;   // 确认式离线挂机开关（ticket 08）
 }
 
@@ -185,6 +174,9 @@ export interface GameState {
     inRealityExploration: boolean;
     realitySteps: number;
     realityLocationId: string | null;
+    realityRegionId?: string | null;    // 当前普通探索所在区域（救援为 null，combat-level 05）
+    regionProgress?: Record<string, number>; // regionId -> 累计完成步数（combat-level 05）
+    pendingMilestones?: Record<string, string>; // regionId -> 待办 milestone eventId（combat-level 05）
     realityBag: Record<string, number>; // 探索中临时背包
     realityEventId?: string | null;     // 当前激活的现实事件ID
     realityEncounterId: string | null;  // 待战斗的战斗遭遇事件ID（ticket 06 探索战斗汇合）
@@ -269,21 +261,4 @@ export interface OfflineReport {
   recoveredItems: Record<string, number>; // 包含发电机、收集器、挂机派遣、流水线产出
   logs: string[];
   completedUpgrades?: string[];            // 离线期间完成的基建升级（如 "魔导发电机 升级至 Lv.3"）
-  idleCombat?: IdleCombatReport | null;    // 确认式离线挂机战斗结算（ticket 08）
-}
-
-// 离线挂机战斗结算报告（ticket 08）：重连弹窗展示掉落与经验
-export interface IdleCombatReport {
-  zoneId: string;
-  zoneName: string;
-  battlesFought: number;   // 本次离线实际战斗场数
-  victories: number;       // 胜利场数
-  defeats: number;         // 战败场数（战败即自动停止挂机）
-  draws: number;           // 平局场数
-  drops: Record<string, number>;     // 累计掉落（已入账）
-  soulEchoesGained: number;          // 累计灵魂残响
-  expPerHero: number;                // 每位上阵英雄累计获得经验
-  staminaConsumed: number;           // 挂机战斗消耗的体力
-  autoStopped: boolean;              // 是否自动停止（体力耗尽 / 战败）
-  stopReason?: 'stamina' | 'defeat';
 }

@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '../types/game';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
-import { HEROES_CONFIG, HERO_CLASS_LABELS } from '../data/heroes';
-import { TALENT_TRUNKS, HERO_TALENTS, buildTalentTree, formatTalentGate } from '../data/talents';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
+import { HEROES_CONFIG, HERO_TALENTS } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS } from '../configs/constants/heroDisplay';
+import { TALENT_TRUNKS } from '../configs/loaders/progression.loader';
+import { buildTalentTree, formatTalentGate } from './talentsTree';
+import type { TalentNodeConfig } from '../configs/types/progression.types';
+
 import {
   getTalentNodes,
   getTalentBonus,
@@ -13,9 +17,10 @@ import {
   evaluateTalentGate,
   isTalentNodeUnlocked
 } from './talents';
-import type { TalentNodeConfig } from '../data/talents';
+
 import type { StatModifier } from './statSystem';
 import { applyHeroExp, heroToCombatant } from './combat';
+import { entityStats } from './battleEntity';
 import { mergeSavedState } from './persistence';
 
 const makeState = (overrides: Partial<GameState> = {}): GameState => {
@@ -76,7 +81,7 @@ describe('天赋树配置完整性（ticket 11）', () => {
       allIds.add(n.id);
     });
     const nova = getTalentNodes('nova');
-    expect(nova.map(n => n.id)).toEqual([EDGE, FLURRY, 'trunk_attacker_armor_break', OVERDRIVE, BOOSTER]);
+    expect(nova.map(n => n.id)).toEqual([EDGE, FLURRY, 'trunk_attacker_armor_break', OVERDRIVE, BOOSTER, 'hero_nova_rewire']);
   });
 });
 
@@ -178,21 +183,21 @@ describe('天赋加成计算与战斗生效', () => {
     const c = heroToCombatant('nova', hero, bond, gear);
     // nova 机械阵营穿戴废土利刃（机械阵营）-> +30% 基础加成：flat = 10 × 1.3 = 13
     // 攻击 = round((49 + 13) × 1.16) = round(71.92) = 72
-    expect(c.attack).toBe(72);
+    expect(entityStats(c).attack).toBe(72);
   });
 
   it('守护者主干生命加成生效，当前血量按比例缩放', () => {
     const soldier = { ...createInitialHero('soldier'), talents: { trunk_guardian_bulwark: 3 }, hp: 80 }; // 生命 +9%
     const c = heroToCombatant('soldier', soldier);
-    expect(c.maxHp).toBe(262); // (160 + 体质 8×10) × 1.09
+    expect(entityStats(c).maxHp).toBe(262); // (160 + 体质 8×10) × 1.09
     expect(c.hp).toBe(131); // 已损比例保留（80/160 × 262）
   });
 
   it('未加点英雄战斗属性与之前一致（回归；元属性折算后）', () => {
     const c = heroToCombatant('nova', createInitialHero('nova'));
-    expect(c.attack).toBe(49);
-    expect(c.defense).toBe(11);
-    expect(c.maxHp).toBe(130);
+    expect(entityStats(c).attack).toBe(49);
+    expect(entityStats(c).defense).toBe(11);
+    expect(entityStats(c).maxHp).toBe(130);
   });
 });
 

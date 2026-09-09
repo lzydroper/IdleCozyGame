@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import HeroTab from './HeroTab';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 const HERO_SAVE_KEY = 'aether_garden_save_Guest';
 
@@ -223,7 +223,8 @@ describe('HeroTab Component', () => {
 
     fireEvent.click(screen.getByText('英雄列表'));
     fireEvent.click(screen.getByTestId('hero-card-nova'));
-    fireEvent.click(screen.getByText(/觉醒/));
+    // 精确匹配「觉醒」按钮（详情弹窗技能槽标签「觉醒技」亦含此词，不可用正则宽匹配）
+    fireEvent.click(screen.getByText('觉醒', { exact: true }));
     const saved = JSON.parse(localStorage.getItem(HERO_SAVE_KEY) || '{}');
     expect(saved.heroes.nova.awakened).toBe(true);
     expect(saved.inventory.arcane_orb).toBe(0);

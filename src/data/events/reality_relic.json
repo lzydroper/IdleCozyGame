@@ -1,0 +1,140 @@
+{
+  "ancient_library": {
+    "id": "ancient_library",
+    "title": "大图书馆遗迹",
+    "description": "你走入了一间早已半塌的古代图书馆。大部分书架已经腐烂成灰，但在密闭的金属阅读隔间里，仍有少许未风化的藏书。",
+    "type": "relic",
+    "weight": 50,
+    "choices": {
+      "A": {
+        "text": "翻阅诗歌残本 (理智+12, 获碎片x1)",
+        "results": {
+          "stats": {
+            "sanity": 12
+          },
+          "items": {
+            "dream_shard": 1
+          },
+          "logText": "里面精美的诗句安抚了你紧绷的理智，并在你的精神深处凝结成了一块晶莹的梦境碎片。"
+        }
+      },
+      "B": {
+        "text": "拆解阅读架 (饱食-5, 获合金板x2)",
+        "results": {
+          "stats": {
+            "food": -5
+          },
+          "items": {
+            "alloy_plate": 2
+          },
+          "logText": "你熟练地用工具卸下了两块完好无损的名贵抗辐射合金板。"
+        }
+      }
+    }
+  },
+  "mysterious_capsule": {
+    "id": "mysterious_capsule",
+    "title": "神秘冷冻休眠舱",
+    "description": "一具厚重的科幻金属舱体半掩在流沙中。虽然冷冻对象早已离世，但其紧急医疗储备和电池似乎还处于密闭状态。",
+    "type": "relic",
+    "weight": 50,
+    "choices": {
+      "A": {
+        "text": "破拆舱门 (饱食-10, 获纳米针x1)",
+        "results": {
+          "stats": {
+            "food": -10
+          },
+          "items": {
+            "nanite_injector": 1
+          },
+          "logText": "你用撬棍砸开阀门。在气压释放声中，你找到了一支真空包装下的纳米修复针！"
+        }
+      },
+      "B": {
+        "text": "短路供电 (魔能-10, 获护盾电池x1)",
+        "results": {
+          "stats": {
+            "energy": -10
+          },
+          "items": {
+            "shield_battery": 1
+          },
+          "logText": "舱盖缓缓打开，你从备用电容中拆卸出了一节完好的重载护盾电池。"
+        }
+      }
+    }
+  },
+  "abandoned_lab": {
+    "id": "abandoned_lab",
+    "title": "废弃魔导实验室",
+    "description": "半倒塌的实验室内，精密仪器和设备大多已损毁，但墙角一座密封的生物培养皿还在微微发出幽蓝色的磷光。培养皿上的标签写着『虚空植物样本·极度危险』，旁边散落着一堆工具。",
+    "type": "relic",
+    "weight": 50,
+    "choices": {
+      "A": {
+        "text": "小心破解培养皿加密锁 (魔能-12)",
+        "results": {
+          "stats": {
+            "energy": -12
+          },
+          "items": {
+            "seed_void_lotus": 1,
+            "void_essence": 1,
+            "aether_ingot": 1
+          },
+          "logText": "你屏住呼吸，小心翼翼地将魔能探入培养皿的加密锁芯。咔一声解锁，培养皿中静静躺着一颗虚空魔莲种子、一管虚空精华和一块以太合金锭！"
+        }
+      },
+      "B": {
+        "text": "搜刮实验室设备零件 (饱食-6)",
+        "results": {
+          "stats": {
+            "food": -6
+          },
+          "items": {
+            "nanite_injector": 1,
+            "alloy_plate": 1,
+            "nanite_slurry": 1
+          },
+          "logText": "你在倒塌的仪器台间翻找，拆下了几块高纯度合金板、一支纳米修复针和一管封装完好的纳米修复泥。虽然错过了植物样本，收获也不赖。"
+        }
+      }
+    }
+  },
+  "old_bunker": {
+    "id": "old_bunker",
+    "title": "古旧地下避难所",
+    "description": "你在一块翻转的混凝土板下发现了一段通向地下的阶梯。下方是一个保存相对完好的旧世避难所，铁门上刻着编号『B-7』，门缝里透出应急灯微弱的绿光。",
+    "type": "relic",
+    "weight": 50,
+    "choices": {
+      "A": {
+        "text": "探索避难所生活区 (饱食-6)",
+        "results": {
+          "stats": {
+            "food": -6
+          },
+          "items": {
+            "ration": 2,
+            "sanity_capsule": 1
+          },
+          "logText": "生活区里一片狼藉但物资尚存，你翻出了两包保存完好的压缩口粮，还在医药箱里找到了一瓶稳定精神状态的稳定胶囊。"
+        }
+      },
+      "B": {
+        "text": "检查避难所供电系统 (魔能-8)",
+        "results": {
+          "stats": {
+            "energy": -8
+          },
+          "items": {
+            "shield_battery": 1,
+            "plasma_cell": 1
+          },
+          "logText": "你打开了备用电源室，虽然主发电机早已熄火，但应急电源柜里还静静躺着一块重载护盾电池和一枚等离子电芯。"
+        }
+      }
+    }
+  }
+}

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Cog, TestTube, Crosshair, Tent, FlaskConical, CloudLightning, Waves, Wheat, Drumstick, Zap, Brain, AlertTriangle } from 'lucide-react';
 import GameIcon from './GameIcon';
-import type { EventChoice } from '../data/realityEvents';
+import type { EventChoice } from '../configs/types/event.types';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
 import type { PlayerStats } from '../types/game';
-import { ITEMS_CONFIG } from '../data/items';
+
 
 interface SwipeCardProps {
   title: string;

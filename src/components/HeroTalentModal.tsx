@@ -2,7 +2,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Sliders } from 'lucide-react';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import HeroTalentPanel from './HeroTalentPanel';
 
 export interface HeroTalentModalProps {

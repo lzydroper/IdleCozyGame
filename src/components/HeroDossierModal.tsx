@@ -1,12 +1,13 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { HEROES_CONFIG, HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../data/heroes';
-import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../data/heroLore';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { HERO_CLASS_LABELS, HERO_FACTION_LABELS, HERO_CLASS_COLORS } from '../configs/constants/heroDisplay';
+import { HERO_CLASS_LORE, HERO_FACTION_LORE, HERO_FACTION_COLORS } from '../configs/constants/heroLore';
 import { getAwakenedName } from '../state/awakening';
 import { describeDutyBonuses } from '../state/duty';
 import { useGame } from '../context/GameContext';
 import GameIcon from './GameIcon';
-import { UI_TOKENS } from '../data/uiConstants';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
 import { X, Award, Shield, Sparkles, Factory, Wrench, Package } from 'lucide-react';
 
 export interface HeroDossierModalProps {
@@ -88,7 +89,7 @@ const HeroDossierModal: React.FC<HeroDossierModalProps> = ({ isOpen, heroId, onC
           <h4 className={`${UI_TOKENS.textLabel} font-black text-amber-300 flex items-center gap-1`}>
             <Wrench className="w-3.5 h-3.5 text-amber-400" /> 背景故事
           </h4>
-          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{config.backstory}</p>
+          <p className={`${UI_TOKENS.textBody} text-zinc-300 leading-relaxed`}>{config.description}</p>
         </section>
 
         {/* 职阶设定 */}

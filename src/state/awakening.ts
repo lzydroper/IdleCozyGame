@@ -1,13 +1,7 @@
 import type { GameState, HeroState } from '../types/game';
 import type { StatModifier } from './statSystem';
-import {
-  STAR_MAX,
-  starUpShardCost,
-  STAR_STATS_PER_STAR,
-  AWAKEN_COST,
-  AWAKEN_CONFIG,
-  type AwakenSkillConfig
-} from '../data/awakening';
+import { STAR_MAX, starUpShardCost, STAR_STATS_PER_STAR, AWAKEN_COST } from '../configs/constants/awakeningConstants';
+import { AWAKEN_CONFIG } from '../configs/loaders/entities.loader';
 import type { UpdateResult } from './types';
 
 // === 升星与觉醒（ticket 12）：终局养成闭环 ===
@@ -99,9 +93,9 @@ export const getAwakenedPassive = (heroId: string, hero: HeroState): StatModifie
     ? (AWAKEN_CONFIG[heroId]?.passive || []).map(m => ({ ...m, source: '觉醒被动' }))
     : [];
 
-// 觉醒专属战斗技能（仅觉醒后返回配置）
-export const getAwakenSkill = (heroId: string, hero: HeroState): AwakenSkillConfig | undefined =>
-  hero.awakened ? AWAKEN_CONFIG[heroId]?.skill : undefined;
+// 觉醒专属战斗技能：仅觉醒后返回 Ability 配置 id（数值/效果在 src/data/abilities.ts）。
+export const getAwakenAbilityId = (heroId: string, hero: HeroState): string | undefined =>
+  hero.awakened ? AWAKEN_CONFIG[heroId]?.abilityId : undefined;
 
 // 觉醒展示名（未觉醒回退原名）
 export const getAwakenedName = (heroId: string, hero: HeroState): string | null =>

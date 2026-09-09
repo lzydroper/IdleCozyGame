@@ -4,8 +4,8 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { calculateOfflineProgress, calculateDetailedOfflineProgress } from '../state/offline';
 import { GameProvider, useGame } from './GameContext';
-import { CROPS_CONFIG } from '../data/crops';
-import { createInitialHero, INITIAL_STATE } from '../data/initialState';
+import { CROPS_CONFIG } from '../configs/loaders/gameplay.loader';
+import { createInitialHero, INITIAL_STATE } from '../configs/seed/initialState';
 import type { GreenhouseSlot, GameState } from '../types/game';
 
 // 模拟作物配置表
@@ -157,7 +157,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
+        combat: { regionId: null, levelId: null, lastSettlement: null, clearedLevels: {}, idle: { regionId: null, levelId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
@@ -206,7 +206,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
+        combat: { regionId: null, levelId: null, lastSettlement: null, clearedLevels: {}, idle: { regionId: null, levelId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
@@ -273,7 +273,7 @@ describe('GameContext Integration', () => {
         stamina: 100,
         maxStamina: 100,
         party: [],
-        combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
+        combat: { regionId: null, levelId: null, lastSettlement: null, clearedLevels: {}, idle: { regionId: null, levelId: null, startTime: null } },
         exploration: {
           inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
           realityEncounterId: null,
@@ -348,7 +348,7 @@ describe('GameContext Integration', () => {
       stamina: 100,
       maxStamina: 100,
       party: [],
-      combat: { zoneId: null, lastSettlement: null, zonesCleared: [], idle: { zoneId: null, startTime: null } },
+      combat: { regionId: null, levelId: null, lastSettlement: null, clearedLevels: {}, idle: { regionId: null, levelId: null, startTime: null } },
       exploration: {
         inRealityExploration: false, realitySteps: 0, realityLocationId: null, realityBag: {},
         realityEncounterId: null,

@@ -1,0 +1,15 @@
+{
+  "durationKind": "temporary",
+  "stackIncrement": 0,
+  "removable": true,
+  "triggers": [
+    {
+      "unitRef": "target",
+      "timing": "turnStart"
+    }
+  ],
+  "effects": [],
+  "stack": false,
+  "renew": true,
+  "buffId": "stun"
+}

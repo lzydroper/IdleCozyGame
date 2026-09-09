@@ -4,11 +4,11 @@ import { useGame } from '../../context/GameContext';
 import { useToast } from '../ToastSystem';
 import type { Recipe } from '../../types/config';
 import { getRecipeDisplayName, getRecipeMainReward, computeMaxBatch } from '../../state/workshop';
-import { ITEMS_CONFIG } from '../../data/items';
-import { UI_TOKENS } from '../../data/uiConstants';
+import { ITEMS_CONFIG } from '../../configs/loaders/items.loader';
+import { UI_TOKENS } from '../../configs/constants/uiConstants';
 import GameIcon from '../GameIcon';
 import { WORKSHOP_TOASTS } from './constants';
-import { X, Zap } from 'lucide-react';
+import { Battery, X, Zap } from 'lucide-react';
 
 // 批量合成弹窗（ticket 04）：数量滑条 0~maxBatch（材料上限）+ 消耗/产出 ×N 预览 + 合成按钮；
 // 对齐背包 ItemDetailModal 的批量使用心智；充能配方显示梦境充能次数
@@ -77,6 +77,12 @@ const CraftBatchModal: React.FC<CraftBatchModalProps> = ({ recipe, onClose }) =>
                   {ITEMS_CONFIG[item]?.name || item} x{qty * safeCount}
                 </span>
               ))}
+              {recipe.energyCost ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">
+                  <Battery className="w-3 h-3" />
+                  魔能 x{recipe.energyCost * safeCount}
+                </span>
+              ) : null}
             </div>
           </div>
 

@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import EquipSelectorModal from './EquipSelectorModal';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 describe('EquipSelectorModal Component (背包装备实例选择, ADR-0014 修订)', () => {
   beforeEach(() => {

@@ -1,0 +1,13 @@
+{
+  "id": "radiation_mutant",
+  "name": "辐射变异体",
+  "description": "被辐射侵蚀的变异体。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 130,
+    "attack": 20,
+    "defense": 6
+  }
+}

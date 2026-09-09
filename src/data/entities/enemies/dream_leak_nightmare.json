@@ -1,0 +1,13 @@
+{
+  "id": "dream_leak_nightmare",
+  "name": "梦魇侵入体",
+  "description": "梦境污染达到 100% 时逸出的梦魇实体。",
+  "kind": "enemy",
+  "role": "nightmare",
+  "faction": "nightmare",
+  "baseAttributes": {
+    "maxHp": 60,
+    "attack": 14,
+    "defense": 4
+  }
+}

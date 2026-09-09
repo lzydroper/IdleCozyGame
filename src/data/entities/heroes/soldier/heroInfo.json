@@ -1,0 +1,24 @@
+{
+  "id": "soldier",
+  "name": "铁卫",
+  "description": "避难所防御队长，擅长防御部署与阵地战。",
+  "icon": "entities/heroes/soldier.png",
+  "kind": "hero",
+  "heroClass": "guardian",
+  "faction": "spirit",
+  "baseAttributes": {
+    "maxHp": 160,
+    "attack": 15,
+    "defense": 16
+  },
+  "primaryAttributes": {
+    "strength": 4,
+    "constitution": 8,
+    "agility": 2,
+    "intelligence": 2,
+    "willpower": 4,
+    "transcendence": 2
+  },
+  "starter": false,
+  "order": 2
+}

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { useToast } from './ToastSystem';
-import { ITEMS_CONFIG } from '../data/items';
-import { UI_TOKENS } from '../data/uiConstants';
-import { EQUIPMENT_CONFIG, EQUIPMENT_SETS, EQUIPMENT_SLOT_LABELS } from '../data/equipment';
-import { HEROES_CONFIG } from '../data/heroes';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import { EQUIPMENT_CONFIG, EQUIPMENT_SETS } from '../configs/loaders/equipment.loader';
+import { EQUIPMENT_SLOT_LABELS } from '../configs/constants/equipmentConstants';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { UI_TOKENS } from '../configs/constants/uiConstants';
+
 import { getEquippedItemStats } from '../state/equipment';
 import { formatModifiers, type StatModifier } from '../state/statSystem';
 import GameIcon from './GameIcon';

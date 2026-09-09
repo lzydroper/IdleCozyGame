@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { ITEMS_CONFIG } from '../data/items';
+import { ITEMS_CONFIG } from '../configs/loaders/items.loader';
+import type { ItemCategory } from '../configs/types/item.types';
 import ItemGridItem from './ItemGridItem';
 import ItemDetailModal from './ItemDetailModal';
 import { BookOpen, Package, Clock, Settings, Compass, Cog, MoonStar, Swords, Save, CookingPot, Shield, Layers, Gem } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ItemCategory } from '../data/items';
 
 // 背包分类切页：4 大分类直接绑定 ItemMeta.category 枚举（ADR-0014），无「全部」
 // 道具=可主动使用、资源=生产消耗物（原料/种子/货币）、碎片=英雄碎片与觉醒素材、装备=装备生态

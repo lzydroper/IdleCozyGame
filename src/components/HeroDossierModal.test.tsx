@@ -5,8 +5,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import HeroDossierModal from './HeroDossierModal';
-import { INITIAL_STATE } from '../data/initialState';
-import { HERO_CLASS_LORE, HERO_FACTION_LORE } from '../data/heroLore';
+import { INITIAL_STATE } from '../configs/seed/initialState';
+import { HERO_CLASS_LORE, HERO_FACTION_LORE } from '../configs/constants/heroLore';
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
@@ -22,7 +22,7 @@ describe('HeroDossierModal (英雄档案，10 号)', () => {
     localStorage.setItem('aether_garden_save_current_user', 'Guest');
   });
 
-  it('renders dossier with class/faction lore, backstory and duty meta', () => {
+  it('renders dossier with class/faction lore, description and duty meta', () => {
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(INITIAL_STATE));
 
     renderWithProviders(<HeroDossierModal isOpen={true} heroId="nova" onClose={() => {}} />);

@@ -1,6 +1,7 @@
 import React from 'react';
-import { WORKSHOP_CATEGORIES } from '../../data/workshopCategories';
-import type { WorkshopCategory } from '../../data/workshopCategories';
+import { WORKSHOP_CATEGORIES } from '../../configs/constants/workshopCategories';
+import type { WorkshopCategory } from '../../configs/constants/workshopCategories';
+import { iconFor } from '../../configs/mappings/iconMap';
 
 // 工坊分类栏（ticket 03）：5 类（道具/资源/碎片/装备/建筑），无「全部」；
 // 计数基于可见配方，空分类可点击查看空态（与背包 LogTab 一致）
@@ -13,7 +14,7 @@ interface WorkshopCategoryBarProps {
 const WorkshopCategoryBar: React.FC<WorkshopCategoryBarProps> = ({ active, counts, onChange }) => (
   <div className="flex gap-1.5 mb-3">
     {WORKSHOP_CATEGORIES.map(cat => {
-      const CatIcon = cat.icon;
+      const CatIcon = iconFor(cat.icon); // icon 字符串解析（icon 单字段约定）
       const isActive = active === cat.id;
       return (
         <button

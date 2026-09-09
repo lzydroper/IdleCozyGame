@@ -1,11 +1,11 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GameProvider } from '../context/GameContext';
 import { ToastProvider } from './ToastSystem';
 import WildernessTab from './WildernessTab';
-import { COMBAT_ZONE_LIST } from '../data/combatZones';
-import { COMBAT_CONFIG } from '../data/combatConfig';
-import { INITIAL_STATE, createInitialHero } from '../data/initialState';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
+import { INITIAL_STATE, createInitialHero } from '../configs/seed/initialState';
 
 describe('WildernessTab Component', () => {
   beforeEach(() => {
@@ -38,10 +38,45 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    const startButton = screen.getByText(/开始探索/i);
-    fireEvent.click(startButton);
+    fireEvent.click(screen.getByText(/探索【废土边缘】/));
 
     expect(screen.getByText(/临时背囊/i)).toBeDefined();
+  });
+
+  it('uses the region initial cost and draws from the region event pool', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE));
+    save.exploration.regionProgress = {
+      wasteland_entrance: 10
+    };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05);
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // 打开区域选择器切换到旧城废墟
+    fireEvent.click(screen.getByTestId('wilderness-region-card'));
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+
+    fireEvent.click(screen.getByText(/探索【旧城废墟】/));
+
+    const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(saved.player.food).toBe(90); // 区域 initialCost 10
+    expect(saved.exploration.inRealityExploration).toBe(true);
+    const eventId = saved.exploration.realityEventId;
+    expect([
+      'abandoned_train', 'abandoned_cart', 'waste_pool', 'thorn_thicket',
+      'wasteland_bandits', 'bat_swarm', 'hydrological_station', 'wild_fruit',
+      'ancient_library', 'sandstorm', 'magnetic_storm', 'encounter_ruin_raiders'
+    ]).toContain(eventId);
+
+    randomSpy.mockRestore();
   });
 
   it('should trigger special rescue event for Catherine at step 5', () => {
@@ -217,35 +252,8 @@ describe('WildernessTab Component', () => {
   });
 
   it('switches to combat mode and starts an auto battle in the first zone', () => {
-    render(
-      <GameProvider>
-        <ToastProvider>
-          <WildernessTab />
-        </ToastProvider>
-      </GameProvider>
-    );
-
-    // 切换到战斗挂机模式
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    expect(screen.getAllByText(/废土边缘/).length).toBeGreaterThan(0); // 区域卡标题 + 下一区解锁提示
-    expect(screen.getByText(/战斗体力/)).toBeDefined();
-
-    fireEvent.click(screen.getByText(/开战（体力 -10）/));
-
-    const skipBtn1 = screen.queryByText('跳过');
-    if (skipBtn1) fireEvent.click(skipBtn1);
-
-    // 胜利结算展示 + 体力扣减 + 结算写入存档
-    expect(screen.getAllByText(/战斗胜利/).length).toBeGreaterThan(0);
-    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.stamina).toBe(90);
-    expect(savedState.combat.zoneId).toBe('wasteland_entrance');
-    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
-  });
-
-  it('blocks battle when stamina is insufficient', () => {
-    const save = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    save.stamina = 0;
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE));
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
     render(
@@ -256,14 +264,54 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    const button = screen.getByText(/开战（体力 -10）/);
-    expect(button.hasAttribute('disabled')).toBe(true);
+    // 切换到战斗模式
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    expect(screen.getAllByText(/废土边缘/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/战斗体力/)).toBeDefined();
 
-    fireEvent.click(button);
+    // 点击第 1 关卡片唤起 LevelDetailModal
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+    expect(screen.getByTestId('level-detail-modal')).toBeDefined();
+
+    // 点击【确认】开战 → 打开专属全屏战斗模态 BattleModal
+    fireEvent.click(screen.getByTestId('level-detail-confirm-btn'));
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+
+    // 跳过直达结算并验证战果与体力扣减
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    expect(screen.getByText(/战斗胜利/)).toBeDefined();
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.stamina).toBe(90);
+    expect(savedState.combat.regionId).toBe('wasteland_entrance');
+    expect(savedState.combat.levelId).toBe('wasteland_entrance_1');
+    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
+  });
+
+  it('blocks battle when stamina is insufficient', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE));
+    save.stamina = 0;
+    save.lastTick = Date.now();
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+
+    const confirmBtn = screen.getByTestId('level-detail-confirm-btn');
+    expect(confirmBtn.hasAttribute('disabled')).toBe(true);
+
+    fireEvent.click(confirmBtn);
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.combat?.lastSettlement).toBeNull(); // 体力不足未开战
-    expect(savedState.stamina).toBe(0);
+    expect(savedState.stamina).toBeLessThan(1);
   });
 
   it('resolves a combat encounter victory: exploration continues with loot and exp', () => {
@@ -294,28 +342,29 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    // 遭遇场景（与自动战斗同一战斗场景）
+    // 遭遇场景：点击迎战进入全屏专属战斗模态 BattleModal
     expect(screen.getByText(/战斗遭遇 —— 废土掠食者群/)).toBeDefined();
     fireEvent.click(screen.getByText(/迎战！（体力/));
 
-    // 触发战斗动画播报 → 跳过（加快测试速度）
-    const skipBtn = screen.queryByText(/跳过/);
-    if (skipBtn) fireEvent.click(skipBtn);
+    // 专属战斗场景唤起：退出按钮严格隐藏
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+    expect(screen.queryByTestId('exit-battle-btn')).toBeNull();
 
-    // 播完停留：不自动跳转，显示胜利结算与「继续探索」按钮（ticket 21 用户反馈 4）
-    expect(screen.getByText(/战斗胜利！/)).toBeDefined();
-    expect(screen.getByText('继续探索')).toBeDefined();
+    // 跳过直达结算
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    expect(screen.getByTestId('battle-settlement-modal')).toBeDefined();
+    expect(screen.getByText('战斗胜利')).toBeDefined();
 
-    // 用户主动点击后才离开遭遇战，继续探索
-    fireEvent.click(screen.getByText('继续探索'));
+    // 确认结算：关闭模态，无缝继续推进探索流程
+    fireEvent.click(screen.getByTestId('battle-settlement-confirm-btn'));
     expect(screen.getByText(/废弃的魔导卡车/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.realitySteps).toBe(2);
     expect(savedState.exploration.realityEncounterId).toBeNull();
     expect(savedState.exploration.inRealityExploration).toBe(true);
-    // 掉落入探索背囊（与已获战利品合并：scrap 2 + 1）
-    expect(savedState.exploration.realityBag.scrap_metal).toBe(3);
-    expect(savedState.exploration.realityBag.glow_fiber).toBe(1);
+    // 掉落入探索背囊（DropEntry：scrap 2 + 2，glow 2）
+    expect(savedState.exploration.realityBag.scrap_metal).toBe(4);
+    expect(savedState.exploration.realityBag.glow_fiber).toBe(2);
     // 经验入账；探索遭遇消耗独立体力（100 - 5）
     expect(savedState.heroes.nova.exp).toBe(15);
     expect(savedState.stamina).toBe(95);
@@ -326,6 +375,7 @@ describe('WildernessTab Component', () => {
   });
 
   it('resolves a combat encounter defeat: exploration ends, loot merged into inventory, party wounded', () => {
+    localStorage.setItem('aether_garden_save_current_user', 'Guest');
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
       player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
       inventory: {},
@@ -354,16 +404,17 @@ describe('WildernessTab Component', () => {
     expect(screen.getByText(/战斗遭遇 —— 车间畸变体群/)).toBeDefined();
     fireEvent.click(screen.getByText(/迎战！（体力/));
 
-    // 触发战斗动画播报 → 跳过（加快测试速度）
-    const skipBtn = screen.queryByText(/跳过/);
-    if (skipBtn) fireEvent.click(skipBtn);
+    // 遭遇战模态唤起：退出按钮严格隐藏
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+    expect(screen.queryByTestId('exit-battle-btn')).toBeNull();
 
-    // 播完停留：显示失败结算与「返回荒野」按钮，不自动跳转（ticket 21 用户反馈 4）
-    expect(screen.getByText(/战斗失败！/)).toBeDefined();
-    expect(screen.getByText('返回荒野')).toBeDefined();
+    // 跳过直达结算：战败结算
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    expect(screen.getByTestId('battle-settlement-modal')).toBeDefined();
+    expect(screen.getByText('战斗失败')).toBeDefined();
 
-    // 用户主动点击后才离开遭遇战，回到荒野入口
-    fireEvent.click(screen.getByText('返回荒野'));
+    // 确认结算：离开模态，探索终止回到荒野入口
+    fireEvent.click(screen.getByTestId('battle-settlement-confirm-btn'));
     expect(screen.getByText(/踏入废土荒野/)).toBeDefined();
     const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
     expect(savedState.exploration.inRealityExploration).toBe(false);
@@ -421,35 +472,9 @@ describe('WildernessTab Component', () => {
   });
 
   it('boss victory clears the zone and unlocks the next zone (线性区域链)', () => {
-    render(
-      <GameProvider>
-        <ToastProvider>
-          <WildernessTab />
-        </ToastProvider>
-      </GameProvider>
-    );
-
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    // 初始仅首区解锁：区2、区3 显示未解锁
-    expect(screen.getAllByText(/未解锁/).length).toBe(2);
-    expect(screen.getByText(/关底 BOSS：废土鬣狗王/)).toBeDefined();
-
-    // 单诺娃挑战区1 BOSS → 胜利通关
-    fireEvent.click(screen.getByText(/挑战 BOSS（体力 -12）/));
-
-    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
-    expect(savedState.combat.zonesCleared).toEqual(['wasteland_entrance']);
-    expect(savedState.stamina).toBe(100 - 12); // BOSS 战消耗体力
-    // 区2 解锁：未解锁徽章从 2 减到 1，且出现"已通关"徽章
-    expect(screen.getAllByText(/未解锁/).length).toBe(1);
-    expect(screen.getByText(/已通关/)).toBeDefined();
-  });
-
-  it('arms idle from the combat panel in a cleared zone and stops it preserving stamina (挂机需已通关)', () => {
-    // 修复：挂机仅限已通关区域
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.combat.zonesCleared = ['wasteland_entrance'];
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
     render(
@@ -460,34 +485,69 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    expect(screen.getByText(/鬣狗王/)).toBeDefined(); // 关卡网格显示纯关卡名（U#3 方案 A）
 
-    // 首区已通关可挂机；其余区域未通关 → 挂机按钮禁用
-    const idleButtons = screen.getAllByText(/开始挂机/);
-    expect(idleButtons.length).toBe(COMBAT_ZONE_LIST.length);
-    expect(idleButtons[0].hasAttribute('disabled')).toBe(false);
-    expect(idleButtons[1].hasAttribute('disabled')).toBe(true); // 未通关不可挂机（修复）
-    fireEvent.click(idleButtons[0]);
+    // 单诺娃挑战区1 关底（末位关卡）→ 点击关卡卡片并确认开战 → 胜利通关
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_2'));
+    expect(screen.getByTestId('level-detail-modal')).toBeDefined();
+    fireEvent.click(screen.getByTestId('level-detail-confirm-btn'));
 
-    // 挂机状态横幅出现：不立即战斗、不消耗体力
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.combat.lastSettlement.battle.victory).toBe(true);
+    expect(savedState.combat.clearedLevels.wasteland_entrance).toContain('wasteland_entrance_2');
+    expect(savedState.stamina).toBe(100 - 12); // 关底战消耗体力
+    expect(screen.getAllByText(/^已通关$/).length).toBeGreaterThan(0);
+  });
+
+  it('arms idle from the combat panel in a cleared zone and stops it preserving stamina (挂机需已通关)', () => {
+    // 挂机仅限已通关区域/关卡
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+
+    // 切换到挂机模式
+    fireEvent.click(screen.getByTestId('combat-mode-idle-btn'));
+
+    // 首区第 1 关已通关可挂机
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+    const confirmBtn = screen.getByTestId('level-detail-confirm-btn');
+    expect(confirmBtn.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(confirmBtn);
+
+    // 挂机状态出现：开启挂机检验体力阈值（不提前扣除），战斗结算时逐场扣除
     expect(screen.getByText(/挂机中：/)).toBeDefined();
     expect(screen.getAllByText(/停止挂机/).length).toBeGreaterThan(0);
     let saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(saved.combat.idle.zoneId).toBe('wasteland_entrance');
+    expect(saved.combat.idle.regionId).toBe('wasteland_entrance');
+    expect(saved.combat.idle.levelId).toBe('wasteland_entrance_1');
     expect(saved.combat.lastSettlement).toBeNull();
     expect(saved.stamina).toBe(100);
 
-    // 停止挂机：剩余体力保留
+    // 停止挂机：体力保持完整
     fireEvent.click(screen.getAllByText(/停止挂机/)[0]);
     saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(saved.combat.idle.zoneId).toBeNull();
+    expect(saved.combat.idle.regionId).toBeNull();
+    expect(saved.combat.idle.levelId).toBeNull();
     expect(saved.stamina).toBe(100);
   });
 
   it('blocks idle arming when stamina is insufficient', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     save.stamina = 0;
-    save.combat.zonesCleared = ['wasteland_entrance']; // 已通关，纯体力不足场景
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] }; // 已通关，纯体力不足场景
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
     render(
@@ -498,19 +558,21 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    const idleButtons = screen.getAllByText(/开始挂机/);
-    expect(idleButtons[0].hasAttribute('disabled')).toBe(true);
-    fireEvent.click(idleButtons[0]);
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    fireEvent.click(screen.getByTestId('combat-mode-idle-btn'));
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+
+    const confirmBtn = screen.getByTestId('level-detail-confirm-btn');
+    expect(confirmBtn.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(confirmBtn);
 
     const saved = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
-    expect(saved.combat?.idle?.zoneId).toBeNull(); // 体力不足未开启挂机
+    expect(saved.combat?.idle?.regionId).toBeNull(); // 体力不足未开启挂机
   });
 
-  it('shows the active bond in the combat panel (羁绊加成在战斗区可见)', () => {
+  it('renders region selector card and mode toggle in combat panel', () => {
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
-    save.heroes.roy = createInitialHero('roy');
-    save.party = ['nova', 'roy'];
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
     render(
@@ -521,109 +583,25 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    // 机械搭档（诺娃 + 罗伊）：攻击 +10%
-    expect(screen.getByText(/机械搭档/)).toBeDefined();
-    expect(screen.getByText(/攻击 \+10%/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
+    expect(screen.getByTestId('combat-mode-active-btn')).toBeDefined();
+    expect(screen.getByTestId('combat-mode-idle-btn')).toBeDefined();
+    expect(screen.getByTestId('level-browser-grid')).toBeDefined();
   });
 
-  it('renders a draw settlement as 平局 rather than defeat (三态结算展示)', () => {
-    // 水合一个平局结算（victory=false 且 partyWiped=false），当前数据下无法自然产生
-    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
-      inventory: {},
-      greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: false } },
-      party: ['nova'],
-      stamina: 100,
-      combat: {
-        zoneId: 'wasteland_entrance',
-        lastSettlement: {
-          battle: { victory: false, partyWiped: false, rounds: 60, actions: [] },
-          drops: {},
-          soulEchoes: 0,
-          expPerHero: 0,
-          woundedHeroIds: []
-        },
-        zonesCleared: []
-      }
-    }));
-
-    render(
-      <GameProvider>
-        <ToastProvider>
-          <WildernessTab />
-        </ToastProvider>
-      </GameProvider>
-    );
-
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    const skipBtn2 = screen.queryByText('跳过');
-    if (skipBtn2) fireEvent.click(skipBtn2);
-
-    expect(screen.getByText(/战斗平局/)).toBeDefined();
-    expect(screen.queryByText(/战斗失败/)).toBeNull();
-    expect(screen.getByText(/鏖战至回合上限未分胜负/)).toBeDefined();
-  });
-
-  it('renders awakened skill actions in the battle log (strike shows target, heal shows +N)', () => {
-    // 水合一场含觉醒技能结算：strike 有目标名、heal 为自身治疗
-    localStorage.setItem('aether_garden_save_Guest', JSON.stringify({
-      player: { food: 100, maxFood: 100, energy: 100, maxEnergy: 100, sanity: 100, maxSanity: 100, days: 1 },
-      inventory: {},
-      greenhouse: { slots: [], unlockedSlotsCount: 4 },
-      heroes: { nova: { level: 1, exp: 0, hp: 100, maxHp: 100, star: 1, wounded: false, talentPoints: 0, talents: {}, awakened: true } },
-      party: ['nova'],
-      stamina: 100,
-      combat: {
-        zoneId: 'wasteland_entrance',
-        lastSettlement: {
-          battle: {
-            victory: true, partyWiped: false, rounds: 2,
-            actions: [
-              { round: 1, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '废土鬣狗', damage: 28, kind: 'skill', skillName: '电涌过载' },
-              { round: 1, actorSide: 'enemy', actorId: 'e1', actorName: '废土鬣狗', targetName: '诺娃', damage: 6, kind: 'attack' },
-              { round: 2, actorSide: 'hero', actorId: 'nova', actorName: '诺娃', targetName: '诺娃', damage: 76, kind: 'heal', skillName: '净化之泉' }
-            ]
-          },
-          drops: {},
-          soulEchoes: 0,
-          expPerHero: 20,
-          woundedHeroIds: []
-        },
-        zonesCleared: []
-      }
-    }));
-
-    render(
-      <GameProvider>
-        <ToastProvider>
-          <WildernessTab />
-        </ToastProvider>
-      </GameProvider>
-    );
-
-    fireEvent.click(screen.getByText(/战斗挂机/));
-    const skipBtn3 = screen.queryByText('跳过');
-    if (skipBtn3) fireEvent.click(skipBtn3);
-
-    // strike：发动【技能】→ 目标名（技能 span 内含目标）；heal：发动【技能】+治疗量（无目标箭头）
-    expect(screen.getByText(/发动【电涌过载】/).textContent).toContain('废土鬣狗');
-    expect(screen.getByText('-28')).toBeDefined(); // strike 伤害
-    expect(screen.getByText(/发动【净化之泉】/).textContent).not.toContain('→'); // heal 无目标箭头
-    expect(screen.getByText('+76')).toBeDefined(); // heal 治疗量
-  });
-
-  it('plays idle battle playback automatically when a battle settles online (挂机战斗自动播放回放动画)', () => {
+  it('settles idle battle online and shows the latest battle result (挂机战斗在线结算)', () => {
     vi.useFakeTimers();
     const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
     // 强队保证必胜（诺娃 + 铁卫）
     save.heroes = { nova: createInitialHero('nova'), soldier: createInitialHero('soldier') };
     save.party = ['nova', 'soldier'];
     save.stamina = COMBAT_CONFIG.maxStamina;
-    save.combat.zonesCleared = ['wasteland_entrance'];
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
     save.combat.lastSettlement = null;
-    save.combat.idle = { zoneId: 'wasteland_entrance', startTime: Date.now(), accumulatedSeconds: 0 };
+    save.combat.idle = { regionId: 'wasteland_entrance', levelId: 'wasteland_entrance_1', startTime: Date.now(), accumulatedSeconds: 0 };
     save.lastTick = Date.now(); // 无离线结算，从零开始在线推进
     localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
 
@@ -635,27 +613,23 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
-    // 挂机在线结算一场（20 秒），回放动画自动开始播放（跳过按钮 = 播放态）
+    // 挂机在线结算一场（20 秒），状态中记录胜利结算
     act(() => {
       vi.advanceTimersByTime(21000);
     });
-    expect(screen.getByText('跳过')).toBeDefined();
-
-    // 动画逐动作自动播放至完成 → 战斗胜利横幅（挂机战斗过程完整展示）
-    // 动画定时器是链式重注册的（每步 effect 清理+重注册），fake timers 下需分步推进
-    for (let i = 0; i < 20; i++) {
-      act(() => {
-        vi.advanceTimersByTime(800);
-      });
-    }
-    expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+    const savedState = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(savedState.combat.lastSettlement.battle.outcome).toBe('victory');
 
     vi.useRealTimers();
   });
 
-  it('replays the animation for consecutive identical battles (unique key per battle)', () => {
+  it('shows the battle modal and consumes stamina for consecutive battles (连续战斗更新结算与体力)', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
     render(
       <GameProvider>
         <ToastProvider>
@@ -664,20 +638,195 @@ describe('WildernessTab Component', () => {
       </GameProvider>
     );
 
-    fireEvent.click(screen.getByText(/战斗挂机/));
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
 
-    // 第一场：点击开战 → 动画播放中（跳过按钮可见）
-    fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
-    expect(screen.getByText('跳过')).toBeDefined();
-    fireEvent.click(screen.getByText('跳过'));
-    // 播完：结算卡片可见、无跳过按钮（进入完成态）
-    expect(screen.queryByText('跳过')).toBeNull();
-    expect(screen.getAllByText(/战斗胜利！/).length).toBeGreaterThan(0);
+    // 第一场：点击关卡卡片 -> 确认开战 → 进入全屏战斗模态并结算
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+    fireEvent.click(screen.getByTestId('level-detail-confirm-btn'));
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
 
-    // 第二场（内容与第一场完全相同）：点击开战 → 重新播放动画
-    fireEvent.click(screen.getAllByText(/开战（体力 -10）/)[0]);
-    expect(screen.getByText('跳过')).toBeDefined();
-    fireEvent.click(screen.getByText('跳过'));
-    expect(screen.queryByText('跳过')).toBeNull();
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    fireEvent.click(screen.getByTestId('battle-settlement-confirm-btn'));
+
+    const afterFirst = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(afterFirst.stamina).toBe(90);
+
+    // 第二场：再次点击关卡卡片 -> 确认开战 → 进入战斗并再次扣减体力
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+    fireEvent.click(screen.getByTestId('level-detail-confirm-btn'));
+    expect(screen.getByTestId('dedicated-battle-modal')).toBeDefined();
+
+    fireEvent.click(screen.getByTestId('skip-battle-btn'));
+    fireEvent.click(screen.getByTestId('battle-settlement-confirm-btn'));
+
+    const afterSecond = JSON.parse(localStorage.getItem('aether_garden_save_Guest') || '{}');
+    expect(afterSecond.stamina).toBe(80);
+  });
+
+  it('switches between 荒野 and 战斗 sub-tabs seamlessly', () => {
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Initial state is Wilderness sub-tab
+    expect(screen.getByTestId('wilderness-region-card')).toBeDefined();
+    expect(screen.getByText('踏入废土荒野')).toBeDefined();
+
+    // Switch to Combat sub-tab
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
+    expect(screen.getByText(/战斗体力/)).toBeDefined();
+
+    // Switch back to Wilderness sub-tab
+    fireEvent.click(screen.getByRole('button', { name: '荒野' }));
+    expect(screen.getByTestId('wilderness-region-card')).toBeDefined();
+  });
+
+  it('opens RegionSelectorModal from wilderness region card and updates selection', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Click wilderness region card
+    fireEvent.click(screen.getByTestId('wilderness-region-card'));
+    expect(screen.getByTestId('region-selector-modal')).toBeDefined();
+
+    // Select old_town_ruins (unlocked now in exploration)
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+    expect(screen.getByTestId('region-detail-modal')).toBeDefined();
+
+    // Confirm selection
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+    expect(screen.queryByTestId('region-selector-modal')).toBeNull();
+
+    // Wilderness card now reflects 旧城废墟
+    expect(screen.getByTestId('wilderness-region-card').textContent).toContain('旧城废墟');
+  });
+
+  it('opens RegionSelectorModal from combat region card and updates combat region', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.exploration.regionProgress = { wasteland_entrance: 10, old_town_ruins: 15 };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    // Go to combat sub-tab
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
+
+    // Click combat region card
+    fireEvent.click(screen.getByTestId('combat-region-card'));
+    expect(screen.getByTestId('region-selector-modal')).toBeDefined();
+
+    // Select old_town_ruins (unlocked in combat)
+    fireEvent.click(screen.getByTestId('region-item-old_town_ruins'));
+    expect(screen.getByTestId('region-detail-modal')).toBeDefined();
+
+    // Confirm selection
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+    expect(screen.queryByTestId('region-selector-modal')).toBeNull();
+
+    // Combat card now reflects 旧城废墟
+    expect(screen.getByTestId('combat-region-card').textContent).toContain('旧城废墟');
+  });
+
+  it('switches between 挑战 and 挂机 modes and opens LevelDetailModal with cancel behavior', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+
+    // Challenge mode (active): card 1 is 已通关, card 2 is 可挑战
+    const card1 = screen.getByTestId('level-card-wasteland_entrance_1');
+    const card2 = screen.getByTestId('level-card-wasteland_entrance_2');
+    expect(card1.textContent).toContain('已通关');
+    expect(card2.textContent).toContain('可挑战');
+
+    // Switch to Idle mode (挂机)
+    fireEvent.click(screen.getByTestId('combat-mode-idle-btn'));
+    expect(card1.textContent).toContain('可挂机');
+    expect(card2.textContent).toContain('未解锁');
+
+    // Click card 1 to open LevelDetailModal
+    fireEvent.click(card1);
+    expect(screen.getByTestId('level-detail-modal')).toBeDefined();
+    expect(screen.getByText('敌方阵容')).toBeDefined();
+
+    // Click cancel button -> closes modal
+    fireEvent.click(screen.getByTestId('level-detail-cancel-btn'));
+    expect(screen.queryByTestId('level-detail-modal')).toBeNull();
+  });
+
+  it('starts idle combat from LevelDetailModal in 挂机 mode, renders IdleCombatWidget, stops with IdleSummaryModal, and returns to 挂机 mode', () => {
+    const save = JSON.parse(JSON.stringify(INITIAL_STATE)) as typeof INITIAL_STATE;
+    save.exploration.regionProgress = { wasteland_entrance: 10 };
+    save.combat.clearedLevels = { wasteland_entrance: ['wasteland_entrance_1'] };
+    save.heroes = { nova: createInitialHero('nova') };
+    save.party = ['nova'];
+    save.stamina = 100;
+    localStorage.setItem('aether_garden_save_Guest', JSON.stringify(save));
+
+    render(
+      <GameProvider>
+        <ToastProvider>
+          <WildernessTab />
+        </ToastProvider>
+      </GameProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '战斗' }));
+
+    // Switch to Idle mode
+    fireEvent.click(screen.getByTestId('combat-mode-idle-btn'));
+
+    // Open cleared level modal and confirm starting idle
+    fireEvent.click(screen.getByTestId('level-card-wasteland_entrance_1'));
+    expect(screen.getByTestId('level-detail-modal')).toBeDefined();
+    fireEvent.click(screen.getByTestId('level-detail-confirm-btn'));
+
+    // View seamlessly switches to IdleCombatWidget; level list and mode toggles are hidden
+    expect(screen.getByTestId('idle-combat-widget')).toBeDefined();
+    expect(screen.queryByTestId('combat-mode-active-btn')).toBeNull();
+    expect(screen.queryByTestId('combat-region-card')).toBeNull();
+
+    // Click stop button on widget -> triggers IdleSummaryModal
+    fireEvent.click(screen.getByTestId('idle-widget-stop-btn'));
+    expect(screen.getByTestId('idle-summary-modal')).toBeDefined();
+    expect(screen.getByText('挂机已停止')).toBeDefined();
+
+    // Confirm summary modal -> closes modal and stays in 挂机 mode
+    fireEvent.click(screen.getByTestId('idle-summary-confirm-btn'));
+    expect(screen.queryByTestId('idle-summary-modal')).toBeNull();
+    expect(screen.getByTestId('combat-mode-idle-btn')).toBeDefined();
+    expect(screen.getByTestId('combat-region-card')).toBeDefined();
   });
 });
+

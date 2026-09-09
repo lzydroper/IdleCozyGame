@@ -1,0 +1,13 @@
+{
+  "id": "rogue_machine",
+  "name": "失控机器仆从",
+  "description": "失控的自动化机器。",
+  "kind": "enemy",
+  "role": "normal",
+  "faction": "mechanical",
+  "baseAttributes": {
+    "maxHp": 90,
+    "attack": 15,
+    "defense": 8
+  }
+}

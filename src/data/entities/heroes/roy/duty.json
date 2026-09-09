@@ -1,0 +1,17 @@
+{
+  "bonuses": [
+    {
+      "scope": {
+        "kind": "facility",
+        "facilityType": "smelter"
+      },
+      "speedMultiplier": 0.3
+    },
+    {
+      "scope": {
+        "kind": "all"
+      },
+      "speedMultiplier": 0.15
+    }
+  ]
+}

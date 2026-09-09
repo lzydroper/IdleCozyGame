@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useGame } from '../context/GameContext';
-import { HEROES_CONFIG } from '../data/heroes';
-import { COMBAT_CONFIG } from '../data/combatConfig';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
+import { COMBAT_CONFIG } from '../configs/constants/combatConfig';
 import { formatModifiers } from '../state/statSystem';
 import { getActiveBonds } from '../state/bonds';
 import { useToast } from './ToastSystem';

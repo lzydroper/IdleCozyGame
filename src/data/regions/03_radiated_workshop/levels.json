@@ -1,0 +1,129 @@
+[
+  {
+    "id": "radiated_workshop_1",
+    "name": "畸变体",
+    "enemies": [
+      "radiation_mutant",
+      "rogue_machine",
+      "aberrant_subject"
+    ],
+    "staminaCost": 20,
+    "drops": [
+      {
+        "kind": "chance",
+        "itemId": "alloy_plate",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "chance",
+        "itemId": "rusted_spring",
+        "count": 2,
+        "chancePercent": 40
+      },
+      {
+        "kind": "chance",
+        "itemId": "plasma_cell",
+        "count": 1,
+        "chancePercent": 25
+      },
+      {
+        "kind": "chance",
+        "itemId": "nanite_slurry",
+        "count": 1,
+        "chancePercent": 20
+      },
+      {
+        "kind": "chance",
+        "itemId": "enhance_stone",
+        "count": 3,
+        "chancePercent": 70
+      },
+      {
+        "kind": "chance",
+        "itemId": "exp_tome",
+        "count": 1,
+        "chancePercent": 35
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 2
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 10
+      }
+    ]
+  },
+  {
+    "id": "radiated_workshop_2",
+    "name": "车间之主",
+    "enemies": [
+      "workshop_abomination",
+      "rogue_machine"
+    ],
+    "staminaCost": 25,
+    "drops": [
+      {
+        "kind": "chance",
+        "itemId": "plasma_cell",
+        "count": 2,
+        "chancePercent": 50
+      },
+      {
+        "kind": "chance",
+        "itemId": "nanite_slurry",
+        "count": 2,
+        "chancePercent": 40
+      },
+      {
+        "kind": "chance",
+        "itemId": "starcore_weapon",
+        "count": 1,
+        "chancePercent": 15
+      },
+      {
+        "kind": "chance",
+        "itemId": "starcore_armor",
+        "count": 1,
+        "chancePercent": 10
+      },
+      {
+        "kind": "chance",
+        "itemId": "starcore_trinket",
+        "count": 1,
+        "chancePercent": 10
+      },
+      {
+        "kind": "chance",
+        "itemId": "arcane_orb",
+        "count": 1,
+        "chancePercent": 12
+      },
+      {
+        "kind": "chance",
+        "itemId": "enhance_stone",
+        "count": 4,
+        "chancePercent": 90
+      },
+      {
+        "kind": "chance",
+        "itemId": "exp_tome",
+        "count": 2,
+        "chancePercent": 60
+      },
+      {
+        "kind": "fixed",
+        "itemId": "exp_tome",
+        "count": 2
+      },
+      {
+        "kind": "fixed",
+        "itemId": "soul_echo",
+        "count": 22
+      }
+    ]
+  }
+]

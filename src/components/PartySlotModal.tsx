@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HEROES_CONFIG } from '../data/heroes';
+import { HEROES_CONFIG } from '../configs/loaders/entities.loader';
 import type { HeroState } from '../types/game';
 import { Shield, Check, X, Lock, Wrench, Star } from 'lucide-react';
 import GameIcon from './GameIcon';
